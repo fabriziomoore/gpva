@@ -14,7 +14,296 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      impacts: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          team_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          team_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impacts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inviability_reasons: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          team_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          team_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inviability_reasons_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_types: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          is_negotiation: boolean
+          name: string
+          sort_order: number
+          team_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_negotiation?: boolean
+          name: string
+          sort_order?: number
+          team_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_negotiation?: boolean
+          name?: string
+          sort_order?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_types_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          created_at: string
+          id: string
+          is_negotiation: boolean
+          negotiated_value: number | null
+          reason_id: string | null
+          reason_name: string | null
+          registration_number: string | null
+          service_type_id: string | null
+          service_type_name: string
+          shift_id: string
+          team_id: string
+          viable: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_negotiation?: boolean
+          negotiated_value?: number | null
+          reason_id?: string | null
+          reason_name?: string | null
+          registration_number?: string | null
+          service_type_id?: string | null
+          service_type_name: string
+          shift_id: string
+          team_id: string
+          viable?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_negotiation?: boolean
+          negotiated_value?: number | null
+          reason_id?: string | null
+          reason_name?: string | null
+          registration_number?: string | null
+          service_type_id?: string | null
+          service_type_name?: string
+          shift_id?: string
+          team_id?: string
+          viable?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
+            referencedRelation: "inviability_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_impacts: {
+        Row: {
+          impact_id: string
+          impact_name: string
+          shift_id: string
+          team_id: string
+        }
+        Insert: {
+          impact_id: string
+          impact_name: string
+          shift_id: string
+          team_id: string
+        }
+        Update: {
+          impact_id?: string
+          impact_name?: string
+          shift_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_impacts_impact_id_fkey"
+            columns: ["impact_id"]
+            isOneToOne: false
+            referencedRelation: "impacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_impacts_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_impacts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shifts: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          report_text: string | null
+          started_at: string
+          status: string
+          team_id: string
+          variable_rate_snapshot: number | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          report_text?: string | null
+          started_at?: string
+          status?: string
+          team_id: string
+          variable_rate_snapshot?: number | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          report_text?: string | null
+          started_at?: string
+          status?: string
+          team_id?: string
+          variable_rate_snapshot?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          leader: string
+          onboarded: boolean
+          supervisor: string
+          team_name: string
+          variable_rate: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          leader?: string
+          onboarded?: boolean
+          supervisor?: string
+          team_name: string
+          variable_rate?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leader?: string
+          onboarded?: boolean
+          supervisor?: string
+          team_name?: string
+          variable_rate?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
