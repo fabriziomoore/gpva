@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, Share2, Printer, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/shift/$id/report")({
+export const Route = createFileRoute("/_authenticated/shift_/$id/report")({
   head: () => ({ meta: [{ title: "Relatório" }] }),
   component: ReportPage,
 });
