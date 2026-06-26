@@ -1,0 +1,10 @@
+{
+  "name": "GPVA — Gestão de Produtividade e Variável Autônoma",
+  "short_name": "GPVA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1d24",
+  "theme_color": "#1a1d24",
+  "description": "Registro de servicos e relatorio diario de equipes de campo",
+  "icons": []
+}
