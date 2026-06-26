@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift.$id.report'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -28,40 +30,59 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
+  id: '/shift',
+  path: '/shift',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedShiftIdReportRoute =
+  AuthenticatedShiftIdReportRouteImport.update({
+    id: '/$id/report',
+    path: '/$id/report',
+    getParentRoute: () => AuthenticatedShiftRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/shift': typeof AuthenticatedShiftRouteWithChildren
+  '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/shift': typeof AuthenticatedShiftRouteWithChildren
   '/': typeof AuthenticatedIndexRoute
+  '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/shift': typeof AuthenticatedShiftRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/onboarding'
+  fullPaths: '/' | '/auth' | '/onboarding' | '/shift' | '/shift/$id/report'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/onboarding' | '/'
+  to: '/auth' | '/onboarding' | '/shift' | '/' | '/shift/$id/report'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/onboarding'
+    | '/_authenticated/shift'
     | '/_authenticated/'
+    | '/_authenticated/shift/$id/report'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -92,6 +113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/shift': {
+      id: '/_authenticated/shift'
+      path: '/shift'
+      fullPath: '/shift'
+      preLoaderRoute: typeof AuthenticatedShiftRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
@@ -99,16 +127,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/shift/$id/report': {
+      id: '/_authenticated/shift/$id/report'
+      path: '/$id/report'
+      fullPath: '/shift/$id/report'
+      preLoaderRoute: typeof AuthenticatedShiftIdReportRouteImport
+      parentRoute: typeof AuthenticatedShiftRoute
+    }
   }
 }
 
+interface AuthenticatedShiftRouteChildren {
+  AuthenticatedShiftIdReportRoute: typeof AuthenticatedShiftIdReportRoute
+}
+
+const AuthenticatedShiftRouteChildren: AuthenticatedShiftRouteChildren = {
+  AuthenticatedShiftIdReportRoute: AuthenticatedShiftIdReportRoute,
+}
+
+const AuthenticatedShiftRouteWithChildren =
+  AuthenticatedShiftRoute._addFileChildren(AuthenticatedShiftRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedShiftRoute: typeof AuthenticatedShiftRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedShiftRoute: AuthenticatedShiftRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
