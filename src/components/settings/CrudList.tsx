@@ -38,8 +38,7 @@ export function CrudList({
     if (!name.trim()) return;
     setAdding(true);
     try {
-      const payload: Record<string, unknown> = { team_id: teamId, name: name.trim() };
-      const { error } = await supabase.from(table).insert(payload);
+      const { error } = await supabase.from(table).insert({ team_id: teamId, name: name.trim() });
       if (error) throw error;
       setName("");
       await qc.invalidateQueries({ queryKey: [table, teamId, "all"] });
