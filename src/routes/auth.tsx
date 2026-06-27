@@ -114,7 +114,7 @@ function AuthPage() {
               onClick={() => setAdminOpen(true)}
               className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground underline-offset-4 hover:underline"
             >
-              Nova equipe
+              Configuração
             </button>
           ) : (
             <form
