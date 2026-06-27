@@ -5,7 +5,6 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -109,14 +108,9 @@ function SettingsPage() {
 
   return (
     <AppShell title="Configurações">
-      <Tabs defaultValue="team">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="team">Equipe</TabsTrigger>
-          <TabsTrigger value="catalogs">Cadastros</TabsTrigger>
-          <TabsTrigger value="variable">Variável</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="team" className="mt-4 space-y-6">
+      <div className="space-y-8">
+        <section className="space-y-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
           <div className="space-y-3">
             <div>
               <Label>Nome da equipe</Label>
@@ -166,15 +160,17 @@ function SettingsPage() {
           >
             <LogOut className="mr-2 size-4" /> Sair
           </Button>
-        </TabsContent>
+        </section>
 
-        <TabsContent value="catalogs" className="mt-4 space-y-6">
+        <section className="space-y-6 border-t border-border pt-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cadastros</h2>
           <CrudList table="service_types" teamId={userId} label="Tipos de serviço" />
           <CrudList table="inviability_reasons" teamId={userId} label="Motivos de inviabilidade" />
           <CrudList table="impacts" teamId={userId} label="Impactos" />
-        </TabsContent>
+        </section>
 
-        <TabsContent value="variable" className="mt-4 space-y-3">
+        <section className="space-y-3 border-t border-border pt-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Variável</h2>
           <Label htmlFor="rate">Valor pago por negociação (R$)</Label>
           <Input
             id="rate"
@@ -189,8 +185,8 @@ function SettingsPage() {
           <Button onClick={saveRate} disabled={saving} className="h-11 w-full">
             {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
           </Button>
-        </TabsContent>
-      </Tabs>
+        </section>
+      </div>
     </AppShell>
   );
 }

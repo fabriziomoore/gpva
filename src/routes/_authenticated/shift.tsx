@@ -69,7 +69,7 @@ function ShiftPage() {
 
   if (openShift.isLoading) {
     return (
-      <AppShell title="Expediente">
+      <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -79,7 +79,7 @@ function ShiftPage() {
 
   if (!openShift.data) {
     return (
-      <AppShell title="Expediente">
+      <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
         <div className="rounded-2xl border border-border bg-card p-6 text-center">
           <p className="text-muted-foreground">Nenhum expediente em andamento.</p>
           <Button className="mt-4" onClick={() => navigate({ to: "/" })}>
@@ -91,7 +91,7 @@ function ShiftPage() {
   }
 
   return (
-    <AppShell title="Expediente">
+    <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
           <Kpi label="Total" value={String(kpis.total).padStart(2, "0")} />
@@ -169,6 +169,22 @@ function ShiftPage() {
         </>
       )}
     </AppShell>
+  );
+}
+
+function ShiftMeta({ teamName }: { teamName?: string }) {
+  const today = new Date().toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  });
+  return (
+    <div className="flex flex-col items-end leading-tight">
+      <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+        {teamName ?? "—"}
+      </span>
+      <span className="text-[10px] text-muted-foreground">{today}</span>
+    </div>
   );
 }
 
