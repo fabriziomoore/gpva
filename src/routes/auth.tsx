@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo.png";
@@ -26,6 +25,8 @@ function AuthPage() {
   const [team, setTeam] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminPw, setAdminPw] = useState("");
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
@@ -64,13 +65,7 @@ function AuthPage() {
           <img src={gpvaLogo} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="h-32 w-auto" />
         </div>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "signup")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Entrar</TabsTrigger>
-            <TabsTrigger value="signup">Nova equipe</TabsTrigger>
-          </TabsList>
-
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="team">Equipe</Label>
               <Input
@@ -97,11 +92,70 @@ function AuthPage() {
             <Button type="submit" disabled={loading} className="h-12 w-full text-base font-semibold">
               {loading ? <Loader2 className="size-5 animate-spin" /> : tab === "signin" ? "Entrar" : "Criar Equipe"}
             </Button>
-            <TabsContent value="signup" className="m-0 text-xs text-muted-foreground">
-              Após criar a equipe você cadastrará Supervisor e Líder uma única vez.
-            </TabsContent>
-          </form>
-        </Tabs>
+            {tab === "signup" && (
+              <p className="m-0 text-xs text-muted-foreground">
+                Após criar a equipe você cadastrará Supervisor e Líder uma única vez.
+              </p>
+            )}
+        </form>
+
+        <div className="mt-6 text-center">
+          {tab === "signup" ? (
+            <button
+              type="button"
+              onClick={() => setTab("signin")}
+              className="text-xs text-muted-foreground/70 hover:text-muted-foreground underline-offset-4 hover:underline"
+            >
+              Voltar para entrar
+            </button>
+          ) : !adminOpen ? (
+            <button
+              type="button"
+              onClick={() => setAdminOpen(true)}
+              className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground underline-offset-4 hover:underline"
+            >
+              Nova equipe
+            </button>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (adminPw === "137889") {
+                  setTab("signup");
+                  setAdminOpen(false);
+                  setAdminPw("");
+                } else {
+                  toast.error("Senha de administrador incorreta.");
+                }
+              }}
+              className="flex items-center gap-2"
+            >
+              <Input
+                type="password"
+                value={adminPw}
+                onChange={(e) => setAdminPw(e.target.value)}
+                placeholder="Senha admin"
+                autoFocus
+                className="h-9 text-sm"
+              />
+              <Button type="submit" variant="secondary" size="sm" className="h-9">
+                OK
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-9"
+                onClick={() => {
+                  setAdminOpen(false);
+                  setAdminPw("");
+                }}
+              >
+                Cancelar
+              </Button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
