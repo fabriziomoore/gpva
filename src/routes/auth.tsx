@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import gpvaLogo from "@/assets/gpva-logo.png";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -59,14 +60,8 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground text-2xl font-bold">
-            G
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">GPVA</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestão de Produtividade e Variável Autônoma
-          </p>
+        <div className="mb-8 flex justify-center">
+          <img src={gpvaLogo} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="h-32 w-auto" />
         </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "signup")}>
