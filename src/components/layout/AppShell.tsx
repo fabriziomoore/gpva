@@ -6,7 +6,7 @@ export function AppShell({
   children,
   right,
 }: {
-  title?: string;
+  title?: ReactNode;
   children: ReactNode;
   right?: ReactNode;
 }) {
