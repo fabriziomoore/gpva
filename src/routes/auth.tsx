@@ -59,7 +59,7 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background py-10">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
       <div className="mb-8 w-full">
         <img src={gpvaLogo.url} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="block w-full h-auto" />
       </div>
@@ -157,6 +157,9 @@ function AuthPage() {
           )}
         </div>
       </div>
+      <p className="absolute inset-x-0 bottom-3 whitespace-nowrap overflow-hidden text-ellipsis px-4 text-center text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">
+        Criado e desenvolvido por Fabrízio Moore
+      </p>
     </div>
   );
 }
