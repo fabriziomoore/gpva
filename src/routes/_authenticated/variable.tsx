@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
+import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import {
   ResponsiveContainer,
   LineChart,
@@ -95,7 +96,7 @@ function VariablePage() {
   }, [neg.data]);
 
   return (
-    <AppShell title="Variável">
+    <AppShell title="Variável" right={<ShiftMeta />}>
       {neg.isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
