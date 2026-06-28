@@ -13,13 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "type" | "viability" | "reason" | "registration" | "amount" | "complements";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 type Reason = { id: string; name: string };
-type Complement = { id: string; name: string };
 
 export function AddServiceSheet({
   open,

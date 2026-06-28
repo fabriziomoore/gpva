@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { buildReport } from "@/lib/report";
 
-type Impact = { id: string; name: string };
 
 export function FinishShiftSheet({
   open,
