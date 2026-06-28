@@ -82,9 +82,26 @@ function HomePage() {
 
   const today = useMemo(() => formatDateBR(new Date()), []);
 
+  const titleNode = (
+    <svg
+      viewBox="0 0 360 24"
+      preserveAspectRatio="xMidYMid meet"
+      className="block w-full h-auto"
+      role="img"
+      aria-label="GPVA - Gestão de Produtividade e Variável Autônoma"
+    >
+      <text x="0" y="18" fontSize="20" fontWeight="600" fill="currentColor">
+        GPVA
+        <tspan fontSize="13" fontWeight="500" fill="hsl(var(--muted-foreground))" dx="4">
+          - GESTÃO DE PRODUTIVIDADE E VARIÁVEL AUTÔNOMA
+        </tspan>
+      </text>
+    </svg>
+  );
+
   if (isLoading) {
     return (
-      <AppShell title={<span className="flex w-full items-baseline gap-1 whitespace-nowrap"><span>GPVA</span> <span className="text-[15.5px] font-medium text-muted-foreground">- GESTÃO DE PRODUTIVIDADE E VARIÁVEL AUTÔNOMA</span></span>}>
+      <AppShell title={titleNode}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -93,7 +110,7 @@ function HomePage() {
   }
 
   return (
-    <AppShell title={<span className="flex w-full items-baseline gap-1 whitespace-nowrap"><span>GPVA</span> <span className="text-[15.5px] font-medium text-muted-foreground">- GESTÃO DE PRODUTIVIDADE E VARIÁVEL AUTÔNOMA</span></span>}>
+    <AppShell title={titleNode}>
       <div className="space-y-6">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
