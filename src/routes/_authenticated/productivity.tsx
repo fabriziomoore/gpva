@@ -146,7 +146,9 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: "day" | "week" |
 
   const byType = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of filtered) m.set(r.service_type_name, (m.get(r.service_type_name) ?? 0) + 1);
+    // Por tipo de serviço conta apenas serviços VIÁVEIS (efetivamente executados)
+    for (const r of filtered.filter((x) => x.viable))
+      m.set(r.service_type_name, (m.get(r.service_type_name) ?? 0) + 1);
     return Array.from(m, ([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty);
   }, [filtered]);
 
