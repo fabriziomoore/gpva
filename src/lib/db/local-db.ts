@@ -1,14 +1,12 @@
 import Dexie, { type Table } from "dexie";
 
-// Local mirror of Supabase tables. Used as the offline-first source of truth
-// in Fase 2. For now we expose the schema and a singleton so other modules
-// can start reading/writing while the sync engine is wired up.
+// Local mirror of Supabase tables. Client generates UUIDs so the same id is
+// used locally and on the server — no FK resolution needed during sync.
 
-export type SyncState = "pending" | "syncing" | "synced" | "error";
+export type SyncState = "pending" | "synced" | "error";
 
 export interface LocalShift {
-  local_id: string;
-  server_id?: string | null;
+  id: string;
   team_id: string;
   started_at: string;
   ended_at?: string | null;
@@ -17,14 +15,12 @@ export interface LocalShift {
   variable_rate_snapshot?: number | null;
   updated_at: string;
   sync_state: SyncState;
-  deleted?: boolean;
 }
 
 export interface LocalService {
-  local_id: string;
-  server_id?: string | null;
+  id: string;
   team_id: string;
-  shift_local_id: string;
+  shift_id: string;
   service_type_id?: string | null;
   service_type_name: string;
   viable: boolean;
@@ -36,15 +32,13 @@ export interface LocalService {
   created_at: string;
   updated_at: string;
   sync_state: SyncState;
-  deleted?: boolean;
 }
 
 export interface LocalComplementLink {
-  local_id: string;
-  server_id?: string | null;
+  id: string;
   team_id: string;
-  shift_local_id: string;
-  service_local_id: string;
+  shift_id: string;
+  service_id: string;
   complement_id?: string | null;
   complement_name: string;
   updated_at: string;
@@ -52,32 +46,27 @@ export interface LocalComplementLink {
 }
 
 export interface LocalShiftImpact {
-  local_id: string;
-  server_id?: string | null;
+  id: string;
   team_id: string;
-  shift_local_id: string;
+  shift_id: string;
   impact_id?: string | null;
   impact_name: string;
   updated_at: string;
   sync_state: SyncState;
 }
 
-export interface LocalCatalogRow {
-  id: string; // server uuid
-  table: "service_types" | "inviability_reasons" | "service_complements" | "impacts";
-  name: string;
-  is_negotiation?: boolean;
-  sort_order?: number;
-  active: boolean;
-  updated_at: string;
-}
+export type OutboxTable =
+  | "shifts"
+  | "services"
+  | "shift_impacts"
+  | "service_complement_links";
 
 export interface OutboxRow {
   id?: number;
-  table: "shifts" | "services" | "shift_impacts" | "service_complement_links";
-  op: "insert" | "update" | "delete";
-  local_id: string;
-  payload: unknown;
+  table: OutboxTable;
+  op: "upsert" | "delete";
+  row_id: string; // matches server id
+  payload: Record<string, unknown>;
   tries: number;
   created_at: string;
   last_error?: string | null;
@@ -93,19 +82,17 @@ class GpvaDB extends Dexie {
   services!: Table<LocalService, string>;
   complement_links!: Table<LocalComplementLink, string>;
   shift_impacts!: Table<LocalShiftImpact, string>;
-  catalog!: Table<LocalCatalogRow, [string, string]>;
   outbox!: Table<OutboxRow, number>;
   kv!: Table<KvRow, string>;
 
   constructor() {
     super("gpva");
     this.version(1).stores({
-      shifts: "local_id, server_id, team_id, status, started_at, sync_state",
-      services: "local_id, server_id, shift_local_id, team_id, sync_state, created_at",
-      complement_links: "local_id, service_local_id, shift_local_id, team_id, sync_state",
-      shift_impacts: "local_id, shift_local_id, team_id, sync_state",
-      catalog: "[table+id], table, active, updated_at",
-      outbox: "++id, table, local_id, created_at",
+      shifts: "id, team_id, status, started_at, sync_state",
+      services: "id, shift_id, team_id, sync_state, created_at",
+      complement_links: "id, service_id, shift_id, team_id, sync_state",
+      shift_impacts: "id, shift_id, team_id, sync_state",
+      outbox: "++id, table, row_id, created_at",
       kv: "key",
     });
   }
@@ -121,7 +108,13 @@ export function getLocalDB(): GpvaDB {
   return _db;
 }
 
-export function newLocalId(): string {
+export function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `loc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  // RFC4122-ish fallback
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }

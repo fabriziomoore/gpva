@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalDB } from "@/lib/db/local-db";
+import { repoCloseShift } from "@/lib/db/repos";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus, X } from "lucide-react";
@@ -65,66 +67,41 @@ export function FinishShiftSheet({
     setSaving(true);
     try {
       const chosen = impacts.data?.filter((i) => selected.has(i.id)) ?? [];
-      const rows = [
-        ...chosen.map((i) => ({
-          shift_id: shiftId,
-          impact_id: i.id,
-          impact_name: i.name,
-          team_id: teamId,
-        })),
-        ...customs.map((name) => ({
-          shift_id: shiftId,
-          impact_id: null,
-          impact_name: name,
-          team_id: teamId,
-        })),
-      ];
-      if (rows.length > 0) {
-        const { error: e1 } = await supabase.from("shift_impacts").insert(rows);
-        if (e1) throw e1;
-      }
+      const db = getLocalDB();
+      const localShift = await db.shifts.get(shiftId);
+      const localServices = await db.services.where("shift_id").equals(shiftId).toArray();
+      localServices.sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
+      const localLinks = await db.complement_links.where("shift_id").equals(shiftId).toArray();
 
-      // Fetch all data to build the report
-      const [{ data: shift }, { data: team }, { data: services }, { data: links }] = await Promise.all([
-        supabase.from("shifts").select("started_at").eq("id", shiftId).single(),
-        supabase
-          .from("teams")
-          .select("team_name,supervisor,leader")
-          .eq("id", teamId)
-          .single(),
-        supabase
-          .from("services")
-          .select(
-            "service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value,created_at",
-          )
-          .eq("shift_id", shiftId)
-          .order("created_at"),
-        supabase
-          .from("service_complement_links")
-          .select("complement_name")
-          .eq("shift_id", shiftId),
-      ]);
+      // Team info is needed for the report header; try local cache via supabase (cached by react-query upstream).
+      const { data: team } = await supabase
+        .from("teams")
+        .select("team_name,supervisor,leader")
+        .eq("id", teamId)
+        .maybeSingle();
 
       const report = buildReport({
-        started_at: shift!.started_at,
-        team_name: team!.team_name,
-        supervisor: team!.supervisor ?? "",
-        leader: team!.leader ?? "",
-        services: (services ?? []) as never,
+        started_at: localShift?.started_at ?? new Date().toISOString(),
+        team_name: team?.team_name ?? "",
+        supervisor: team?.supervisor ?? "",
+        leader: team?.leader ?? "",
+        services: localServices as never,
         impacts: [
           ...chosen.map((c) => ({ impact_name: c.name })),
           ...customs.map((name) => ({ impact_name: name })),
         ],
-        complements: (links ?? []) as { complement_name: string }[],
+        complements: localLinks.map((l) => ({ complement_name: l.complement_name })),
       });
 
-      const { error: e2 } = await supabase
-        .from("shifts")
-        .update({ status: "closed", ended_at: new Date().toISOString(), report_text: report })
-        .eq("id", shiftId);
-      if (e2) throw e2;
+      await repoCloseShift({
+        shift_id: shiftId,
+        report_text: report,
+        impacts: [
+          ...chosen.map((c) => ({ id: c.id, name: c.name, team_id: teamId, shift_id: shiftId })),
+          ...customs.map((name) => ({ id: null, name, team_id: teamId, shift_id: shiftId })),
+        ],
+      });
 
-      await qc.invalidateQueries({ queryKey: ["open-shift"] });
       await qc.invalidateQueries({ queryKey: ["last-closed-shift"] });
       onOpenChange(false);
       onClosed(shiftId);

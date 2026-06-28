@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalDB } from "@/lib/db/local-db";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Copy, Share2, Printer, Loader2 } from "lucide-react";
@@ -17,6 +18,13 @@ function ReportPage() {
   const q = useQuery({
     queryKey: ["shift-report", id],
     queryFn: async () => {
+      // Prefer local copy so the report opens instantly and offline.
+      try {
+        const local = await getLocalDB().shifts.get(id);
+        if (local?.report_text) return local;
+      } catch {
+        /* SSR / no DB */
+      }
       const { data, error } = await supabase
         .from("shifts")
         .select("id,report_text,started_at")
