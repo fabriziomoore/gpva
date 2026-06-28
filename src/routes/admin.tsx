@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import {
   adminAddRow,
@@ -42,6 +42,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
 ];
 
 function AdminPage() {
+  const navigate = useNavigate();
   const [adminPw, setAdminPw] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [section, setSection] = useState<SectionId>("service_types");
@@ -93,6 +94,16 @@ function AdminPage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
+        <button
+          onClick={() => {
+            sessionStorage.removeItem("gpva-admin-pw");
+            navigate({ to: "/auth" });
+          }}
+          className="rounded-md p-2 text-muted-foreground hover:text-foreground"
+          aria-label="Sair"
+        >
+          <LogOut className="size-5" />
+        </button>
       </header>
 
       {view === "menu" ? (
