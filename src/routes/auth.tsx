@@ -81,7 +81,7 @@ function AuthPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={tab === "signup" ? "new-password" : "current-password"}
+                autoComplete="current-password"
                 className="h-12 text-base"
               />
             </div>
