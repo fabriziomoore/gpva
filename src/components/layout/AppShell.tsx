@@ -12,7 +12,7 @@ export function AppShell({
 }) {
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold tracking-tight">{title ?? "GPVA"}</h1>
           {right}
