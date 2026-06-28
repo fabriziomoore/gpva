@@ -105,14 +105,12 @@ function AdminPage() {
 
       {view === "menu" ? (
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-10">
-          <div className="mb-6 flex w-full justify-end">
-            <Button
-              onClick={() => setView("ranking")}
-              className="h-10 px-6"
-            >
-              Painel
-            </Button>
-          </div>
+          <Button
+            onClick={() => setView("ranking")}
+            className="mb-6 h-10 w-full"
+          >
+            Painel
+          </Button>
           <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3">
             {SECTIONS.map((s) => (
               <button
