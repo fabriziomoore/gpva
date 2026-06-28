@@ -402,11 +402,10 @@ function RankingSection({ adminPw, onBack }: { adminPw: string; onBack: () => vo
       <div className="space-y-4">
         <button
           onClick={() => setSelected(null)}
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-2 text-base font-semibold hover:text-primary"
         >
-          <ArrowLeft className="size-4" /> Voltar ao ranking
+          <ArrowLeft className="size-4" /> {current.team_name}
         </button>
-        <h2 className="text-base font-semibold">{current.team_name}</h2>
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
           <Stat label="Viáveis" value={current.viable} />
