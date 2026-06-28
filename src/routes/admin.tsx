@@ -111,12 +111,12 @@ function AdminPage() {
         <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
       </header>
 
-      <nav className="flex flex-col gap-1 border-b border-border bg-card px-2 py-2">
+      <nav className="flex gap-1 overflow-x-auto border-b border-border bg-card px-2 py-2">
         {SECTIONS.map((s) => (
           <button
             key={s.id}
             onClick={() => setSection(s.id)}
-            className={`rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors ${
               section === s.id
                 ? "bg-primary text-primary-foreground font-semibold"
                 : "text-foreground hover:bg-accent"
@@ -189,41 +189,36 @@ function CrudSection({
   label: string;
 }) {
   const qc = useQueryClient();
-  const [teamId, setTeamId] = useState("");
   const [name, setName] = useState("");
   const listFn = useServerFn(adminListRows);
   const addFn = useServerFn(adminAddRow);
   const delFn = useServerFn(adminDeleteRow);
 
   const rows = useQuery({
-    queryKey: ["admin-rows", table, teamId],
-    enabled: !!teamId,
-    queryFn: () => listFn({ data: { adminPassword: adminPw, table, teamId } }),
+    queryKey: ["admin-rows", table],
+    queryFn: () => listFn({ data: { adminPassword: adminPw, table } }),
   });
 
   const addMut = useMutation({
     mutationFn: () =>
-      addFn({ data: { adminPassword: adminPw, table, teamId, name } }),
+      addFn({ data: { adminPassword: adminPw, table, name } }),
     onSuccess: () => {
       setName("");
-      qc.invalidateQueries({ queryKey: ["admin-rows", table, teamId] });
+      qc.invalidateQueries({ queryKey: ["admin-rows", table] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const delMut = useMutation({
     mutationFn: (id: string) => delFn({ data: { adminPassword: adminPw, table, id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-rows", table, teamId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-rows", table] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
     <div className="space-y-5">
       <h2 className="text-base font-semibold">{label}</h2>
-      <TeamSelector adminPw={adminPw} value={teamId} onChange={setTeamId} />
-      {teamId && (
-        <>
-          <div className="flex gap-2">
+      <div className="flex gap-2">
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -237,8 +232,8 @@ function CrudSection({
             >
               {addMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
             </Button>
-          </div>
-          <div className="space-y-1">
+      </div>
+      <div className="space-y-1">
             {rows.isLoading ? (
               <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
             ) : (
@@ -258,9 +253,7 @@ function CrudSection({
                 </div>
               ))
             )}
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
