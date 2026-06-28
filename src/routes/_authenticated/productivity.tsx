@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/productivity")({
 
 type SvcRow = {
   id: string;
+  service_type_id: string | null;
   service_type_name: string;
   is_negotiation: boolean;
   viable: boolean;
@@ -33,7 +34,20 @@ type SvcRow = {
   created_at: string;
 };
 
-function startOf(period: "day" | "week" | "month" | "year"): Date {
+type Period = "day" | "week" | "month" | "year";
+
+type QuantityTooltipProps = {
+  active?: boolean;
+  label?: string;
+  payload?: Array<{
+    value?: number | string;
+    payload?: { name?: string; date?: string; qty?: number };
+  }>;
+};
+
+const SERVICE_PAGE_SIZE = 1000;
+
+function startOf(period: Period): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   if (period === "day") return d;
@@ -50,6 +64,32 @@ function startOf(period: "day" | "week" | "month" | "year"): Date {
   return d;
 }
 
+function cleanServiceName(name: string | null | undefined) {
+  return name?.trim().replace(/\s+/g, " ") || "Sem tipo";
+}
+
+function formatQty(qty: number) {
+  return qty.toLocaleString("pt-BR");
+}
+
+function serviceCountLabel(qty: number) {
+  return `${formatQty(qty)} ${qty === 1 ? "serviço" : "serviços"}`;
+}
+
+function QuantityTooltip({ active, payload, label }: QuantityTooltipProps) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const qty = Number(item.payload?.qty ?? item.value ?? 0);
+  const title = item.payload?.name ?? item.payload?.date ?? label;
+
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-xl">
+      {title && <p className="mb-1 font-semibold text-foreground">{title}</p>}
+      <p className="font-mono text-primary">QTD: {formatQty(qty)}</p>
+    </div>
+  );
+}
+
 function ProdPage() {
   const { userId } = useAuthSession();
 
@@ -57,13 +97,23 @@ function ProdPage() {
     queryKey: ["all-services", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("services")
-        .select("id,service_type_name,is_negotiation,viable,negotiated_value,created_at")
-        .order("created_at", { ascending: false })
-        .limit(2000);
-      if (error) throw error;
-      return (data ?? []) as SvcRow[];
+      const rows: SvcRow[] = [];
+      let from = 0;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("services")
+          .select("id,service_type_id,service_type_name,is_negotiation,viable,negotiated_value,created_at")
+          .order("created_at", { ascending: false })
+          .range(from, from + SERVICE_PAGE_SIZE - 1);
+        if (error) throw error;
+
+        rows.push(...((data ?? []) as SvcRow[]));
+        if (!data || data.length < SERVICE_PAGE_SIZE) break;
+        from += SERVICE_PAGE_SIZE;
+      }
+
+      return rows;
     },
   });
 
@@ -132,34 +182,62 @@ function ProdPage() {
   );
 }
 
-function PeriodView({ rows, period }: { rows: SvcRow[]; period: "day" | "week" | "month" | "year" }) {
-  const start = startOf(period);
+function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
+  const startTime = useMemo(() => startOf(period).getTime(), [period]);
   const filtered = useMemo(
-    () => rows.filter((r) => new Date(r.created_at) >= start),
-    [rows, start],
+    () => rows.filter((r) => new Date(r.created_at).getTime() >= startTime),
+    [rows, startTime],
   );
+  const viableRows = useMemo(() => filtered.filter((r) => r.viable), [filtered]);
   const total = filtered.length;
-  const viaveis = filtered.filter((r) => r.viable).length;
+  const viaveis = viableRows.length;
   const inviaveis = total - viaveis;
   const pctV = total ? Math.round((viaveis / total) * 100) : 0;
   const pctI = total ? 100 - pctV : 0;
 
   const byType = useMemo(() => {
-    const m = new Map<string, number>();
+    const m = new Map<string, { name: string; qty: number }>();
     // Por tipo de serviço conta apenas serviços VIÁVEIS (efetivamente executados)
-    for (const r of filtered.filter((x) => x.viable))
-      m.set(r.service_type_name, (m.get(r.service_type_name) ?? 0) + 1);
-    return Array.from(m, ([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty);
-  }, [filtered]);
+    for (const r of viableRows) {
+      const name = cleanServiceName(r.service_type_name);
+      const key = r.service_type_id ?? name.toLocaleLowerCase("pt-BR");
+      const current = m.get(key);
+      if (current) current.qty += 1;
+      else m.set(key, { name, qty: 1 });
+    }
+    return Array.from(m.values()).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
+  }, [viableRows]);
 
   const evolution = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of filtered) {
-      const d = new Date(r.created_at).toLocaleDateString("pt-BR");
-      m.set(d, (m.get(d) ?? 0) + 1);
+    const m = new Map<string, { date: string; qty: number; sort: number }>();
+    for (const r of viableRows) {
+      const d = new Date(r.created_at);
+      const key =
+        period === "day"
+          ? String(d.getHours()).padStart(2, "0")
+          : period === "year"
+            ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+            : d.toISOString().slice(0, 10);
+      const label =
+        period === "day"
+          ? `${String(d.getHours()).padStart(2, "0")}h`
+          : period === "year"
+            ? d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")
+            : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+      const sort =
+        period === "day"
+          ? d.getHours()
+          : period === "year"
+            ? new Date(d.getFullYear(), d.getMonth(), 1).getTime()
+            : new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const current = m.get(key);
+      if (current) current.qty += 1;
+      else m.set(key, { date: label, qty: 1, sort });
     }
-    return Array.from(m, ([date, qty]) => ({ date, qty })).reverse();
-  }, [filtered]);
+    return Array.from(m.values())
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ date, qty }) => ({ date, qty }));
+  }, [period, viableRows]);
 
   return (
     <div className="space-y-4">
@@ -174,21 +252,28 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: "day" | "week" |
           Evolução
         </p>
         <div className="h-48">
-          <ResponsiveContainer>
-            <LineChart data={evolution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={10} />
-              <YAxis stroke="var(--color-muted-foreground)" fontSize={10} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--color-card)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 8,
-                }}
-              />
-              <Line type="monotone" dataKey="qty" stroke="var(--color-chart-1)" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+          {evolution.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Sem serviços viáveis no período.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={evolution}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={10} />
+                <YAxis stroke="var(--color-muted-foreground)" fontSize={10} allowDecimals={false} />
+                <Tooltip content={<QuantityTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="qty"
+                  stroke="var(--color-chart-1)"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -197,21 +282,21 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: "day" | "week" |
           Por tipo de serviço
         </p>
         <div className="h-56">
-          <ResponsiveContainer>
-            <BarChart data={byType}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={10} interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis stroke="var(--color-muted-foreground)" fontSize={10} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--color-card)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 8,
-                }}
-              />
-              <Bar dataKey="qty" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {byType.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Sem serviços viáveis no período.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={byType}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={10} interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis stroke="var(--color-muted-foreground)" fontSize={10} allowDecimals={false} />
+                <Tooltip content={<QuantityTooltip />} />
+                <Bar dataKey="qty" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -220,12 +305,12 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: "day" | "week" |
           <div className="rounded-xl border border-border bg-card p-3">
             <p className="text-xs uppercase text-muted-foreground">Mais executado</p>
             <p className="text-sm font-semibold">{byType[0]?.name}</p>
-            <p className="text-xs text-muted-foreground">{byType[0]?.qty} serviços</p>
+            <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[0]?.qty ?? 0)}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-3">
             <p className="text-xs uppercase text-muted-foreground">Menos executado</p>
             <p className="text-sm font-semibold">{byType[byType.length - 1]?.name}</p>
-            <p className="text-xs text-muted-foreground">{byType[byType.length - 1]?.qty} serviços</p>
+            <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[byType.length - 1]?.qty ?? 0)}</p>
           </div>
         </div>
       )}
