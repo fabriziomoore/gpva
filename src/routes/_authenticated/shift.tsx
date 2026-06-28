@@ -136,9 +136,8 @@ function ShiftPage() {
 
         <div className="fixed inset-x-0 bottom-20 z-30 mx-auto flex max-w-md justify-between gap-2 px-4">
           <Button
-            variant="outline"
             onClick={() => setFinishOpen(true)}
-            className="h-14 flex-1 text-base font-semibold"
+            className="h-14 flex-1 border-0 bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90"
           >
             <Flag className="mr-2 size-5" /> Finalizar
           </Button>
