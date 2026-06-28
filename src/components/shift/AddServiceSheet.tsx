@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { repoAddService } from "@/lib/db/repos";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,42 +123,23 @@ export function AddServiceSheet({
     if (!type) return;
     setSaving(true);
     try {
-      const { data: inserted, error } = await supabase
-        .from("services")
-        .insert({
-          team_id: teamId,
-          shift_id: shiftId,
-          service_type_id: type.id,
-          service_type_name: type.name,
-          is_negotiation: type.is_negotiation,
-          viable: opts.viable,
-          reason_id: opts.reasonId ?? null,
-          reason_name: opts.reasonName ?? null,
-          registration_number: opts.registration ?? null,
-          negotiated_value: opts.negotiated ?? null,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
+      const chosen = (complements.data ?? []).filter((c) =>
+        (opts.complementIds ?? []).includes(c.id),
+      );
+      await repoAddService({
+        team_id: teamId,
+        shift_id: shiftId,
+        service_type_id: type.id,
+        service_type_name: type.name,
+        is_negotiation: type.is_negotiation,
+        viable: opts.viable,
+        reason_id: opts.reasonId ?? null,
+        reason_name: opts.reasonName ?? null,
+        registration_number: opts.registration ?? null,
+        negotiated_value: opts.negotiated ?? null,
+        complements: chosen.map((c) => ({ id: c.id, name: c.name })),
+      });
 
-      const ids = opts.complementIds ?? [];
-      if (ids.length > 0 && inserted) {
-        const chosen = (complements.data ?? []).filter((c) => ids.includes(c.id));
-        if (chosen.length > 0) {
-          const { error: e2 } = await supabase.from("service_complement_links").insert(
-            chosen.map((c) => ({
-              team_id: teamId,
-              shift_id: shiftId,
-              service_id: inserted.id,
-              complement_id: c.id,
-              complement_name: c.name,
-            })),
-          );
-          if (e2) throw e2;
-        }
-      }
-
-      await qc.invalidateQueries({ queryKey: ["shift-services", shiftId] });
       await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
       await qc.invalidateQueries({ queryKey: ["complement-usage", teamId] });
       toast.success("Serviço registrado");
