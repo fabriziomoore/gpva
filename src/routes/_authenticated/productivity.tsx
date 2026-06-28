@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { AppShell } from "@/components/layout/AppShell";
+import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ResponsiveContainer,
@@ -134,7 +135,7 @@ function ProdPage() {
   });
 
   return (
-    <AppShell title="Produtividade">
+    <AppShell title="Produtividade" right={<ShiftMeta />}>
       {all.isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />

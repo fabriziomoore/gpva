@@ -5,6 +5,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
+import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,7 +74,7 @@ function SettingsPage() {
 
   if (!team || !userId) {
     return (
-      <AppShell title="Configurações">
+      <AppShell title="Configurações" right={<ShiftMeta />}>
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -82,7 +83,7 @@ function SettingsPage() {
   }
 
   return (
-    <AppShell title="Configurações">
+    <AppShell title="Configurações" right={<ShiftMeta />}>
       <div className="space-y-8">
         <section className="space-y-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
