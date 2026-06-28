@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
+import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Play, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +22,24 @@ function HomePage() {
   const { data: team, isLoading } = useTeam(userId);
   const qc = useQueryClient();
   const [starting, setStarting] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.history.pushState({ __gpvaGuard: true }, "");
+    const onPop = () => {
+      setExitOpen(true);
+      window.history.pushState({ __gpvaGuard: true }, "");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  async function confirmExit() {
+    setExitOpen(false);
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
+  }
 
   useEffect(() => {
     if (team && !team.onboarded) navigate({ to: "/onboarding" });
@@ -103,7 +122,7 @@ function HomePage() {
 
   if (isLoading) {
     return (
-      <AppShell title={titleNode}>
+      <AppShell title={titleNode} showBack={false}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -112,7 +131,8 @@ function HomePage() {
   }
 
   return (
-    <AppShell title={titleNode}>
+    <AppShell title={titleNode} showBack={false}>
+      <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
