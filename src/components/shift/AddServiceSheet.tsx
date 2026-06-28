@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { repoAddService } from "@/lib/db/repos";
+import {
+  useServiceTypesCached,
+  useReasonsCached,
+  useComplementsCached,
+} from "@/lib/db/catalogs";
+import { getLocalDB } from "@/lib/db/local-db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,71 +52,28 @@ export function AddServiceSheet({
     }
   }, [open]);
 
-  const types = useQuery({
-    queryKey: ["service_types", teamId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("service_types")
-        .select("id,name,is_negotiation,sort_order")
-        .eq("active", true)
-        .order("sort_order")
-        .order("name");
-      if (error) throw error;
-      return data as (ServiceType & { sort_order: number })[];
-    },
-  });
+  const types = useServiceTypesCached();
+  const reasons = useReasonsCached();
+  const complements = useComplementsCached();
 
-  const reasons = useQuery({
-    queryKey: ["inviability_reasons", teamId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inviability_reasons")
-        .select("id,name")
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data as Reason[];
-    },
-  });
-
-  const complements = useQuery({
-    queryKey: ["service_complements", teamId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("service_complements")
-        .select("id,name,sort_order")
-        .eq("active", true)
-        .order("sort_order")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as (Complement & { sort_order: number })[];
-    },
-  });
-
-  const complementUsage = useQuery({
-    queryKey: ["complement-usage", teamId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("service_complement_links")
-        .select("complement_name")
-        .limit(1000);
-      if (error) throw error;
-      const m = new Map<string, number>();
-      for (const r of data ?? []) m.set(r.complement_name, (m.get(r.complement_name) ?? 0) + 1);
-      return m;
-    },
-  });
+  // Usage stats now come from the local Dexie mirror so they work offline.
+  const complementUsage = useLiveQuery(async () => {
+    const rows = await getLocalDB().complement_links.toArray();
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(r.complement_name, (m.get(r.complement_name) ?? 0) + 1);
+    return m;
+  }, []);
 
   const sortedComplements = useMemo(() => {
     const list = complements.data ?? [];
-    const usage = complementUsage.data ?? new Map<string, number>();
+    const usage = complementUsage ?? new Map<string, number>();
     return [...list].sort((a, b) => {
       const ua = usage.get(a.name) ?? 0;
       const ub = usage.get(b.name) ?? 0;
       if (ub !== ua) return ub - ua;
       return a.name.localeCompare(b.name);
     });
-  }, [complements.data, complementUsage.data]);
+  }, [complements.data, complementUsage]);
 
   async function saveService(opts: {
     viable: boolean;
@@ -141,7 +104,6 @@ export function AddServiceSheet({
       });
 
       await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
-      await qc.invalidateQueries({ queryKey: ["complement-usage", teamId] });
       toast.success("Serviço registrado");
       onOpenChange(false);
     } catch (err) {

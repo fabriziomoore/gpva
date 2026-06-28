@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { getLocalDB } from "@/lib/db/local-db";
 import { repoCloseShift } from "@/lib/db/repos";
+import { useImpactsCached, getCachedTeam } from "@/lib/db/catalogs";
+import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { buildReport } from "@/lib/report";
 
 type Impact = { id: string; name: string };
@@ -41,18 +42,7 @@ export function FinishShiftSheet({
     }
   }, [open]);
 
-  const impacts = useQuery({
-    queryKey: ["impacts", teamId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("impacts")
-        .select("id,name")
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data as Impact[];
-    },
-  });
+  const impacts = useImpactsCached();
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -73,12 +63,28 @@ export function FinishShiftSheet({
       localServices.sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
       const localLinks = await db.complement_links.where("shift_id").equals(shiftId).toArray();
 
-      // Team info is needed for the report header; try local cache via supabase (cached by react-query upstream).
-      const { data: team } = await supabase
-        .from("teams")
-        .select("team_name,supervisor,leader")
-        .eq("id", teamId)
-        .maybeSingle();
+      // Team info is needed for the report header. Try network first, fall back
+      // to the local cache so closing a shift works fully offline.
+      let team: { team_name: string; supervisor: string; leader: string } | null = null;
+      try {
+        const { data } = await supabase
+          .from("teams")
+          .select("team_name,supervisor,leader")
+          .eq("id", teamId)
+          .maybeSingle();
+        team = (data as typeof team) ?? null;
+      } catch {
+        team = null;
+      }
+      if (!team) {
+        const cached = await getCachedTeam(teamId);
+        if (cached)
+          team = {
+            team_name: cached.team_name,
+            supervisor: cached.supervisor,
+            leader: cached.leader,
+          };
+      }
 
       const report = buildReport({
         started_at: localShift?.started_at ?? new Date().toISOString(),
