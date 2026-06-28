@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
-import { CrudList } from "@/components/settings/CrudList";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Configurações" }] }),
@@ -25,7 +24,6 @@ function SettingsPage() {
 
   const [supervisor, setSupervisor] = useState("");
   const [leader, setLeader] = useState("");
-  const [rate, setRate] = useState("7.00");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
@@ -34,7 +32,6 @@ function SettingsPage() {
     if (team) {
       setSupervisor(team.supervisor);
       setLeader(team.leader);
-      setRate(String(team.variable_rate));
     }
   }, [team]);
 
@@ -67,28 +64,6 @@ function SettingsPage() {
       setPw1("");
       setPw2("");
       toast.success("Senha alterada");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function saveRate() {
-    const n = Number(rate.replace(",", "."));
-    if (!isFinite(n) || n < 0) {
-      toast.error("Valor inválido");
-      return;
-    }
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("teams")
-        .update({ variable_rate: n })
-        .eq("id", userId!);
-      if (error) throw error;
-      await qc.invalidateQueries({ queryKey: ["team", userId] });
-      toast.success("Valor da variável atualizado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     } finally {
@@ -159,32 +134,6 @@ function SettingsPage() {
             }}
           >
             <LogOut className="mr-2 size-4" /> Sair
-          </Button>
-        </section>
-
-        <section className="space-y-6 border-t border-border pt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cadastros</h2>
-          <CrudList table="service_types" teamId={userId} label="Tipos de serviço" />
-          <CrudList table="inviability_reasons" teamId={userId} label="Motivos de inviabilidade" />
-          <CrudList table="service_complements" teamId={userId} label="Complemento(s) do Serviço" />
-          <CrudList table="impacts" teamId={userId} label="Impactos" />
-        </section>
-
-        <section className="space-y-3 border-t border-border pt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Variável</h2>
-          <Label htmlFor="rate">Valor pago por negociação (R$)</Label>
-          <Input
-            id="rate"
-            inputMode="decimal"
-            value={rate}
-            onChange={(e) => setRate(e.target.value.replace(/[^0-9.,]/g, ""))}
-            className="h-12 text-base"
-          />
-          <p className="text-xs text-muted-foreground">
-            Aplicado automaticamente a todas as estimativas futuras.
-          </p>
-          <Button onClick={saveRate} disabled={saving} className="h-11 w-full">
-            {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
           </Button>
         </section>
       </div>
