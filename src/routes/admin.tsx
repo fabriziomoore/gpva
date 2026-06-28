@@ -33,7 +33,7 @@ type SectionId =
   | "create_team";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: "service_types", label: "Cadastros" },
+  { id: "service_types", label: "Serviços" },
   { id: "inviability_reasons", label: "Motivos de Inviabilidade" },
   { id: "service_complements", label: "Complemento(s) do Serviço" },
   { id: "impacts", label: "Impactos" },
