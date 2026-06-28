@@ -35,6 +35,7 @@ function VariablePage() {
         .from("services")
         .select("negotiated_value,created_at")
         .eq("is_negotiation", true)
+        .eq("viable", true)
         .order("created_at", { ascending: false })
         .limit(2000);
       if (error) throw error;
