@@ -158,6 +158,7 @@ export function AddServiceSheet({
       }
 
       await qc.invalidateQueries({ queryKey: ["shift-services", shiftId] });
+      await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
       await qc.invalidateQueries({ queryKey: ["complement-usage", teamId] });
       toast.success("Serviço registrado");
       onOpenChange(false);
