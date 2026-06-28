@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { signInTeam, signUpTeam } from "@/lib/auth";
+import { signInTeam } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,6 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [team, setTeam] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,13 +44,10 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      if (tab === "signin") await signInTeam(team, password);
-      else await signUpTeam(team, password);
+      await signInTeam(team, password);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao autenticar";
       if (msg.includes("Invalid login")) toast.error("Equipe ou senha incorretas.");
-      else if (msg.includes("already registered") || msg.includes("User already"))
-        toast.error("Esta equipe já existe. Use a aba Entrar.");
       else toast.error(msg);
     } finally {
       setLoading(false);
@@ -85,30 +81,17 @@ function AuthPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={tab === "signup" ? "new-password" : "current-password"}
+                autoComplete="current-password"
                 className="h-12 text-base"
               />
             </div>
             <Button type="submit" disabled={loading} className="h-12 w-full text-base font-semibold">
-              {loading ? <Loader2 className="size-5 animate-spin" /> : tab === "signin" ? "Entrar" : "Criar Equipe"}
+              {loading ? <Loader2 className="size-5 animate-spin" /> : "Entrar"}
             </Button>
-            {tab === "signup" && (
-              <p className="m-0 text-xs text-muted-foreground">
-                Após criar a equipe você cadastrará Supervisor e Líder uma única vez.
-              </p>
-            )}
         </form>
 
         <div className="mt-6 text-center">
-          {tab === "signup" ? (
-            <button
-              type="button"
-              onClick={() => setTab("signin")}
-              className="text-xs text-muted-foreground/70 hover:text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Voltar para entrar
-            </button>
-          ) : !adminOpen ? (
+          {!adminOpen ? (
             <button
               type="button"
               onClick={() => setAdminOpen(true)}
@@ -121,9 +104,10 @@ function AuthPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (adminPw === "137889") {
-                  setTab("signup");
+                  sessionStorage.setItem("gpva-admin-pw", adminPw);
                   setAdminOpen(false);
                   setAdminPw("");
+                  navigate({ to: "/admin" });
                 } else {
                   toast.error("Senha de administrador incorreta.");
                 }
