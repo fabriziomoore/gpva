@@ -68,7 +68,7 @@ function AuthPage() {
                 id="team"
                 value={team}
                 onChange={(e) => setTeam(e.target.value)}
-                placeholder="Nome da equipe"
+                placeholder=""
                 autoCapitalize="characters"
                 autoComplete="username"
                 className="h-12 text-base"
