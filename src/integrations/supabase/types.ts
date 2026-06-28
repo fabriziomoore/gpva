@@ -20,21 +20,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          team_id: string
+          team_id: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
           name: string
-          team_id: string
+          team_id?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
           name?: string
-          team_id?: string
+          team_id?: string | null
         }
         Relationships: [
           {
@@ -52,21 +52,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          team_id: string
+          team_id: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
           name: string
-          team_id: string
+          team_id?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
           name?: string
-          team_id?: string
+          team_id?: string | null
         }
         Relationships: [
           {
@@ -123,7 +123,7 @@ export type Database = {
           id: string
           name: string
           sort_order: number
-          team_id: string
+          team_id: string | null
         }
         Insert: {
           active?: boolean
@@ -131,7 +131,7 @@ export type Database = {
           id?: string
           name: string
           sort_order?: number
-          team_id: string
+          team_id?: string | null
         }
         Update: {
           active?: boolean
@@ -139,7 +139,7 @@ export type Database = {
           id?: string
           name?: string
           sort_order?: number
-          team_id?: string
+          team_id?: string | null
         }
         Relationships: []
       }
@@ -151,7 +151,7 @@ export type Database = {
           is_negotiation: boolean
           name: string
           sort_order: number
-          team_id: string
+          team_id: string | null
         }
         Insert: {
           active?: boolean
@@ -160,7 +160,7 @@ export type Database = {
           is_negotiation?: boolean
           name: string
           sort_order?: number
-          team_id: string
+          team_id?: string | null
         }
         Update: {
           active?: boolean
@@ -169,7 +169,7 @@ export type Database = {
           is_negotiation?: boolean
           name?: string
           sort_order?: number
-          team_id?: string
+          team_id?: string | null
         }
         Relationships: [
           {
