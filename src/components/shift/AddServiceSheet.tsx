@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,11 @@ import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-type Step = "type" | "viability" | "reason" | "registration" | "amount";
+type Step = "type" | "viability" | "reason" | "registration" | "amount" | "complements";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 type Reason = { id: string; name: string };
+type Complement = { id: string; name: string };
 
 export function AddServiceSheet({
   open,
@@ -30,6 +31,7 @@ export function AddServiceSheet({
   const [reason, setReason] = useState<Reason | null>(null);
   const [registration, setRegistration] = useState("");
   const [amount, setAmount] = useState("");
+  const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export function AddServiceSheet({
       setReason(null);
       setRegistration("");
       setAmount("");
+      setSelectedComplements(new Set());
     }
   }, [open]);
 
@@ -69,30 +72,93 @@ export function AddServiceSheet({
     },
   });
 
+  const complements = useQuery({
+    queryKey: ["service_complements", teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_complements")
+        .select("id,name,sort_order")
+        .eq("active", true)
+        .order("sort_order")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as (Complement & { sort_order: number })[];
+    },
+  });
+
+  const complementUsage = useQuery({
+    queryKey: ["complement-usage", teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_complement_links")
+        .select("complement_name")
+        .limit(1000);
+      if (error) throw error;
+      const m = new Map<string, number>();
+      for (const r of data ?? []) m.set(r.complement_name, (m.get(r.complement_name) ?? 0) + 1);
+      return m;
+    },
+  });
+
+  const sortedComplements = useMemo(() => {
+    const list = complements.data ?? [];
+    const usage = complementUsage.data ?? new Map<string, number>();
+    return [...list].sort((a, b) => {
+      const ua = usage.get(a.name) ?? 0;
+      const ub = usage.get(b.name) ?? 0;
+      if (ub !== ua) return ub - ua;
+      return a.name.localeCompare(b.name);
+    });
+  }, [complements.data, complementUsage.data]);
+
   async function saveService(opts: {
     viable: boolean;
     reasonId?: string;
     reasonName?: string;
     registration?: string;
     negotiated?: number;
+    complementIds?: string[];
   }) {
     if (!type) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("services").insert({
-        team_id: teamId,
-        shift_id: shiftId,
-        service_type_id: type.id,
-        service_type_name: type.name,
-        is_negotiation: type.is_negotiation,
-        viable: opts.viable,
-        reason_id: opts.reasonId ?? null,
-        reason_name: opts.reasonName ?? null,
-        registration_number: opts.registration ?? null,
-        negotiated_value: opts.negotiated ?? null,
-      });
+      const { data: inserted, error } = await supabase
+        .from("services")
+        .insert({
+          team_id: teamId,
+          shift_id: shiftId,
+          service_type_id: type.id,
+          service_type_name: type.name,
+          is_negotiation: type.is_negotiation,
+          viable: opts.viable,
+          reason_id: opts.reasonId ?? null,
+          reason_name: opts.reasonName ?? null,
+          registration_number: opts.registration ?? null,
+          negotiated_value: opts.negotiated ?? null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      const ids = opts.complementIds ?? [];
+      if (ids.length > 0 && inserted) {
+        const chosen = (complements.data ?? []).filter((c) => ids.includes(c.id));
+        if (chosen.length > 0) {
+          const { error: e2 } = await supabase.from("service_complement_links").insert(
+            chosen.map((c) => ({
+              team_id: teamId,
+              shift_id: shiftId,
+              service_id: inserted.id,
+              complement_id: c.id,
+              complement_name: c.name,
+            })),
+          );
+          if (e2) throw e2;
+        }
+      }
+
       await qc.invalidateQueries({ queryKey: ["shift-services", shiftId] });
+      await qc.invalidateQueries({ queryKey: ["complement-usage", teamId] });
       toast.success("Serviço registrado");
       onOpenChange(false);
     } catch (err) {
@@ -104,8 +170,7 @@ export function AddServiceSheet({
 
   function pickType(t: ServiceType) {
     setType(t);
-    if (t.is_negotiation) setStep("amount");
-    else setStep("viability");
+    setStep("viability");
   }
 
   return (
@@ -115,9 +180,13 @@ export function AddServiceSheet({
           <div className="flex items-center gap-2">
             {step !== "type" && (
               <button
-                onClick={() =>
-                  setStep(step === "registration" ? "reason" : step === "reason" ? "viability" : "type")
-                }
+                onClick={() => {
+                  if (step === "registration") setStep("reason");
+                  else if (step === "reason") setStep("viability");
+                  else if (step === "complements") setStep(type?.is_negotiation ? "amount" : "viability");
+                  else if (step === "amount") setStep("viability");
+                  else setStep("type");
+                }}
                 className="rounded-md p-1 text-muted-foreground hover:text-foreground"
                 aria-label="Voltar"
               >
@@ -130,6 +199,7 @@ export function AddServiceSheet({
               {step === "reason" && "Motivo da inviabilidade"}
               {step === "registration" && "Matrícula"}
               {step === "amount" && "Valor negociado"}
+              {step === "complements" && "Complemento(s) do Serviço"}
             </SheetTitle>
           </div>
         </SheetHeader>
@@ -158,7 +228,10 @@ export function AddServiceSheet({
             <div className="grid grid-cols-2 gap-3">
               <button
                 disabled={saving}
-                onClick={() => saveService({ viable: true })}
+                onClick={() => {
+                  if (type?.is_negotiation) setStep("amount");
+                  else setStep("complements");
+                }}
                 className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
               >
                 <CheckCircle2 className="size-12" />
@@ -245,11 +318,59 @@ export function AddServiceSheet({
                     toast.error("Valor inválido");
                     return;
                   }
-                  saveService({ viable: true, negotiated: n });
+                  setStep("complements");
                 }}
                 className="h-14 w-full text-base font-semibold"
               >
-                {saving ? <Loader2 className="size-5 animate-spin" /> : "Salvar negociação"}
+                Continuar
+              </Button>
+            </div>
+          )}
+
+          {step === "complements" && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Selecione os complementos (opcional). Toque em Finalizar para concluir.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {sortedComplements.map((c) => {
+                  const on = selectedComplements.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        setSelectedComplements((prev) => {
+                          const n = new Set(prev);
+                          if (n.has(c.id)) n.delete(c.id);
+                          else n.add(c.id);
+                          return n;
+                        });
+                      }}
+                      className={
+                        "rounded-xl border-2 px-3 py-4 text-sm font-medium transition-colors " +
+                        (on
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border bg-card text-foreground hover:border-primary/50")
+                      }
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button
+                disabled={saving}
+                onClick={() => {
+                  const negotiated = type?.is_negotiation ? Number(amount.replace(",", ".")) : undefined;
+                  saveService({
+                    viable: true,
+                    negotiated,
+                    complementIds: Array.from(selectedComplements),
+                  });
+                }}
+                className="h-14 w-full text-base font-semibold"
+              >
+                {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar"}
               </Button>
             </div>
           )}

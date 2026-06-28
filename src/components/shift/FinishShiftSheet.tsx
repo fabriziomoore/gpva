@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildReport } from "@/lib/report";
@@ -24,10 +25,18 @@ export function FinishShiftSheet({
 }) {
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [customs, setCustoms] = useState<string[]>([]);
+  const [customInput, setCustomInput] = useState("");
+  const [showCustom, setShowCustom] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setSelected(new Set());
+    if (open) {
+      setSelected(new Set());
+      setCustoms([]);
+      setCustomInput("");
+      setShowCustom(false);
+    }
   }, [open]);
 
   const impacts = useQuery({
@@ -56,20 +65,27 @@ export function FinishShiftSheet({
     setSaving(true);
     try {
       const chosen = impacts.data?.filter((i) => selected.has(i.id)) ?? [];
-      if (chosen.length > 0) {
-        const { error: e1 } = await supabase.from("shift_impacts").insert(
-          chosen.map((i) => ({
-            shift_id: shiftId,
-            impact_id: i.id,
-            impact_name: i.name,
-            team_id: teamId,
-          })),
-        );
+      const rows = [
+        ...chosen.map((i) => ({
+          shift_id: shiftId,
+          impact_id: i.id,
+          impact_name: i.name,
+          team_id: teamId,
+        })),
+        ...customs.map((name) => ({
+          shift_id: shiftId,
+          impact_id: null,
+          impact_name: name,
+          team_id: teamId,
+        })),
+      ];
+      if (rows.length > 0) {
+        const { error: e1 } = await supabase.from("shift_impacts").insert(rows);
         if (e1) throw e1;
       }
 
       // Fetch all data to build the report
-      const [{ data: shift }, { data: team }, { data: services }] = await Promise.all([
+      const [{ data: shift }, { data: team }, { data: services }, { data: links }] = await Promise.all([
         supabase.from("shifts").select("started_at").eq("id", shiftId).single(),
         supabase
           .from("teams")
@@ -83,6 +99,10 @@ export function FinishShiftSheet({
           )
           .eq("shift_id", shiftId)
           .order("created_at"),
+        supabase
+          .from("service_complement_links")
+          .select("complement_name")
+          .eq("shift_id", shiftId),
       ]);
 
       const report = buildReport({
@@ -91,7 +111,11 @@ export function FinishShiftSheet({
         supervisor: team!.supervisor ?? "",
         leader: team!.leader ?? "",
         services: (services ?? []) as never,
-        impacts: chosen.map((c) => ({ impact_name: c.name })),
+        impacts: [
+          ...chosen.map((c) => ({ impact_name: c.name })),
+          ...customs.map((name) => ({ impact_name: name })),
+        ],
+        complements: (links ?? []) as { complement_name: string }[],
       });
 
       const { error: e2 } = await supabase
@@ -138,16 +162,78 @@ export function FinishShiftSheet({
               );
             })}
           </div>
+
+          {customs.length > 0 && (
+            <div className="space-y-1">
+              {customs.map((c, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm"
+                >
+                  <span>{c}</span>
+                  <button
+                    onClick={() => setCustoms((prev) => prev.filter((_, i) => i !== idx))}
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Remover"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showCustom ? (
+            <div className="flex gap-2">
+              <Input
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="Descreva o impacto"
+                className="h-11"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && customInput.trim()) {
+                    setCustoms((p) => [...p, customInput.trim()]);
+                    setCustomInput("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!customInput.trim()) return;
+                  setCustoms((p) => [...p, customInput.trim()]);
+                  setCustomInput("");
+                }}
+                className="h-11"
+              >
+                <Plus className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11"
+                onClick={() => {
+                  setShowCustom(false);
+                  setCustomInput("");
+                }}
+              >
+                Fechar
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowCustom(true)}
+              className="w-full rounded-xl border-2 border-dashed border-border px-3 py-3 text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary"
+            >
+              + Outros
+            </button>
+          )}
+
           <Button onClick={finish} disabled={saving} className="h-14 w-full text-base font-semibold">
             {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e gerar relatório"}
           </Button>
-          <button
-            onClick={finish}
-            disabled={saving}
-            className="block w-full py-2 text-center text-xs text-muted-foreground underline"
-          >
-            Pular impactos
-          </button>
         </div>
       </SheetContent>
     </Sheet>
