@@ -379,7 +379,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   );
 }
 
-function RankingSection({ adminPw }: { adminPw: string }) {
+function RankingSection({ adminPw, onBack }: { adminPw: string; onBack: () => void }) {
   const fn = useServerFn(adminTeamsRanking);
   const [selected, setSelected] = useState<string | null>(null);
   const q = useQuery({
@@ -438,6 +438,12 @@ function RankingSection({ adminPw }: { adminPw: string }) {
 
   return (
     <div className="space-y-4">
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" /> Voltar
+      </button>
       <h2 className="text-base font-semibold">Painel — Ranking de Equipes</h2>
       <div className="space-y-3">
         {sorted.map((t) => {
