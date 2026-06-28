@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Plus, Trash2, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import {
   adminAddRow,
   adminCreateTeam,
@@ -47,6 +48,24 @@ function AdminPage() {
   const [pwInput, setPwInput] = useState("");
   const [section, setSection] = useState<SectionId>("service_types");
   const [view, setView] = useState<"menu" | "section" | "ranking">("menu");
+  const [exitOpen, setExitOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !adminPw) return;
+    window.history.pushState({ __gpvaAdminGuard: true }, "");
+    const onPop = () => {
+      setExitOpen(true);
+      window.history.pushState({ __gpvaAdminGuard: true }, "");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [adminPw]);
+
+  function confirmExit() {
+    setExitOpen(false);
+    sessionStorage.removeItem("gpva-admin-pw");
+    navigate({ to: "/auth" });
+  }
 
   // Restore session from sessionStorage so reload doesn't lock out
   useEffect(() => {
@@ -105,6 +124,7 @@ function AdminPage() {
           <LogOut className="size-5" />
         </button>
       </header>
+      <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
 
       {view === "menu" ? (
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-10">
