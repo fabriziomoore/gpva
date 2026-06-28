@@ -99,3 +99,53 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const adminTeamsRanking = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: teams, error: teamsErr } = await supabaseAdmin
+      .from("teams")
+      .select("id,team_name");
+    if (teamsErr) throw new Error(teamsErr.message);
+
+    // Fetch all services in pages to bypass row limits
+    const all: { team_id: string; viable: boolean; is_negotiation: boolean; service_type_name: string }[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+      const { data: rows, error } = await supabaseAdmin
+        .from("services")
+        .select("team_id,viable,is_negotiation,service_type_name")
+        .range(from, from + pageSize - 1);
+      if (error) throw new Error(error.message);
+      if (!rows?.length) break;
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return (teams ?? []).map((t) => {
+      const mine = all.filter((s) => s.team_id === t.id);
+      const viable = mine.filter((s) => s.viable).length;
+      const inviable = mine.filter((s) => !s.viable).length;
+      const negotiations = mine.filter((s) => s.is_negotiation && s.viable).length;
+      const byType: Record<string, number> = {};
+      for (const s of mine) {
+        if (!s.viable) continue;
+        const k = (s.service_type_name || "").trim();
+        if (!k) continue;
+        byType[k] = (byType[k] ?? 0) + 1;
+      }
+      return {
+        id: t.id,
+        team_name: t.team_name,
+        total: mine.length,
+        viable,
+        inviable,
+        negotiations,
+        byType,
+      };
+    });
+  });
