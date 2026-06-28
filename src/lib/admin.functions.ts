@@ -24,14 +24,13 @@ export const listTeams = createServerFn({ method: "POST" })
   });
 
 export const adminListRows = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; table: CrudTable; teamId: string }) => data)
+  .inputValidator((data: { adminPassword: string; table: CrudTable }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from(data.table)
       .select("id,name")
-      .eq("team_id", data.teamId)
       .eq("active", true)
       .order("name");
     if (error) throw new Error(error.message);
@@ -40,14 +39,14 @@ export const adminListRows = createServerFn({ method: "POST" })
 
 export const adminAddRow = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { adminPassword: string; table: CrudTable; teamId: string; name: string }) => data,
+    (data: { adminPassword: string; table: CrudTable; name: string }) => data,
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from(data.table)
-      .insert({ team_id: data.teamId, name: data.name.trim() });
+      .insert({ team_id: null, name: data.name.trim() });
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
