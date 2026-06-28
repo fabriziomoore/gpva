@@ -166,6 +166,7 @@ function SettingsPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cadastros</h2>
           <CrudList table="service_types" teamId={userId} label="Tipos de serviço" />
           <CrudList table="inviability_reasons" teamId={userId} label="Motivos de inviabilidade" />
+          <CrudList table="service_complements" teamId={userId} label="Complemento(s) do Serviço" />
           <CrudList table="impacts" teamId={userId} label="Impactos" />
         </section>
 
