@@ -45,6 +45,7 @@ function AdminPage() {
   const [adminPw, setAdminPw] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [section, setSection] = useState<SectionId>("service_types");
+  const [view, setView] = useState<"menu" | "section">("menu");
 
   // Restore session from sessionStorage so reload doesn't lock out
   useEffect(() => {
@@ -97,47 +98,50 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            sessionStorage.removeItem("gpva-admin-pw");
-            navigate({ to: "/auth" });
-          }}
-        >
-          <ArrowLeft className="size-5" />
-        </Button>
+      <header className="sticky top-0 z-10 flex items-center justify-center border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
       </header>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-border bg-card px-2 py-2">
-        {SECTIONS.map((s) => (
+      {view === "menu" ? (
+        <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-10">
+          <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3">
+            {SECTIONS.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setSection(s.id);
+                  setView("section");
+                }}
+                className="group flex aspect-[4/3] flex-col items-center justify-center rounded-2xl border border-border bg-card p-4 text-center shadow-md transition-all hover:-translate-y-1 hover:border-primary hover:shadow-xl"
+              >
+                <span className="text-sm font-semibold text-foreground group-hover:text-primary">
+                  {s.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </main>
+      ) : (
+        <main className="mx-auto max-w-2xl px-4 py-6">
           <button
-            key={s.id}
-            onClick={() => setSection(s.id)}
-            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors ${
-              section === s.id
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "text-foreground hover:bg-accent"
-            }`}
+            onClick={() => setView("menu")}
+            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            {s.label}
+            <ArrowLeft className="size-4" /> Voltar
           </button>
-        ))}
-      </nav>
-
-      <main className="mx-auto max-w-2xl px-4 py-6">
-        {section === "create_team" ? (
-          <CreateTeamSection adminPw={adminPw} />
-        ) : section === "variable" ? (
-          <VariableSection adminPw={adminPw} />
-        ) : (
-          <CrudSection adminPw={adminPw} table={section} label={
-            SECTIONS.find((s) => s.id === section)!.label
-          } />
-        )}
-      </main>
+          {section === "create_team" ? (
+            <CreateTeamSection adminPw={adminPw} />
+          ) : section === "variable" ? (
+            <VariableSection adminPw={adminPw} />
+          ) : (
+            <CrudSection
+              adminPw={adminPw}
+              table={section}
+              label={SECTIONS.find((s) => s.id === section)!.label}
+            />
+          )}
+        </main>
+      )}
     </div>
   );
 }
