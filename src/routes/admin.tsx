@@ -384,3 +384,107 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
     </div>
   );
 }
+
+function RankingSection({ adminPw }: { adminPw: string }) {
+  const fn = useServerFn(adminTeamsRanking);
+  const [selected, setSelected] = useState<string | null>(null);
+  const q = useQuery({
+    queryKey: ["admin-ranking"],
+    queryFn: () => fn({ data: { adminPassword: adminPw } }),
+  });
+
+  if (q.isLoading) {
+    return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
+  }
+
+  const sorted = [...(q.data ?? [])].sort(
+    (a, b) => b.viable + b.negotiations - (a.viable + a.negotiations),
+  );
+  const max = Math.max(1, ...sorted.map((t) => t.viable));
+  const current = selected ? sorted.find((t) => t.id === selected) : null;
+
+  if (current) {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setSelected(null)}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Voltar ao ranking
+        </button>
+        <h2 className="text-base font-semibold">{current.team_name}</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Total" value={current.total} />
+          <Stat label="Viáveis" value={current.viable} />
+          <Stat label="Inviáveis" value={current.inviable} />
+          <Stat label="Negociações" value={current.negotiations} />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-muted-foreground">Por tipo de serviço</h3>
+          <div className="space-y-1">
+            {Object.entries(current.byType)
+              .sort((a, b) => b[1] - a[1])
+              .map(([name, qty]) => (
+                <div
+                  key={name}
+                  className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm"
+                >
+                  <span>{name}</span>
+                  <span className="font-semibold">{qty}</span>
+                </div>
+              ))}
+            {Object.keys(current.byType).length === 0 && (
+              <p className="text-sm text-muted-foreground">Sem registros.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-base font-semibold">Painel — Ranking de Equipes</h2>
+      <div className="space-y-3">
+        {sorted.map((t) => {
+          const pct = Math.round((t.viable / max) * 100);
+          return (
+            <button
+              key={t.id}
+              onClick={() => setSelected(t.id)}
+              className="block w-full rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-primary"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold">{t.team_name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t.negotiations} neg.
+                </span>
+              </div>
+              <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+                <span className="absolute inset-y-0 right-2 flex items-center text-xs font-semibold text-foreground">
+                  {t.viable}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+        {sorted.length === 0 && (
+          <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-bold">{value}</div>
+    </div>
+  );
+}
