@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { formatDateBR } from "@/lib/format";
 import { Loader2, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/productivity")({
   head: () => ({ meta: [{ title: "Produtividade" }] }),
@@ -91,6 +92,7 @@ function QuantityTooltip({ active, payload, label }: QuantityTooltipProps) {
 
 function ProdPage() {
   const { userId } = useAuthSession();
+  const [historyLimit, setHistoryLimit] = useState(5);
 
   const all = useQuery({
     queryKey: ["all-services", userId],
@@ -125,7 +127,7 @@ function ProdPage() {
         .select("id,started_at,status")
         .eq("status", "closed")
         .order("started_at", { ascending: false })
-        .limit(60);
+        .limit(200);
       if (error) throw error;
       return data ?? [];
     },
@@ -138,7 +140,7 @@ function ProdPage() {
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <Tabs defaultValue="day">
+        <Tabs defaultValue="month">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="day">Dia</TabsTrigger>
             <TabsTrigger value="week">Semana</TabsTrigger>
@@ -159,7 +161,7 @@ function ProdPage() {
               {shifts.data?.length === 0 && (
                 <p className="text-sm text-muted-foreground">Sem expedientes anteriores.</p>
               )}
-              {shifts.data?.map((s) => (
+              {shifts.data?.slice(0, historyLimit).map((s) => (
                 <Link
                   key={s.id}
                   to="/shift/$id/report"
@@ -173,6 +175,15 @@ function ProdPage() {
                   <span className="text-xs text-muted-foreground">→</span>
                 </Link>
               ))}
+              {(shifts.data?.length ?? 0) > historyLimit && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setHistoryLimit((n) => n + 5)}
+                >
+                  Ver mais
+                </Button>
+              )}
             </div>
           </div>
         </Tabs>
