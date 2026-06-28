@@ -84,7 +84,7 @@ function HomePage() {
 
   if (isLoading) {
     return (
-      <AppShell title="GPVA">
+      <AppShell title={<span className="whitespace-nowrap"><span>GPVA</span> <span className="text-[10px] font-medium text-muted-foreground">- GESTÃO DE PRODUTIVIDADE E VARIÁVEL AUTÔNOMA</span></span>}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -93,7 +93,7 @@ function HomePage() {
   }
 
   return (
-    <AppShell title="GPVA">
+    <AppShell title={<span className="whitespace-nowrap"><span>GPVA</span> <span className="text-[10px] font-medium text-muted-foreground">- GESTÃO DE PRODUTIVIDADE E VARIÁVEL AUTÔNOMA</span></span>}>
       <div className="space-y-6">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
