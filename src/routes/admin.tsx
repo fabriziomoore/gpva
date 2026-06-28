@@ -384,12 +384,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   if (current) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => setSelected(null)}
-          className="text-left text-base font-semibold hover:text-primary"
-        >
-          {current.team_name}
-        </button>
+        <h2 className="text-base font-semibold">{current.team_name}</h2>
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
           <Stat label="Viáveis" value={current.viable} />
@@ -421,7 +416,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-semibold">Painel — Ranking de Equipes</h2>
+      <h2 className="text-base font-semibold">Ranking de Equipes</h2>
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
