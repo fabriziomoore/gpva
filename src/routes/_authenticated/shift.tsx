@@ -1,15 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
-import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2 } from "lucide-react";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { formatBRL } from "@/lib/format";
+import { useLiveQuery } from "dexie-react-hooks";
+import { getLocalDB } from "@/lib/db/local-db";
 
 export const Route = createFileRoute("/_authenticated/shift")({
   head: () => ({ meta: [{ title: "Expediente" }] }),
@@ -23,51 +23,37 @@ function ShiftPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
 
-  const openShift = useQuery({
-    queryKey: ["open-shift", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shifts")
-        .select("id,started_at,variable_rate_snapshot")
-        .eq("status", "open")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const openShift = useLiveQuery(async () => {
+    if (!userId) return null;
+    const db = getLocalDB();
+    const rows = await db.shifts.where("status").equals("open").toArray();
+    rows.sort((a, b) => (b.started_at > a.started_at ? 1 : -1));
+    return rows[0] ?? null;
+  }, [userId]);
 
-  const services = useQuery({
-    queryKey: ["shift-services", openShift.data?.id],
-    enabled: !!openShift.data?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("services")
-        .select(
-          "id,service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value,created_at",
-        )
-        .eq("shift_id", openShift.data!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
+  const services = useLiveQuery(async () => {
+    if (!openShift?.id) return [];
+    const db = getLocalDB();
+    const rows = await db.services.where("shift_id").equals(openShift.id).toArray();
+    rows.sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
+    return rows;
+  }, [openShift?.id]);
+
+  const loading = openShift === undefined || services === undefined;
 
   const kpis = useMemo(() => {
-    const list = services.data ?? [];
+    const list = services ?? [];
     const total = list.length;
     const viaveis = list.filter((x) => x.viable).length;
     const inviaveis = list.filter((x) => !x.viable).length;
     const negociacoes = list.filter((x) => x.is_negotiation && x.viable);
     const totalNeg = negociacoes.reduce((a, b) => a + (Number(b.negotiated_value) || 0), 0);
-    const rate = openShift.data?.variable_rate_snapshot ?? team?.variable_rate ?? 7;
+    const rate = openShift?.variable_rate_snapshot ?? team?.variable_rate ?? 7;
     const variavel = negociacoes.length * Number(rate);
     return { total, viaveis, inviaveis, totalNeg, variavel };
-  }, [services.data, openShift.data, team]);
+  }, [services, openShift, team]);
 
-  if (openShift.isLoading) {
+  if (loading) {
     return (
       <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
         <div className="flex justify-center py-20">
@@ -77,7 +63,7 @@ function ShiftPage() {
     );
   }
 
-  if (!openShift.data) {
+  if (!openShift) {
     return (
       <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
         <div className="rounded-2xl border border-border bg-card p-6 text-center">
@@ -101,12 +87,12 @@ function ShiftPage() {
         </div>
 
         <div className="space-y-2">
-          {services.data?.length === 0 && (
+          {services.length === 0 && (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               Nenhum serviço registrado. Toque em + para começar.
             </p>
           )}
-          {services.data?.map((s) => (
+          {services.map((s) => (
             <div
               key={s.id}
               className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
@@ -147,19 +133,19 @@ function ShiftPage() {
         </div>
       </div>
 
-      {userId && openShift.data && (
+      {userId && openShift && (
         <>
           <AddServiceSheet
             open={addOpen}
             onOpenChange={setAddOpen}
             teamId={userId}
-            shiftId={openShift.data.id}
+            shiftId={openShift.id}
           />
           <FinishShiftSheet
             open={finishOpen}
             onOpenChange={setFinishOpen}
             teamId={userId}
-            shiftId={openShift.data.id}
+            shiftId={openShift.id}
             onClosed={(id) => navigate({ to: "/shift/$id/report", params: { id } })}
           />
         </>
