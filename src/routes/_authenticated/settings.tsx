@@ -6,6 +6,7 @@ import { useTeam } from "@/hooks/use-team";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
+import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,13 @@ function SettingsPage() {
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+
+  async function confirmSignOut() {
+    setExitOpen(false);
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
+  }
 
   useEffect(() => {
     if (team) {
@@ -129,15 +137,13 @@ function SettingsPage() {
           <Button
             variant="outline"
             className="h-11 w-full"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              navigate({ to: "/auth" });
-            }}
+            onClick={() => setExitOpen(true)}
           >
             <LogOut className="mr-2 size-4" /> Sair
           </Button>
         </section>
       </div>
+      <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
     </AppShell>
   );
 }
