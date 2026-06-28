@@ -26,7 +26,6 @@ export const Route = createFileRoute("/_authenticated/productivity")({
 
 type SvcRow = {
   id: string;
-  service_type_id: string | null;
   service_type_name: string;
   is_negotiation: boolean;
   viable: boolean;
@@ -103,7 +102,7 @@ function ProdPage() {
       while (true) {
         const { data, error } = await supabase
           .from("services")
-          .select("id,service_type_id,service_type_name,is_negotiation,viable,negotiated_value,created_at")
+          .select("id,service_type_name,is_negotiation,viable,negotiated_value,created_at")
           .order("created_at", { ascending: false })
           .range(from, from + SERVICE_PAGE_SIZE - 1);
         if (error) throw error;
@@ -200,7 +199,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
     // Por tipo de serviço conta apenas serviços VIÁVEIS (efetivamente executados)
     for (const r of viableRows) {
       const name = cleanServiceName(r.service_type_name);
-      const key = r.service_type_id ?? name.toLocaleLowerCase("pt-BR");
+      const key = name.toLocaleLowerCase("pt-BR");
       const current = m.get(key);
       if (current) current.qty += 1;
       else m.set(key, { name, qty: 1 });
