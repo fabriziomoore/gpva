@@ -54,12 +54,16 @@ function AdminPage() {
     if (typeof window === "undefined" || !adminPw) return;
     window.history.pushState({ __gpvaAdminGuard: true }, "");
     const onPop = () => {
-      setExitOpen(true);
+      if (view !== "menu") {
+        setView("menu");
+      } else {
+        setExitOpen(true);
+      }
       window.history.pushState({ __gpvaAdminGuard: true }, "");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [adminPw]);
+  }, [adminPw, view]);
 
   function confirmExit() {
     setExitOpen(false);
