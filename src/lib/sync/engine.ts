@@ -84,13 +84,26 @@ async function pushRow(row: OutboxRow): Promise<void> {
 
 async function markSynced(table: OutboxRow["table"], id: string): Promise<void> {
   const db = getLocalDB();
-  const map: Record<OutboxRow["table"], "shifts" | "services" | "complement_links" | "shift_impacts"> = {
-    shifts: "shifts",
-    services: "services",
-    service_complement_links: "complement_links",
-    shift_impacts: "shift_impacts",
-  };
-  const t = db[map[table]];
-  const row = await t.get(id);
-  if (row) await t.put({ ...row, sync_state: "synced" });
+  switch (table) {
+    case "shifts": {
+      const row = await db.shifts.get(id);
+      if (row) await db.shifts.put({ ...row, sync_state: "synced" });
+      return;
+    }
+    case "services": {
+      const row = await db.services.get(id);
+      if (row) await db.services.put({ ...row, sync_state: "synced" });
+      return;
+    }
+    case "service_complement_links": {
+      const row = await db.complement_links.get(id);
+      if (row) await db.complement_links.put({ ...row, sync_state: "synced" });
+      return;
+    }
+    case "shift_impacts": {
+      const row = await db.shift_impacts.get(id);
+      if (row) await db.shift_impacts.put({ ...row, sync_state: "synced" });
+      return;
+    }
+  }
 }
