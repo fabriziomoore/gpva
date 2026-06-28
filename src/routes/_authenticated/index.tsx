@@ -8,8 +8,11 @@ import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Play, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { formatDateBR } from "@/lib/format";
+import { useLiveQuery } from "dexie-react-hooks";
+import { getLocalDB } from "@/lib/db/local-db";
+import { repoCreateShift } from "@/lib/db/repos";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({ meta: [{ title: "Início — GPVA" }] }),
@@ -20,7 +23,6 @@ function HomePage() {
   const navigate = useNavigate();
   const { userId } = useAuthSession();
   const { data: team, isLoading } = useTeam(userId);
-  const qc = useQueryClient();
   const [starting, setStarting] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
 
@@ -45,25 +47,25 @@ function HomePage() {
     if (team && !team.onboarded) navigate({ to: "/onboarding" });
   }, [team, navigate]);
 
-  const openShift = useQuery({
-    queryKey: ["open-shift", userId],
-    enabled: !!userId && !!team?.onboarded,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shifts")
-        .select("id,started_at,status")
-        .eq("status", "open")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const openShift = useLiveQuery(async () => {
+    if (!userId) return null;
+    const db = getLocalDB();
+    const rows = await db.shifts.where("status").equals("open").toArray();
+    rows.sort((a, b) => (b.started_at > a.started_at ? 1 : -1));
+    return rows[0] ?? null;
+  }, [userId]);
 
-  const lastClosed = useQuery({
+  const lastClosedLocal = useLiveQuery(async () => {
+    if (!userId) return null;
+    const db = getLocalDB();
+    const rows = await db.shifts.where("status").equals("closed").toArray();
+    rows.sort((a, b) => (b.started_at > a.started_at ? 1 : -1));
+    return rows[0] ?? null;
+  }, [userId]);
+
+  const lastClosedRemote = useQuery({
     queryKey: ["last-closed-shift", userId],
-    enabled: !!userId && !!team?.onboarded,
+    enabled: !!userId && !!team?.onboarded && !lastClosedLocal,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("shifts")
@@ -77,20 +79,20 @@ function HomePage() {
     },
   });
 
+  const lastClosed = lastClosedLocal ?? lastClosedRemote.data;
+
   async function startShift() {
     if (!userId) return;
     setStarting(true);
     try {
-      if (openShift.data) {
+      if (openShift) {
         navigate({ to: "/shift" });
         return;
       }
-      const { error } = await supabase.from("shifts").insert({
+      await repoCreateShift({
         team_id: userId,
         variable_rate_snapshot: team?.variable_rate ?? 7,
       });
-      if (error) throw error;
-      await qc.invalidateQueries({ queryKey: ["open-shift", userId] });
       navigate({ to: "/shift" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao iniciar");
@@ -154,7 +156,7 @@ function HomePage() {
         >
           {starting ? (
             <Loader2 className="size-7 animate-spin" />
-          ) : openShift.data ? (
+          ) : openShift ? (
             <>
               <Play className="mr-2 size-7" /> Continuar Expediente
             </>
@@ -165,10 +167,10 @@ function HomePage() {
           )}
         </Button>
 
-        {lastClosed.data && (
+        {lastClosed && (
           <Link
             to="/shift/$id/report"
-            params={{ id: lastClosed.data.id }}
+            params={{ id: lastClosed.id }}
             className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-accent"
           >
             <div className="flex items-center gap-3">
@@ -176,7 +178,7 @@ function HomePage() {
               <div>
                 <p className="text-sm font-medium">Último relatório</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatDateBR(lastClosed.data.started_at)}
+                  {formatDateBR(lastClosed.started_at)}
                 </p>
               </div>
             </div>
