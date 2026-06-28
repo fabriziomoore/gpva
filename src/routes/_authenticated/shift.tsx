@@ -60,7 +60,7 @@ function ShiftPage() {
     const total = list.length;
     const viaveis = list.filter((x) => x.viable).length;
     const inviaveis = list.filter((x) => !x.viable).length;
-    const negociacoes = list.filter((x) => x.is_negotiation);
+    const negociacoes = list.filter((x) => x.is_negotiation && x.viable);
     const totalNeg = negociacoes.reduce((a, b) => a + (Number(b.negotiated_value) || 0), 0);
     const rate = openShift.data?.variable_rate_snapshot ?? team?.variable_rate ?? 7;
     const variavel = negociacoes.length * Number(rate);
