@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { cacheTeam, getCachedTeam } from "@/lib/db/catalogs";
 
 export type Team = {
   id: string;
@@ -15,12 +16,21 @@ export function useTeam(userId: string | null) {
     queryKey: ["team", userId],
     enabled: !!userId,
     queryFn: async (): Promise<Team | null> => {
-      const { data, error } = await supabase
-        .from("teams")
-        .select("id,team_name,supervisor,leader,variable_rate,onboarded")
-        .maybeSingle();
-      if (error) throw error;
-      return data as Team | null;
+      try {
+        const { data, error } = await supabase
+          .from("teams")
+          .select("id,team_name,supervisor,leader,variable_rate,onboarded")
+          .maybeSingle();
+        if (error) throw error;
+        if (data) await cacheTeam(data as Team);
+        return (data as Team) ?? (userId ? await getCachedTeam(userId) : null);
+      } catch (err) {
+        if (userId) {
+          const cached = await getCachedTeam(userId);
+          if (cached) return cached;
+        }
+        throw err;
+      }
     },
   });
 }
