@@ -78,6 +78,71 @@ export type Database = {
           },
         ]
       }
+      service_complement_links: {
+        Row: {
+          complement_id: string | null
+          complement_name: string
+          created_at: string
+          id: string
+          service_id: string
+          shift_id: string
+          team_id: string
+        }
+        Insert: {
+          complement_id?: string | null
+          complement_name: string
+          created_at?: string
+          id?: string
+          service_id: string
+          shift_id: string
+          team_id: string
+        }
+        Update: {
+          complement_id?: string | null
+          complement_name?: string
+          created_at?: string
+          id?: string
+          service_id?: string
+          shift_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_complement_links_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_complements: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          team_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          team_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          team_id?: string
+        }
+        Relationships: []
+      }
       service_types: {
         Row: {
           active: boolean
@@ -192,19 +257,22 @@ export type Database = {
       }
       shift_impacts: {
         Row: {
-          impact_id: string
+          id: string
+          impact_id: string | null
           impact_name: string
           shift_id: string
           team_id: string
         }
         Insert: {
-          impact_id: string
+          id?: string
+          impact_id?: string | null
           impact_name: string
           shift_id: string
           team_id: string
         }
         Update: {
-          impact_id?: string
+          id?: string
+          impact_id?: string | null
           impact_name?: string
           shift_id?: string
           team_id?: string
