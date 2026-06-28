@@ -5,7 +5,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, FileText, LogOut } from "lucide-react";
+import { Loader2, Play, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDateBR } from "@/lib/format";
@@ -93,21 +93,7 @@ function HomePage() {
   }
 
   return (
-    <AppShell
-      title="GPVA"
-      right={
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut();
-            navigate({ to: "/auth" });
-          }}
-          className="rounded-md p-2 text-muted-foreground hover:text-foreground"
-          aria-label="Sair"
-        >
-          <LogOut className="size-5" />
-        </button>
-      }
-    >
+    <AppShell title="GPVA">
       <div className="space-y-6">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
