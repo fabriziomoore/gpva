@@ -4,7 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -179,21 +179,6 @@ export function AddServiceSheet({
       <SheetContent side="bottom" className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
         <SheetHeader className="border-b border-border p-4">
           <div className="flex items-center gap-2">
-            {step !== "type" && (
-              <button
-                onClick={() => {
-                  if (step === "registration") setStep("reason");
-                  else if (step === "reason") setStep("viability");
-                  else if (step === "complements") setStep(type?.is_negotiation ? "amount" : "viability");
-                  else if (step === "amount") setStep("viability");
-                  else setStep("type");
-                }}
-                className="rounded-md p-1 text-muted-foreground hover:text-foreground"
-                aria-label="Voltar"
-              >
-                <ArrowLeft className="size-5" />
-              </button>
-            )}
             <SheetTitle className="text-left text-base">
               {step === "type" && "Tipo de Serviço"}
               {step === "viability" && type?.name}

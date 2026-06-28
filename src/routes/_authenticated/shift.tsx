@@ -82,9 +82,6 @@ function ShiftPage() {
       <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
         <div className="rounded-2xl border border-border bg-card p-6 text-center">
           <p className="text-muted-foreground">Nenhum expediente em andamento.</p>
-          <Button className="mt-4" onClick={() => navigate({ to: "/" })}>
-            Voltar ao início
-          </Button>
         </div>
       </AppShell>
     );

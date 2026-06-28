@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Copy, Share2, Printer, ArrowLeft, Loader2 } from "lucide-react";
+import { Copy, Share2, Printer, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/shift_/$id/report")({
@@ -30,14 +30,7 @@ function ReportPage() {
   const text = q.data?.report_text ?? "";
 
   return (
-    <AppShell
-      title="Relatório"
-      right={
-        <Link to="/" className="rounded-md p-2 text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-5" />
-        </Link>
-      }
-    >
+    <AppShell title="Relatório">
       {q.isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
