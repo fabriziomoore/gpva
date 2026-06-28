@@ -1,6 +1,7 @@
 import { initNetwork, onNetworkChange, getNetworkStatus } from "./network";
 import { useSyncStore } from "./store";
 import { drainOutbox, refreshPendingCount, scheduleSync } from "./engine";
+import { installSessionMirror, restoreSession } from "./session-backup";
 
 let started = false;
 
@@ -8,6 +9,8 @@ export async function startSync(): Promise<void> {
   if (started || typeof window === "undefined") return;
   started = true;
 
+  await restoreSession();
+  installSessionMirror();
   await initNetwork();
   useSyncStore.getState().setOnline(getNetworkStatus().connected);
   await refreshPendingCount();
