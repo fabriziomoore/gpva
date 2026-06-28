@@ -132,13 +132,7 @@ function AdminPage() {
         </main>
       ) : view === "ranking" ? (
         <main className="mx-auto max-w-2xl px-4 py-6">
-          <button
-            onClick={() => setView("menu")}
-            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" /> Voltar
-          </button>
-          <RankingSection adminPw={adminPw} />
+          <RankingSection adminPw={adminPw} onBack={() => setView("menu")} />
         </main>
       ) : (
         <main className="mx-auto max-w-2xl px-4 py-6">
