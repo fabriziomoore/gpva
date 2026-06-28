@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   adminAddRow,
@@ -42,7 +42,6 @@ const SECTIONS: { id: SectionId; label: string }[] = [
 ];
 
 function AdminPage() {
-  const navigate = useNavigate();
   const [adminPw, setAdminPw] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [section, setSection] = useState<SectionId>("service_types");
@@ -85,13 +84,6 @@ function AdminPage() {
           <Button type="submit" className="h-12 w-full text-base font-semibold">
             Acessar
           </Button>
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/auth" })}
-            className="block w-full text-center text-xs text-muted-foreground/70 hover:text-muted-foreground"
-          >
-            Voltar
-          </button>
         </form>
       </div>
     );
@@ -130,16 +122,10 @@ function AdminPage() {
         </main>
       ) : view === "ranking" ? (
         <main className="mx-auto max-w-2xl px-4 py-6">
-          <RankingSection adminPw={adminPw} onBack={() => setView("menu")} />
+          <RankingSection adminPw={adminPw} />
         </main>
       ) : (
         <main className="mx-auto max-w-2xl px-4 py-6">
-          <button
-            onClick={() => setView("menu")}
-            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" /> Voltar
-          </button>
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
           ) : section === "variable" ? (
@@ -377,7 +363,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   );
 }
 
-function RankingSection({ adminPw, onBack }: { adminPw: string; onBack: () => void }) {
+function RankingSection({ adminPw }: { adminPw: string }) {
   const fn = useServerFn(adminTeamsRanking);
   const [selected, setSelected] = useState<string | null>(null);
   const q = useQuery({
@@ -400,9 +386,9 @@ function RankingSection({ adminPw, onBack }: { adminPw: string; onBack: () => vo
       <div className="space-y-4">
         <button
           onClick={() => setSelected(null)}
-          className="flex items-center gap-2 text-base font-semibold hover:text-primary"
+          className="text-left text-base font-semibold hover:text-primary"
         >
-          <ArrowLeft className="size-4" /> {current.team_name}
+          {current.team_name}
         </button>
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
@@ -435,12 +421,6 @@ function RankingSection({ adminPw, onBack }: { adminPw: string; onBack: () => vo
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Voltar
-      </button>
       <h2 className="text-base font-semibold">Painel — Ranking de Equipes</h2>
       <div className="space-y-3">
         {sorted.map((t) => {
