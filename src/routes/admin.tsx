@@ -13,6 +13,7 @@ import {
   adminDeleteRow,
   adminListRows,
   adminUpdateRate,
+  adminTeamsRanking,
   listTeams,
 } from "@/lib/admin.functions";
 import gpvaLogo from "@/assets/gpva-logo-wide.png.asset.json";
@@ -45,7 +46,7 @@ function AdminPage() {
   const [adminPw, setAdminPw] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [section, setSection] = useState<SectionId>("service_types");
-  const [view, setView] = useState<"menu" | "section">("menu");
+  const [view, setView] = useState<"menu" | "section" | "ranking">("menu");
 
   // Restore session from sessionStorage so reload doesn't lock out
   useEffect(() => {
@@ -98,12 +99,20 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 flex items-center justify-center border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
       </header>
 
       {view === "menu" ? (
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-10">
+          <div className="mb-6 flex w-full justify-end">
+            <Button
+              onClick={() => setView("ranking")}
+              className="h-10 px-6"
+            >
+              Painel
+            </Button>
+          </div>
           <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3">
             {SECTIONS.map((s) => (
               <button
@@ -120,6 +129,16 @@ function AdminPage() {
               </button>
             ))}
           </div>
+        </main>
+      ) : view === "ranking" ? (
+        <main className="mx-auto max-w-2xl px-4 py-6">
+          <button
+            onClick={() => setView("menu")}
+            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" /> Voltar
+          </button>
+          <RankingSection adminPw={adminPw} />
         </main>
       ) : (
         <main className="mx-auto max-w-2xl px-4 py-6">
