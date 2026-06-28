@@ -83,17 +83,17 @@ function HomePage() {
   const today = useMemo(() => formatDateBR(new Date()), []);
 
   const titleNode = (
-    <div className="w-[calc(100vw-2rem)] max-w-[27rem]">
+    <div className="w-[calc(100vw-2rem)] max-w-[26rem]">
       <svg
-        viewBox="0 0 360 22"
-        preserveAspectRatio="xMidYMid meet"
+        viewBox="0 0 300 20"
+        preserveAspectRatio="none"
         className="block h-auto w-full"
         role="img"
         aria-label="GPVA - Gestão de Produtividade e Variável Autônoma"
       >
-        <text x="0" y="17" fontSize="18" fontWeight="700" fill="currentColor">
+        <text x="0" y="15" fontSize="14" fontWeight="700" fill="currentColor" textLength="300" lengthAdjust="spacingAndGlyphs">
           GPVA
-          <tspan fontSize="11" fontWeight="500" className="fill-muted-foreground" dx="4">
+          <tspan fontSize="10" fontWeight="500" className="fill-muted-foreground" dx="3">
             - GESTÃO DE PRODUTIVIDADE E VARIÁVEL AUTÔNOMA
           </tspan>
         </text>
