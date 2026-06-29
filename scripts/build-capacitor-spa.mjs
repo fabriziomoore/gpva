@@ -56,6 +56,26 @@ const stubUrlImports = {
         loader: "js",
       };
     });
+    // Stub node:async_hooks — pulled in by @tanstack/start-storage-context,
+    // unused in the browser. A minimal AsyncLocalStorage shim is enough for
+    // the router to construct without crashing.
+    buildApi.onResolve({ filter: /^node:async_hooks$/ }, (args) => ({
+      path: args.path,
+      namespace: "stub-async-hooks",
+    }));
+    buildApi.onLoad({ filter: /.*/, namespace: "stub-async-hooks" }, () => ({
+      contents: `export class AsyncLocalStorage {
+  constructor(){this._s=undefined}
+  getStore(){return this._s}
+  run(s,cb,...a){const p=this._s;this._s=s;try{return cb(...a)}finally{this._s=p}}
+  enterWith(s){this._s=s}
+  exit(cb,...a){const p=this._s;this._s=undefined;try{return cb(...a)}finally{this._s=p}}
+  disable(){this._s=undefined}
+}
+export class AsyncResource { runInAsyncScope(fn,thisArg,...a){return fn.apply(thisArg,a)} }
+export default { AsyncLocalStorage, AsyncResource };`,
+      loader: "js",
+    }));
   },
 };
 
