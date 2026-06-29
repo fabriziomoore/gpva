@@ -38,10 +38,10 @@ export async function drainOutbox(): Promise<void> {
     const db = getLocalDB();
     // Process in deterministic order so FKs resolve: shifts → services → links → impacts.
     const order: OutboxRow["table"][] = [
-      "shifts",
-      "services",
-      "service_complement_links",
-      "shift_impacts",
+      "expedientes",
+      "servicos",
+      "vinculos_complementos",
+      "impactos_expediente",
     ];
     for (const table of order) {
       const rows = await db.outbox.where("table").equals(table).sortBy("id");
@@ -85,22 +85,22 @@ async function pushRow(row: OutboxRow): Promise<void> {
 async function markSynced(table: OutboxRow["table"], id: string): Promise<void> {
   const db = getLocalDB();
   switch (table) {
-    case "shifts": {
+    case "expedientes": {
       const row = await db.shifts.get(id);
       if (row) await db.shifts.put({ ...row, sync_state: "synced" });
       return;
     }
-    case "services": {
+    case "servicos": {
       const row = await db.services.get(id);
       if (row) await db.services.put({ ...row, sync_state: "synced" });
       return;
     }
-    case "service_complement_links": {
+    case "vinculos_complementos": {
       const row = await db.complement_links.get(id);
       if (row) await db.complement_links.put({ ...row, sync_state: "synced" });
       return;
     }
-    case "shift_impacts": {
+    case "impactos_expediente": {
       const row = await db.shift_impacts.get(id);
       if (row) await db.shift_impacts.put({ ...row, sync_state: "synced" });
       return;

@@ -54,7 +54,7 @@ export function useServiceTypesCached() {
     "cat:service_types",
     async () => {
       const { data, error } = await supabase
-        .from("service_types")
+        .from("tipos_servico")
         .select("id,name,is_negotiation,sort_order")
         .eq("active", true)
         .order("sort_order")
@@ -62,7 +62,7 @@ export function useServiceTypesCached() {
       if (error) throw error;
       return (data ?? []) as CatServiceType[];
     },
-    ["cached", "service_types"],
+    ["cached", "tipos_servico"],
   );
 }
 
@@ -71,14 +71,14 @@ export function useReasonsCached() {
     "cat:inviability_reasons",
     async () => {
       const { data, error } = await supabase
-        .from("inviability_reasons")
+        .from("motivos_inviabilidade")
         .select("id,name")
         .eq("active", true)
         .order("name");
       if (error) throw error;
       return (data ?? []) as CatReason[];
     },
-    ["cached", "inviability_reasons"],
+    ["cached", "motivos_inviabilidade"],
   );
 }
 
@@ -87,7 +87,7 @@ export function useComplementsCached() {
     "cat:service_complements",
     async () => {
       const { data, error } = await supabase
-        .from("service_complements")
+        .from("complementos_servico")
         .select("id,name,sort_order")
         .eq("active", true)
         .order("sort_order")
@@ -95,7 +95,7 @@ export function useComplementsCached() {
       if (error) throw error;
       return (data ?? []) as CatComplement[];
     },
-    ["cached", "service_complements"],
+    ["cached", "complementos_servico"],
   );
 }
 
@@ -104,14 +104,14 @@ export function useImpactsCached() {
     "cat:impacts",
     async () => {
       const { data, error } = await supabase
-        .from("impacts")
+        .from("impactos")
         .select("id,name")
         .eq("active", true)
         .order("name");
       if (error) throw error;
       return (data ?? []) as CatImpact[];
     },
-    ["cached", "impacts"],
+    ["cached", "impactos"],
   );
 }
 

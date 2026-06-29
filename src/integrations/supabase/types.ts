@@ -14,109 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      impacts: {
-        Row: {
-          active: boolean
-          created_at: string
-          id: string
-          name: string
-          team_id: string | null
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          name: string
-          team_id?: string | null
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          name?: string
-          team_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "impacts_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      inviability_reasons: {
-        Row: {
-          active: boolean
-          created_at: string
-          id: string
-          name: string
-          team_id: string | null
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          name: string
-          team_id?: string | null
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          name?: string
-          team_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inviability_reasons_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      service_complement_links: {
-        Row: {
-          complement_id: string | null
-          complement_name: string
-          created_at: string
-          id: string
-          service_id: string
-          shift_id: string
-          team_id: string
-        }
-        Insert: {
-          complement_id?: string | null
-          complement_name: string
-          created_at?: string
-          id?: string
-          service_id: string
-          shift_id: string
-          team_id: string
-        }
-        Update: {
-          complement_id?: string | null
-          complement_name?: string
-          created_at?: string
-          id?: string
-          service_id?: string
-          shift_id?: string
-          team_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "service_complement_links_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      service_complements: {
+      complementos_servico: {
         Row: {
           active: boolean
           created_at: string
@@ -143,45 +41,188 @@ export type Database = {
         }
         Relationships: []
       }
-      service_types: {
+      equipes: {
+        Row: {
+          created_at: string
+          id: string
+          leader: string
+          onboarded: boolean
+          supervisor: string
+          team_name: string
+          variable_rate: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          leader?: string
+          onboarded?: boolean
+          supervisor?: string
+          team_name: string
+          variable_rate?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leader?: string
+          onboarded?: boolean
+          supervisor?: string
+          team_name?: string
+          variable_rate?: number
+        }
+        Relationships: []
+      }
+      expedientes: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          report_text: string | null
+          started_at: string
+          status: string
+          team_id: string
+          variable_rate_snapshot: number | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          report_text?: string | null
+          started_at?: string
+          status?: string
+          team_id: string
+          variable_rate_snapshot?: number | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          report_text?: string | null
+          started_at?: string
+          status?: string
+          team_id?: string
+          variable_rate_snapshot?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impactos: {
         Row: {
           active: boolean
           created_at: string
           id: string
-          is_negotiation: boolean
           name: string
-          sort_order: number
           team_id: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
-          is_negotiation?: boolean
           name: string
-          sort_order?: number
           team_id?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
-          is_negotiation?: boolean
           name?: string
-          sort_order?: number
           team_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "service_types_team_id_fkey"
+            foreignKeyName: "impacts_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
-            referencedRelation: "teams"
+            referencedRelation: "equipes"
             referencedColumns: ["id"]
           },
         ]
       }
-      services: {
+      impactos_expediente: {
+        Row: {
+          id: string
+          impact_id: string | null
+          impact_name: string
+          shift_id: string
+          team_id: string
+        }
+        Insert: {
+          id?: string
+          impact_id?: string | null
+          impact_name: string
+          shift_id: string
+          team_id: string
+        }
+        Update: {
+          id?: string
+          impact_id?: string | null
+          impact_name?: string
+          shift_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_impacts_impact_id_fkey"
+            columns: ["impact_id"]
+            isOneToOne: false
+            referencedRelation: "impactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_impacts_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "expedientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_impacts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      motivos_inviabilidade: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          team_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          team_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inviability_reasons_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servicos: {
         Row: {
           created_at: string
           id: string
@@ -229,148 +270,107 @@ export type Database = {
             foreignKeyName: "services_reason_id_fkey"
             columns: ["reason_id"]
             isOneToOne: false
-            referencedRelation: "inviability_reasons"
+            referencedRelation: "motivos_inviabilidade"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "services_service_type_id_fkey"
             columns: ["service_type_id"]
             isOneToOne: false
-            referencedRelation: "service_types"
+            referencedRelation: "tipos_servico"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "services_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
-            referencedRelation: "shifts"
+            referencedRelation: "expedientes"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "services_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
-            referencedRelation: "teams"
+            referencedRelation: "equipes"
             referencedColumns: ["id"]
           },
         ]
       }
-      shift_impacts: {
+      tipos_servico: {
         Row: {
+          active: boolean
+          created_at: string
           id: string
-          impact_id: string | null
-          impact_name: string
+          is_negotiation: boolean
+          name: string
+          sort_order: number
+          team_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_negotiation?: boolean
+          name: string
+          sort_order?: number
+          team_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_negotiation?: boolean
+          name?: string
+          sort_order?: number
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_types_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vinculos_complementos: {
+        Row: {
+          complement_id: string | null
+          complement_name: string
+          created_at: string
+          id: string
+          service_id: string
           shift_id: string
           team_id: string
         }
         Insert: {
+          complement_id?: string | null
+          complement_name: string
+          created_at?: string
           id?: string
-          impact_id?: string | null
-          impact_name: string
+          service_id: string
           shift_id: string
           team_id: string
         }
         Update: {
+          complement_id?: string | null
+          complement_name?: string
+          created_at?: string
           id?: string
-          impact_id?: string | null
-          impact_name?: string
+          service_id?: string
           shift_id?: string
           team_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "shift_impacts_impact_id_fkey"
-            columns: ["impact_id"]
+            foreignKeyName: "service_complement_links_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
-            referencedRelation: "impacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shift_impacts_shift_id_fkey"
-            columns: ["shift_id"]
-            isOneToOne: false
-            referencedRelation: "shifts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shift_impacts_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
+            referencedRelation: "servicos"
             referencedColumns: ["id"]
           },
         ]
-      }
-      shifts: {
-        Row: {
-          created_at: string
-          ended_at: string | null
-          id: string
-          report_text: string | null
-          started_at: string
-          status: string
-          team_id: string
-          variable_rate_snapshot: number | null
-        }
-        Insert: {
-          created_at?: string
-          ended_at?: string | null
-          id?: string
-          report_text?: string | null
-          started_at?: string
-          status?: string
-          team_id: string
-          variable_rate_snapshot?: number | null
-        }
-        Update: {
-          created_at?: string
-          ended_at?: string | null
-          id?: string
-          report_text?: string | null
-          started_at?: string
-          status?: string
-          team_id?: string
-          variable_rate_snapshot?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shifts_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      teams: {
-        Row: {
-          created_at: string
-          id: string
-          leader: string
-          onboarded: boolean
-          supervisor: string
-          team_name: string
-          variable_rate: number
-        }
-        Insert: {
-          created_at?: string
-          id: string
-          leader?: string
-          onboarded?: boolean
-          supervisor?: string
-          team_name: string
-          variable_rate?: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          leader?: string
-          onboarded?: boolean
-          supervisor?: string
-          team_name?: string
-          variable_rate?: number
-        }
-        Relationships: []
       }
     }
     Views: {

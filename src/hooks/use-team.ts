@@ -18,7 +18,7 @@ export function useTeam(userId: string | null) {
     queryFn: async (): Promise<Team | null> => {
       try {
         const { data, error } = await supabase
-          .from("teams")
+          .from("equipes")
           .select("id,team_name,supervisor,leader,variable_rate,onboarded")
           .maybeSingle();
         if (error) throw error;
