@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GPVA</string>
+    <string name="title_activity_main">GPVA</string>
+    <string name="package_name">app.lovable.gpva</string>
+    <string name="custom_url_scheme">app.lovable.gpva</string>
+</resources>
