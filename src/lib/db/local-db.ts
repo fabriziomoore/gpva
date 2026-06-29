@@ -56,10 +56,10 @@ export interface LocalShiftImpact {
 }
 
 export type OutboxTable =
-  | "expedientes"
-  | "servicos"
-  | "impactos_expediente"
-  | "vinculos_complementos";
+  | "shifts"
+  | "services"
+  | "shift_impacts"
+  | "service_complement_links";
 
 export interface OutboxRow {
   id?: number;

@@ -26,7 +26,7 @@ function ReportPage() {
         /* SSR / no DB */
       }
       const { data, error } = await supabase
-        .from("expedientes")
+        .from("shifts")
         .select("id,report_text,started_at")
         .eq("id", id)
         .single();

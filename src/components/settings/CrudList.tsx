@@ -13,7 +13,7 @@ export function CrudList({
   teamId,
   label,
 }: {
-  table: "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
+  table: "service_types" | "inviability_reasons" | "impacts" | "service_complements";
   teamId: string;
   label: string;
 }) {

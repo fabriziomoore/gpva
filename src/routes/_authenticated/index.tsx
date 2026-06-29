@@ -68,7 +68,7 @@ function HomePage() {
     enabled: !!userId && !!team?.onboarded && !lastClosedLocal,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("expedientes")
+        .from("shifts")
         .select("id,started_at")
         .eq("status", "closed")
         .order("started_at", { ascending: false })

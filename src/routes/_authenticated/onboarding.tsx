@@ -40,7 +40,7 @@ function Onboarding() {
     setSaving(true);
     try {
       const { error } = await supabase
-        .from("equipes")
+        .from("teams")
         .update({ supervisor, leader, onboarded: true })
         .eq("id", userId!);
       if (error) throw error;

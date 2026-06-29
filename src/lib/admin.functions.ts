@@ -8,7 +8,7 @@ function assertAdmin(pw: string) {
   }
 }
 
-type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
+type CrudTable = "service_types" | "inviability_reasons" | "impacts" | "service_complements";
 
 export const listTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
@@ -16,7 +16,7 @@ export const listTeams = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
-      .from("equipes")
+      .from("teams")
       .select("id,team_name,variable_rate")
       .order("team_name");
     if (error) throw new Error(error.message);
@@ -70,7 +70,7 @@ export const adminUpdateRate = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
-      .from("equipes")
+      .from("teams")
       .update({ variable_rate: data.rate })
       .eq("id", data.teamId);
     if (error) throw new Error(error.message);
@@ -106,7 +106,7 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: teams, error: teamsErr } = await supabaseAdmin
-      .from("equipes")
+      .from("teams")
       .select("id,team_name");
     if (teamsErr) throw new Error(teamsErr.message);
 
@@ -126,7 +126,7 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
     let from = 0;
     while (true) {
       const { data: rows, error } = await supabaseAdmin
-        .from("servicos")
+        .from("services")
         .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
         .gte("created_at", start)
         .lt("created_at", end)

@@ -33,7 +33,7 @@ function VariablePage() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("servicos")
+        .from("services")
         .select("negotiated_value,created_at")
         .eq("is_negotiation", true)
         .eq("viable", true)
