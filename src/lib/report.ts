@@ -45,8 +45,8 @@ export function buildReport(s: ShiftInput): string {
   const lines: string[] = [];
   lines.push(`*Data: ${formatDateBR(s.started_at)}*`);
   lines.push(`*Equipe: ${s.team_name}*`);
-  lines.push(`*Supervisor: ${s.supervisor || "-"}*`);
-  lines.push(`*Líder: ${s.leader || "-"}*`);
+  lines.push(`*Supervisor: ${(s.supervisor || "-").trim()}*`);
+  lines.push(`*Líder: ${(s.leader || "-").trim()}*`);
   lines.push("");
   lines.push(`*Total de Serviços:* ${pad2(total)}`);
   lines.push(`*Viáveis:* ${pad2(viaveis)}`);
