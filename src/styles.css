@@ -147,3 +147,39 @@
     color: var(--color-foreground);
   }
 }
+
+/* === GPVA Sync Indicator — GPU-accelerated keyframes === */
+@keyframes gpva-beam {
+  0%   { transform: translate3d(-100%, 0, 0); }
+  100% { transform: translate3d(400%, 0, 0); }
+}
+@keyframes gpva-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+@keyframes gpva-pulse-slow {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.85; }
+}
+.gpva-sync-beam {
+  animation: gpva-beam 1.6s linear infinite;
+  will-change: transform;
+}
+.gpva-sync-beam-once {
+  animation: gpva-beam 0.8s ease-out 1;
+  will-change: transform;
+}
+.gpva-sync-pulse {
+  animation: gpva-pulse 1.8s ease-in-out infinite;
+  will-change: opacity;
+}
+.gpva-sync-pulse-slow {
+  animation: gpva-pulse-slow 2.8s ease-in-out infinite;
+  will-change: opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gpva-sync-beam,
+  .gpva-sync-beam-once,
+  .gpva-sync-pulse,
+  .gpva-sync-pulse-slow { animation: none !important; }
+}
