@@ -417,6 +417,12 @@ function RankingSection({ adminPw }: { adminPw: string }) {
     (a, b) => b.viable + b.negotiations - (a.viable + a.negotiations),
   );
   const max = Math.max(1, ...sorted.map((t) => t.viable));
+  const topNegId = sorted.reduce<{ id: string | null; v: number }>(
+    (acc, t) => (t.negotiationValue > acc.v ? { id: t.id, v: t.negotiationValue } : acc),
+    { id: null, v: -1 },
+  ).id;
+  const brl = (n: number) =>
+    n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const current = selected ? sorted.find((t) => t.id === selected) : null;
 
   const monthNames = [
@@ -490,16 +496,19 @@ function RankingSection({ adminPw }: { adminPw: string }) {
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
+          const isTopNeg = t.id === topNegId && t.negotiationValue > 0;
           return (
             <button
               key={t.id}
               onClick={() => setSelected(t.id)}
-              className="block w-full rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-primary"
+              className={`block w-full rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary ${
+                isTopNeg ? "border-2 border-blue-500 ring-2 ring-blue-500/40" : "border-border"
+              }`}
             >
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-semibold">{t.team_name}</span>
                 <span className="text-xs text-muted-foreground">
-                  {t.negotiations} neg.
+                  {brl(t.negotiationValue)}
                 </span>
               </div>
               <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
