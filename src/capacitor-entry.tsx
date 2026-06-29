@@ -1,18 +1,23 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
-import { getRouter } from "./router";
+import { QueryClient } from "@tanstack/react-query";
+import { RouterProvider, createMemoryHistory, createRouter } from "@tanstack/react-router";
+import { routeTree } from "./mobile-route-tree";
+import "./styles.css";
 
 // Capacitor SPA bootstrap. Unlike TanStack Start's default client entry,
 // this does NOT call hydrateRoot — there is no SSR markup inside the
 // Capacitor WebView shell. We mount a fresh React tree into #root and
-// drive the router with an in-memory history so file://-style oddities
-// in the WebView never confuse history navigation.
-const router = getRouter();
-// Replace the default browser history with a memory history seeded at "/".
-// `createRouter` already created a browser history; we swap it before mount.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(router as any).history = createMemoryHistory({ initialEntries: ["/"] });
+// drive the router with an in-memory history so WebView URL schemes never
+// pull in TanStack Start's SSR/hydration runtime.
+const queryClient = new QueryClient();
+const router = createRouter({
+  routeTree,
+  context: { queryClient },
+  history: createMemoryHistory({ initialEntries: ["/"] }),
+  scrollRestoration: true,
+  defaultPreloadStaleTime: 0,
+});
 
 const container = document.getElementById("root");
 if (!container) {
