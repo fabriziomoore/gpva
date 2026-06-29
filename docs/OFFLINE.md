@@ -26,22 +26,35 @@ enquanto o sync for push-only.
 
 ## Indicador de status
 
-`SyncBadge` (no header):
-- 🟢 verde — tudo sincronizado
-- 🟡 amarelo — sincronizando agora
-- 🟠 laranja — N operações pendentes ou erro recuperável
-- 🔴 vermelho — offline
+`SyncIndicator` fica como uma linha dinâmica abaixo do cabeçalho:
+- azul/ciano/verde — normal/sincronizado
+- animação de feixe — sincronização em andamento
+- laranja — operações pendentes ou erro recuperável
+- vermelho — offline
 
-Toque no badge para forçar `drainOutbox()`.
+Toque na linha para abrir o painel informativo e forçar `drainOutbox()`.
 
 ## Gerar APK Android
 
 ```bash
 bun install
 bun run build
+npx cap add android   # apenas quando a pasta android ainda não existir
 npx cap sync android
 npx cap open android   # abre Android Studio para build/assinatura
 ```
+
+O build do TanStack Start/Nitro gera os arquivos web em `.output/public`, e o
+`capacitor.config.ts` está configurado com `webDir: ".output/public"`.
+
+Fluxo automatizado recomendado:
+
+```bash
+npm run mobile:android
+```
+
+Esse comando gera o build, valida o `webDir`, cria a plataforma Android quando
+ela ainda não existir, sincroniza os assets e abre o Android Studio.
 
 Para iOS use `npx cap sync ios && npx cap open ios` no macOS.
 
