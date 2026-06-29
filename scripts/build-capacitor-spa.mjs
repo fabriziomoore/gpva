@@ -1,120 +1,17 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { build } from "esbuild";
+import { build as viteBuild } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 
-const clientDir = "dist/client";
-const capacitorDir = "dist/capacitor";
+const rootDir = process.cwd();
+const capacitorDir = resolve(rootDir, "dist/capacitor");
+const tempHtml = resolve(rootDir, "capacitor-index.html");
 
-if (!existsSync(clientDir)) {
-  console.error(`TanStack client build not found: ${clientDir}`);
-  process.exit(1);
-}
-
-const assetsDir = join(clientDir, "assets");
-const assets = readdirSync(assetsDir);
-const stylesheet = assets.find((file) => /^styles-[\w-]+\.css$/.test(file));
-
-rmSync(capacitorDir, { recursive: true, force: true });
-mkdirSync(capacitorDir, { recursive: true });
-cpSync(clientDir, capacitorDir, { recursive: true });
-
-// Remove TanStack Start's SSR-hydrating client entries — they call
-// hydrateRoot(document, ...) and rely on window.$_TSR injected by the SSR
-// renderer. Inside the Capacitor WebView there is no SSR shell, so those
-// entries throw "Invariant failed" before the first frame paints.
-const capacitorAssetsDir = join(capacitorDir, "assets");
-for (const file of readdirSync(capacitorAssetsDir)) {
-  if (/^index-[\w-]+\.js$/.test(file)) {
-    rmSync(join(capacitorAssetsDir, file));
-  }
-}
-
-// Bundle a Capacitor-specific SPA entry that mounts the router with
-// createRoot — no SSR markup required.
-const cssHref = stylesheet ? `./assets/${stylesheet}` : "";
-
-const stubUrlImports = {
-  name: "stub-url-and-asset-imports",
-  setup(buildApi) {
-    // `import x from "./foo.css?url"` → exports the prebuilt stylesheet URL.
-    buildApi.onResolve({ filter: /\?url$/ }, (args) => ({
-      path: args.path,
-      namespace: "stub-url",
-    }));
-    buildApi.onLoad({ filter: /.*/, namespace: "stub-url" }, () => ({
-      contents: `export default ${JSON.stringify(cssHref)};`,
-      loader: "js",
-    }));
-    // Raw CSS imports (e.g. side-effect imports) become no-ops; the
-    // stylesheet is already linked from index.html.
-    buildApi.onLoad({ filter: /\.css$/ }, () => ({ contents: "", loader: "js" }));
-    // Asset imports resolve to relative URLs under ./assets/.
-    buildApi.onLoad({ filter: /\.(png|jpg|jpeg|gif|svg|webp|avif|ico)$/ }, (args) => {
-      const name = args.path.split(/[\\/]/).pop();
-      return {
-        contents: `export default ${JSON.stringify(`./assets/${name}`)};`,
-        loader: "js",
-      };
-    });
-    // Stub node:async_hooks — pulled in by @tanstack/start-storage-context,
-    // unused in the browser. A minimal AsyncLocalStorage shim is enough for
-    // the router to construct without crashing.
-    buildApi.onResolve({ filter: /^node:async_hooks$/ }, (args) => ({
-      path: args.path,
-      namespace: "stub-async-hooks",
-    }));
-    buildApi.onLoad({ filter: /.*/, namespace: "stub-async-hooks" }, () => ({
-      contents: `export class AsyncLocalStorage {
-  constructor(){this._s=undefined}
-  getStore(){return this._s}
-  run(s,cb,...a){const p=this._s;this._s=s;try{return cb(...a)}finally{this._s=p}}
-  enterWith(s){this._s=s}
-  exit(cb,...a){const p=this._s;this._s=undefined;try{return cb(...a)}finally{this._s=p}}
-  disable(){this._s=undefined}
-}
-export class AsyncResource { runInAsyncScope(fn,thisArg,...a){return fn.apply(thisArg,a)} }
-export default { AsyncLocalStorage, AsyncResource };`,
-      loader: "js",
-    }));
-  },
-};
-
-await build({
-  entryPoints: { "capacitor-entry": "src/capacitor-entry.tsx" },
-  outdir: capacitorAssetsDir,
-  bundle: true,
-  format: "esm",
-  splitting: false,
-  target: "es2020",
-  platform: "browser",
-  minify: true,
-  sourcemap: false,
-  jsx: "automatic",
-  define: {
-    "process.env.NODE_ENV": JSON.stringify("production"),
-    "import.meta.env.SSR": "false",
-    "import.meta.env.PROD": "true",
-    "import.meta.env.DEV": "false",
-    "import.meta.env.MODE": JSON.stringify("production"),
-    "import.meta.env.BASE_URL": JSON.stringify("/"),
-    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(process.env.VITE_SUPABASE_URL ?? ""),
-    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
-      process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
-    ),
-    "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(
-      process.env.VITE_SUPABASE_PROJECT_ID ?? "",
-    ),
-  },
-  alias: {
-    "@": resolve("src"),
-  },
-  loader: { ".json": "json" },
-  plugins: [stubUrlImports],
-  logLevel: "info",
-});
-
-const cssLink = cssHref ? `    <link rel="stylesheet" href="${cssHref}" />\n` : "";
-
+// Mobile is intentionally built as an independent browser SPA. It must never
+// copy TanStack Start/Nitro output or hydrate an SSR shell, because the Android
+// WebView has no server-rendered $_TSR payload.
 const html = `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -129,7 +26,7 @@ const html = `<!doctype html>
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
-${cssLink}    <script>
+    <script>
       (() => {
         try {
           var theme = localStorage.getItem('gpva.theme');
@@ -141,7 +38,7 @@ ${cssLink}    <script>
         }
       })();
     </script>
-    <script type="module" src="./assets/capacitor-entry.js"></script>
+    <script type="module" src="/src/capacitor-entry.tsx"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -149,7 +46,72 @@ ${cssLink}    <script>
 </html>
 `;
 
-writeFileSync(join(capacitorDir, "index.html"), html);
-writeFileSync(join(capacitorDir, "404.html"), html);
+rmSync(capacitorDir, { recursive: true, force: true });
+writeFileSync(tempHtml, html);
+
+try {
+  await viteBuild({
+    configFile: false,
+    root: rootDir,
+    publicDir: resolve(rootDir, "public"),
+    base: "./",
+    mode: "production",
+    envPrefix: "VITE_",
+    plugins: [react(), tailwindcss(), tsconfigPaths()],
+    resolve: {
+      alias: [
+        {
+          find: /^@\/integrations\/supabase\/client$/,
+          replacement: resolve(rootDir, "src/integrations/supabase/client.mobile.ts"),
+        },
+        { find: "@", replacement: resolve(rootDir, "src") },
+      ],
+    },
+    define: {
+      "process.env.NODE_ENV": JSON.stringify("production"),
+      "import.meta.env.SSR": "false",
+    },
+    build: {
+      outDir: capacitorDir,
+      emptyOutDir: true,
+      target: "es2020",
+      sourcemap: false,
+      minify: true,
+      rollupOptions: {
+        input: tempHtml,
+      },
+    },
+  });
+} finally {
+  rmSync(tempHtml, { force: true });
+}
+
+const generatedHtml = join(capacitorDir, "capacitor-index.html");
+if (existsSync(generatedHtml)) {
+  renameSync(generatedHtml, join(capacitorDir, "index.html"));
+}
+writeFileSync(join(capacitorDir, "404.html"), readFileSync(join(capacitorDir, "index.html"), "utf8"));
+
+const forbiddenPatterns = [
+  { pattern: /\bprocess\s*\./, label: "process.*" },
+  { pattern: /process\.env/, label: "process.env" },
+  { pattern: /node:async_hooks/, label: "node:async_hooks" },
+  { pattern: /hydrateRoot/, label: "hydrateRoot" },
+  { pattern: /\$_TSR/, label: "window.$_TSR" },
+  { pattern: /_serverFn/, label: "server functions runtime" },
+];
+
+const assetsDir = join(capacitorDir, "assets");
+if (existsSync(assetsDir)) {
+  for (const file of readdirSync(assetsDir)) {
+    if (!file.endsWith(".js")) continue;
+    const content = readFileSync(join(assetsDir, file), "utf8");
+    const hit = forbiddenPatterns.find(({ pattern }) => pattern.test(content));
+    if (hit) {
+      console.error(`Capacitor bundle contains forbidden ${hit.label} reference in assets/${file}`);
+      process.exit(1);
+    }
+  }
+}
 
 console.log(`Capacitor SPA generated at ${capacitorDir}/index.html`);

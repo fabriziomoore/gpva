@@ -26,6 +26,12 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminPw, setAdminPw] = useState("");
+  const [nativeApp, setNativeApp] = useState(false);
+
+  useEffect(() => {
+    const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
+    setNativeApp(!!w.Capacitor?.isNativePlatform?.());
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
@@ -90,7 +96,7 @@ function AuthPage() {
             </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        {!nativeApp && <div className="mt-6 text-center">
           {!adminOpen ? (
             <button
               type="button"
@@ -139,7 +145,7 @@ function AuthPage() {
               </Button>
             </form>
           )}
-        </div>
+        </div>}
       </div>
       <p className="absolute inset-x-0 bottom-3 whitespace-nowrap overflow-hidden text-ellipsis px-4 text-center text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">
         Criado e desenvolvido por Fabrízio Moore

@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "build:web": "vite build",
-    "build:mobile": "vite build && node scripts/build-capacitor-spa.mjs && node scripts/verify-capacitor-webdir.mjs",
+    "build:mobile": "node scripts/build-capacitor-spa.mjs && node scripts/verify-capacitor-webdir.mjs",
     "preview": "vite preview",
     "mobile:add:android": "node scripts/ensure-android-platform.mjs",
     "mobile:add:ios": "npx cap add ios",
