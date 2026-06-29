@@ -37,8 +37,8 @@ Toque na linha para abrir o painel informativo e forçar `drainOutbox()`.
 ## Gerar APK Android
 
 ```bash
-bun install
-bun run build
+npm install
+npm run build
 npx cap add android   # apenas quando a pasta android ainda não existir
 npx cap sync android
 npx cap open android   # abre Android Studio para build/assinatura
