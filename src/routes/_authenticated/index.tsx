@@ -6,7 +6,7 @@ import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, FileText } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { formatDateBR } from "@/lib/format";
@@ -157,13 +157,9 @@ function HomePage() {
           {starting ? (
             <Loader2 className="size-7 animate-spin" />
           ) : openShift ? (
-            <>
-              <Play className="mr-2 size-7" /> Continuar Expediente
-            </>
+            "Continuar Expediente"
           ) : (
-            <>
-              <Play className="mr-2 size-7" /> Iniciar Expediente
-            </>
+            "Iniciar Expediente"
           )}
         </Button>
 
