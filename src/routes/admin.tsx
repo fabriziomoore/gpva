@@ -401,9 +401,12 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
 function RankingSection({ adminPw }: { adminPw: string }) {
   const fn = useServerFn(adminTeamsRanking);
   const [selected, setSelected] = useState<string | null>(null);
+  const now = new Date();
+  const [year, setYear] = useState<number>(now.getFullYear());
+  const [month, setMonth] = useState<number>(now.getMonth() + 1);
   const q = useQuery({
-    queryKey: ["admin-ranking"],
-    queryFn: () => fn({ data: { adminPassword: adminPw } }),
+    queryKey: ["admin-ranking", year, month],
+    queryFn: () => fn({ data: { adminPassword: adminPw, year, month } }),
   });
 
   if (q.isLoading) {
@@ -416,10 +419,41 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const max = Math.max(1, ...sorted.map((t) => t.viable));
   const current = selected ? sorted.find((t) => t.id === selected) : null;
 
+  const monthNames = [
+    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  ];
+  const years: number[] = [];
+  for (let y = now.getFullYear(); y >= now.getFullYear() - 4; y--) years.push(y);
+
+  const periodSelector = (
+    <div className="flex gap-2">
+      <select
+        value={month}
+        onChange={(e) => setMonth(Number(e.target.value))}
+        className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
+      >
+        {monthNames.map((n, i) => (
+          <option key={i} value={i + 1}>{n}</option>
+        ))}
+      </select>
+      <select
+        value={year}
+        onChange={(e) => setYear(Number(e.target.value))}
+        className="h-10 w-28 rounded-lg border border-border bg-card px-3 text-sm"
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>{y}</option>
+        ))}
+      </select>
+    </div>
+  );
+
   if (current) {
     return (
       <div className="space-y-4">
         <h2 className="text-base font-semibold">{current.team_name}</h2>
+        {periodSelector}
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
           <Stat label="Viáveis" value={current.viable} />
@@ -452,6 +486,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold">Ranking de Equipes</h2>
+      {periodSelector}
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);

@@ -101,7 +101,7 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
   });
 
 export const adminTeamsRanking = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string }) => data)
+  .inputValidator((data: { adminPassword: string; year: number; month: number }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -109,6 +109,10 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       .from("teams")
       .select("id,team_name");
     if (teamsErr) throw new Error(teamsErr.message);
+
+    // Compute month range [start, nextMonthStart) in UTC ISO
+    const start = new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
+    const end = new Date(Date.UTC(data.year, data.month, 1)).toISOString();
 
     // Fetch all services in pages to bypass row limits
     const all: { team_id: string; viable: boolean; is_negotiation: boolean; service_type_name: string }[] = [];
@@ -118,6 +122,8 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       const { data: rows, error } = await supabaseAdmin
         .from("services")
         .select("team_id,viable,is_negotiation,service_type_name")
+        .gte("created_at", start)
+        .lt("created_at", end)
         .range(from, from + pageSize - 1);
       if (error) throw new Error(error.message);
       if (!rows?.length) break;
