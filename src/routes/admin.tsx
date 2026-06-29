@@ -501,8 +501,10 @@ function RankingSection({ adminPw }: { adminPw: string }) {
             <button
               key={t.id}
               onClick={() => setSelected(t.id)}
-              className={`block w-full rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary ${
-                isTopNeg ? "border-2 border-blue-500 ring-2 ring-blue-500/40" : "border-border"
+              className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
+                isTopNeg
+                  ? "border-0 ring-2 ring-blue-500"
+                  : "border border-border hover:border-primary"
               }`}
             >
               <div className="mb-2 flex items-center justify-between">
