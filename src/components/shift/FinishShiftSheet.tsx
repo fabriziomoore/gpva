@@ -67,7 +67,7 @@ export function FinishShiftSheet({
       let team: { team_name: string; supervisor: string; leader: string } | null = null;
       try {
         const { data } = await supabase
-          .from("teams")
+          .from("equipes")
           .select("team_name,supervisor,leader")
           .eq("id", teamId)
           .maybeSingle();
