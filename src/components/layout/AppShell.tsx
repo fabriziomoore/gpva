@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { BottomNav } from "./BottomNav";
 import { SyncIndicator } from "./SyncIndicator";
-import { ThemeToggle } from "./ThemeToggle";
 
 export function AppShell({
   title,
@@ -18,7 +17,6 @@ export function AppShell({
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto flex max-w-md items-center gap-2 px-4 py-3">
           <h1 className="min-w-0 flex-1 text-lg font-semibold tracking-tight">{title ?? "GPVA"}</h1>
-          <ThemeToggle />
           {right}
         </div>
         <SyncIndicator />

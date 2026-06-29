@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,7 +95,10 @@ function SettingsPage() {
     <AppShell title="Configurações" right={<ShiftMeta />}>
       <div className="space-y-8">
         <section className="space-y-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
+            <ThemeToggle />
+          </div>
           <div className="space-y-3">
             <div>
               <Label>Nome da equipe</Label>
