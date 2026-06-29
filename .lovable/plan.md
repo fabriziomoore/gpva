@@ -1,12 +1,31 @@
 ## Problema
-O script `scripts/build-capacitor-spa.mjs` importa o pacote `esbuild`, mas ele não está declarado nas dependências do projeto. Por isso `npm run mobile:android` quebra com `ERR_MODULE_NOT_FOUND`.
+No PC local, o Git abortou o pull/merge porque existe um `package-lock.json` que não está rastreado (`untracked`) e a versão do repositório remoto também quer criar esse mesmo arquivo. Isso é comum depois de rodar `npm install` antes de fazer o pull.
 
 ## Solução
-Adicionar `esbuild` como `devDependency` no `package.json` e reinstalar dependências.
+Remover o `package-lock.json` local não rastreado e fazer o pull novamente. Depois, reinstalar as dependências.
 
-## Passos
-1. Incluir `"esbuild": "^0.25.0"` (ou versão compatível) em `devDependencies`.
-2. Rodar `npm install` para baixar o pacote.
-3. Reexecutar `npm run mobile:android` para validar que o build mobile e o sync do Android prosseguem.
+## Passos no terminal (dentro da pasta do projeto)
 
-Isso não altera código da aplicação; é apenas uma dependência de build ausente.
+1. **Verifique o estado atual:**
+   ```bash
+   git status
+   ```
+   Você verá `package-lock.json` listado como `untracked`.
+
+2. **Remova o arquivo local não rastreado:**
+   ```bash
+   del package-lock.json
+   ```
+   *(No PowerShell/CMD do Windows. No Linux/Mac: `rm package-lock.json`)*
+
+3. **Faça o pull novamente:**
+   ```bash
+   git pull
+   ```
+
+4. **Reinstale as dependências (após o pull):**
+   ```bash
+   npm install
+   ```
+
+Isso não altera nada no projeto em si — apenas resolve o conflito de merge local no Git.
