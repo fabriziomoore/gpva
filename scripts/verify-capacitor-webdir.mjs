@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 
-const webDir = ".output/public";
+const webDir = "dist/capacitor";
 
 if (!existsSync(webDir)) {
   console.error(
