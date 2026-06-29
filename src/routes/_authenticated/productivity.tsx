@@ -104,7 +104,7 @@ function ProdPage() {
 
       while (true) {
         const { data, error } = await supabase
-          .from("services")
+          .from("servicos")
           .select("id,service_type_name,is_negotiation,viable,negotiated_value,created_at")
           .order("created_at", { ascending: false })
           .range(from, from + SERVICE_PAGE_SIZE - 1);
@@ -124,7 +124,7 @@ function ProdPage() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("shifts")
+        .from("expedientes")
         .select("id,started_at,status")
         .eq("status", "closed")
         .order("started_at", { ascending: false })

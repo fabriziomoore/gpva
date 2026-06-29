@@ -26,18 +26,18 @@ export const Route = createFileRoute("/admin")({
 });
 
 type SectionId =
-  | "service_types"
-  | "inviability_reasons"
-  | "service_complements"
-  | "impacts"
+  | "tipos_servico"
+  | "motivos_inviabilidade"
+  | "complementos_servico"
+  | "impactos"
   | "variable"
   | "create_team";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: "service_types", label: "Serviços" },
-  { id: "inviability_reasons", label: "Motivos de Inviabilidade" },
-  { id: "service_complements", label: "Complemento(s) do Serviço" },
-  { id: "impacts", label: "Impactos" },
+  { id: "tipos_servico", label: "Serviços" },
+  { id: "motivos_inviabilidade", label: "Motivos de Inviabilidade" },
+  { id: "complementos_servico", label: "Complemento(s) do Serviço" },
+  { id: "impactos", label: "Impactos" },
   { id: "variable", label: "Variável" },
   { id: "create_team", label: "Criar Equipe" },
 ];
@@ -46,7 +46,7 @@ function AdminPage() {
   const navigate = useNavigate();
   const [adminPw, setAdminPw] = useState("");
   const [pwInput, setPwInput] = useState("");
-  const [section, setSection] = useState<SectionId>("service_types");
+  const [section, setSection] = useState<SectionId>("tipos_servico");
   const [view, setView] = useState<"menu" | "section" | "ranking">("menu");
   const [exitOpen, setExitOpen] = useState(false);
 
@@ -221,7 +221,7 @@ function CrudSection({
   label,
 }: {
   adminPw: string;
-  table: "service_types" | "inviability_reasons" | "service_complements" | "impacts";
+  table: "tipos_servico" | "motivos_inviabilidade" | "complementos_servico" | "impactos";
   label: string;
 }) {
   const qc = useQueryClient();

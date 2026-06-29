@@ -49,7 +49,7 @@ function SettingsPage() {
     setSaving(true);
     try {
       const { error } = await supabase
-        .from("teams")
+        .from("equipes")
         .update({ supervisor, leader })
         .eq("id", userId!);
       if (error) throw error;
