@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { build as viteBuild } from "vite";
 import react from "@vitejs/plugin-react";
@@ -68,6 +68,7 @@ try {
       ],
     },
     define: {
+      "process.env.NODE_ENV": JSON.stringify("production"),
       "import.meta.env.SSR": "false",
     },
     build: {
