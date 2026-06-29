@@ -115,13 +115,19 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
     const end = new Date(Date.UTC(data.year, data.month, 1)).toISOString();
 
     // Fetch all services in pages to bypass row limits
-    const all: { team_id: string; viable: boolean; is_negotiation: boolean; service_type_name: string }[] = [];
+    const all: {
+      team_id: string;
+      viable: boolean;
+      is_negotiation: boolean;
+      service_type_name: string;
+      negotiated_value: number | null;
+    }[] = [];
     const pageSize = 1000;
     let from = 0;
     while (true) {
       const { data: rows, error } = await supabaseAdmin
         .from("services")
-        .select("team_id,viable,is_negotiation,service_type_name")
+        .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
         .gte("created_at", start)
         .lt("created_at", end)
         .range(from, from + pageSize - 1);
@@ -137,6 +143,9 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       const viable = mine.filter((s) => s.viable).length;
       const inviable = mine.filter((s) => !s.viable).length;
       const negotiations = mine.filter((s) => s.is_negotiation && s.viable).length;
+      const negotiationValue = mine
+        .filter((s) => s.is_negotiation && s.viable)
+        .reduce((sum, s) => sum + (Number(s.negotiated_value) || 0), 0);
       const byType: Record<string, number> = {};
       for (const s of mine) {
         if (!s.viable) continue;
@@ -151,6 +160,7 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
         viable,
         inviable,
         negotiations,
+        negotiationValue,
         byType,
       };
     });
