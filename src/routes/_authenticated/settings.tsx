@@ -97,7 +97,10 @@ function SettingsPage() {
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tema</span>
+              <ThemeToggle />
+            </div>
           </div>
           <div className="space-y-3">
             <div>
