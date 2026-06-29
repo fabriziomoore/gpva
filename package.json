@@ -5,13 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/build-capacitor-spa.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "mobile:add:android": "node scripts/ensure-android-platform.mjs",
-    "mobile:sync": "vite build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android",
-    "mobile:prepare": "vite build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android",
-    "mobile:android": "vite build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android && cap open android",
+    "mobile:sync": "npm run build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android",
+    "mobile:prepare": "npm run build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android",
+    "mobile:android": "npm run build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android && cap open android",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
