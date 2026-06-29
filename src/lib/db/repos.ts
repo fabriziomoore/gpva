@@ -21,7 +21,7 @@ export async function repoCreateShift(input: {
   };
   await db.shifts.put(row);
   await db.outbox.add({
-    table: "shifts",
+    table: "expedientes",
     op: "upsert",
     row_id: row.id,
     payload: toShiftPayload(row),
@@ -51,7 +51,7 @@ export async function repoCloseShift(opts: {
   };
   await db.shifts.put(updated);
   await db.outbox.add({
-    table: "shifts",
+    table: "expedientes",
     op: "upsert",
     row_id: updated.id,
     payload: toShiftPayload(updated),
@@ -71,7 +71,7 @@ export async function repoCloseShift(opts: {
     };
     await db.shift_impacts.put(row);
     await db.outbox.add({
-      table: "shift_impacts",
+      table: "impactos_expediente",
       op: "upsert",
       row_id: id,
       payload: {
@@ -121,7 +121,7 @@ export async function repoAddService(input: {
   };
   await db.services.put(row);
   await db.outbox.add({
-    table: "services",
+    table: "servicos",
     op: "upsert",
     row_id: row.id,
     payload: toServicePayload(row),
@@ -142,7 +142,7 @@ export async function repoAddService(input: {
     };
     await db.complement_links.put(link);
     await db.outbox.add({
-      table: "service_complement_links",
+      table: "vinculos_complementos",
       op: "upsert",
       row_id: id,
       payload: {
