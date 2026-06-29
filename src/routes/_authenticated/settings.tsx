@@ -98,7 +98,7 @@ function SettingsPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tema</span>
+              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Modo</span>
               <ThemeToggle />
             </div>
           </div>
