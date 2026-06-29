@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "mobile:add:android": "node scripts/ensure-android-platform.mjs",
-    "mobile:sync": "vite build && node scripts/verify-capacitor-webdir.mjs && cap sync android",
+    "mobile:sync": "vite build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android",
     "mobile:prepare": "vite build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android",
     "mobile:android": "vite build && node scripts/verify-capacitor-webdir.mjs && node scripts/ensure-android-platform.mjs && cap sync android && cap open android",
     "lint": "eslint .",
