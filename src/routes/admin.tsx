@@ -17,7 +17,7 @@ import {
   adminTeamsRanking,
   listTeams,
 } from "@/lib/admin.functions";
-import gpvaLogo from "@/assets/gpva-logo-wide.png.asset.json";
+import gpvaLogo from "@/assets/gpva-logo-wide.png";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -81,7 +81,7 @@ function AdminPage() {
     return (
       <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
         <div className="mb-8 w-full">
-          <img src={gpvaLogo.url} alt="GPVA" className="block h-auto w-full" />
+          <img src={gpvaLogo} alt="GPVA" className="block h-auto w-full" />
         </div>
         <form
           onSubmit={(e) => {
