@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { signInTeam } from "@/lib/auth";
 import gpvaLogo from "@/assets/gpva-logo-wide.png";
 
@@ -7,17 +7,41 @@ type LoginOnlyProps = {
 };
 
 export function LoginOnly({ onSignedIn }: LoginOnlyProps) {
-  const teamRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
+  const [team, setTeam] = useState("");
+  const [password, setPassword] = useState("");
+  const [activeField, setActiveField] = useState<"team" | "password">("team");
+  const [upperCase, setUpperCase] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const team = teamRef.current?.value.trim() ?? "";
-    const password = passwordRef.current?.value ?? "";
+  function updateActiveValue(next: string | ((current: string) => string)) {
+    if (activeField === "team") {
+      setTeam((current) => typeof next === "function" ? next(current).slice(0, 40) : next.slice(0, 40));
+      return;
+    }
 
-    if (!team || password.length < 6) {
+    setPassword((current) => typeof next === "function" ? next(current).slice(0, 64) : next.slice(0, 64));
+  }
+
+  function addKey(key: string) {
+    setMessage("");
+    updateActiveValue((current) => `${current}${key}`);
+  }
+
+  function backspace() {
+    setMessage("");
+    updateActiveValue((current) => current.slice(0, -1));
+  }
+
+  function clearActive() {
+    setMessage("");
+    updateActiveValue("");
+  }
+
+  async function submitLogin() {
+    const normalizedTeam = team.trim();
+
+    if (!normalizedTeam || password.length < 6) {
       setMessage("Preencha equipe e senha.");
       return;
     }
@@ -26,7 +50,7 @@ export function LoginOnly({ onSignedIn }: LoginOnlyProps) {
     setMessage("");
 
     try {
-      await signInTeam(team, password);
+      await signInTeam(normalizedTeam, password);
       onSignedIn();
     } catch {
       setMessage("Equipe ou senha incorretas.");
@@ -45,41 +69,140 @@ export function LoginOnly({ onSignedIn }: LoginOnlyProps) {
         />
       </div>
 
-      <form onSubmit={onSubmit} style={styles.form}>
-        <label htmlFor="mobile-team" style={styles.label}>Equipe</label>
-        <input
-          id="mobile-team"
-          ref={teamRef}
-          type="text"
-          autoCapitalize="characters"
-          autoComplete="off"
-          autoCorrect="off"
-          enterKeyHint="next"
-          spellCheck={false}
-          style={styles.input}
-        />
+      <section style={styles.form}>
+        <label style={styles.label}>Equipe</label>
+        <button
+          type="button"
+          onClick={() => setActiveField("team")}
+          style={{ ...styles.fakeInput, ...(activeField === "team" ? styles.fakeInputActive : undefined) }}
+        >
+          {team || <span style={styles.placeholder}>Toque aqui e use o teclado abaixo</span>}
+        </button>
 
-        <label htmlFor="mobile-password" style={styles.label}>Senha</label>
-        <input
-          id="mobile-password"
-          ref={passwordRef}
-          type="password"
-          autoComplete="off"
-          autoCorrect="off"
-          enterKeyHint="done"
-          spellCheck={false}
-          style={styles.input}
-        />
+        <label style={styles.label}>Senha</label>
+        <button
+          type="button"
+          onClick={() => setActiveField("password")}
+          style={{ ...styles.fakeInput, ...(activeField === "password" ? styles.fakeInputActive : undefined) }}
+        >
+          {password ? "•".repeat(password.length) : <span style={styles.placeholder}>Senha da equipe</span>}
+        </button>
 
         {message ? <p style={styles.message}>{message}</p> : null}
 
-        <button type="submit" disabled={loading} style={styles.button}>
+        <button type="button" onClick={submitLogin} disabled={loading} style={styles.button}>
           {loading ? "Entrando..." : "Entrar"}
         </button>
-      </form>
+      </section>
+
+      <VirtualKeyboard
+        upperCase={upperCase}
+        activeField={activeField}
+        disabled={loading}
+        onKey={addKey}
+        onBackspace={backspace}
+        onClear={clearActive}
+        onToggleCase={() => setUpperCase((current) => !current)}
+        onSpace={() => addKey(" ")}
+        onConfirm={() => {
+          if (activeField === "team") {
+            setActiveField("password");
+          } else {
+            void submitLogin();
+          }
+        }}
+      />
 
       <p style={styles.footer}>CRIADO E DESENVOLVIDO POR FABRÍZIO MOORE</p>
     </main>
+  );
+}
+
+type VirtualKeyboardProps = {
+  upperCase: boolean;
+  activeField: "team" | "password";
+  disabled: boolean;
+  onKey: (key: string) => void;
+  onBackspace: () => void;
+  onClear: () => void;
+  onToggleCase: () => void;
+  onSpace: () => void;
+  onConfirm: () => void;
+};
+
+const numberRow = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+const letterRows = [
+  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+  ["Z", "X", "C", "V", "B", "N", "M"],
+];
+
+function VirtualKeyboard({
+  upperCase,
+  activeField,
+  disabled,
+  onKey,
+  onBackspace,
+  onClear,
+  onToggleCase,
+  onSpace,
+  onConfirm,
+}: VirtualKeyboardProps) {
+  return (
+    <section style={styles.keyboard} aria-label="Teclado seguro GPVA">
+      <div style={styles.keyboardHint}>Teclado interno para evitar travamento do Android</div>
+
+      <div style={styles.keyRow}>
+        {numberRow.map((key) => (
+          <KeyboardButton key={key} disabled={disabled} onPress={() => onKey(key)}>{key}</KeyboardButton>
+        ))}
+      </div>
+
+      {letterRows.map((row, index) => (
+        <div key={index} style={styles.keyRow}>
+          {row.map((key) => {
+            const value = upperCase ? key : key.toLowerCase();
+            return (
+              <KeyboardButton key={key} disabled={disabled} onPress={() => onKey(value)}>
+                {value}
+              </KeyboardButton>
+            );
+          })}
+        </div>
+      ))}
+
+      <div style={styles.actionRow}>
+        <KeyboardButton wide disabled={disabled} onPress={onToggleCase}>{upperCase ? "ABC" : "abc"}</KeyboardButton>
+        <KeyboardButton wide disabled={disabled} onPress={onSpace}>Espaço</KeyboardButton>
+        <KeyboardButton wide disabled={disabled} onPress={onBackspace}>⌫</KeyboardButton>
+      </div>
+
+      <div style={styles.actionRow}>
+        <KeyboardButton wide disabled={disabled} onPress={onClear}>Limpar</KeyboardButton>
+        <KeyboardButton wide disabled={disabled} onPress={onConfirm}>{activeField === "team" ? "Senha" : "OK"}</KeyboardButton>
+      </div>
+    </section>
+  );
+}
+
+type KeyboardButtonProps = {
+  children: React.ReactNode;
+  disabled?: boolean;
+  wide?: boolean;
+  onPress: () => void;
+};
+
+function KeyboardButton({ children, disabled, wide, onPress }: KeyboardButtonProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onPointerDown={(event) => event.preventDefault()}
+      onClick={onPress}
+      style={{ ...styles.key, ...(wide ? styles.wideKey : undefined) }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -88,19 +211,19 @@ const styles = {
     minHeight: "100vh",
     width: "100%",
     margin: 0,
-    padding: "40px 16px 28px",
+    padding: "24px 12px 20px",
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     background: "#1b1f27",
     color: "#f8fafc",
     fontFamily: "Arial, sans-serif",
   },
   logoBand: {
-    width: "calc(100% + 32px)",
-    margin: "0 -16px 32px",
+    width: "calc(100% + 24px)",
+    margin: "0 -12px 20px",
     background: "#000",
   },
   logo: {
@@ -120,9 +243,9 @@ const styles = {
     fontWeight: 700,
     marginTop: 4,
   },
-  input: {
+  fakeInput: {
     width: "100%",
-    height: 48,
+    minHeight: 48,
     boxSizing: "border-box",
     borderRadius: 6,
     border: "1px solid #4b5563",
@@ -131,9 +254,18 @@ const styles = {
     padding: "0 12px",
     fontSize: 16,
     outline: "none",
-    WebkitUserSelect: "text",
-    userSelect: "text",
+    textAlign: "left",
+    overflowWrap: "anywhere",
+    WebkitUserSelect: "none",
+    userSelect: "none",
     touchAction: "manipulation",
+  },
+  fakeInputActive: {
+    border: "2px solid #d6a43a",
+    boxShadow: "0 0 0 3px rgba(214, 164, 58, 0.18)",
+  },
+  placeholder: {
+    color: "rgba(248, 250, 252, 0.45)",
   },
   button: {
     width: "100%",
@@ -151,9 +283,49 @@ const styles = {
     color: "#fca5a5",
     fontSize: 13,
   },
+  keyboard: {
+    width: "100%",
+    maxWidth: 390,
+    marginTop: 18,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  keyboardHint: {
+    marginBottom: 2,
+    textAlign: "center",
+    color: "rgba(248, 250, 252, 0.55)",
+    fontSize: 11,
+  },
+  keyRow: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 4,
+  },
+  actionRow: {
+    display: "flex",
+    gap: 6,
+  },
+  key: {
+    flex: "1 1 0",
+    minWidth: 0,
+    height: 38,
+    border: "1px solid #4b5563",
+    borderRadius: 6,
+    background: "#2b3240",
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: 800,
+    touchAction: "manipulation",
+    WebkitTapHighlightColor: "transparent",
+  },
+  wideKey: {
+    height: 40,
+    background: "#374151",
+  },
   footer: {
     width: "100%",
-    margin: "28px 0 0",
+    margin: "20px 0 0",
     color: "rgba(248, 250, 252, 0.55)",
     fontSize: 10,
     letterSpacing: "0.14em",
