@@ -103,7 +103,7 @@ function VariablePage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             O valor da variável é uma estimativa e não representa o valor real a receber.
           </p>
 
