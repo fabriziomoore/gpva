@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signInTeam } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -21,11 +20,11 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [team, setTeam] = useState("");
-  const [password, setPassword] = useState("");
+  const teamRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const adminPwRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [adminPw, setAdminPw] = useState("");
   const [nativeApp, setNativeApp] = useState(false);
 
   useEffect(() => {
@@ -44,6 +43,8 @@ function AuthPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const team = teamRef.current?.value ?? "";
+    const password = passwordRef.current?.value ?? "";
     if (!team.trim() || password.length < 6) {
       toast.error("Preencha equipe e senha (mín. 6 caracteres).");
       return;
@@ -81,25 +82,23 @@ function AuthPage() {
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="team">Equipe</Label>
-              <Input
+              <input
                 id="team"
-                value={team}
-                onChange={(e) => setTeam(e.target.value)}
-                placeholder=""
+                ref={teamRef}
                 autoCapitalize="characters"
                 autoComplete="username"
-                className="h-12 text-base"
+                inputMode="text"
+                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pw">Senha</Label>
-              <Input
+              <input
                 id="pw"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                ref={passwordRef}
                 autoComplete="current-password"
-                className="h-12 text-base"
+                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             <Button type="submit" disabled={loading} className="h-12 w-full text-base font-semibold">
@@ -120,10 +119,11 @@ function AuthPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                const adminPw = adminPwRef.current?.value ?? "";
                 if (adminPw === "137889") {
                   sessionStorage.setItem("gpva-admin-pw", adminPw);
                   setAdminOpen(false);
-                  setAdminPw("");
+                  if (adminPwRef.current) adminPwRef.current.value = "";
                   navigate({ to: "/admin" });
                 } else {
                   toast.error("Senha de administrador incorreta.");
@@ -131,13 +131,11 @@ function AuthPage() {
               }}
               className="flex items-center gap-2"
             >
-              <Input
+              <input
                 type="password"
-                value={adminPw}
-                onChange={(e) => setAdminPw(e.target.value)}
+                ref={adminPwRef}
                 placeholder="Senha admin"
-                autoFocus
-                className="h-9 text-sm"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
               />
               <Button type="submit" variant="secondary" size="sm" className="h-9">
                 OK
@@ -149,7 +147,7 @@ function AuthPage() {
                 className="h-9"
                 onClick={() => {
                   setAdminOpen(false);
-                  setAdminPw("");
+                  if (adminPwRef.current) adminPwRef.current.value = "";
                 }}
               >
                 Cancelar
