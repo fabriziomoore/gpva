@@ -116,6 +116,12 @@ function ShiftPage() {
                   </p>
                 </div>
               </div>
+              <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                {new Date(s.created_at).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
             </div>
           ))}
         </div>
