@@ -104,7 +104,7 @@ function VariablePage() {
       ) : (
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Valor por negociação: <span className="font-semibold text-foreground">{formatBRL(rate)}</span>
+            O valor da variável é uma estimativa e não representa o valor real a receber.
           </p>
 
           <div className="grid grid-cols-2 gap-2">
