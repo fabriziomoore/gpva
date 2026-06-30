@@ -4,7 +4,7 @@ import { signInTeam } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import gpvaLogo from "@/assets/gpva-logo-wide.png";
 
-export const Route = createFileRoute("/auth")({
+export const Route = createFileRoute("/auth/mobile")({
   ssr: false,
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();

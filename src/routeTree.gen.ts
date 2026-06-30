@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthMobileRouteImport } from './routes/auth.mobile'
 import { Route as AuthenticatedVariableRouteImport } from './routes/_authenticated/variable'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -38,6 +39,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthMobileRoute = AuthMobileRouteImport.update({
+  id: '/mobile',
+  path: '/mobile',
+  getParentRoute: () => AuthRoute,
 } as any)
 const AuthenticatedVariableRoute = AuthenticatedVariableRouteImport.update({
   id: '/variable',
@@ -75,22 +81,24 @@ const AuthenticatedShiftIdReportRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
+  '/auth/mobile': typeof AuthMobileRoute
   '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
+  '/auth/mobile': typeof AuthMobileRoute
   '/': typeof AuthenticatedIndexRoute
   '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
@@ -98,12 +106,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/variable': typeof AuthenticatedVariableRoute
+  '/auth/mobile': typeof AuthMobileRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/shift_/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shift'
     | '/variable'
+    | '/auth/mobile'
     | '/shift/$id/report'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shift'
     | '/variable'
+    | '/auth/mobile'
     | '/'
     | '/shift/$id/report'
   id:
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/shift'
     | '/_authenticated/variable'
+    | '/auth/mobile'
     | '/_authenticated/'
     | '/_authenticated/shift_/$id/report'
   fileRoutesById: FileRoutesById
@@ -147,7 +159,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -179,6 +191,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/auth/mobile': {
+      id: '/auth/mobile'
+      path: '/mobile'
+      fullPath: '/auth/mobile'
+      preLoaderRoute: typeof AuthMobileRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/_authenticated/variable': {
       id: '/_authenticated/variable'
@@ -248,10 +267,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AuthRouteChildren {
+  AuthMobileRoute: typeof AuthMobileRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthMobileRoute: AuthMobileRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRoute,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
