@@ -11,6 +11,12 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: "always",
   },
+  plugins: {
+    Keyboard: {
+      resize: "body" as unknown as never,
+      scrollAssist: true,
+    },
+  },
 };
 
 export default config;
