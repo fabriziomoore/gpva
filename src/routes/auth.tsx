@@ -62,8 +62,14 @@ function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
-      <div className="mb-8 w-full">
-        <img src={gpvaLogo} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="block w-full h-auto" />
+      <div className="relative mb-8 w-full">
+        {/* Black band behind the logo, only visible in light mode */}
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-[58%] bg-black dark:hidden" aria-hidden="true" />
+        <img
+          src={gpvaLogo}
+          alt="GPVA — Gestão de Produtividade e Variável Autônoma"
+          className="relative block w-full h-auto"
+        />
       </div>
       <div className="w-full max-w-sm px-4">
 
