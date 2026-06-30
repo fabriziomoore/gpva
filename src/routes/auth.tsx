@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { signInTeam } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -20,14 +21,16 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const teamRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const adminPwRef = useRef<HTMLInputElement>(null);
+  const [team, setTeam] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const nativeApp = useMemo(() => {
+  const [adminPw, setAdminPw] = useState("");
+  const [nativeApp, setNativeApp] = useState(false);
+
+  useEffect(() => {
     const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
-    return !!w.Capacitor?.isNativePlatform?.();
+    setNativeApp(!!w.Capacitor?.isNativePlatform?.());
   }, []);
 
   useEffect(() => {
@@ -41,8 +44,6 @@ function AuthPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const team = teamRef.current?.value ?? "";
-    const password = passwordRef.current?.value ?? "";
     if (!team.trim() || password.length < 6) {
       toast.error("Preencha equipe e senha (mín. 6 caracteres).");
       return;
@@ -61,42 +62,33 @@ function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
-      <div className="relative mb-8 w-full">
-        {/* Black band behind the logo, only visible in light mode.
-            Uses 100vw + negative margins so it spans edge-to-edge on Android,
-            and matches the logo's full height to cover it completely. */}
-        <div
-          className="pointer-events-none absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-screen bg-black dark:hidden"
-          aria-hidden="true"
-        />
-        <img
-          src={gpvaLogo}
-          alt="GPVA — Gestão de Produtividade e Variável Autônoma"
-          className="relative block w-full h-auto"
-        />
+      <div className="mb-8 w-full">
+        <img src={gpvaLogo} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="block w-full h-auto" />
       </div>
       <div className="w-full max-w-sm px-4">
 
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="team">Equipe</Label>
-              <input
+              <Input
                 id="team"
-                ref={teamRef}
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+                placeholder=""
                 autoCapitalize="characters"
                 autoComplete="username"
-                inputMode="text"
-                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-12 text-base"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pw">Senha</Label>
-              <input
+              <Input
                 id="pw"
                 type="password"
-                ref={passwordRef}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-12 text-base"
               />
             </div>
             <Button type="submit" disabled={loading} className="h-12 w-full text-base font-semibold">
@@ -117,11 +109,10 @@ function AuthPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const adminPw = adminPwRef.current?.value ?? "";
                 if (adminPw === "137889") {
                   sessionStorage.setItem("gpva-admin-pw", adminPw);
                   setAdminOpen(false);
-                  if (adminPwRef.current) adminPwRef.current.value = "";
+                  setAdminPw("");
                   navigate({ to: "/admin" });
                 } else {
                   toast.error("Senha de administrador incorreta.");
@@ -129,11 +120,13 @@ function AuthPage() {
               }}
               className="flex items-center gap-2"
             >
-              <input
+              <Input
                 type="password"
-                ref={adminPwRef}
+                value={adminPw}
+                onChange={(e) => setAdminPw(e.target.value)}
                 placeholder="Senha admin"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+                autoFocus
+                className="h-9 text-sm"
               />
               <Button type="submit" variant="secondary" size="sm" className="h-9">
                 OK
@@ -145,7 +138,7 @@ function AuthPage() {
                 className="h-9"
                 onClick={() => {
                   setAdminOpen(false);
-                  if (adminPwRef.current) adminPwRef.current.value = "";
+                  setAdminPw("");
                 }}
               >
                 Cancelar
