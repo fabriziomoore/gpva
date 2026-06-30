@@ -1,7 +1,29 @@
 import { getLocalDB, newId, type LocalService, type LocalShift } from "./local-db";
 import { scheduleSync, refreshPendingCount } from "@/lib/sync/engine";
+import { cacheTeam, getCachedTeam, type CatTeam } from "@/lib/db/catalogs";
 
 const nowIso = () => new Date().toISOString();
+
+export async function repoUpdateTeam(
+  teamId: string,
+  patch: Partial<Pick<CatTeam, "supervisor" | "leader" | "variable_rate" | "onboarded" | "photo_url">>,
+): Promise<CatTeam | null> {
+  const db = getLocalDB();
+  const current = await getCachedTeam(teamId);
+  const merged = current ? { ...current, ...patch } : null;
+  if (merged) await cacheTeam(merged);
+  await db.outbox.add({
+    table: "equipes",
+    op: "update",
+    row_id: teamId,
+    payload: patch as Record<string, unknown>,
+    tries: 0,
+    created_at: nowIso(),
+  });
+  await refreshPendingCount();
+  scheduleSync();
+  return merged;
+}
 
 export async function repoCreateShift(input: {
   team_id: string;
