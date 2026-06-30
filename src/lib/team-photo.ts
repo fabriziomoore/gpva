@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useTeam } from "@/hooks/use-team";
+import { useTeam, type Team } from "@/hooks/use-team";
+import { repoUpdateTeam } from "@/lib/db/repos";
 
 const EVT = "gpva:team-photo-changed";
 
@@ -30,11 +30,7 @@ function writeCache(userId: string, value: string | null) {
 }
 
 export async function saveTeamPhoto(userId: string, dataUrl: string | null): Promise<void> {
-  const { error } = await supabase
-    .from("equipes")
-    .update({ photo_url: dataUrl })
-    .eq("id", userId);
-  if (error) throw error;
+  await repoUpdateTeam(userId, { photo_url: dataUrl });
   writeCache(userId, dataUrl);
 }
 
