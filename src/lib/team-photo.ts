@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTeam, type Team } from "@/hooks/use-team";
+import { useTeam } from "@/hooks/use-team";
 import { repoUpdateTeam } from "@/lib/db/repos";
 
 const EVT = "gpva:team-photo-changed";
