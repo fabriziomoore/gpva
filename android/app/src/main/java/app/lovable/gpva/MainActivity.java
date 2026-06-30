@@ -1,6 +1,7 @@
 package app.lovable.gpva;
 
 import android.os.Bundle;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
@@ -20,7 +21,7 @@ public class MainActivity extends BridgeActivity {
         if (bridge != null && bridge.getWebView() != null) {
             ViewCompat.setOnApplyWindowInsetsListener(bridge.getWebView(), (view, insets) -> {
                 return new WindowInsetsCompat.Builder(insets)
-                    .setInsets(WindowInsetsCompat.Type.ime(), androidx.core.graphics.Insets.NONE)
+                    .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
                     .build();
             });
         }
