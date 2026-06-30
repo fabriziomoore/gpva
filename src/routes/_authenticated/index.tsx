@@ -13,6 +13,8 @@ import { formatDateBR } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import { repoCreateShift } from "@/lib/db/repos";
+import { useTeamPhoto } from "@/lib/team-photo";
+import { UserRound } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({ meta: [{ title: "Início — GPVA" }] }),
@@ -102,6 +104,7 @@ function HomePage() {
   }
 
   const today = useMemo(() => formatDateBR(new Date()), []);
+  const teamPhoto = useTeamPhoto(userId);
 
   const titleNode = (
     <div className="w-[calc(100vw-2rem)] max-w-[26rem]">
@@ -136,17 +139,26 @@ function HomePage() {
     <AppShell title={titleNode} showBack={false}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight">{team?.team_name}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{today}</p>
-          {team?.supervisor && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Supervisor: <span className="text-foreground">{team.supervisor}</span>
-              <br />
-              Líder: <span className="text-foreground">{team.leader}</span>
-            </p>
-          )}
+        <div className="flex items-stretch gap-4 rounded-2xl border border-border bg-card p-5">
+          <div className="flex-shrink-0 self-stretch aspect-square overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
+            {teamPhoto ? (
+              <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
+            ) : (
+              <UserRound className="size-10 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight truncate">{team?.team_name}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{today}</p>
+            {team?.supervisor && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Supervisor: <span className="text-foreground">{team.supervisor}</span>
+                <br />
+                Líder: <span className="text-foreground">{team.leader}</span>
+              </p>
+            )}
+          </div>
         </div>
 
         <Button
