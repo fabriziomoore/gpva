@@ -13,13 +13,13 @@ const config: CapacitorConfig = {
   },
   plugins: {
     Keyboard: {
-      // "native" delega o redimensionamento ao adjustResize do Android e
-      // desativa o scroll-assist JS do plugin. Com "none" + adjustResize, o
-      // plugin tentava reposicionar o input em loop enquanto o IME ainda
-      // negociava a InputConnection, bloqueando a UI thread (freeze ao focar
-      // qualquer campo de texto).
+      // No Android, a opção "resize" é ignorada pelo plugin Keyboard; ela só
+      // existe para iOS. O congelamento ao focar inputs vinha do workaround
+      // Android "resizeOnFullScreen": ele instala callbacks de WindowInsets e
+      // chama requestLayout() durante a animação do teclado, competindo com o
+      // adjustResize nativo. Mantemos o redimensionamento 100% no Android.
       resize: "native",
-      resizeOnFullScreen: true,
+      resizeOnFullScreen: false,
     },
   },
 };
