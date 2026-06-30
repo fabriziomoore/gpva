@@ -13,7 +13,12 @@ const config: CapacitorConfig = {
   },
   plugins: {
     Keyboard: {
-      resize: "none",
+      // "native" delega o redimensionamento ao adjustResize do Android e
+      // desativa o scroll-assist JS do plugin. Com "none" + adjustResize, o
+      // plugin tentava reposicionar o input em loop enquanto o IME ainda
+      // negociava a InputConnection, bloqueando a UI thread (freeze ao focar
+      // qualquer campo de texto).
+      resize: "native",
       resizeOnFullScreen: true,
     },
   },
