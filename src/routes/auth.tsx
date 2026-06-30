@@ -5,6 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  saveRemembered,
+  getRemembered,
+  clearRemembered,
+  verifyRemembered,
+} from "@/lib/remember-access";
+import { restoreSession } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.png";
@@ -27,10 +35,21 @@ function AuthPage() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminPw, setAdminPw] = useState("");
   const [nativeApp, setNativeApp] = useState(false);
+  const [remember, setRemember] = useState(false);
 
   useEffect(() => {
     const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
     setNativeApp(!!w.Capacitor?.isNativePlatform?.());
+  }, []);
+
+  // Preencher equipe salva, se houver
+  useEffect(() => {
+    void getRemembered().then((rec) => {
+      if (rec?.team) {
+        setTeam(rec.team);
+        setRemember(true);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -51,10 +70,38 @@ function AuthPage() {
     setLoading(true);
     try {
       await signInTeam(team, password);
+      if (remember) {
+        await saveRemembered(team, password);
+      } else {
+        await clearRemembered();
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao autenticar";
-      if (msg.includes("Invalid login")) toast.error("Equipe ou senha incorretas.");
-      else toast.error(msg);
+      // Falha de rede → tenta login offline com credenciais lembradas
+      const isNetwork =
+        !navigator.onLine ||
+        msg.toLowerCase().includes("failed to fetch") ||
+        msg.toLowerCase().includes("network") ||
+        msg.toLowerCase().includes("load failed");
+      if (isNetwork) {
+        const ok = await verifyRemembered(team, password);
+        if (ok) {
+          await restoreSession();
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            toast.success("Acesso offline autorizado");
+            navigate({ to: "/" });
+            return;
+          }
+          toast.error("Sem sessão salva para acesso offline. Conecte-se uma vez.");
+        } else {
+          toast.error("Sem internet. Marque 'Lembrar acesso' em um login online.");
+        }
+      } else if (msg.includes("Invalid login")) {
+        toast.error("Equipe ou senha incorretas.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +138,17 @@ function AuthPage() {
                 className="h-12 text-base"
               />
             </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <Checkbox
+                checked={remember}
+                onCheckedChange={(v) => {
+                  const next = v === true;
+                  setRemember(next);
+                  if (!next) void clearRemembered();
+                }}
+              />
+              Lembrar acesso
+            </label>
             <Button type="submit" disabled={loading} className="h-12 w-full text-base font-semibold">
               {loading ? <Loader2 className="size-5 animate-spin" /> : "Entrar"}
             </Button>
