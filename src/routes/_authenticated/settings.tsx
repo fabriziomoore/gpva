@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalDB } from "@/lib/db/local-db";
+import { useTeamPhoto, setTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
+import { useRef } from "react";
 
 const TEST_TEAM_NAME = "RIOCERLT-TESTE";
 
@@ -35,6 +37,27 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const teamPhoto = useTeamPhoto(userId);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !userId) return;
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      setTeamPhoto(userId, dataUrl);
+      toast.success("Foto atualizada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao processar imagem");
+    }
+  }
+
+  function removePhoto() {
+    if (!userId) return;
+    setTeamPhoto(userId, null);
+    toast.success("Foto removida");
+  }
 
   const isTestAccount = team?.team_name === TEST_TEAM_NAME;
 
@@ -140,6 +163,35 @@ function SettingsPage() {
             </div>
           </div>
           <div className="space-y-3">
+            <div>
+              <Label>Foto da equipe</Label>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="size-16 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
+                  {teamPhoto ? (
+                    <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Sem foto</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={onPickPhoto}
+                  />
+                  <Button type="button" variant="outline" className="h-9" onClick={() => fileInputRef.current?.click()}>
+                    {teamPhoto ? "Alterar foto" : "Adicionar foto"}
+                  </Button>
+                  {teamPhoto && (
+                    <Button type="button" variant="ghost" className="h-9" onClick={removePhoto}>
+                      Remover
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
             <div>
               <Label>Nome da equipe</Label>
               <Input value={team.team_name} disabled className="h-11" />
