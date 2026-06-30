@@ -80,7 +80,7 @@ function AdminPage() {
   if (!adminPw) {
     return (
       <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
-        <div className="mb-8 w-full">
+        <div className="mb-8 w-full bg-[oklch(0.16_0.018_250)]">
           <img src={gpvaLogo} alt="GPVA" className="block h-auto w-full" />
         </div>
         <form
