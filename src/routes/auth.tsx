@@ -63,8 +63,13 @@ function AuthPage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
       <div className="relative mb-8 w-full">
-        {/* Black band behind the logo, only visible in light mode */}
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-[58%] bg-black dark:hidden" aria-hidden="true" />
+        {/* Black band behind the logo, only visible in light mode.
+            Uses 100vw + negative margins so it spans edge-to-edge on Android,
+            and matches the logo's full height to cover it completely. */}
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-screen bg-black dark:hidden"
+          aria-hidden="true"
+        />
         <img
           src={gpvaLogo}
           alt="GPVA — Gestão de Produtividade e Variável Autônoma"
