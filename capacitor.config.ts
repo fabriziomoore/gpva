@@ -11,6 +11,12 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: "always",
   },
+  plugins: {
+    Keyboard: {
+      resize: "none",
+      resizeOnFullScreen: true,
+    },
+  },
 };
 
 export default config;
