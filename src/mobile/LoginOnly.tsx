@@ -197,7 +197,6 @@ function KeyboardButton({ children, disabled, wide, onPress }: KeyboardButtonPro
     <button
       type="button"
       disabled={disabled}
-      onPointerDown={(event) => event.preventDefault()}
       onClick={onPress}
       style={{ ...styles.key, ...(wide ? styles.wideKey : undefined) }}
     >
