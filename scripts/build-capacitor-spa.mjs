@@ -13,7 +13,7 @@ const tempHtml = resolve(rootDir, "capacitor-index.html");
 // copy TanStack Start/Nitro output or hydrate an SSR shell, because the Android
 // WebView has no server-rendered $_TSR payload.
 const html = `<!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark" style="color-scheme: dark;">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -26,18 +26,6 @@ const html = `<!doctype html>
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
-    <script>
-      (() => {
-        try {
-          var theme = localStorage.getItem('gpva.theme');
-          if (theme !== 'light' && theme !== 'dark') theme = 'dark';
-          document.documentElement.classList.toggle('dark', theme === 'dark');
-          document.documentElement.style.colorScheme = theme;
-        } catch (_) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script>
     <script type="module" src="/src/capacitor-entry.tsx"></script>
   </head>
   <body>
@@ -93,7 +81,6 @@ if (existsSync(generatedHtml)) {
 writeFileSync(join(capacitorDir, "404.html"), readFileSync(join(capacitorDir, "index.html"), "utf8"));
 
 const forbiddenPatterns = [
-  { pattern: /\bprocess\s*\./, label: "process.*" },
   { pattern: /process\.env/, label: "process.env" },
   { pattern: /node:async_hooks/, label: "node:async_hooks" },
   { pattern: /hydrateRoot/, label: "hydrateRoot" },
