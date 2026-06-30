@@ -14,7 +14,7 @@ const router = createRouter({
   routeTree,
   context: { queryClient },
   history: createMemoryHistory({ initialEntries: ["/"] }),
-  scrollRestoration: true,
+  scrollRestoration: false,
   defaultPreloadStaleTime: 0,
 });
 
