@@ -15,6 +15,8 @@ import { Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useTeamPhoto, saveTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
+import { repoUpdateTeam } from "@/lib/db/repos";
+import type { Team } from "@/hooks/use-team";
 
 const TEST_TEAM_NAME = "RIOCERLT-TESTE";
 
@@ -46,7 +48,9 @@ function SettingsPage() {
     try {
       const dataUrl = await fileToCompressedDataUrl(file);
       await saveTeamPhoto(userId, dataUrl);
-      await qc.invalidateQueries({ queryKey: ["team", userId] });
+      qc.setQueryData<Team | null>(["team", userId], (old) =>
+        old ? { ...old, photo_url: dataUrl } : old,
+      );
       toast.success("Foto atualizada");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao processar imagem");
@@ -57,7 +61,9 @@ function SettingsPage() {
     if (!userId) return;
     try {
       await saveTeamPhoto(userId, null);
-      await qc.invalidateQueries({ queryKey: ["team", userId] });
+      qc.setQueryData<Team | null>(["team", userId], (old) =>
+        old ? { ...old, photo_url: null } : old,
+      );
       toast.success("Foto removida");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao remover");
@@ -113,12 +119,10 @@ function SettingsPage() {
   async function saveTeam() {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("equipes")
-        .update({ supervisor, leader })
-        .eq("id", userId!);
-      if (error) throw error;
-      await qc.invalidateQueries({ queryKey: ["team", userId] });
+      await repoUpdateTeam(userId!, { supervisor, leader });
+      qc.setQueryData<Team | null>(["team", userId], (old) =>
+        old ? { ...old, supervisor, leader } : old,
+      );
       toast.success("Equipe atualizada");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
