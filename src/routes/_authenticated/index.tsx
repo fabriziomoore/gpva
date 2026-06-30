@@ -149,13 +149,12 @@ function HomePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
-            <p className="mt-1 break-words text-2xl font-bold leading-tight tracking-tight">{team?.team_name}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{today}</p>
+            <p className="mt-1 whitespace-nowrap text-2xl font-bold leading-tight tracking-tight">{team?.team_name}</p>
+            <p className="mt-1 whitespace-nowrap text-sm text-muted-foreground">{today}</p>
             {team?.supervisor && (
               <p className="mt-3 text-sm text-muted-foreground">
-                Supervisor: <span className="text-foreground">{team.supervisor}</span>
-                <br />
-                Líder: <span className="text-foreground">{team.leader}</span>
+                <span className="block whitespace-nowrap">Supervisor: <span className="text-foreground">{team.supervisor}</span></span>
+                <span className="block whitespace-nowrap">Líder: <span className="text-foreground">{team.leader}</span></span>
               </p>
             )}
           </div>
