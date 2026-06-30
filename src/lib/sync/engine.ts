@@ -42,6 +42,7 @@ export async function drainOutbox(): Promise<void> {
       "servicos",
       "vinculos_complementos",
       "impactos_expediente",
+      "equipes",
     ];
     for (const table of order) {
       const rows = await db.outbox.where("table").equals(table).sortBy("id");
@@ -75,6 +76,12 @@ async function pushRow(row: OutboxRow): Promise<void> {
     const { error } = await supabase
       .from(row.table)
       .upsert(row.payload as never, { onConflict: "id" });
+    if (error) throw error;
+  } else if (row.op === "update") {
+    const { error } = await supabase
+      .from(row.table)
+      .update(row.payload as never)
+      .eq("id", row.row_id);
     if (error) throw error;
   } else if (row.op === "delete") {
     const { error } = await supabase.from(row.table).delete().eq("id", row.row_id);
