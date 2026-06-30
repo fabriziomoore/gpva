@@ -4,21 +4,6 @@ import { QueryClient } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./mobile-route-tree";
 import "./styles.css";
-import { applyTheme } from "./hooks/use-theme";
-
-// Force dark theme on first launch inside the Capacitor WebView.
-// The user can still toggle to light afterwards (persisted via useTheme),
-// but the Android app always *starts* in dark mode.
-try {
-  const STORAGE_KEY = "gpva.theme";
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored !== "light" && stored !== "dark") {
-    window.localStorage.setItem(STORAGE_KEY, "dark");
-  }
-  applyTheme((stored === "light" || stored === "dark" ? stored : "dark") as "light" | "dark");
-} catch {
-  applyTheme("dark");
-}
 
 // Capacitor SPA bootstrap. Unlike TanStack Start's default client entry,
 // this does NOT call hydrateRoot — there is no SSR markup inside the
