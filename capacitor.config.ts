@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import { KeyboardResize } from "@capacitor/keyboard";
 
 const config: CapacitorConfig = {
   appId: "app.lovable.gpva",
@@ -10,6 +11,12 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: "always",
+  },
+  plugins: {
+    Keyboard: {
+      resize: KeyboardResize.Body,
+      resizeOnFullScreen: true,
+    },
   },
 };
 
