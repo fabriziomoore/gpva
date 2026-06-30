@@ -59,12 +59,13 @@ export type OutboxTable =
   | "expedientes"
   | "servicos"
   | "impactos_expediente"
-  | "vinculos_complementos";
+  | "vinculos_complementos"
+  | "equipes";
 
 export interface OutboxRow {
   id?: number;
   table: OutboxTable;
-  op: "upsert" | "delete";
+  op: "upsert" | "update" | "delete";
   row_id: string; // matches server id
   payload: Record<string, unknown>;
   tries: number;
