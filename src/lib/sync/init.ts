@@ -7,9 +7,13 @@ let started = false;
 let probing = false;
 let probeTimer: ReturnType<typeof setTimeout> | null = null;
 
-const ONLINE_INTERVAL_MS = 3 * 60 * 1000; // 3 min when online
-const OFFLINE_INTERVAL_MS = 1_000; // 1 s when offline
-const PROBE_TIMEOUT_MS = 4_000;
+// Adaptive cadence: light polling online, exponential backoff offline.
+// Real network events (@capacitor/network, visibilitychange) drive the
+// instantaneous transitions; polling is just the safety net.
+const ONLINE_INTERVAL_MS = 30_000; // 30 s when online
+const OFFLINE_BACKOFF_MS = [2_000, 5_000, 10_000, 30_000] as const;
+const PROBE_TIMEOUT_MS = 3_000;
+let offlineStep = 0;
 
 async function probeReachability(): Promise<boolean> {
   const base = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -32,7 +36,10 @@ async function probeReachability(): Promise<boolean> {
 
 function scheduleNextProbe(): void {
   if (probeTimer) clearTimeout(probeTimer);
-  const delay = useSyncStore.getState().online ? ONLINE_INTERVAL_MS : OFFLINE_INTERVAL_MS;
+  const online = useSyncStore.getState().online;
+  const delay = online
+    ? ONLINE_INTERVAL_MS
+    : OFFLINE_BACKOFF_MS[Math.min(offlineStep, OFFLINE_BACKOFF_MS.length - 1)];
   probeTimer = setTimeout(() => void runProbe(), delay);
 }
 
@@ -45,9 +52,14 @@ async function runProbe(): Promise<void> {
     const prev = useSyncStore.getState().online;
     if (prev !== reachable) {
       useSyncStore.getState().setOnline(reachable);
-      if (reachable) scheduleSync();
-    } else if (reachable) {
-      scheduleSync();
+      if (reachable) {
+        offlineStep = 0;
+        scheduleSync();
+      } else {
+        offlineStep = 0; // start backoff fresh on each fall
+      }
+    } else if (!reachable) {
+      offlineStep = Math.min(offlineStep + 1, OFFLINE_BACKOFF_MS.length - 1);
     }
   } finally {
     probing = false;
@@ -68,11 +80,19 @@ export async function startSync(): Promise<void> {
   onNetworkChange((s) => {
     if (!s.connected) {
       useSyncStore.getState().setOnline(false);
+      offlineStep = 0;
       scheduleNextProbe();
     } else {
       void runProbe();
     }
   });
+
+  // Foreground returns are the moment the user actually cares — probe now.
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") void runProbe();
+    });
+  }
 
   // Initial drain + adaptive reachability probe loop.
   void drainOutbox();
