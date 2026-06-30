@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
@@ -15,7 +15,6 @@ import { Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useTeamPhoto, setTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
-import { useRef } from "react";
 
 const TEST_TEAM_NAME = "RIOCERLT-TESTE";
 
