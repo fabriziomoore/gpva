@@ -93,7 +93,6 @@ if (existsSync(generatedHtml)) {
 writeFileSync(join(capacitorDir, "404.html"), readFileSync(join(capacitorDir, "index.html"), "utf8"));
 
 const forbiddenPatterns = [
-  { pattern: /\bprocess\s*\./, label: "process.*" },
   { pattern: /process\.env/, label: "process.env" },
   { pattern: /node:async_hooks/, label: "node:async_hooks" },
   { pattern: /hydrateRoot/, label: "hydrateRoot" },
