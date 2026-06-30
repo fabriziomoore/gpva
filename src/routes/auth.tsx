@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import gpvaLogo from "@/assets/gpva-logo-wide.png.asset.json";
+import gpvaLogo from "@/assets/gpva-logo-wide.png";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -63,7 +63,7 @@ function AuthPage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
       <div className="mb-8 w-full">
-        <img src={gpvaLogo.url} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="block w-full h-auto" />
+        <img src={gpvaLogo} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="block w-full h-auto" />
       </div>
       <div className="w-full max-w-sm px-4">
 
