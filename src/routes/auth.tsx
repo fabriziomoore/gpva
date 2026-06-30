@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { signInTeam } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,9 @@ function AuthPage() {
   const adminPwRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [nativeApp, setNativeApp] = useState(false);
-
-  useEffect(() => {
+  const nativeApp = useMemo(() => {
     const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
-    setNativeApp(!!w.Capacitor?.isNativePlatform?.());
+    return !!w.Capacitor?.isNativePlatform?.();
   }, []);
 
   useEffect(() => {

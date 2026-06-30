@@ -23,6 +23,10 @@ if (!container) {
   throw new Error("Capacitor entry: #root container not found in index.html");
 }
 
+document.documentElement.classList.add("dark");
+document.documentElement.style.colorScheme = "dark";
+document.documentElement.dataset.capacitor = "true";
+
 createRoot(container).render(
   <RouterProvider router={router} />,
 );
