@@ -59,6 +59,9 @@ function MobileAuthPage() {
           id="mobile-team"
           ref={teamRef}
           type="text"
+          autoCapitalize="characters"
+          autoComplete="off"
+          autoCorrect="off"
           enterKeyHint="next"
           spellCheck={false}
           style={styles.input}
@@ -69,7 +72,10 @@ function MobileAuthPage() {
           id="mobile-password"
           ref={passwordRef}
           type="password"
+          autoComplete="off"
+          autoCorrect="off"
           enterKeyHint="done"
+          spellCheck={false}
           style={styles.input}
         />
 

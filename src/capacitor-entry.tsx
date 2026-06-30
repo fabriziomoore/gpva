@@ -2,7 +2,6 @@ import { createRoot } from "react-dom/client";
 import { QueryClient } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./mobile-route-tree";
-import "./styles.css";
 
 // Capacitor SPA bootstrap. Unlike TanStack Start's default client entry,
 // this does NOT call hydrateRoot — there is no SSR markup inside the

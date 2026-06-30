@@ -15,6 +15,7 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedLayout() {
   useEffect(() => {
+    void import("../../styles.css");
     void startSync();
   }, []);
 
