@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalDB } from "@/lib/db/local-db";
-import { useTeamPhoto, setTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
+import { useTeamPhoto, saveTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
 
 const TEST_TEAM_NAME = "RIOCERLT-TESTE";
 
@@ -45,17 +45,23 @@ function SettingsPage() {
     if (!file || !userId) return;
     try {
       const dataUrl = await fileToCompressedDataUrl(file);
-      setTeamPhoto(userId, dataUrl);
+      await saveTeamPhoto(userId, dataUrl);
+      await qc.invalidateQueries({ queryKey: ["team", userId] });
       toast.success("Foto atualizada");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao processar imagem");
     }
   }
 
-  function removePhoto() {
+  async function removePhoto() {
     if (!userId) return;
-    setTeamPhoto(userId, null);
-    toast.success("Foto removida");
+    try {
+      await saveTeamPhoto(userId, null);
+      await qc.invalidateQueries({ queryKey: ["team", userId] });
+      toast.success("Foto removida");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao remover");
+    }
   }
 
   const isTestAccount = team?.team_name === TEST_TEAM_NAME;

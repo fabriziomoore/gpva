@@ -47,6 +47,7 @@ export type Database = {
           id: string
           leader: string
           onboarded: boolean
+          photo_url: string | null
           supervisor: string
           team_name: string
           variable_rate: number
@@ -56,6 +57,7 @@ export type Database = {
           id: string
           leader?: string
           onboarded?: boolean
+          photo_url?: string | null
           supervisor?: string
           team_name: string
           variable_rate?: number
@@ -65,6 +67,7 @@ export type Database = {
           id?: string
           leader?: string
           onboarded?: boolean
+          photo_url?: string | null
           supervisor?: string
           team_name?: string
           variable_rate?: number

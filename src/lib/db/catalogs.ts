@@ -136,6 +136,7 @@ export type CatTeam = {
   leader: string;
   variable_rate: number;
   onboarded: boolean;
+  photo_url: string | null;
 };
 
 export async function getCachedTeam(teamId: string): Promise<CatTeam | null> {

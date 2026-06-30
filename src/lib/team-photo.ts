@@ -1,44 +1,65 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useTeam } from "@/hooks/use-team";
 
 const EVT = "gpva:team-photo-changed";
 
-function key(userId: string) {
+function cacheKey(userId: string) {
   return `gpva:team-photo:${userId}`;
 }
 
-export function getTeamPhoto(userId: string | null): string | null {
+function readCache(userId: string | null): string | null {
   if (!userId || typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem(key(userId));
+    return window.localStorage.getItem(cacheKey(userId));
   } catch {
     return null;
   }
 }
 
-export function setTeamPhoto(userId: string, dataUrl: string | null) {
+function writeCache(userId: string, value: string | null) {
   if (typeof window === "undefined") return;
   try {
-    if (dataUrl) window.localStorage.setItem(key(userId), dataUrl);
-    else window.localStorage.removeItem(key(userId));
+    if (value) window.localStorage.setItem(cacheKey(userId), value);
+    else window.localStorage.removeItem(cacheKey(userId));
     window.dispatchEvent(new CustomEvent(EVT, { detail: { userId } }));
   } catch {
     /* ignore */
   }
 }
 
+export async function saveTeamPhoto(userId: string, dataUrl: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("equipes")
+    .update({ photo_url: dataUrl })
+    .eq("id", userId);
+  if (error) throw error;
+  writeCache(userId, dataUrl);
+}
+
 export function useTeamPhoto(userId: string | null): string | null {
-  const [photo, setPhoto] = useState<string | null>(() => getTeamPhoto(userId));
+  const { data: team } = useTeam(userId);
+  const qc = useQueryClient();
+  const remote = team?.photo_url ?? null;
+
   useEffect(() => {
-    setPhoto(getTeamPhoto(userId));
-    const handler = () => setPhoto(getTeamPhoto(userId));
+    if (!userId) return;
+    if (remote !== null) writeCache(userId, remote);
+  }, [userId, remote]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const handler = () => qc.invalidateQueries({ queryKey: ["team", userId] });
     window.addEventListener(EVT, handler);
     window.addEventListener("storage", handler);
     return () => {
       window.removeEventListener(EVT, handler);
       window.removeEventListener("storage", handler);
     };
-  }, [userId]);
-  return photo;
+  }, [userId, qc]);
+
+  return remote ?? readCache(userId);
 }
 
 export async function fileToCompressedDataUrl(file: File, maxSize = 512, quality = 0.85): Promise<string> {

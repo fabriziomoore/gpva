@@ -9,6 +9,7 @@ export type Team = {
   leader: string;
   variable_rate: number;
   onboarded: boolean;
+  photo_url: string | null;
 };
 
 export function useTeam(userId: string | null) {
@@ -19,7 +20,7 @@ export function useTeam(userId: string | null) {
       try {
         const { data, error } = await supabase
           .from("equipes")
-          .select("id,team_name,supervisor,leader,variable_rate,onboarded")
+          .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url")
           .maybeSingle();
         if (error) throw error;
         if (data) await cacheTeam(data as Team);
