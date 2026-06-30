@@ -140,7 +140,7 @@ function HomePage() {
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
         <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
-          <div className="size-28 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
+          <div className="size-36 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
             ) : (
