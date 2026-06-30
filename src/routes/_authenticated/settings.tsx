@@ -13,6 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { getLocalDB } from "@/lib/db/local-db";
+
+const TEST_TEAM_NAME = "RIOCERLT-TESTE";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Configurações" }] }),
@@ -31,6 +34,40 @@ function SettingsPage() {
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const isTestAccount = team?.team_name === TEST_TEAM_NAME;
+
+  async function resetTestData() {
+    if (!isTestAccount || !userId) return;
+    if (!window.confirm("Apagar TODOS os dados desta conta de teste? Esta ação não pode ser desfeita.")) return;
+    setResetting(true);
+    try {
+      const tables = ["vinculos_complementos", "impactos_expediente", "servicos", "expedientes"] as const;
+      for (const t of tables) {
+        const { error } = await supabase.from(t).delete().eq("team_id", userId);
+        if (error) throw error;
+      }
+      try {
+        const db = getLocalDB();
+        await Promise.all([
+          db.complement_links.clear(),
+          db.shift_impacts.clear(),
+          db.services.clear(),
+          db.shifts.clear(),
+          db.outbox.clear(),
+        ]);
+      } catch {
+        /* ignore local clear errors */
+      }
+      await qc.invalidateQueries();
+      toast.success("Dados de teste apagados");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao apagar");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function confirmSignOut() {
     setExitOpen(false);
@@ -148,6 +185,23 @@ function SettingsPage() {
           >
             <LogOut className="mr-2 size-4" /> Sair
           </Button>
+
+          {isTestAccount && (
+            <div className="space-y-2 border-t border-border pt-6">
+              <p className="text-sm font-semibold text-destructive">Conta de teste</p>
+              <p className="text-xs text-muted-foreground">
+                Apaga todos os expedientes, serviços, complementos e impactos criados por esta conta.
+              </p>
+              <Button
+                variant="destructive"
+                className="h-11 w-full"
+                onClick={resetTestData}
+                disabled={resetting}
+              >
+                {resetting ? <Loader2 className="size-4 animate-spin" /> : "Zerar dados de apresentação"}
+              </Button>
+            </div>
+          )}
         </section>
       </div>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
