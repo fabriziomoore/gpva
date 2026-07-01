@@ -109,6 +109,9 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       .from("equipes")
       .select("id,team_name");
     if (teamsErr) throw new Error(teamsErr.message);
+    const HIDDEN_TEAMS = new Set(["RIOCERLT-TESTE"]);
+    const visibleTeams = (teams ?? []).filter((t) => !HIDDEN_TEAMS.has(t.team_name));
+    const hiddenIds = new Set((teams ?? []).filter((t) => HIDDEN_TEAMS.has(t.team_name)).map((t) => t.id));
 
     // Compute month range [start, nextMonthStart) in UTC ISO
     const start = new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
@@ -133,12 +136,12 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
         .range(from, from + pageSize - 1);
       if (error) throw new Error(error.message);
       if (!rows?.length) break;
-      all.push(...rows);
+      all.push(...rows.filter((r) => !hiddenIds.has(r.team_id)));
       if (rows.length < pageSize) break;
       from += pageSize;
     }
 
-    return (teams ?? []).map((t) => {
+    return visibleTeams.map((t) => {
       const mine = all.filter((s) => s.team_id === t.id);
       const viable = mine.filter((s) => s.viable).length;
       const inviable = mine.filter((s) => !s.viable).length;
