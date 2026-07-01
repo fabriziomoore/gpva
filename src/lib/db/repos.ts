@@ -6,7 +6,7 @@ const nowIso = () => new Date().toISOString();
 
 export async function repoUpdateTeam(
   teamId: string,
-  patch: Partial<Pick<CatTeam, "supervisor" | "leader" | "variable_rate" | "onboarded" | "photo_url">>,
+  patch: Partial<Pick<CatTeam, "supervisor" | "leader" | "variable_rate" | "onboarded" | "photo_url" | "collaborator1" | "collaborator2">>,
 ): Promise<CatTeam | null> {
   const db = getLocalDB();
   const current = await getCachedTeam(teamId);

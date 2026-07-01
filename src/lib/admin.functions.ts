@@ -19,7 +19,7 @@ export const listTeams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,variable_rate")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2")
       .order("team_name");
     if (error) throw new Error(error.message);
     return (rows ?? []).filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name));
@@ -99,6 +99,71 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
       user_metadata: { team_name: data.teamName.trim() },
     });
     if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminUpdateTeam = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      teamId: string;
+      teamName?: string;
+      collaborator1?: string | null;
+      collaborator2?: string | null;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const patch: {
+      team_name?: string;
+      collaborator1?: string | null;
+      collaborator2?: string | null;
+    } = {};
+    if (data.teamName !== undefined) {
+      const name = data.teamName.trim();
+      if (!name) throw new Error("Nome de equipe inválido.");
+      patch.team_name = name;
+    }
+    if (data.collaborator1 !== undefined) {
+      patch.collaborator1 = data.collaborator1?.trim() || null;
+    }
+    if (data.collaborator2 !== undefined) {
+      patch.collaborator2 = data.collaborator2?.trim() || null;
+    }
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { error } = await supabaseAdmin
+      .from("equipes")
+      .update(patch)
+      .eq("id", data.teamId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminDeleteTeam = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; teamId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Delete team-owned data first (no CASCADE guaranteed).
+    const tables = [
+      "vinculos_complementos",
+      "impactos_expediente",
+      "servicos",
+      "expedientes",
+      "tipos_servico",
+      "motivos_inviabilidade",
+      "impactos",
+      "complementos_servico",
+    ] as const;
+    for (const t of tables) {
+      const { error } = await supabaseAdmin.from(t).delete().eq("team_id", data.teamId);
+      if (error) throw new Error(error.message);
+    }
+    const { error: eqErr } = await supabaseAdmin.from("equipes").delete().eq("id", data.teamId);
+    if (eqErr) throw new Error(eqErr.message);
+    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(data.teamId);
+    if (authErr) throw new Error(authErr.message);
     return { ok: true as const };
   });
 

@@ -43,6 +43,8 @@ export type Database = {
       }
       equipes: {
         Row: {
+          collaborator1: string | null
+          collaborator2: string | null
           created_at: string
           id: string
           leader: string
@@ -53,6 +55,8 @@ export type Database = {
           variable_rate: number
         }
         Insert: {
+          collaborator1?: string | null
+          collaborator2?: string | null
           created_at?: string
           id: string
           leader?: string
@@ -63,6 +67,8 @@ export type Database = {
           variable_rate?: number
         }
         Update: {
+          collaborator1?: string | null
+          collaborator2?: string | null
           created_at?: string
           id?: string
           leader?: string

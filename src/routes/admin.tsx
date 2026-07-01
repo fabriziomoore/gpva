@@ -15,6 +15,8 @@ import {
   adminListRows,
   adminUpdateRate,
   adminTeamsRanking,
+  adminUpdateTeam,
+  adminDeleteTeam,
   listTeams,
 } from "@/lib/admin.functions";
 import gpvaLogo from "@/assets/gpva-logo-wide.png";
@@ -31,7 +33,8 @@ type SectionId =
   | "complementos_servico"
   | "impactos"
   | "variable"
-  | "create_team";
+  | "create_team"
+  | "manage_teams";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "tipos_servico", label: "Serviços" },
@@ -40,6 +43,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "impactos", label: "Impactos" },
   { id: "variable", label: "Variável" },
   { id: "create_team", label: "Criar Equipe" },
+  { id: "manage_teams", label: "Gerenciar Equipes" },
 ];
 
 function AdminPage() {
@@ -165,6 +169,8 @@ function AdminPage() {
         <main className="mx-auto max-w-2xl px-4 py-6">
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
+          ) : section === "manage_teams" ? (
+            <ManageTeamsSection adminPw={adminPw} />
           ) : section === "variable" ? (
             <VariableSection adminPw={adminPw} />
           ) : (
@@ -529,6 +535,155 @@ function RankingSection({ adminPw }: { adminPw: string }) {
         })}
         {sorted.length === 0 && (
           <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ManageTeamsSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const teams = useTeamsList(adminPw);
+  const updateFn = useServerFn(adminUpdateTeam);
+  const deleteFn = useServerFn(adminDeleteTeam);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [c1, setC1] = useState("");
+  const [c2, setC2] = useState("");
+
+  const updateMut = useMutation({
+    mutationFn: (input: {
+      teamId: string;
+      teamName: string;
+      collaborator1: string | null;
+      collaborator2: string | null;
+    }) =>
+      updateFn({
+        data: {
+          adminPassword: adminPw,
+          teamId: input.teamId,
+          teamName: input.teamName,
+          collaborator1: input.collaborator1,
+          collaborator2: input.collaborator2,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Equipe atualizada");
+      setEditingId(null);
+      qc.invalidateQueries({ queryKey: ["admin-teams"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (teamId: string) =>
+      deleteFn({ data: { adminPassword: adminPw, teamId } }),
+    onSuccess: () => {
+      toast.success("Equipe excluída");
+      qc.invalidateQueries({ queryKey: ["admin-teams"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (teams.isLoading) {
+    return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-base font-semibold">Gerenciar Equipes</h2>
+      <div className="space-y-3">
+        {teams.data?.map((t) => {
+          const isEditing = editingId === t.id;
+          return (
+            <div
+              key={t.id}
+              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                  {t.photo_url ? (
+                    <img src={t.photo_url} alt={t.team_name} className="h-full w-full object-cover" />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{t.team_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {[t.collaborator1, t.collaborator2].filter(Boolean).join(" e ") || "Sem colaboradores"}
+                  </p>
+                </div>
+                {!isEditing && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      className="h-9 px-3 text-xs"
+                      onClick={() => {
+                        setEditingId(t.id);
+                        setName(t.team_name);
+                        setC1(t.collaborator1 ?? "");
+                        setC2(t.collaborator2 ?? "");
+                      }}
+                    >
+                      Editar
+                    </Button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Excluir equipe "${t.team_name}"? Todos os dados dela serão apagados.`)) {
+                          deleteMut.mutate(t.id);
+                        }
+                      }}
+                      className="rounded p-2 text-muted-foreground hover:text-destructive"
+                      aria-label="Excluir"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {isEditing && (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nome da equipe</Label>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Colaborador 1</Label>
+                    <Input value={c1} onChange={(e) => setC1(e.target.value)} className="h-10" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Colaborador 2</Label>
+                    <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="h-10 flex-1"
+                      onClick={() => setEditingId(null)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="h-10 flex-1"
+                      disabled={updateMut.isPending || !name.trim()}
+                      onClick={() =>
+                        updateMut.mutate({
+                          teamId: t.id,
+                          teamName: name,
+                          collaborator1: c1.trim() || null,
+                          collaborator2: c2.trim() || null,
+                        })
+                      }
+                    >
+                      {updateMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {teams.data?.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhuma equipe cadastrada.</p>
         )}
       </div>
     </div>
