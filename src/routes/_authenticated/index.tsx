@@ -150,11 +150,18 @@ function HomePage() {
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
             <p className="mt-1 whitespace-nowrap text-2xl font-bold leading-tight tracking-tight">{team?.team_name}</p>
-            <p className="mt-1 whitespace-nowrap text-sm text-muted-foreground">{today}</p>
+            {(team?.collaborator1 || team?.collaborator2) && (
+              <p className="mt-1 whitespace-nowrap text-sm text-muted-foreground">
+                <span className="text-foreground">
+                  {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
+                </span>
+              </p>
+            )}
             {team?.supervisor && (
-              <p className="mt-3 text-sm text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 <span className="block whitespace-nowrap">Supervisor: <span className="text-foreground">{team.supervisor}</span></span>
                 <span className="block whitespace-nowrap">Líder: <span className="text-foreground">{team.leader}</span></span>
+                <span className="mt-1 block whitespace-nowrap">{today}</span>
               </p>
             )}
           </div>
