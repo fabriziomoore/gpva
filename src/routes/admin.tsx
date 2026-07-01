@@ -689,6 +689,17 @@ function TeamHeader({
         </div>
       )}
     </div>
+    <ExitConfirmDialog
+      open={confirmDeleteOpen}
+      onOpenChange={setConfirmDeleteOpen}
+      onConfirm={() => {
+        setConfirmDeleteOpen(false);
+        deleteMut.mutate();
+      }}
+      title="Excluir equipe"
+      description={`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`}
+    />
+    </>
   );
 }
 
