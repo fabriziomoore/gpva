@@ -1,40 +1,15 @@
-## Objetivo
+## Diagnóstico
 
-Transformar os catálogos (Tipos de Serviço, Motivos de Inviabilidade, Complementos, Impactos) em **listas globais únicas**, gerenciadas somente pelo admin. Fim da duplicação por equipe.
+O banco está correto: `tipos_servico` tem 12 linhas ativas, todas com `team_id = NULL` (globais). A tela do preview web também está lendo dessa lista após minha última atualização (`src/lib/db/catalogs.ts` foi corrigido para não filtrar mais por equipe).
 
-## Mudanças no banco (migração única)
+O print veio do **app Android instalado** (o "GPVA" no nome do arquivo). Esse APK ainda contém o bundle JavaScript antigo, que consulta `.eq("team_id", userId)` — como agora todas as linhas têm `team_id` nulo, o app antigo recebe zero linhas e a lista aparece vazia. O mesmo se aplica ao cache local do Dexie que possivelmente guardou array vazio durante a janela de bug.
 
-Para cada uma das 4 tabelas (`tipos_servico`, `motivos_inviabilidade`, `complementos_servico`, `impactos`):
+## Correção
 
-1. Deduplicar por `name` mantendo a linha mais antiga (a mais antiga vira "canônica").
-2. Atualizar referências que apontam para linhas duplicadas para apontar à canônica:
-   - `servicos.service_type_id` → tipos canônicos
-   - `vinculos_complementos.complement_id` → complementos canônicos
-   - `impactos_expediente.impact_id` → impactos canônicos
-   - (motivos não têm FK, o app grava o texto)
-3. Apagar as linhas duplicadas.
-4. Setar `team_id = NULL` em todas as linhas restantes (globais).
-5. Alterar coluna: `team_id` passa a ser sempre `NULL` para catálogos (deixa nullable, não obriga).
-6. Adicionar índice único em `(name)` onde `active = true` para impedir novas duplicatas.
-7. Ajustar RLS: `SELECT` liberado a `authenticated` para todos; `INSERT/UPDATE/DELETE` somente via service role (admin).
+1. **Rebuild do Android**: rodar `bun run build:capacitor` (ou o script equivalente do projeto) para gerar `www/` com o JS novo e sincronizar com o Android (`npx cap sync android`). Isso não gera APK aqui no ambiente — o usuário precisa abrir Android Studio (ou rodar `./gradlew assembleDebug`) na máquina local para instalar.
+2. **Cache local**: adicionar no `src/lib/sync/init.ts` (ou onde inicializa o Dexie) uma limpeza única das chaves antigas `cat:*:<uuid>` — assim, quando o novo APK subir, ele não lê array vazio antigo. Chave nova (`cat:*:global`) fica intacta.
+3. **PWA/browser**: no navegador é só recarregar; não há service worker registrado.
 
-## Mudanças no app
+## O que preciso confirmar
 
-- `src/lib/db/catalogs.ts`: remover filtro `.eq("team_id", userId)` das 4 queries; chave de cache volta a ser global (sem `userId`).
-- `src/components/settings/CrudList.tsx`: **remover** (equipes não editam mais catálogos).
-- `src/routes/_authenticated/settings.tsx`: remover a seção "Cadastros" das configurações da equipe. Mantém apenas Equipe (foto/colaboradores) e Variável (se for do escopo da equipe) — se a taxa variável também deve virar admin-only, confirmar depois; por ora mantém como está.
-- `src/routes/admin.tsx`: a aba "Cadastros" continua, mas agora edita a lista única global. `adminAddRow`/`adminDeleteRow`/`adminListRows` em `src/lib/admin.functions.ts` já operam sem `team_id` — só garantir que listem sem duplicar (a dedupe do banco resolve).
-- Local cache (Dexie): as chaves antigas com `userId` ficam órfãs; incluir um passo simples de limpeza opcional na próxima leitura (não crítico, expiram).
-
-## Detalhes técnicos
-
-- FKs verificadas antes da migração: `servicos.service_type_id` → `tipos_servico.id`; `vinculos_complementos.complement_id` → `complementos_servico.id`; `impactos_expediente.impact_id` → `impactos.id`.
-- Motivos são gravados como texto em `servicos.inviability_reason` (a confirmar durante a implementação lendo o schema); se houver FK, aplicar mesmo tratamento.
-- Índice único parcial: `CREATE UNIQUE INDEX ... ON <tabela>(lower(name)) WHERE active = true`.
-- Todas as políticas RLS atuais que filtram por `team_id = auth.uid()` nessas 4 tabelas são substituídas por: `SELECT USING (true)` para `authenticated`; sem policies de escrita (bloqueia por padrão; admin usa service role).
-
-## Resultado esperado
-
-- Painel admin: uma única linha por nome (ex.: "Cadastral" aparece 1 vez, não 12).
-- Todas as equipes veem o mesmo catálogo — o que o admin cadastra, todas veem imediatamente.
-- Equipes não conseguem mais criar/remover itens de catálogo pelas Configurações.
+Antes de rodar o build, quero saber: você quer que eu apenas prepare os arquivos web novos (`www/`) prontos para sincronizar, ou que eu também apague as chaves antigas de catálogo no cache local automaticamente na próxima abertura?

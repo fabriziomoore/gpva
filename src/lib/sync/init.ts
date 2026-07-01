@@ -2,6 +2,7 @@ import { initNetwork, onNetworkChange, getNetworkStatus } from "./network";
 import { useSyncStore } from "./store";
 import { drainOutbox, refreshPendingCount, scheduleSync } from "./engine";
 import { installSessionMirror, restoreSession } from "./session-backup";
+import { getLocalDB } from "@/lib/db/local-db";
 
 let started = false;
 let probing = false;
@@ -70,6 +71,29 @@ async function runProbe(): Promise<void> {
 export async function startSync(): Promise<void> {
   if (started || typeof window === "undefined") return;
   started = true;
+
+  // One-shot cleanup: catálogos ficaram globais; apagar chaves antigas com
+  // team_id no sufixo (podem ter arrays vazios em cache) para evitar UI vazia.
+  try {
+    const db = getLocalDB();
+    const done = await db.kv.get("__catalog_cache_v2_cleared");
+    if (!done) {
+      const prefixes = [
+        "cat:service_types:",
+        "cat:inviability_reasons:",
+        "cat:service_complements:",
+        "cat:impacts:",
+      ];
+      const keys = await db.kv.toCollection().primaryKeys();
+      const stale = (keys as string[]).filter(
+        (k) => prefixes.some((p) => k.startsWith(p)) && !k.endsWith(":global"),
+      );
+      if (stale.length) await db.kv.bulkDelete(stale);
+      await db.kv.put({ key: "__catalog_cache_v2_cleared", value: true });
+    }
+  } catch {
+    /* ignore */
+  }
 
   await restoreSession();
   installSessionMirror();
