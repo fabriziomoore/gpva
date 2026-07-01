@@ -54,18 +54,19 @@ export type CatImpact = { id: string; name: string };
 export function useServiceTypesCached() {
   const { userId } = useAuthSession();
   return useCachedQuery<CatServiceType[]>(
-    `cat:service_types:global`,
+    `cat:service_types:${userId ?? "none"}`,
     async () => {
       const { data, error } = await supabase
         .from("tipos_servico")
         .select("id,name,is_negotiation,sort_order")
+        .eq("team_id", userId!)
         .eq("active", true)
         .order("sort_order")
         .order("name");
       if (error) throw error;
       return (data ?? []) as CatServiceType[];
     },
-    ["cached", "tipos_servico"],
+    ["cached", "tipos_servico", userId],
     !!userId,
   );
 }
@@ -73,17 +74,18 @@ export function useServiceTypesCached() {
 export function useReasonsCached() {
   const { userId } = useAuthSession();
   return useCachedQuery<CatReason[]>(
-    `cat:inviability_reasons:global`,
+    `cat:inviability_reasons:${userId ?? "none"}`,
     async () => {
       const { data, error } = await supabase
         .from("motivos_inviabilidade")
         .select("id,name")
+        .eq("team_id", userId!)
         .eq("active", true)
         .order("name");
       if (error) throw error;
       return (data ?? []) as CatReason[];
     },
-    ["cached", "motivos_inviabilidade"],
+    ["cached", "motivos_inviabilidade", userId],
     !!userId,
   );
 }
@@ -91,18 +93,19 @@ export function useReasonsCached() {
 export function useComplementsCached() {
   const { userId } = useAuthSession();
   return useCachedQuery<CatComplement[]>(
-    `cat:service_complements:global`,
+    `cat:service_complements:${userId ?? "none"}`,
     async () => {
       const { data, error } = await supabase
         .from("complementos_servico")
         .select("id,name,sort_order")
+        .eq("team_id", userId!)
         .eq("active", true)
         .order("sort_order")
         .order("name");
       if (error) throw error;
       return (data ?? []) as CatComplement[];
     },
-    ["cached", "complementos_servico"],
+    ["cached", "complementos_servico", userId],
     !!userId,
   );
 }
@@ -110,17 +113,18 @@ export function useComplementsCached() {
 export function useImpactsCached() {
   const { userId } = useAuthSession();
   return useCachedQuery<CatImpact[]>(
-    `cat:impacts:global`,
+    `cat:impacts:${userId ?? "none"}`,
     async () => {
       const { data, error } = await supabase
         .from("impactos")
         .select("id,name")
+        .eq("team_id", userId!)
         .eq("active", true)
         .order("name");
       if (error) throw error;
       return (data ?? []) as CatImpact[];
     },
-    ["cached", "impactos"],
+    ["cached", "impactos", userId],
     !!userId,
   );
 }
