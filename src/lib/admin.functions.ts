@@ -260,11 +260,10 @@ export const adminDeleteShift = createServerFn({ method: "POST" })
     const { data: svcs } = await supabaseAdmin
       .from("servicos").select("id").eq("shift_id", data.shiftId);
     const svcIds = (svcs ?? []).map((s) => s.id);
-    if (svcIds.length) {
-      const { error } = await supabaseAdmin
-        .from("vinculos_complementos").delete().in("servico_id", svcIds);
-      if (error) throw new Error(error.message);
-    }
+    const { error: eVinc } = await supabaseAdmin
+      .from("vinculos_complementos").delete().eq("shift_id", data.shiftId);
+    if (eVinc) throw new Error(eVinc.message);
+    void svcIds;
     const { error: e1 } = await supabaseAdmin
       .from("servicos").delete().eq("shift_id", data.shiftId);
     if (e1) throw new Error(e1.message);
