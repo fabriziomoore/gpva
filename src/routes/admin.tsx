@@ -409,10 +409,12 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
 
 function RankingSection({ adminPw }: { adminPw: string }) {
   const fn = useServerFn(adminTeamsRanking);
+  const teams = useTeamsList(adminPw);
   const [selected, setSelected] = useState<string | null>(null);
   const now = new Date();
   const [year, setYear] = useState<number>(now.getFullYear());
   const [month, setMonth] = useState<number>(now.getMonth() + 1);
+  const [day, setDay] = useState<number>(now.getDate());
   const q = useQuery({
     queryKey: ["admin-ranking", year, month],
     queryFn: () => fn({ data: { adminPassword: adminPw, year, month } }),
@@ -440,9 +442,22 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   ];
   const years: number[] = [];
   for (let y = now.getFullYear(); y >= now.getFullYear() - 4; y--) years.push(y);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const periodSelector = (
+  const periodSelector = (withDay: boolean) => (
     <div className="flex gap-2">
+      {withDay && (
+        <select
+          value={day}
+          onChange={(e) => setDay(Number(e.target.value))}
+          className="h-10 w-20 rounded-lg border border-border bg-card px-3 text-sm"
+        >
+          {days.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+      )}
       <select
         value={month}
         onChange={(e) => setMonth(Number(e.target.value))}
@@ -465,10 +480,19 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   );
 
   if (current) {
+    const teamFull = teams.data?.find((t) => t.id === current.id);
     return (
       <div className="space-y-4">
-        <h2 className="text-base font-semibold">{current.team_name}</h2>
-        {periodSelector}
+        <Button
+          variant="outline"
+          className="h-9 px-3 text-xs"
+          onClick={() => setSelected(null)}
+        >
+          ← Voltar
+        </Button>
+        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0 }} onDeleted={() => setSelected(null)} />
+        {periodSelector(true)}
+        <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
           <Stat label="Viáveis" value={current.viable} />
@@ -501,7 +525,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold">Ranking de Equipes</h2>
-      {periodSelector}
+      {periodSelector(false)}
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
