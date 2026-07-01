@@ -17,8 +17,13 @@ import {
   adminTeamsRanking,
   adminUpdateTeam,
   adminDeleteTeam,
+  adminListShifts,
+  adminDeleteShift,
+  adminUpdateShiftReport,
   listTeams,
 } from "@/lib/admin.functions";
+import { Textarea } from "@/components/ui/textarea";
+import { formatDateBR } from "@/lib/format";
 import gpvaLogo from "@/assets/gpva-logo-wide.png";
 
 export const Route = createFileRoute("/admin")({
@@ -547,6 +552,7 @@ function ManageTeamsSection({ adminPw }: { adminPw: string }) {
   const updateFn = useServerFn(adminUpdateTeam);
   const deleteFn = useServerFn(adminDeleteTeam);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [reportsTeamId, setReportsTeamId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [c1, setC1] = useState("");
   const [c2, setC2] = useState("");
@@ -589,6 +595,18 @@ function ManageTeamsSection({ adminPw }: { adminPw: string }) {
     return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
   }
 
+  if (reportsTeamId) {
+    const t = teams.data?.find((x) => x.id === reportsTeamId);
+    return (
+      <TeamReportsPanel
+        adminPw={adminPw}
+        teamId={reportsTeamId}
+        teamName={t?.team_name ?? ""}
+        onBack={() => setReportsTeamId(null)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold">Gerenciar Equipes</h2>
@@ -614,6 +632,13 @@ function ManageTeamsSection({ adminPw }: { adminPw: string }) {
                 </div>
                 {!isEditing && (
                   <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      className="h-9 px-3 text-xs"
+                      onClick={() => setReportsTeamId(t.id)}
+                    >
+                      Relatórios
+                    </Button>
                     <Button
                       variant="outline"
                       className="h-9 px-3 text-xs"
