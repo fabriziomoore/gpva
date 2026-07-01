@@ -98,3 +98,14 @@ export async function startSync(): Promise<void> {
   void drainOutbox();
   void runProbe();
 }
+
+/**
+ * Manual sync trigger (pull-to-refresh). Probes reachability, then drains
+ * the outbox. Resolves when both steps complete (or fail).
+ */
+export async function manualSync(): Promise<void> {
+  await runProbe();
+  if (useSyncStore.getState().online) {
+    await drainOutbox();
+  }
+}
