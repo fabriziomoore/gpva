@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDB } from "./local-db";
 import { useAuthSession } from "@/hooks/use-auth";
+import { useLiveQuery } from "dexie-react-hooks";
+import { useMemo } from "react";
 
 // Reads from network and caches into Dexie kv. When the network fails
 // (offline / first load without connectivity after a successful run),
@@ -143,4 +145,74 @@ export async function getCachedTeam(teamId: string): Promise<CatTeam | null> {
 
 export async function cacheTeam(team: CatTeam): Promise<void> {
   await writeCache(`cat:team:${team.id}`, team);
+}
+
+// ---------- Per-team catalog ordering ----------
+
+export type CatalogKind =
+  | "tipos_servico"
+  | "motivos_inviabilidade"
+  | "complementos_servico"
+  | "impactos";
+
+function orderKey(teamId: string, catalog: CatalogKind): string {
+  return `catord:${teamId}:${catalog}`;
+}
+
+export function applyOrder<T extends { id: string; name: string }>(
+  items: T[],
+  orderIds: string[] | null | undefined,
+): T[] {
+  if (!orderIds || orderIds.length === 0) return items;
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const ordered: T[] = [];
+  const seen = new Set<string>();
+  for (const id of orderIds) {
+    const it = byId.get(id);
+    if (it && !seen.has(id)) {
+      ordered.push(it);
+      seen.add(id);
+    }
+  }
+  const leftover = items
+    .filter((i) => !seen.has(i.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return [...ordered, ...leftover];
+}
+
+/** Reactive per-team order list, kept in the local kv (offline-first). */
+export function useCatalogOrder(catalog: CatalogKind): string[] {
+  const { userId } = useAuthSession();
+  const value = useLiveQuery(async () => {
+    if (!userId) return [];
+    const row = await getLocalDB().kv.get(orderKey(userId, catalog));
+    return (row?.value as string[] | undefined) ?? [];
+  }, [userId, catalog]);
+  return value ?? [];
+}
+
+/** Combine a catalog list with the team's preferred order. */
+export function useOrdered<T extends { id: string; name: string }>(
+  items: T[] | undefined,
+  catalog: CatalogKind,
+): T[] {
+  const order = useCatalogOrder(catalog);
+  return useMemo(() => applyOrder(items ?? [], order), [items, order]);
+}
+
+/** One-shot fetch of the server-stored order (used on login / catalog refresh). */
+export async function fetchAndCacheCatalogOrder(teamId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from("catalog_order")
+      .select("catalog,item_ids")
+      .eq("team_id", teamId);
+    if (error) throw error;
+    const db = getLocalDB();
+    for (const row of (data ?? []) as { catalog: CatalogKind; item_ids: string[] }[]) {
+      await db.kv.put({ key: orderKey(teamId, row.catalog), value: row.item_ids });
+    }
+  } catch {
+    /* offline — keep local */
+  }
 }
