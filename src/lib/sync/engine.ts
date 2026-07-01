@@ -73,6 +73,7 @@ export async function drainOutbox(): Promise<void> {
 }
 
 async function pushRow(row: OutboxRow): Promise<void> {
+  const table = row.table as Exclude<OutboxRow["table"], "catalog_order">;
   if (row.op === "upsert") {
     if (row.table === "catalog_order") {
       const { error } = await supabase
@@ -82,17 +83,17 @@ async function pushRow(row: OutboxRow): Promise<void> {
       return;
     }
     const { error } = await supabase
-      .from(row.table)
+      .from(table)
       .upsert(row.payload as never, { onConflict: "id" });
     if (error) throw error;
   } else if (row.op === "update") {
     const { error } = await supabase
-      .from(row.table)
+      .from(table)
       .update(row.payload as never)
       .eq("id", row.row_id);
     if (error) throw error;
   } else if (row.op === "delete") {
-    const { error } = await supabase.from(row.table).delete().eq("id", row.row_id);
+    const { error } = await supabase.from(table).delete().eq("id", row.row_id);
     if (error) throw error;
   }
 }
