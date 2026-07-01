@@ -566,194 +566,138 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   );
 }
 
-function ManageTeamsSection({ adminPw }: { adminPw: string }) {
+type TeamRow = {
+  id: string;
+  team_name: string;
+  photo_url: string | null;
+  collaborator1: string | null;
+  collaborator2: string | null;
+  variable_rate: number;
+};
+
+function TeamHeader({
+  adminPw,
+  team,
+  onDeleted,
+}: {
+  adminPw: string;
+  team: TeamRow;
+  onDeleted: () => void;
+}) {
   const qc = useQueryClient();
-  const teams = useTeamsList(adminPw);
   const updateFn = useServerFn(adminUpdateTeam);
   const deleteFn = useServerFn(adminDeleteTeam);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [reportsTeamId, setReportsTeamId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [c1, setC1] = useState("");
-  const [c2, setC2] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(team.team_name);
+  const [c1, setC1] = useState(team.collaborator1 ?? "");
+  const [c2, setC2] = useState(team.collaborator2 ?? "");
 
   const updateMut = useMutation({
-    mutationFn: (input: {
-      teamId: string;
-      teamName: string;
-      collaborator1: string | null;
-      collaborator2: string | null;
-    }) =>
+    mutationFn: () =>
       updateFn({
         data: {
           adminPassword: adminPw,
-          teamId: input.teamId,
-          teamName: input.teamName,
-          collaborator1: input.collaborator1,
-          collaborator2: input.collaborator2,
+          teamId: team.id,
+          teamName: name,
+          collaborator1: c1.trim() || null,
+          collaborator2: c2.trim() || null,
         },
       }),
     onSuccess: () => {
       toast.success("Equipe atualizada");
-      setEditingId(null);
+      setEditing(false);
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteMut = useMutation({
-    mutationFn: (teamId: string) =>
-      deleteFn({ data: { adminPassword: adminPw, teamId } }),
+    mutationFn: () => deleteFn({ data: { adminPassword: adminPw, teamId: team.id } }),
     onSuccess: () => {
       toast.success("Equipe excluída");
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
+      onDeleted();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (teams.isLoading) {
-    return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
-  }
-
-  if (reportsTeamId) {
-    const t = teams.data?.find((x) => x.id === reportsTeamId);
-    return (
-      <TeamReportsPanel
-        adminPw={adminPw}
-        teamId={reportsTeamId}
-        teamName={t?.team_name ?? ""}
-        onBack={() => setReportsTeamId(null)}
-      />
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      <h2 className="text-base font-semibold">Gerenciar Equipes</h2>
-      <div className="space-y-3">
-        {teams.data?.map((t) => {
-          const isEditing = editingId === t.id;
-          return (
-            <div
-              key={t.id}
-              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                  {t.photo_url ? (
-                    <img src={t.photo_url} alt={t.team_name} className="h-full w-full object-cover" />
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{t.team_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {[t.collaborator1, t.collaborator2].filter(Boolean).join(" e ") || "Sem colaboradores"}
-                  </p>
-                </div>
-                {!isEditing && (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      className="h-9 px-3 text-xs"
-                      onClick={() => setReportsTeamId(t.id)}
-                    >
-                      Relatórios
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-9 px-3 text-xs"
-                      onClick={() => {
-                        setEditingId(t.id);
-                        setName(t.team_name);
-                        setC1(t.collaborator1 ?? "");
-                        setC2(t.collaborator2 ?? "");
-                      }}
-                    >
-                      Editar
-                    </Button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Excluir equipe "${t.team_name}"? Todos os dados dela serão apagados.`)) {
-                          deleteMut.mutate(t.id);
-                        }
-                      }}
-                      className="rounded p-2 text-muted-foreground hover:text-destructive"
-                      aria-label="Excluir"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {isEditing && (
-                <div className="space-y-2 border-t border-border pt-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Nome da equipe</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Colaborador 1</Label>
-                    <Input value={c1} onChange={(e) => setC1(e.target.value)} className="h-10" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Colaborador 2</Label>
-                    <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      variant="outline"
-                      className="h-10 flex-1"
-                      onClick={() => setEditingId(null)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      className="h-10 flex-1"
-                      disabled={updateMut.isPending || !name.trim()}
-                      onClick={() =>
-                        updateMut.mutate({
-                          teamId: t.id,
-                          teamName: name,
-                          collaborator1: c1.trim() || null,
-                          collaborator2: c2.trim() || null,
-                        })
-                      }
-                    >
-                      {updateMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
-                    </Button>
-                  </div>
-                </div>
-              )}
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
+      <div className="flex items-center gap-3">
+        <div className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+          {team.photo_url ? (
+            <img src={team.photo_url} alt={team.team_name} className="h-full w-full object-cover" />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-semibold">{team.team_name}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {[team.collaborator1, team.collaborator2].filter(Boolean).join(" e ") || "Sem colaboradores"}
+          </p>
+          {!editing && (
+            <div className="mt-2 flex gap-1">
+              <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => setEditing(true)}>
+                Editar
+              </Button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`)) {
+                    deleteMut.mutate();
+                  }
+                }}
+                className="rounded p-1.5 text-muted-foreground hover:text-destructive"
+                aria-label="Excluir"
+              >
+                <Trash2 className="size-4" />
+              </button>
             </div>
-          );
-        })}
-        {teams.data?.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nenhuma equipe cadastrada.</p>
-        )}
+          )}
+        </div>
       </div>
+      {editing && (
+        <div className="space-y-2 border-t border-border pt-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Nome da equipe</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Colaborador 1</Label>
+            <Input value={c1} onChange={(e) => setC1(e.target.value)} className="h-10" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Colaborador 2</Label>
+            <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="h-10 flex-1" onClick={() => setEditing(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="h-10 flex-1"
+              disabled={updateMut.isPending || !name.trim()}
+              onClick={() => updateMut.mutate()}
+            >
+              {updateMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
-    </div>
-  );
-}
-
-function TeamReportsPanel({
+function TeamDayReports({
   adminPw,
   teamId,
-  teamName,
-  onBack,
+  year,
+  month,
+  day,
 }: {
   adminPw: string;
   teamId: string;
-  teamName: string;
-  onBack: () => void;
+  year: number;
+  month: number;
+  day: number;
 }) {
   const qc = useQueryClient();
   const listFn = useServerFn(adminListShifts);
@@ -768,8 +712,7 @@ function TeamReportsPanel({
   });
 
   const delMut = useMutation({
-    mutationFn: (shiftId: string) =>
-      delFn({ data: { adminPassword: adminPw, shiftId } }),
+    mutationFn: (shiftId: string) => delFn({ data: { adminPassword: adminPw, shiftId } }),
     onSuccess: () => {
       toast.success("Relatório excluído");
       qc.invalidateQueries({ queryKey: ["admin-shifts", teamId] });
@@ -788,19 +731,23 @@ function TeamReportsPanel({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const dayStart = new Date(year, month - 1, day, 0, 0, 0).getTime();
+  const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+  const filtered = (q.data ?? []).filter((r) => {
+    const t = new Date(r.started_at).getTime();
+    return t >= dayStart && t < dayEnd;
+  });
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" className="h-9 px-3 text-xs" onClick={onBack}>
-          ← Voltar
-        </Button>
-        <h2 className="text-base font-semibold">Relatórios — {teamName}</h2>
-      </div>
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
       {q.isLoading ? (
         <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : filtered.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nenhum relatório neste dia.</p>
       ) : (
-        <div className="space-y-3">
-          {q.data?.map((r) => {
+        <div className="space-y-2">
+          {filtered.map((r) => {
             const isEditing = editingId === r.id;
             return (
               <div key={r.id} className="rounded-xl border border-border bg-card p-3">
@@ -847,11 +794,7 @@ function TeamReportsPanel({
                       className="text-xs"
                     />
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        className="h-10 flex-1"
-                        onClick={() => setEditingId(null)}
-                      >
+                      <Button variant="outline" className="h-10 flex-1" onClick={() => setEditingId(null)}>
                         Cancelar
                       </Button>
                       <Button
@@ -867,11 +810,18 @@ function TeamReportsPanel({
               </div>
             );
           })}
-          {q.data?.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum relatório encontrado.</p>
-          )}
         </div>
       )}
     </div>
   );
 }
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-bold">{value}</div>
+    </div>
+  );
+}
+
