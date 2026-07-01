@@ -600,6 +600,7 @@ function TeamHeader({
   const [name, setName] = useState(team.team_name);
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const updateMut = useMutation({
     mutationFn: () =>
@@ -649,11 +650,7 @@ function TeamHeader({
                 Editar
               </Button>
               <button
-                onClick={() => {
-                  if (window.confirm(`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`)) {
-                    deleteMut.mutate();
-                  }
-                }}
+                onClick={() => setConfirmDeleteOpen(true)}
                 className="rounded p-1.5 text-muted-foreground hover:text-destructive"
                 aria-label="Excluir"
               >
