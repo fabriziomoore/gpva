@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { repoAddService } from "@/lib/db/repos";
+import { repoAddService, repoSaveCatalogOrder } from "@/lib/db/repos";
 import {
   useServiceTypesCached,
   useReasonsCached,
   useComplementsCached,
+  useOrdered,
+  fetchAndCacheCatalogOrder,
 } from "@/lib/db/catalogs";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -11,9 +13,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { ReorderableGrid } from "./ReorderableGrid";
 
 type Step = "type" | "viability" | "reason" | "registration" | "amount" | "complements";
 
@@ -39,6 +42,7 @@ export function AddServiceSheet({
   const [amount, setAmount] = useState("");
   const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -48,12 +52,17 @@ export function AddServiceSheet({
       setRegistration("");
       setAmount("");
       setSelectedComplements(new Set());
+      setReorderMode(false);
+      void fetchAndCacheCatalogOrder(teamId);
     }
-  }, [open]);
+  }, [open, teamId]);
 
   const types = useServiceTypesCached();
   const reasons = useReasonsCached();
   const complements = useComplementsCached();
+
+  const orderedTypes = useOrdered(types.data, "tipos_servico");
+  const orderedReasons = useOrdered(reasons.data, "motivos_inviabilidade");
 
   // Usage stats now come from the local Dexie mirror so they work offline.
   const complementUsage = useLiveQuery(async () => {
@@ -73,6 +82,16 @@ export function AddServiceSheet({
       return a.name.localeCompare(b.name);
     });
   }, [complements.data, complementUsage]);
+  const orderedComplements = useOrdered(sortedComplements, "complementos_servico");
+
+  const canReorder = step === "type" || step === "reason" || step === "complements";
+  useEffect(() => {
+    if (!canReorder && reorderMode) setReorderMode(false);
+  }, [canReorder, reorderMode]);
+
+  function saveOrder(catalog: "tipos_servico" | "motivos_inviabilidade" | "complementos_servico", ids: string[]) {
+    void repoSaveCatalogOrder({ team_id: teamId, catalog, item_ids: ids });
+  }
 
   async function saveService(opts: {
     viable: boolean;
@@ -121,7 +140,7 @@ export function AddServiceSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
         <SheetHeader className="border-b border-border p-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left text-base">
               {step === "type" && "Tipo de Serviço"}
               {step === "viability" && type?.name}
@@ -130,13 +149,35 @@ export function AddServiceSheet({
               {step === "amount" && "Valor negociado"}
               {step === "complements" && "Complemento(s) do Serviço"}
             </SheetTitle>
+            {canReorder && (
+              <button
+                type="button"
+                onClick={() => setReorderMode((v) => !v)}
+                className={
+                  "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors " +
+                  (reorderMode
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground")
+                }
+                aria-label="Reorganizar"
+              >
+                {reorderMode ? <Check className="size-4" /> : <ArrowUpDown className="size-4" />}
+                {reorderMode ? "Concluído" : "Reorganizar"}
+              </button>
+            )}
           </div>
         </SheetHeader>
 
         <div className="p-4">
           {step === "type" && (
+            reorderMode ? (
+              <ReorderableGrid
+                items={orderedTypes.map((t) => ({ id: t.id, name: t.name }))}
+                onReorder={(ids) => saveOrder("tipos_servico", ids)}
+              />
+            ) : (
             <div className="grid grid-cols-2 gap-3">
-              {types.data?.map((t) => (
+              {orderedTypes.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => pickType(t)}
@@ -151,6 +192,7 @@ export function AddServiceSheet({
                 </div>
               )}
             </div>
+            )
           )}
 
           {step === "viability" && (
@@ -178,8 +220,15 @@ export function AddServiceSheet({
           )}
 
           {step === "reason" && (
+            reorderMode ? (
+              <ReorderableGrid
+                columns={1}
+                items={orderedReasons.map((r) => ({ id: r.id, name: r.name }))}
+                onReorder={(ids) => saveOrder("motivos_inviabilidade", ids)}
+              />
+            ) : (
             <div className="grid grid-cols-1 gap-2">
-              {reasons.data?.map((r) => (
+              {orderedReasons.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => {
@@ -192,6 +241,7 @@ export function AddServiceSheet({
                 </button>
               ))}
             </div>
+            )
           )}
 
           {step === "registration" && (
@@ -258,11 +308,19 @@ export function AddServiceSheet({
 
           {step === "complements" && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Selecione os complementos (opcional). Toque em Finalizar para concluir.
-              </p>
+              {!reorderMode && (
+                <p className="text-sm text-muted-foreground">
+                  Selecione os complementos (opcional). Toque em Finalizar para concluir.
+                </p>
+              )}
+              {reorderMode ? (
+                <ReorderableGrid
+                  items={orderedComplements.map((c) => ({ id: c.id, name: c.name }))}
+                  onReorder={(ids) => saveOrder("complementos_servico", ids)}
+                />
+              ) : (
               <div className="grid grid-cols-2 gap-2">
-                {sortedComplements.map((c) => {
+                {orderedComplements.map((c) => {
                   const on = selectedComplements.has(c.id);
                   return (
                     <button
@@ -287,6 +345,8 @@ export function AddServiceSheet({
                   );
                 })}
               </div>
+              )}
+              {!reorderMode && (
               <Button
                 disabled={saving}
                 onClick={() => {
@@ -301,6 +361,7 @@ export function AddServiceSheet({
               >
                 {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar"}
               </Button>
+              )}
             </div>
           )}
         </div>
