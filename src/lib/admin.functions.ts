@@ -115,7 +115,11 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      team_name?: string;
+      collaborator1?: string | null;
+      collaborator2?: string | null;
+    } = {};
     if (data.teamName !== undefined) {
       const name = data.teamName.trim();
       if (!name) throw new Error("Nome de equipe inválido.");
