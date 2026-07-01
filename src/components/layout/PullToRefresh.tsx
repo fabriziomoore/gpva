@@ -9,6 +9,7 @@ const MAX = 110;    // px cap on visual pull
 
 export function PullToRefresh({ children }: { children: ReactNode }) {
   const startY = useRef<number | null>(null);
+  const pullRef = useRef(0);
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const qc = useQueryClient();
@@ -67,8 +68,6 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
     };
   }, [refreshing, qc]);
 
-  // Keep latest pull in a ref so onEnd sees the current value.
-  const pullRef = useRef(0);
   useEffect(() => {
     pullRef.current = pull;
   }, [pull]);
