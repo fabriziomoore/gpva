@@ -126,7 +126,7 @@ export function FinishShiftSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-3xl p-0">
         <SheetHeader className="border-b border-border p-4">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pr-8">
             <SheetTitle className="text-left">Impactos do dia</SheetTitle>
             <button
               type="button"
