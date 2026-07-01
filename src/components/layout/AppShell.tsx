@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { BottomNav } from "./BottomNav";
 import { SyncIndicator } from "./SyncIndicator";
+import { PullToRefresh } from "./PullToRefresh";
 
 export function AppShell({
   title,
@@ -21,7 +22,9 @@ export function AppShell({
         </div>
         <SyncIndicator />
       </header>
-      <main className="mx-auto max-w-md px-4 py-4">{children}</main>
+      <PullToRefresh>
+        <main className="mx-auto max-w-md px-4 py-4">{children}</main>
+      </PullToRefresh>
       <BottomNav />
     </div>
   );
