@@ -10,6 +10,8 @@ function assertAdmin(pw: string) {
 
 type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
 
+const HIDDEN_TEAM_NAMES = new Set(["RIOCERLT-TESTE"]);
+
 export const listTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }) => {
@@ -20,7 +22,7 @@ export const listTeams = createServerFn({ method: "POST" })
       .select("id,team_name,variable_rate")
       .order("team_name");
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return (rows ?? []).filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name));
   });
 
 export const adminListRows = createServerFn({ method: "POST" })
