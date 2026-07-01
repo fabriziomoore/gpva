@@ -9,11 +9,11 @@ import {
 } from "@/lib/db/catalogs";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReorderableGrid } from "./ReorderableGrid";
@@ -138,9 +138,9 @@ export function AddServiceSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
+      <SheetContent side="bottom" hideClose className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
         <SheetHeader className="border-b border-border p-4">
-          <div className="flex items-center justify-between gap-2 pr-8">
+          <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left text-base">
               {step === "type" && "Tipo de Serviço"}
               {step === "viability" && type?.name}
@@ -149,22 +149,28 @@ export function AddServiceSheet({
               {step === "amount" && "Valor negociado"}
               {step === "complements" && "Complemento(s) do Serviço"}
             </SheetTitle>
-            {canReorder && (
-              <button
-                type="button"
-                onClick={() => setReorderMode((v) => !v)}
-                className={
-                  "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors " +
-                  (reorderMode
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground")
-                }
-                aria-label="Reorganizar"
-              >
-                {reorderMode ? <Check className="size-4" /> : <ArrowUpDown className="size-4" />}
-                {reorderMode ? "Concluído" : "Reorganizar"}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {canReorder && (
+                <button
+                  type="button"
+                  onClick={() => setReorderMode((v) => !v)}
+                  className={
+                    "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors " +
+                    (reorderMode
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground")
+                  }
+                  aria-label="Reorganizar"
+                >
+                  {reorderMode ? <Check className="size-4" /> : <ArrowUpDown className="size-4" />}
+                  {reorderMode ? "Concluído" : "Reorganizar"}
+                </button>
+              )}
+              <SheetClose className="flex size-8 items-center justify-center rounded-lg border border-white bg-destructive text-white hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2">
+                <X className="size-4" />
+                <span className="sr-only">Fechar</span>
+              </SheetClose>
+            </div>
           </div>
         </SheetHeader>
 
