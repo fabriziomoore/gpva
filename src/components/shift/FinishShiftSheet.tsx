@@ -3,7 +3,7 @@ import { getLocalDB } from "@/lib/db/local-db";
 import { repoCloseShift, repoSaveCatalogOrder } from "@/lib/db/repos";
 import { useImpactsCached, getCachedTeam, useOrdered, fetchAndCacheCatalogOrder } from "@/lib/db/catalogs";
 import { supabase } from "@/integrations/supabase/client";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus, X, ArrowUpDown, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -124,24 +124,30 @@ export function FinishShiftSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-3xl p-0">
+      <SheetContent side="bottom" hideClose className="h-[85vh] overflow-y-auto rounded-t-3xl p-0">
         <SheetHeader className="border-b border-border p-4">
-          <div className="flex items-center justify-between gap-2 pr-8">
+          <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left">Impactos do dia</SheetTitle>
-            <button
-              type="button"
-              onClick={() => setReorderMode((v) => !v)}
-              className={
-                "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors " +
-                (reorderMode
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground")
-              }
-              aria-label="Reorganizar"
-            >
-              {reorderMode ? <Check className="size-4" /> : <ArrowUpDown className="size-4" />}
-              {reorderMode ? "Concluído" : "Reorganizar"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setReorderMode((v) => !v)}
+                className={
+                  "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors " +
+                  (reorderMode
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground")
+                }
+                aria-label="Reorganizar"
+              >
+                {reorderMode ? <Check className="size-4" /> : <ArrowUpDown className="size-4" />}
+                {reorderMode ? "Concluído" : "Reorganizar"}
+              </button>
+              <SheetClose className="flex size-8 items-center justify-center rounded-lg border border-white bg-destructive text-white hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2">
+                <X className="size-4" />
+                <span className="sr-only">Fechar</span>
+              </SheetClose>
+            </div>
           </div>
         </SheetHeader>
         <div className="space-y-4 p-4">
