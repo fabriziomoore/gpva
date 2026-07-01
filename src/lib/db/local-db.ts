@@ -60,7 +60,8 @@ export type OutboxTable =
   | "servicos"
   | "impactos_expediente"
   | "vinculos_complementos"
-  | "equipes";
+  | "equipes"
+  | "catalog_order";
 
 export interface OutboxRow {
   id?: number;

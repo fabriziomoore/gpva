@@ -1,8 +1,42 @@
 import { getLocalDB, newId, type LocalService, type LocalShift } from "./local-db";
 import { scheduleSync, refreshPendingCount } from "@/lib/sync/engine";
 import { cacheTeam, getCachedTeam, type CatTeam } from "@/lib/db/catalogs";
+import type { CatalogKind } from "@/lib/db/catalogs";
 
 const nowIso = () => new Date().toISOString();
+
+export async function repoSaveCatalogOrder(input: {
+  team_id: string;
+  catalog: CatalogKind;
+  item_ids: string[];
+}): Promise<void> {
+  const db = getLocalDB();
+  const key = `catord:${input.team_id}:${input.catalog}`;
+  await db.kv.put({ key, value: input.item_ids });
+  // Coalesce: drop any pending outbox entry for the same team+catalog so we
+  // only push the latest order.
+  const rowId = `${input.team_id}:${input.catalog}`;
+  const pending = await db.outbox
+    .where("table")
+    .equals("catalog_order")
+    .and((r) => r.row_id === rowId)
+    .toArray();
+  for (const p of pending) if (p.id != null) await db.outbox.delete(p.id);
+  await db.outbox.add({
+    table: "catalog_order",
+    op: "upsert",
+    row_id: rowId,
+    payload: {
+      team_id: input.team_id,
+      catalog: input.catalog,
+      item_ids: input.item_ids,
+    },
+    tries: 0,
+    created_at: nowIso(),
+  });
+  await refreshPendingCount();
+  scheduleSync();
+}
 
 export async function repoUpdateTeam(
   teamId: string,
