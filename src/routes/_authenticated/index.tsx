@@ -52,7 +52,10 @@ function HomePage() {
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
     const db = getLocalDB();
-    const rows = await db.shifts.where("status").equals("open").toArray();
+    const rows = await db.shifts
+      .where("status").equals("open")
+      .and((r) => r.team_id === userId)
+      .toArray();
     rows.sort((a, b) => (b.started_at > a.started_at ? 1 : -1));
     return rows[0] ?? null;
   }, [userId]);
@@ -60,7 +63,10 @@ function HomePage() {
   const lastClosedLocal = useLiveQuery(async () => {
     if (!userId) return null;
     const db = getLocalDB();
-    const rows = await db.shifts.where("status").equals("closed").toArray();
+    const rows = await db.shifts
+      .where("status").equals("closed")
+      .and((r) => r.team_id === userId)
+      .toArray();
     rows.sort((a, b) => (b.started_at > a.started_at ? 1 : -1));
     return rows[0] ?? null;
   }, [userId]);
@@ -72,6 +78,7 @@ function HomePage() {
       const { data, error } = await supabase
         .from("expedientes")
         .select("id,started_at")
+        .eq("team_id", userId!)
         .eq("status", "closed")
         .order("started_at", { ascending: false })
         .limit(1)
