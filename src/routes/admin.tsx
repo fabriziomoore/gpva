@@ -723,3 +723,135 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
+function TeamReportsPanel({
+  adminPw,
+  teamId,
+  teamName,
+  onBack,
+}: {
+  adminPw: string;
+  teamId: string;
+  teamName: string;
+  onBack: () => void;
+}) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListShifts);
+  const delFn = useServerFn(adminDeleteShift);
+  const updFn = useServerFn(adminUpdateShiftReport);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [text, setText] = useState("");
+
+  const q = useQuery({
+    queryKey: ["admin-shifts", teamId],
+    queryFn: () => listFn({ data: { adminPassword: adminPw, teamId } }),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (shiftId: string) =>
+      delFn({ data: { adminPassword: adminPw, shiftId } }),
+    onSuccess: () => {
+      toast.success("Relatório excluído");
+      qc.invalidateQueries({ queryKey: ["admin-shifts", teamId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updMut = useMutation({
+    mutationFn: (shiftId: string) =>
+      updFn({ data: { adminPassword: adminPw, shiftId, reportText: text } }),
+    onSuccess: () => {
+      toast.success("Relatório atualizado");
+      setEditingId(null);
+      qc.invalidateQueries({ queryKey: ["admin-shifts", teamId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" className="h-9 px-3 text-xs" onClick={onBack}>
+          ← Voltar
+        </Button>
+        <h2 className="text-base font-semibold">Relatórios — {teamName}</h2>
+      </div>
+      {q.isLoading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : (
+        <div className="space-y-3">
+          {q.data?.map((r) => {
+            const isEditing = editingId === r.id;
+            return (
+              <div key={r.id} className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{formatDateBR(r.started_at)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {r.status === "closed" ? "Fechado" : "Aberto"}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    {!isEditing && (
+                      <Button
+                        variant="outline"
+                        className="h-9 px-3 text-xs"
+                        onClick={() => {
+                          setEditingId(r.id);
+                          setText(r.report_text ?? "");
+                        }}
+                      >
+                        Editar
+                      </Button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (window.confirm("Excluir este relatório e todos os serviços/impactos vinculados?")) {
+                          delMut.mutate(r.id);
+                        }
+                      }}
+                      className="rounded p-2 text-muted-foreground hover:text-destructive"
+                      aria-label="Excluir"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </div>
+                {isEditing && (
+                  <div className="mt-3 space-y-2 border-t border-border pt-3">
+                    <Label className="text-xs">Texto do relatório</Label>
+                    <Textarea
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      rows={10}
+                      className="text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="h-10 flex-1"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        className="h-10 flex-1"
+                        disabled={updMut.isPending}
+                        onClick={() => updMut.mutate(r.id)}
+                      >
+                        {updMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {q.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum relatório encontrado.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
