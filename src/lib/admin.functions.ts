@@ -10,7 +10,7 @@ function assertAdmin(pw: string) {
 
 type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
 
-const HIDDEN_TEAM_NAMES = new Set(["RIOCERLT-TESTE"]);
+const HIDDEN_TEAM_NAMES = new Set(["TESTANDO"]);
 
 export const listTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
@@ -176,7 +176,7 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       .from("equipes")
       .select("id,team_name");
     if (teamsErr) throw new Error(teamsErr.message);
-    const HIDDEN_TEAMS = new Set(["RIOCERLT-TESTE"]);
+    const HIDDEN_TEAMS = new Set(["TESTANDO"]);
     const visibleTeams = (teams ?? []).filter((t) => !HIDDEN_TEAMS.has(t.team_name));
     const hiddenIds = new Set((teams ?? []).filter((t) => HIDDEN_TEAMS.has(t.team_name)).map((t) => t.id));
 
