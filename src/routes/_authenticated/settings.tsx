@@ -18,7 +18,7 @@ import { useTeamPhoto, saveTeamPhoto, fileToCompressedDataUrl } from "@/lib/team
 import { repoUpdateTeam } from "@/lib/db/repos";
 import type { Team } from "@/hooks/use-team";
 
-const TEST_TEAM_NAME = "RIOCERLT-TESTE";
+const TEST_TEAM_NAME = "TESTANDO";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Configurações" }] }),

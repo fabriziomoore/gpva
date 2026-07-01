@@ -1,0 +1,1 @@
+UPDATE public.equipes SET team_name = 'TESTANDO' WHERE team_name = 'RIOCERLT-TESTE';
