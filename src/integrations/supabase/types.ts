@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_order: {
+        Row: {
+          catalog: string
+          item_ids: string[]
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          catalog: string
+          item_ids?: string[]
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          catalog?: string
+          item_ids?: string[]
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_order_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       complementos_servico: {
         Row: {
           active: boolean
