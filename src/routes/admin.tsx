@@ -38,8 +38,7 @@ type SectionId =
   | "complementos_servico"
   | "impactos"
   | "variable"
-  | "create_team"
-  | "manage_teams";
+  | "create_team";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "tipos_servico", label: "Serviços" },
@@ -48,7 +47,6 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "impactos", label: "Impactos" },
   { id: "variable", label: "Variável" },
   { id: "create_team", label: "Criar Equipe" },
-  { id: "manage_teams", label: "Gerenciar Equipes" },
 ];
 
 function AdminPage() {
@@ -174,8 +172,6 @@ function AdminPage() {
         <main className="mx-auto max-w-2xl px-4 py-6">
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
-          ) : section === "manage_teams" ? (
-            <ManageTeamsSection adminPw={adminPw} />
           ) : section === "variable" ? (
             <VariableSection adminPw={adminPw} />
           ) : (
