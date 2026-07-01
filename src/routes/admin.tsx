@@ -446,19 +446,9 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const periodSelector = (withDay: boolean) => (
-    <div className="flex gap-2">
-      {withDay && (
+    <div className="space-y-2">
+      <div className="flex gap-2">
         <select
-          value={day}
-          onChange={(e) => setDay(Number(e.target.value))}
-          className="h-10 w-20 rounded-lg border border-border bg-card px-3 text-sm"
-        >
-          {days.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-      )}
-      <select
         value={month}
         onChange={(e) => setMonth(Number(e.target.value))}
         className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
@@ -476,6 +466,25 @@ function RankingSection({ adminPw }: { adminPw: string }) {
           <option key={y} value={y}>{y}</option>
         ))}
       </select>
+      </div>
+      {withDay && (
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDay(d)}
+              className={`h-9 rounded-md border text-sm transition-colors ${
+                d === day
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card hover:bg-accent"
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -591,6 +600,7 @@ function TeamHeader({
   const [name, setName] = useState(team.team_name);
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const updateMut = useMutation({
     mutationFn: () =>
@@ -622,6 +632,7 @@ function TeamHeader({
   });
 
   return (
+    <>
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-3">
         <div className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
@@ -640,11 +651,7 @@ function TeamHeader({
                 Editar
               </Button>
               <button
-                onClick={() => {
-                  if (window.confirm(`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`)) {
-                    deleteMut.mutate();
-                  }
-                }}
+                onClick={() => setConfirmDeleteOpen(true)}
                 className="rounded p-1.5 text-muted-foreground hover:text-destructive"
                 aria-label="Excluir"
               >
@@ -683,6 +690,17 @@ function TeamHeader({
         </div>
       )}
     </div>
+    <ExitConfirmDialog
+      open={confirmDeleteOpen}
+      onOpenChange={setConfirmDeleteOpen}
+      onConfirm={() => {
+        setConfirmDeleteOpen(false);
+        deleteMut.mutate();
+      }}
+      title="Excluir equipe"
+      description={`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`}
+    />
+    </>
   );
 }
 
