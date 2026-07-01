@@ -632,6 +632,7 @@ function TeamHeader({
   });
 
   return (
+    <>
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-3">
         <div className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
