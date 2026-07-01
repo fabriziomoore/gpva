@@ -235,3 +235,57 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       };
     });
   });
+
+export const adminListShifts = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; teamId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("expedientes")
+      .select("id,started_at,ended_at,status,report_text")
+      .eq("team_id", data.teamId)
+      .order("started_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const adminDeleteShift = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; shiftId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Cascade manually: vinculos -> servicos -> impactos_expediente -> expediente
+    const { data: svcs } = await supabaseAdmin
+      .from("servicos").select("id").eq("shift_id", data.shiftId);
+    const svcIds = (svcs ?? []).map((s) => s.id);
+    if (svcIds.length) {
+      const { error } = await supabaseAdmin
+        .from("vinculos_complementos").delete().in("servico_id", svcIds);
+      if (error) throw new Error(error.message);
+    }
+    const { error: e1 } = await supabaseAdmin
+      .from("servicos").delete().eq("shift_id", data.shiftId);
+    if (e1) throw new Error(e1.message);
+    const { error: e2 } = await supabaseAdmin
+      .from("impactos_expediente").delete().eq("shift_id", data.shiftId);
+    if (e2) throw new Error(e2.message);
+    const { error: e3 } = await supabaseAdmin
+      .from("expedientes").delete().eq("id", data.shiftId);
+    if (e3) throw new Error(e3.message);
+    return { ok: true as const };
+  });
+
+export const adminUpdateShiftReport = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; shiftId: string; reportText: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("expedientes")
+      .update({ report_text: data.reportText })
+      .eq("id", data.shiftId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
