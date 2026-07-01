@@ -1,31 +1,31 @@
 ## Problema
-No PC local, o Git abortou o pull/merge porque existe um `package-lock.json` que não está rastreado (`untracked`) e a versão do repositório remoto também quer criar esse mesmo arquivo. Isso é comum depois de rodar `npm install` antes de fazer o pull.
 
-## Solução
-Remover o `package-lock.json` local não rastreado e fazer o pull novamente. Depois, reinstalar as dependências.
+Após a mudança que filtrou os catálogos por `team_id` (para evitar duplicação entre equipes), as listas de **Tipos de Serviço, Motivos, Complementos e Impactos** ficaram vazias em todas as contas.
 
-## Passos no terminal (dentro da pasta do projeto)
+Causa: as 50 linhas existentes nessas tabelas foram cadastradas antes do filtro e estão com `team_id = NULL` (eram "globais"). O código consulta `.eq("team_id", userId)` e não encontra nada.
 
-1. **Verifique o estado atual:**
-   ```bash
-   git status
-   ```
-   Você verá `package-lock.json` listado como `untracked`.
+## Correção (migração única)
 
-2. **Remova o arquivo local não rastreado:**
-   ```bash
-   del package-lock.json
-   ```
-   *(No PowerShell/CMD do Windows. No Linux/Mac: `rm package-lock.json`)*
+Fazer backfill: para **cada equipe** em `equipes`, clonar as linhas atualmente com `team_id IS NULL` de cada tabela de catálogo, atribuindo o `team_id` correspondente. Depois apagar as linhas órfãs (`team_id IS NULL`) para não sobrarem duplicadas invisíveis.
 
-3. **Faça o pull novamente:**
-   ```bash
-   git pull
-   ```
+Tabelas afetadas:
+- `tipos_servico` (13 linhas × 6 equipes)
+- `motivos_inviabilidade` (20 × 6)
+- `complementos_servico` (10 × 6)
+- `impactos` (7 × 6)
 
-4. **Reinstale as dependências (após o pull):**
-   ```bash
-   npm install
-   ```
+Passos SQL, dentro de uma migração:
 
-Isso não altera nada no projeto em si — apenas resolve o conflito de merge local no Git.
+```text
+1. INSERT em cada tabela: SELECT gen_random_uuid(), <colunas>, e.id
+   FROM <catalogo> c CROSS JOIN equipes e WHERE c.team_id IS NULL;
+2. DELETE FROM <catalogo> WHERE team_id IS NULL;
+```
+
+Cada equipe passa a ter seu próprio conjunto independente (o que já era a intenção após a correção da duplicação). Nada muda no código do app.
+
+## Verificação
+
+Após aprovar a migração:
+- Login em qualquer equipe → abrir "Adicionar serviço" → as listas voltam a aparecer.
+- Cada equipe pode editar seus próprios catálogos em Configurações sem afetar as demais.
