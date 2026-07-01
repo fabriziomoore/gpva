@@ -257,13 +257,9 @@ export const adminDeleteShift = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Cascade manually: vinculos -> servicos -> impactos_expediente -> expediente
-    const { data: svcs } = await supabaseAdmin
-      .from("servicos").select("id").eq("shift_id", data.shiftId);
-    const svcIds = (svcs ?? []).map((s) => s.id);
     const { error: eVinc } = await supabaseAdmin
       .from("vinculos_complementos").delete().eq("shift_id", data.shiftId);
     if (eVinc) throw new Error(eVinc.message);
-    void svcIds;
     const { error: e1 } = await supabaseAdmin
       .from("servicos").delete().eq("shift_id", data.shiftId);
     if (e1) throw new Error(e1.message);
