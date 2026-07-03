@@ -837,6 +837,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 function LeadersSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const listFn = useServerFn(adminListLeaders);
   const createFn = useServerFn(adminCreateLeader);
@@ -849,9 +850,10 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
 
   const createMut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, leaderName: name, password } }),
+      createFn({ data: { adminPassword: adminPw, leaderName: name, login, password } }),
     onSuccess: (res) => {
       setName("");
+      setLogin("");
       setPassword("");
       toast.success(`Líder criado. Login: ${res.login}`);
       qc.invalidateQueries({ queryKey: ["admin-leaders"] });
@@ -877,8 +879,8 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!name.trim() || password.length < 6) {
-              toast.error("Nome e senha (mín. 6) são obrigatórios.");
+            if (!name.trim() || !login.trim() || password.length < 6) {
+              toast.error("Nome, login e senha (mín. 6) são obrigatórios.");
               return;
             }
             createMut.mutate();
@@ -893,6 +895,20 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
               placeholder="Ex: João Silva"
               className="h-11"
             />
+          </div>
+          <div>
+            <Label>Login</Label>
+            <Input
+              value={login}
+              onChange={(e) => setLogin(e.target.value)}
+              placeholder="Ex: joao ou lider-joao"
+              className="h-11"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Somente letras, números e hífen. Este será o usuário de acesso.
+            </p>
           </div>
           <div>
             <Label>Senha</Label>
