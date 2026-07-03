@@ -205,7 +205,6 @@ export function buildLeaderPdfHtml(s: LeaderPdfInput): string {
     ${kpi("Viabilidade", `${pctV}% ${deltaBadge(pctV, pctVPrev)}`, `${s.current.viable} viáveis · ${s.current.unviable} inviáveis`)}
     ${kpi("Negociações", `${s.current.negotiations} ${deltaBadge(s.current.negotiations, s.previous.negotiations)}`, `${previousLabel(s.period)}: ${s.previous.negotiations}`)}
     ${kpi("Total negociado", `${formatBRL(s.current.negotiated_value)}`, `${deltaBadge(s.current.negotiated_value, s.previous.negotiated_value)}`)}
-    ${kpi("Variável estimada", `${formatBRL(s.variable_estimated)}`, "com base nas negociações")}
     ${kpi("Expedientes / Média", `${s.current.shifts} · ${avgPerShift}`, "fechados · serviços por dia")}
   </div>
 
