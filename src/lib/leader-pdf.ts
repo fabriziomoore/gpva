@@ -344,13 +344,13 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     };
   };
   const pill = (ctx: CanvasRenderingContext2D, label: string, x: number, y: number, d: ReturnType<typeof delta>) => {
-    font(ctx, 8, 700, d.fg);
-    const w = Math.max(28, ctx.measureText(label).width + 10);
+    font(ctx, 10, 800, d.fg);
+    const w = Math.max(34, ctx.measureText(label).width + 14);
     ctx.fillStyle = d.bg;
     ctx.beginPath();
-    ctx.roundRect(x, y - 11, w, 15, 8);
+    ctx.roundRect(x, y - 14, w, 18, 9);
     ctx.fill();
-    ctx.fillStyle = d.fg;
+    ctx.fillStyle = d.fg === "#166534" ? "#064e3b" : d.fg;
     text(ctx, label, x + w / 2, y, "center");
     return w;
   };
