@@ -115,11 +115,10 @@ export function buildLeaderPdfHtml(s: LeaderPdfInput): string {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
 <title>Relatório de Produtividade — ${esc(periodTitle(s.period))}</title>
 <style>
-  @page { size: A4 landscape; margin: 10mm 12mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; font-size: 10px; }
   h1, h2, h3, h4 { margin: 0; font-weight: 700; }
-  .page { padding: 0; }
+  .page { padding: 28px 36px; background: #ffffff; }
   .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
   .header .title { font-size: 20px; letter-spacing: -0.02em; }
   .header .sub { font-size: 10px; color: #475569; margin-top: 2px; }
