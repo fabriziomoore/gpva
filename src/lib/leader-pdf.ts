@@ -338,7 +338,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // PAGE 3 — Resumo Executivo
   // =========================================================================
   pdf.addPage("a4", "landscape");
-  pageTitle(pdf, "RESUMO EXECUTIVO", input.scope_label, periodStr);
+  pageTitle(pdf, "RESUMO", input.scope_label, periodStr);
 
   const analysis = buildAnalysis(input, { pctV, pctVPrev, avgPerShift, avgPerShiftPrev });
   const blocks = [
@@ -370,21 +370,6 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const lines = pdf.splitTextToSize(b.body, colW - 8) as string[];
     lines.slice(0, 6).forEach((l, li) => pdf.text(l, x + 4, y + 10.5 + li * 3.6));
   });
-
-  // Assinaturas
-  const sigY = PH - 25;
-  const sigW = 90;
-  const sigLeft = M + 30;
-  const sigRight = PW - M - 30 - sigW;
-  setStroke(C.ink);
-  hline(sigLeft, sigY, sigLeft + sigW, sigY, 0.4);
-  hline(sigRight, sigY, sigRight + sigW, sigY, 0.4);
-  font(8, "bold"); setText(C.ink);
-  text("Supervisor", sigLeft + sigW / 2, sigY + 5, { align: "center" });
-  text("Gerência", sigRight + sigW / 2, sigY + 5, { align: "center" });
-  font(7, "normal"); setText(C.muted);
-  text(input.supervisor || "-", sigLeft + sigW / 2, sigY + 9, { align: "center" });
-  text("_", sigRight + sigW / 2, sigY + 9, { align: "center" });
 
   footer(3, 3);
 
