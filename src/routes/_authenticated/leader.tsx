@@ -285,6 +285,10 @@ function PeriodView({
   impacts,
   complements,
   meta,
+  allTeams,
+  allServices,
+  allShifts,
+  scopeIsAll,
 }: {
   period: Period;
   services: SvcRow[];
@@ -292,6 +296,10 @@ function PeriodView({
   impacts: ImpactRow[];
   complements: CompRow[];
   meta: ScopeMeta;
+  allTeams: TeamRow[];
+  allServices: SvcRow[];
+  allShifts: ShiftRow[];
+  scopeIsAll: boolean;
 }) {
   const stats = useMemo(() => {
     const cur = periodRange(period);
