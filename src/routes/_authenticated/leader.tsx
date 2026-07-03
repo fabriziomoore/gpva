@@ -385,8 +385,8 @@ function PeriodView({
       if (!bestDay || qty > bestDay.qty) bestDay = { date: formatDateBR(k), qty };
     }
 
-    const evoMap = new Map<string, { date: string; qty: number; sort: number }>();
-    for (const s of curSvc.filter((x) => x.viable)) {
+    const evoMap = new Map<string, { date: string; qty: number; unviable: number; sort: number }>();
+    for (const s of curSvc) {
       const d = new Date(s.created_at);
       const key =
         period === "day"
@@ -407,12 +407,16 @@ function PeriodView({
             ? new Date(d.getFullYear(), d.getMonth(), 1).getTime()
             : new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
       const c = evoMap.get(key);
-      if (c) c.qty += 1;
-      else evoMap.set(key, { date: label, qty: 1, sort });
+      if (c) {
+        if (s.viable) c.qty += 1;
+        else c.unviable += 1;
+      } else {
+        evoMap.set(key, { date: label, qty: s.viable ? 1 : 0, unviable: s.viable ? 0 : 1, sort });
+      }
     }
     const evolution = Array.from(evoMap.values())
       .sort((a, b) => a.sort - b.sort)
-      .map(({ date, qty }) => ({ date, qty }));
+      .map(({ date, qty, unviable }) => ({ date, qty, unviable }));
 
     const compareBars = [
       { name: "Total", atual: current.total, anterior: previous.total },
