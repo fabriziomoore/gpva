@@ -115,11 +115,10 @@ export function buildLeaderPdfHtml(s: LeaderPdfInput): string {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
 <title>Relatório de Produtividade — ${esc(periodTitle(s.period))}</title>
 <style>
-  @page { size: A4 landscape; margin: 10mm 12mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; font-size: 10px; }
   h1, h2, h3, h4 { margin: 0; font-weight: 700; }
-  .page { padding: 0; }
+  .page { padding: 28px 36px; background: #ffffff; }
   .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
   .header .title { font-size: 20px; letter-spacing: -0.02em; }
   .header .sub { font-size: 10px; color: #475569; margin-top: 2px; }
@@ -341,7 +340,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
     for (let i = 0; i < blocks.length; i++) {
       const el = blocks[i];
-      el.style.width = `${PAGE_W - 40}px`;
+      el.style.width = `${PAGE_W}px`;
       el.style.background = "#ffffff";
       const canvas = await html2canvas(el, {
         scale: 2,
@@ -350,13 +349,22 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
         logging: false,
         windowWidth: PAGE_W,
         width: PAGE_W,
+        height: el.scrollHeight,
+        windowHeight: el.scrollHeight,
       });
       const img = canvas.toDataURL("image/jpeg", 0.92);
       const ratio = canvas.height / canvas.width;
-      const w = PAGE_W;
-      const h = Math.min(PAGE_H, w * ratio);
+      // Fit within page, preserving aspect ratio; center vertically if shorter.
+      let w = PAGE_W;
+      let h = w * ratio;
+      if (h > PAGE_H) {
+        h = PAGE_H;
+        w = h / ratio;
+      }
+      const x = (PAGE_W - w) / 2;
+      const y = (PAGE_H - h) / 2;
       if (i > 0) pdf.addPage([PAGE_W, PAGE_H], "landscape");
-      pdf.addImage(img, "JPEG", 0, 0, w, h, undefined, "FAST");
+      pdf.addImage(img, "JPEG", x, y, w, h, undefined, "FAST");
     }
 
     return pdf.output("blob");
