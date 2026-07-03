@@ -62,6 +62,13 @@ export function paceProjection(
   return Math.round(currentValue / ratio);
 }
 
+export function elapsedRatio(period: Period, ref: Date = new Date()): number {
+  const r = periodRange(period, ref);
+  const total = r.end.getTime() - r.start.getTime();
+  const elapsed = Math.max(0, ref.getTime() - r.start.getTime());
+  return Math.min(1, Math.max(0, elapsed / total));
+}
+
 export function periodLabel(period: Period): string {
   return period === "day"
     ? "hoje"
