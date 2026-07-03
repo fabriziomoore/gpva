@@ -16,7 +16,6 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedVariableRouteImport } from './routes/_authenticated/variable'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift_.$id.report'
 
@@ -54,12 +53,6 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedProductivityRoute =
-  AuthenticatedProductivityRouteImport.update({
-    id: '/productivity',
-    path: '/productivity',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -77,7 +70,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
@@ -87,7 +79,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
@@ -100,7 +91,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
-  '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/variable': typeof AuthenticatedVariableRoute
@@ -114,7 +104,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/onboarding'
-    | '/productivity'
     | '/settings'
     | '/shift'
     | '/variable'
@@ -124,7 +113,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/onboarding'
-    | '/productivity'
     | '/settings'
     | '/shift'
     | '/variable'
@@ -136,7 +124,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/_authenticated/onboarding'
-    | '/_authenticated/productivity'
     | '/_authenticated/settings'
     | '/_authenticated/shift'
     | '/_authenticated/variable'
@@ -201,13 +188,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/productivity': {
-      id: '/_authenticated/productivity'
-      path: '/productivity'
-      fullPath: '/productivity'
-      preLoaderRoute: typeof AuthenticatedProductivityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
@@ -227,7 +207,6 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
-  AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedVariableRoute: typeof AuthenticatedVariableRoute
@@ -237,7 +216,6 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
-  AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedVariableRoute: AuthenticatedVariableRoute,
