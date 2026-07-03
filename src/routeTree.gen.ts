@@ -18,6 +18,7 @@ import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
 import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift_.$id.report'
 
 const AuthRoute = AuthRouteImport.update({
@@ -65,6 +66,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeaderRoute = AuthenticatedLeaderRouteImport.update({
+  id: '/leader',
+  path: '/leader',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedShiftIdReportRoute =
   AuthenticatedShiftIdReportRouteImport.update({
     id: '/shift_/$id/report',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/leader': typeof AuthenticatedLeaderRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/leader': typeof AuthenticatedLeaderRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/_authenticated/leader': typeof AuthenticatedLeaderRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/leader'
     | '/onboarding'
     | '/productivity'
     | '/settings'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
   to:
     | '/admin'
     | '/auth'
+    | '/leader'
     | '/onboarding'
     | '/productivity'
     | '/settings'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin'
     | '/auth'
+    | '/_authenticated/leader'
     | '/_authenticated/onboarding'
     | '/_authenticated/productivity'
     | '/_authenticated/settings'
@@ -215,6 +227,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leader': {
+      id: '/_authenticated/leader'
+      path: '/leader'
+      fullPath: '/leader'
+      preLoaderRoute: typeof AuthenticatedLeaderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/shift_/$id/report': {
       id: '/_authenticated/shift_/$id/report'
       path: '/shift/$id/report'
@@ -226,6 +245,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedLeaderRoute: typeof AuthenticatedLeaderRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -236,6 +256,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedLeaderRoute: AuthenticatedLeaderRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
