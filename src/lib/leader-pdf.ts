@@ -41,7 +41,7 @@ export type LeaderPdfInput = {
   best_day: { date: string; qty: number } | null;
   teams: TeamBreakdown[];
   compare_bars?: { name: string; atual: number; anterior: number }[];
-  evolution?: { date: string; qty: number }[];
+  evolution?: { date: string; qty: number; unviable?: number }[];
   company?: string;
   generated_by?: string;
   collaborators_count?: number | null;
@@ -140,7 +140,10 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     };
   };
   const deltaPill = (d: ReturnType<typeof delta>, x: number, y: number) => {
-    const label = d.tone === "up" ? `▲ ${d.label}` : d.tone === "down" ? `▼ ${d.label}` : d.label;
+    const label =
+      d.tone === "up" ? `+ ${d.label.replace(/^\+/, "")}` :
+      d.tone === "down" ? `- ${d.label.replace(/^-/, "")}` :
+      d.label;
     font(7.5, "bold");
     const tw = pdf.getTextWidth(label);
     const pw = tw + 4;
@@ -179,7 +182,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   // Título e período
   font(14, "bold"); setText(C.ink);
-  text("RELATÓRIO EXECUTIVO DE PRODUÇÃO", M + 26, M + 8);
+  text("RELATÓRIO DE PRODUÇÃO", M + 26, M + 8);
   font(9, "normal"); setText(C.sub);
   text(`Período analisado: ${periodStr}`, M + 26, M + 14);
   font(8, "normal"); setText(C.muted);
@@ -188,8 +191,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Centro: metadados
   const centerX = M + 118;
   const kvRows: [string, string][] = [
-    ["Empresa:", company],
     ["Supervisor:", input.supervisor || "-"],
+    ["Líder:", input.leader || "-"],
     ["Escopo:", input.scope_label],
     ["Período:", periodTitle(input.period)],
     ["Gerado em:", formatDateBR(now)],
@@ -209,11 +212,10 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   setFill(C.bgAlt); setStroke(C.border);
   pdf.roundedRect(boxX, M, 55, 26, 2, 2, "FD");
   const teamsCount = input.teams.length || 1;
-  const collabs = input.collaborators_count ?? null;
   const infos: [string, string][] = [
     ["Equipes", String(teamsCount)],
-    ["Colaboradores", collabs !== null ? String(collabs) : "—"],
     ["Expedientes", String(input.current.shifts)],
+    ["Viabilidade", `${pctVHeader}%`],
   ];
   infos.forEach((row, i) => {
     const y = M + 8 + i * 7;
