@@ -290,25 +290,28 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   // Isola o render em um iframe para escapar de CSS global do app
   // (Tailwind v4 usa oklch() que quebra o html2canvas).
+  // Use srcdoc em vez de document.open/write: alguns navegadores/WebViews podem
+  // trocar o documento ativo após o download quando document.write é usado.
   const iframe = document.createElement("iframe");
+  iframe.sandbox.add("allow-same-origin");
   iframe.style.position = "fixed";
   iframe.style.left = "-10000px";
   iframe.style.top = "0";
   iframe.style.width = `${PAGE_W}px`;
   iframe.style.height = `${PAGE_H}px`;
   iframe.style.border = "0";
+  iframe.style.visibility = "hidden";
+  iframe.style.pointerEvents = "none";
   document.body.appendChild(iframe);
 
   try {
-    const doc = iframe.contentDocument!;
-    doc.open();
-    doc.write(buildLeaderPdfHtml(input));
-    doc.close();
-    // aguarda parse/layout
     await new Promise<void>((r) => {
-      if (doc.readyState === "complete") r();
-      else iframe.addEventListener("load", () => r(), { once: true });
+      iframe.addEventListener("load", () => r(), { once: true });
+      iframe.srcdoc = buildLeaderPdfHtml(input);
     });
+    const doc = iframe.contentDocument;
+    if (!doc?.body) throw new Error("Não foi possível preparar o PDF.");
+    // aguarda parse/layout
     await new Promise((r) => setTimeout(r, 50));
 
     const body = doc.body;
