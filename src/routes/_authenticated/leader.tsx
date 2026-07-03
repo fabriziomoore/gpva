@@ -46,8 +46,11 @@ import {
   paceProjection,
   previousLabel,
   projectionLabel,
+  elapsedRatio,
 } from "@/lib/analytics";
 import { buildPeriodReport } from "@/lib/report";
+import { buildLeaderPdfHtml, type PeriodAgg, type TeamBreakdown } from "@/lib/leader-pdf";
+import { FileDown } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
@@ -253,6 +256,10 @@ function LeaderPage() {
                 impacts={filteredImpacts}
                 complements={filteredComps}
                 meta={scopeMeta}
+                allTeams={teamList}
+                allServices={services.data ?? []}
+                allShifts={shifts.data ?? []}
+                scopeIsAll={scope === ALL}
               />
             </TabsContent>
           ))}
