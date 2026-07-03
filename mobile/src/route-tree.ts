@@ -13,6 +13,7 @@ import { Route as ProductivityRoute } from "@/routes/_authenticated/productivity
 import { Route as SettingsRoute } from "@/routes/_authenticated/settings";
 import { Route as VariableRoute } from "@/routes/_authenticated/variable";
 import { Route as ShiftReportRoute } from "@/routes/_authenticated/shift_.$id.report";
+import { Route as LeaderRoute } from "@/routes/_authenticated/leader";
 
 // Rebind parents. The original `createFileRoute("/path")` calls produce
 // route objects whose parent is resolved later via `_addFileChildren`.
@@ -69,6 +70,12 @@ const shiftReport = (ShiftReportRoute as any).update({
   getParentRoute: () => authenticated,
 });
 
+const leader = (LeaderRoute as any).update({
+  id: "/leader",
+  path: "/leader",
+  getParentRoute: () => authenticated,
+});
+
 const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   IndexRoute: index,
   OnboardingRoute: onboarding,
@@ -77,6 +84,7 @@ const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   SettingsRoute: settings,
   VariableRoute: variable,
   ShiftReportRoute: shiftReport,
+  LeaderRoute: leader,
 });
 
 export const routeTree = (rootRoute as any)._addFileChildren({
