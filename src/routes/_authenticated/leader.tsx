@@ -49,7 +49,8 @@ import {
   elapsedRatio,
 } from "@/lib/analytics";
 import { buildPeriodReport } from "@/lib/report";
-import { buildLeaderPdfHtml, type PeriodAgg, type TeamBreakdown } from "@/lib/leader-pdf";
+import { renderLeaderPdfBlob, type PeriodAgg, type TeamBreakdown } from "@/lib/leader-pdf";
+import { downloadOrShare, slugFilename } from "@/lib/download";
 import { FileDown } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/leader")({
@@ -451,31 +452,36 @@ function PeriodView({
       .sort((a, b) => b.current.total - a.current.total);
   }, [scopeIsAll, period, allTeams, allServices, allShifts]);
 
-  const handleExportPdf = () => {
-    const html = buildLeaderPdfHtml({
-      period,
-      scope_label: meta.team_name,
-      leader: meta.leader,
-      supervisor: meta.supervisor,
-      current: { ...stats.current },
-      previous: { ...stats.previous, shifts: 0 } as PeriodAgg,
-      projected: stats.projected,
-      variable_estimated: stats.variable,
-      by_type: stats.byType,
-      top_reasons: stats.topReasons,
-      top_impacts: stats.topImpacts,
-      top_complements: stats.topComps,
-      best_day: stats.bestDay,
-      teams: teamsBreakdown,
-    });
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast.error("Permita popups para gerar o PDF");
-      return;
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const handleExportPdf = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const blob = await renderLeaderPdfBlob({
+        period,
+        scope_label: meta.team_name,
+        leader: meta.leader,
+        supervisor: meta.supervisor,
+        current: { ...stats.current },
+        previous: { ...stats.previous, shifts: 0 } as PeriodAgg,
+        projected: stats.projected,
+        variable_estimated: stats.variable,
+        by_type: stats.byType,
+        top_reasons: stats.topReasons,
+        top_impacts: stats.topImpacts,
+        top_complements: stats.topComps,
+        best_day: stats.bestDay,
+        teams: teamsBreakdown,
+      });
+      const filename = `relatorio-${slugFilename(meta.team_name)}-${period}.pdf`;
+      await downloadOrShare(blob, filename);
+      toast.success("Relatório gerado");
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível gerar o PDF");
+    } finally {
+      setPdfLoading(false);
     }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
   };
 
   return (
@@ -584,11 +590,16 @@ function PeriodView({
           className="h-12 w-full text-sm font-semibold"
           variant="default"
           onClick={handleExportPdf}
+          disabled={pdfLoading}
         >
-          <FileDown className="mr-2 size-4" /> Gerar relatório em PDF (paisagem)
+          {pdfLoading ? (
+            <><Loader2 className="mr-2 size-4 animate-spin" /> Gerando PDF…</>
+          ) : (
+            <><FileDown className="mr-2 size-4" /> Baixar relatório em PDF (paisagem)</>
+          )}
         </Button>
         <p className="mt-1 text-center text-[10px] text-muted-foreground">
-          Abre em nova aba com layout de apresentação; use "Salvar como PDF" no diálogo do navegador.
+          Faz o download do arquivo. No app Android, abre a tela de compartilhar após salvar em Documentos.
         </p>
       </div>
     </div>
