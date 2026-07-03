@@ -282,44 +282,57 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   const PAGE_W = 1123;
   const PAGE_H = 794;
+  const SCALE = 2;
   const M = 42;
   const CONTENT_W = PAGE_W - M * 2;
-  const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: [PAGE_W, PAGE_H] });
+  const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [PAGE_W, PAGE_H], hotfixes: ["px_scaling"] });
 
-  const rgb = (hex: string): [number, number, number] => {
-    const h = hex.replace("#", "");
-    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  const createPage = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = PAGE_W * SCALE;
+    canvas.height = PAGE_H * SCALE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Não foi possível preparar o PDF.");
+    ctx.scale(SCALE, SCALE);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, PAGE_W, PAGE_H);
+    ctx.textBaseline = "alphabetic";
+    ctx.lineJoin = "round";
+    return { canvas, ctx };
   };
-  const fill = (hex: string) => pdf.setFillColor(...rgb(hex));
-  const stroke = (hex: string) => pdf.setDrawColor(...rgb(hex));
-  const color = (hex: string) => pdf.setTextColor(...rgb(hex));
-  const font = (size: number, style: "normal" | "bold" = "normal", hex = "#0f172a") => {
-    pdf.setFont("helvetica", style);
-    pdf.setFontSize(size);
-    color(hex);
+
+  const font = (ctx: CanvasRenderingContext2D, size: number, weight: 400 | 600 | 700 | 800 = 400, hex = "#0f172a") => {
+    ctx.font = `${weight} ${size}px Arial, Helvetica, sans-serif`;
+    ctx.fillStyle = hex;
+    ctx.textAlign = "left";
   };
-  type PdfTextOptions = { align?: "left" | "center" | "right" };
-  const text = (value: string | number, x: number, y: number, options?: PdfTextOptions) => {
-    if (options) pdf.text(String(value), x, y, options);
-    else pdf.text(String(value), x, y);
+  const text = (ctx: CanvasRenderingContext2D, value: string | number, x: number, y: number, align: CanvasTextAlign = "left") => {
+    ctx.textAlign = align;
+    ctx.fillText(String(value), x, y);
   };
-  const fit = (value: string | number, maxWidth: number) => {
+  const fit = (ctx: CanvasRenderingContext2D, value: string | number, maxWidth: number) => {
     const str = String(value ?? "-");
-    if (pdf.getTextWidth(str) <= maxWidth) return str;
+    if (ctx.measureText(str).width <= maxWidth) return str;
     let out = str;
-    while (out.length > 1 && pdf.getTextWidth(`${out}...`) > maxWidth) out = out.slice(0, -1);
+    while (out.length > 1 && ctx.measureText(`${out}...`).width > maxWidth) out = out.slice(0, -1);
     return `${out}...`;
   };
-  const line = (x1: number, y1: number, x2: number, y2: number, hex = "#e2e8f0", width = 1) => {
-    stroke(hex);
-    pdf.setLineWidth(width);
-    pdf.line(x1, y1, x2, y2);
+  const line = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, hex = "#e2e8f0", width = 1) => {
+    ctx.strokeStyle = hex;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
   };
-  const box = (x: number, y: number, w: number, h: number, bg = "#ffffff", border = "#e2e8f0", r = 8) => {
-    fill(bg);
-    stroke(border);
-    pdf.setLineWidth(1);
-    pdf.roundedRect(x, y, w, h, r, r, "FD");
+  const box = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, bg = "#ffffff", border = "#e2e8f0", r = 8) => {
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    ctx.fill();
+    ctx.stroke();
   };
   const delta = (cur: number, prev: number) => {
     const d = deltaPct(cur, prev);
@@ -330,70 +343,73 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
       fg: d > 0 ? "#166534" : d < 0 ? "#991b1b" : "#475569",
     };
   };
-  const pill = (label: string, x: number, y: number, d: ReturnType<typeof delta>) => {
-    font(8, "bold", d.fg);
-    const w = Math.max(28, pdf.getTextWidth(label) + 10);
-    fill(d.bg);
-    stroke(d.bg);
-    pdf.roundedRect(x, y - 10, w, 14, 7, 7, "FD");
-    text(label, x + w / 2, y, { align: "center" });
+  const pill = (ctx: CanvasRenderingContext2D, label: string, x: number, y: number, d: ReturnType<typeof delta>) => {
+    font(ctx, 8, 700, d.fg);
+    const w = Math.max(28, ctx.measureText(label).width + 10);
+    ctx.fillStyle = d.bg;
+    ctx.beginPath();
+    ctx.roundRect(x, y - 11, w, 15, 8);
+    ctx.fill();
+    text(ctx, label, x + w / 2, y, "center");
     return w;
   };
-  const bar = (x: number, y: number, w: number, h: number, pctValue: number, fillHex = "#2563eb") => {
-    fill("#e2e8f0");
-    stroke("#e2e8f0");
-    pdf.roundedRect(x, y, w, h, h / 2, h / 2, "FD");
-    fill(fillHex);
-    stroke(fillHex);
-    pdf.roundedRect(x, y, Math.max(h, w * Math.max(0, Math.min(1, pctValue))), h, h / 2, h / 2, "FD");
+  const bar = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pctValue: number, fillHex = "#2563eb") => {
+    ctx.fillStyle = "#e2e8f0";
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, h / 2);
+    ctx.fill();
+    ctx.fillStyle = fillHex;
+    ctx.beginPath();
+    ctx.roundRect(x, y, Math.max(h, w * Math.max(0, Math.min(1, pctValue))), h, h / 2);
+    ctx.fill();
   };
-  const header = () => {
-    font(22, "normal");
-    text(`Painel de Produtividade — ${periodTitle(input.period)}`, M, 58);
-    font(10, "bold", "#475569");
-    text(`Escopo: ${input.scope_label} · Comparativo vs ${previousLabel(input.period)}`, M, 73);
-    font(9, "bold");
-    text("Líder:", PAGE_W - M - 190, 48);
-    text("Supervisor:", PAGE_W - M - 190, 61);
-    text("Gerado em:", PAGE_W - M - 190, 74);
-    font(9, "normal", "#334155");
-    text(fit(input.leader, 118), PAGE_W - M, 48, { align: "right" });
-    text(fit(input.supervisor, 118), PAGE_W - M, 61, { align: "right" });
-    text(formatDateBR(new Date()), PAGE_W - M, 74, { align: "right" });
-    line(M, 82, PAGE_W - M, 82, "#0f172a", 3);
+  const header = (ctx: CanvasRenderingContext2D) => {
+    font(ctx, 22, 400);
+    text(ctx, `Painel de Produtividade — ${periodTitle(input.period)}`, M, 58);
+    font(ctx, 10, 700, "#475569");
+    text(ctx, `Escopo: ${input.scope_label} · Comparativo vs ${previousLabel(input.period)}`, M, 73);
+    font(ctx, 9, 700);
+    text(ctx, "Líder:", PAGE_W - M - 190, 48);
+    text(ctx, "Supervisor:", PAGE_W - M - 190, 61);
+    text(ctx, "Gerado em:", PAGE_W - M - 190, 74);
+    font(ctx, 9, 400, "#334155");
+    text(ctx, fit(ctx, input.leader, 118), PAGE_W - M, 48, "right");
+    text(ctx, fit(ctx, input.supervisor, 118), PAGE_W - M, 61, "right");
+    text(ctx, formatDateBR(new Date()), PAGE_W - M, 74, "right");
+    line(ctx, M, 82, PAGE_W - M, 82, "#0f172a", 3);
   };
-  const drawKpi = (x: number, y: number, w: number, label: string, value: string, d: ReturnType<typeof delta> | null, sub: string) => {
-    box(x, y, w, 56, "#f8fafc");
-    font(8, "normal", "#64748b");
-    text(label.toUpperCase(), x + 10, y + 19);
-    font(value.length > 14 ? 13 : 16, "bold");
-    text(fit(value, w - 55), x + 10, y + 36);
-    if (d) pill(d.label, x + w - 43, y + 36, d);
-    font(8, "normal", "#64748b");
-    text(fit(sub, w - 20), x + 10, y + 49);
+  const drawKpi = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, label: string, value: string, d: ReturnType<typeof delta> | null, sub: string) => {
+    box(ctx, x, y, w, 56, "#f8fafc");
+    font(ctx, 8, 400, "#64748b");
+    text(ctx, label.toUpperCase(), x + 10, y + 19);
+    font(ctx, value.length > 14 ? 13 : 16, 800);
+    text(ctx, fit(ctx, value, w - 55), x + 10, y + 36);
+    if (d) pill(ctx, d.label, x + w - 43, y + 36, d);
+    font(ctx, 8, 400, "#64748b");
+    text(ctx, fit(ctx, sub, w - 20), x + 10, y + 49);
   };
-  const drawRank = (x: number, y: number, w: number, title: string, rows: { name: string; qty: number }[]) => {
-    font(10, "bold", "#475569");
-    text(title.toUpperCase(), x, y);
+  const drawRank = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, title: string, rows: { name: string; qty: number }[]) => {
+    font(ctx, 10, 800, "#475569");
+    text(ctx, title.toUpperCase(), x, y);
     const top = rows.slice(0, 5);
     if (top.length === 0) {
-      font(9, "normal", "#94a3b8");
-      text("Sem dados", x + w / 2, y + 32, { align: "center" });
+      font(ctx, 9, 400, "#94a3b8");
+      text(ctx, "Sem dados", x + w / 2, y + 32, "center");
       return;
     }
     const max = top[0].qty || 1;
     top.forEach((row, index) => {
       const yy = y + 18 + index * 19;
-      font(10, "normal", "#0f172a");
-      text(fit(row.name, w - 116), x, yy);
-      font(10, "normal", "#334155");
-      text(row.qty, x + w - 88, yy, { align: "right" });
-      bar(x + w - 78, yy - 8, 78, 7, row.qty / max);
+      font(ctx, 10, 400, "#0f172a");
+      text(ctx, fit(ctx, row.name, w - 116), x, yy);
+      font(ctx, 10, 400, "#334155");
+      text(ctx, row.qty, x + w - 88, yy, "right");
+      bar(ctx, x + w - 78, yy - 8, 78, 7, row.qty / max);
     });
   };
-  const drawFooter = () => {
-    font(8, "normal", "#94a3b8");
-    text("GPVA · Painel do Líder — relatório em PDF gerado automaticamente.", PAGE_W - M, PAGE_H - 34, { align: "right" });
+  const drawFooter = (ctx: CanvasRenderingContext2D) => {
+    font(ctx, 8, 400, "#94a3b8");
+    text(ctx, "GPVA · Painel do Líder — relatório em PDF gerado automaticamente.", PAGE_W - M, PAGE_H - 34, "right");
   };
 
   const pctV = input.current.total ? Math.round((input.current.viable / input.current.total) * 100) : 0;
@@ -403,7 +419,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const paceTarget = input.projected.total;
   const paceRatio = paceTarget ? Math.min(1, input.current.total / paceTarget) : 0;
 
-  header();
+  const { canvas: page1, ctx } = createPage();
+  header(ctx);
   const kpiW = (CONTENT_W - 32) / 5;
   [
     ["Serviços", String(input.current.total), delta(input.current.total, input.previous.total), `${previousLabel(input.period)}: ${input.previous.total}`],
@@ -411,44 +428,44 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     ["Negociações", String(input.current.negotiations), delta(input.current.negotiations, input.previous.negotiations), `${previousLabel(input.period)}: ${input.previous.negotiations}`],
     ["Total negociado", formatBRL(input.current.negotiated_value), delta(input.current.negotiated_value, input.previous.negotiated_value), ""],
     ["Expedientes / Média", `${input.current.shifts} · ${avgPerShift}`, null, "fechados · serviços por dia"],
-  ].forEach(([label, value, d, sub], i) => drawKpi(M + i * (kpiW + 8), 98, kpiW, label as string, value as string, d as ReturnType<typeof delta> | null, sub as string));
+  ].forEach(([label, value, d, sub], i) => drawKpi(ctx, M + i * (kpiW + 8), 98, kpiW, label as string, value as string, d as ReturnType<typeof delta> | null, sub as string));
 
   const cardY = 166;
   const cardW = (CONTENT_W - 10) / 2;
-  box(M, cardY, cardW, 178);
-  box(M + cardW + 10, cardY, cardW, 178);
-  font(10, "bold", "#475569");
-  text(projectionLabel(input.period).toUpperCase(), M + 12, cardY + 22);
-  font(9, "normal", "#64748b");
-  text("SERVIÇOS PROJETADOS", M + 12, cardY + 48);
-  text("NEGOCIADO PROJETADO", M + 250, cardY + 48);
-  font(24, "bold", "#1e3a8a");
-  text(input.projected.total, M + 12, cardY + 72);
-  text(formatBRL(input.projected.negotiated_value), M + 250, cardY + 72);
-  font(9, "normal", "#334155");
-  text(`${previousLabel(input.period)}: ${input.previous.total} · diferença: ${input.projected.total - input.previous.total >= 0 ? "+" : ""}${input.projected.total - input.previous.total}`, M + 12, cardY + 88);
-  text(`${previousLabel(input.period)}: ${formatBRL(input.previous.negotiated_value)}`, M + 250, cardY + 88);
-  font(9, "normal", "#475569");
-  text(`Ritmo atual: ${input.current.total} de ${paceTarget} projetados`, M + 12, cardY + 116);
-  text(`${pct(paceRatio)} da projeção`, M + cardW - 12, cardY + 116, { align: "right" });
-  bar(M + 12, cardY + 124, cardW - 24, 12, paceRatio, "#3b82f6");
+  box(ctx, M, cardY, cardW, 178);
+  box(ctx, M + cardW + 10, cardY, cardW, 178);
+  font(ctx, 10, 800, "#475569");
+  text(ctx, projectionLabel(input.period).toUpperCase(), M + 12, cardY + 22);
+  font(ctx, 9, 400, "#64748b");
+  text(ctx, "SERVIÇOS PROJETADOS", M + 12, cardY + 48);
+  text(ctx, "NEGOCIADO PROJETADO", M + 250, cardY + 48);
+  font(ctx, 24, 800, "#1e3a8a");
+  text(ctx, input.projected.total, M + 12, cardY + 72);
+  text(ctx, formatBRL(input.projected.negotiated_value), M + 250, cardY + 72);
+  font(ctx, 9, 400, "#334155");
+  text(ctx, `${previousLabel(input.period)}: ${input.previous.total} · diferença: ${input.projected.total - input.previous.total >= 0 ? "+" : ""}${input.projected.total - input.previous.total}`, M + 12, cardY + 88);
+  text(ctx, `${previousLabel(input.period)}: ${formatBRL(input.previous.negotiated_value)}`, M + 250, cardY + 88);
+  font(ctx, 9, 400, "#475569");
+  text(ctx, `Ritmo atual: ${input.current.total} de ${paceTarget} projetados`, M + 12, cardY + 116);
+  text(ctx, `${pct(paceRatio)} da projeção`, M + cardW - 12, cardY + 116, "right");
+  bar(ctx, M + 12, cardY + 124, cardW - 24, 12, paceRatio, "#3b82f6");
   const markerX = M + 12 + (cardW - 24) * elapsed;
-  line(markerX, cardY + 121, markerX, cardY + 139, "#ef4444", 2);
-  font(8, "normal", "#475569");
-  fill("#2563eb");
-  pdf.rect(M + 12, cardY + 149, 7, 7, "F");
-  text("Produção atual", M + 24, cardY + 156);
-  fill("#ef4444");
-  pdf.rect(M + 104, cardY + 149, 7, 7, "F");
-  text(`Tempo decorrido no ${periodLabel(input.period)} (${pct(elapsed)})`, M + 116, cardY + 156);
+  line(ctx, markerX, cardY + 121, markerX, cardY + 139, "#ef4444", 2);
+  font(ctx, 8, 400, "#475569");
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(M + 12, cardY + 149, 7, 7);
+  text(ctx, "Produção atual", M + 24, cardY + 156);
+  ctx.fillStyle = "#ef4444";
+  ctx.fillRect(M + 104, cardY + 149, 7, 7);
+  text(ctx, `Tempo decorrido (${pct(elapsed)})`, M + 116, cardY + 156);
   if (input.best_day) {
-    font(9, "normal", "#334155");
-    text(`Melhor dia: ${input.best_day.date} — ${input.best_day.qty} viáveis`, M + 12, cardY + 172);
+    font(ctx, 9, 400, "#334155");
+    text(ctx, `Melhor dia: ${input.best_day.date} — ${input.best_day.qty} viáveis`, M + 12, cardY + 172);
   }
 
   const tx = M + cardW + 22;
-  font(10, "bold", "#475569");
-  text(`ATUAL VS ${previousLabel(input.period).toUpperCase()}`, tx, cardY + 22);
+  font(ctx, 10, 800, "#475569");
+  text(ctx, `ATUAL VS ${previousLabel(input.period).toUpperCase()}`, tx, cardY + 22);
   const rows = [
     ["Métrica", "Anterior", "Atual", "Δ"],
     ["Total de serviços", String(input.previous.total), String(input.current.total), delta(input.current.total, input.previous.total)],
@@ -461,53 +478,55 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const tableX = tx;
   const tableY = cardY + 40;
   const col = [0, 150, 270, 390];
-  fill("#f1f5f9");
-  pdf.rect(tableX, tableY, cardW - 24, 20, "F");
+  ctx.fillStyle = "#f1f5f9";
+  ctx.fillRect(tableX, tableY, cardW - 24, 20);
   rows.forEach((r, i) => {
     const yy = tableY + 15 + i * 20;
-    if (i === 0) font(9, "bold", "#475569");
-    else font(10, i === 5 ? "bold" : "normal", "#0f172a");
-    text(r[0] as string, tableX + col[0] + 8, yy);
-    text(r[1] as string, tableX + col[1] + 92, yy, { align: "right" });
-    text(r[2] as string, tableX + col[2] + 92, yy, { align: "right" });
-    if (i > 0) pill((r[3] as ReturnType<typeof delta>).label, tableX + col[3] + 44, yy, r[3] as ReturnType<typeof delta>);
-    if (i > 0) line(tableX, yy + 7, tableX + cardW - 24, yy + 7, "#f1f5f9");
+    if (i === 0) font(ctx, 9, 700, "#475569");
+    else font(ctx, 10, i === 5 ? 700 : 400, "#0f172a");
+    text(ctx, r[0] as string, tableX + col[0] + 8, yy);
+    text(ctx, r[1] as string, tableX + col[1] + 92, yy, "right");
+    text(ctx, r[2] as string, tableX + col[2] + 92, yy, "right");
+    if (i > 0) pill(ctx, (r[3] as ReturnType<typeof delta>).label, tableX + col[3] + 44, yy, r[3] as ReturnType<typeof delta>);
+    if (i > 0) line(ctx, tableX, yy + 7, tableX + cardW - 24, yy + 7, "#f1f5f9");
   });
 
   const rankY = 375;
   const rankW = (CONTENT_W - 42) / 4;
-  drawRank(M, rankY, rankW, "Top serviços (viáveis)", input.by_type);
-  drawRank(M + rankW + 14, rankY, rankW, "Top motivos de inviabilidade", input.top_reasons);
-  drawRank(M + (rankW + 14) * 2, rankY, rankW, "Complementos mais usados", input.top_complements);
-  drawRank(M + (rankW + 14) * 3, rankY, rankW, "Impactos recorrentes", input.top_impacts);
-  drawFooter();
+  drawRank(ctx, M, rankY, rankW, "Top serviços (viáveis)", input.by_type);
+  drawRank(ctx, M + rankW + 14, rankY, rankW, "Top motivos de inviabilidade", input.top_reasons);
+  drawRank(ctx, M + (rankW + 14) * 2, rankY, rankW, "Complementos mais usados", input.top_complements);
+  drawRank(ctx, M + (rankW + 14) * 3, rankY, rankW, "Impactos recorrentes", input.top_impacts);
+  drawFooter(ctx);
+  pdf.addImage(page1.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, PAGE_W, PAGE_H, undefined, "FAST");
 
   if (input.teams.length > 0) {
     pdf.addPage([PAGE_W, PAGE_H], "landscape");
-    font(15, "bold");
-    text(`Desempenho por equipe — ${periodTitle(input.period)}`, M, 54);
-    line(M, 64, PAGE_W - M, 64, "#0f172a", 3);
+    const { canvas: page2, ctx: ctx2 } = createPage();
+    font(ctx2, 15, 800);
+    text(ctx2, `Desempenho por equipe — ${periodTitle(input.period)}`, M, 54);
+    line(ctx2, M, 64, PAGE_W - M, 64, "#0f172a", 3);
     const x = M;
     let y = 72;
     const widths = [340, 80, 110, 110, 90, 90, 190];
     const heads = ["Equipe", "Exped.", "Serviços", "Viáveis", "Inviáv.", "Negoc.", "Negociado"];
-    fill("#0f172a");
-    pdf.rect(x, y, CONTENT_W, 28, "F");
-    font(9, "bold", "#ffffff");
+    ctx2.fillStyle = "#0f172a";
+    ctx2.fillRect(x, y, CONTENT_W, 28);
+    font(ctx2, 9, 800, "#ffffff");
     let cx = x;
     heads.forEach((h, i) => {
-      text(h.toUpperCase(), cx + 10, y + 18);
+      text(ctx2, h.toUpperCase(), cx + 10, y + 18);
       cx += widths[i] ?? 0;
     });
     y += 28;
     input.teams.slice(0, 22).forEach((team, index) => {
       if (index % 2 === 1) {
-        fill("#f8fafc");
-        pdf.rect(x, y, CONTENT_W, 27, "F");
+        ctx2.fillStyle = "#f8fafc";
+        ctx2.fillRect(x, y, CONTENT_W, 27);
       }
-      font(10, "bold");
-      text(fit(team.team_name, widths[0] - 18), x + 10, y + 18);
-      font(10, "normal");
+      font(ctx2, 10, 700);
+      text(ctx2, fit(ctx2, team.team_name, widths[0] - 18), x + 10, y + 18);
+      font(ctx2, 10, 400);
       const teamPctV = team.current.total ? Math.round((team.current.viable / team.current.total) * 100) : 0;
       const values = [
         String(team.current.shifts),
@@ -520,14 +539,15 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
       cx = x + widths[0];
       values.forEach((value, i) => {
         const width = widths[i + 1] ?? 0;
-        text(value, cx + width / 2, y + 18, { align: "center" });
+        text(ctx2, value, cx + width / 2, y + 18, "center");
         cx += width;
       });
-      pill(delta(team.current.total, team.previous.total).label, x + widths[0] + 74, y + 18, delta(team.current.total, team.previous.total));
-      line(x, y + 27, PAGE_W - M, y + 27, "#e2e8f0");
+      pill(ctx2, delta(team.current.total, team.previous.total).label, x + widths[0] + 74, y + 18, delta(team.current.total, team.previous.total));
+      line(ctx2, x, y + 27, PAGE_W - M, y + 27, "#e2e8f0");
       y += 27;
     });
-    drawFooter();
+    drawFooter(ctx2);
+    pdf.addImage(page2.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, PAGE_W, PAGE_H, undefined, "FAST");
   }
 
   return pdf.output("blob");
