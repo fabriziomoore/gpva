@@ -350,6 +350,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     ctx.beginPath();
     ctx.roundRect(x, y - 11, w, 15, 8);
     ctx.fill();
+    ctx.fillStyle = d.fg;
     text(ctx, label, x + w / 2, y, "center");
     return w;
   };
