@@ -344,14 +344,9 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     };
   };
   const pill = (ctx: CanvasRenderingContext2D, label: string, x: number, y: number, d: ReturnType<typeof delta>) => {
-    font(ctx, 10, 800, d.fg);
-    const w = Math.max(34, ctx.measureText(label).width + 14);
-    ctx.fillStyle = d.bg;
-    ctx.beginPath();
-    ctx.roundRect(x, y - 14, w, 18, 9);
-    ctx.fill();
-    ctx.fillStyle = d.fg === "#166534" ? "#064e3b" : d.fg;
-    text(ctx, label, x + w / 2, y, "center");
+    font(ctx, 10, 800, d.fg === "#166534" ? "#047857" : d.fg);
+    text(ctx, label, x, y);
+    const w = Math.max(28, ctx.measureText(label).width);
     return w;
   };
   const bar = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pctValue: number, fillHex = "#2563eb") => {
@@ -385,7 +380,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     text(ctx, label.toUpperCase(), x + 10, y + 19);
     font(ctx, value.length > 14 ? 13 : 16, 800);
     text(ctx, fit(ctx, value, w - 55), x + 10, y + 36);
-    if (d) pill(ctx, d.label, x + w - 43, y + 36, d);
+    if (d) pill(ctx, d.label, x + w - 42, y + 36, d);
     font(ctx, 8, 400, "#64748b");
     text(ctx, fit(ctx, sub, w - 20), x + 10, y + 49);
   };
@@ -488,7 +483,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     text(ctx, r[0] as string, tableX + col[0] + 8, yy);
     text(ctx, r[1] as string, tableX + col[1] + 92, yy, "right");
     text(ctx, r[2] as string, tableX + col[2] + 92, yy, "right");
-    if (i > 0) pill(ctx, (r[3] as ReturnType<typeof delta>).label, tableX + col[3] + 44, yy, r[3] as ReturnType<typeof delta>);
+    if (i > 0) pill(ctx, (r[3] as ReturnType<typeof delta>).label, tableX + col[3] + 36, yy, r[3] as ReturnType<typeof delta>);
     if (i > 0) line(ctx, tableX, yy + 7, tableX + cardW - 24, yy + 7, "#f1f5f9");
   });
 
