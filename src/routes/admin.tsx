@@ -21,6 +21,9 @@ import {
   adminDeleteShift,
   adminUpdateShiftReport,
   listTeams,
+  adminCreateLeader,
+  adminListLeaders,
+  adminDeleteLeader,
 } from "@/lib/admin.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
@@ -38,7 +41,8 @@ type SectionId =
   | "complementos_servico"
   | "impactos"
   | "variable"
-  | "create_team";
+  | "create_team"
+  | "leaders";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "tipos_servico", label: "Serviços" },
@@ -47,6 +51,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "impactos", label: "Impactos" },
   { id: "variable", label: "Variável" },
   { id: "create_team", label: "Criar Equipe" },
+  { id: "leaders", label: "Líderes" },
 ];
 
 function AdminPage() {
@@ -174,6 +179,8 @@ function AdminPage() {
             <CreateTeamSection adminPw={adminPw} />
           ) : section === "variable" ? (
             <VariableSection adminPw={adminPw} />
+          ) : section === "leaders" ? (
+            <LeadersSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
