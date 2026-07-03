@@ -46,8 +46,11 @@ import {
   paceProjection,
   previousLabel,
   projectionLabel,
+  elapsedRatio,
 } from "@/lib/analytics";
 import { buildPeriodReport } from "@/lib/report";
+import { buildLeaderPdfHtml, type PeriodAgg, type TeamBreakdown } from "@/lib/leader-pdf";
+import { FileDown } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
@@ -253,6 +256,10 @@ function LeaderPage() {
                 impacts={filteredImpacts}
                 complements={filteredComps}
                 meta={scopeMeta}
+                allTeams={teamList}
+                allServices={services.data ?? []}
+                allShifts={shifts.data ?? []}
+                scopeIsAll={scope === ALL}
               />
             </TabsContent>
           ))}
@@ -278,6 +285,10 @@ function PeriodView({
   impacts,
   complements,
   meta,
+  allTeams,
+  allServices,
+  allShifts,
+  scopeIsAll,
 }: {
   period: Period;
   services: SvcRow[];
@@ -285,6 +296,10 @@ function PeriodView({
   impacts: ImpactRow[];
   complements: CompRow[];
   meta: ScopeMeta;
+  allTeams: TeamRow[];
+  allServices: SvcRow[];
+  allShifts: ShiftRow[];
+  scopeIsAll: boolean;
 }) {
   const stats = useMemo(() => {
     const cur = periodRange(period);
@@ -401,6 +416,68 @@ function PeriodView({
       best_day: stats.bestDay,
     });
 
+  const teamsBreakdown = useMemo<TeamBreakdown[]>(() => {
+    if (!scopeIsAll) return [];
+    const cur = periodRange(period);
+    const prev = previousRange(period);
+    return allTeams
+      .map((t) => {
+        const svcCur = allServices.filter((s) => s.team_id === t.id && inRange(s.created_at, cur));
+        const svcPrev = allServices.filter((s) => s.team_id === t.id && inRange(s.created_at, prev));
+        const shiftsCur = allShifts.filter((s) => s.team_id === t.id && inRange(s.started_at, cur));
+        const agg = (rows: SvcRow[]): PeriodAgg => {
+          const viable = rows.filter((r) => r.viable);
+          const neg = viable.filter((r) => r.is_negotiation);
+          return {
+            total: rows.length,
+            viable: viable.length,
+            unviable: rows.length - viable.length,
+            negotiations: neg.length,
+            negotiated_value: neg.reduce((a, b) => a + (Number(b.negotiated_value) || 0), 0),
+            shifts: 0,
+          };
+        };
+        const c = { ...agg(svcCur), shifts: shiftsCur.length };
+        const p = agg(svcPrev);
+        return {
+          team_name: t.team_name,
+          leader: t.leader,
+          supervisor: t.supervisor,
+          current: c,
+          previous: p,
+          variable_estimated: c.negotiations * (t.variable_rate || 0),
+        } as TeamBreakdown;
+      })
+      .sort((a, b) => b.current.total - a.current.total);
+  }, [scopeIsAll, period, allTeams, allServices, allShifts]);
+
+  const handleExportPdf = () => {
+    const html = buildLeaderPdfHtml({
+      period,
+      scope_label: meta.team_name,
+      leader: meta.leader,
+      supervisor: meta.supervisor,
+      current: { ...stats.current },
+      previous: { ...stats.previous, shifts: 0 } as PeriodAgg,
+      projected: stats.projected,
+      variable_estimated: stats.variable,
+      by_type: stats.byType,
+      top_reasons: stats.topReasons,
+      top_impacts: stats.topImpacts,
+      top_complements: stats.topComps,
+      best_day: stats.bestDay,
+      teams: teamsBreakdown,
+    });
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast.error("Permita popups para gerar o PDF");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
@@ -450,6 +527,7 @@ function PeriodView({
               <ProjectionDelta projected={stats.projected.negotiated_value} previous={stats.previous.negotiated_value} currency />
             </div>
           </div>
+          <PaceBar current={stats.current.total} projected={stats.projected.total} period={period} />
           <p className="mt-2 text-[10px] text-muted-foreground">Baseado no ritmo atual. Não é meta oficial.</p>
         </div>
       )}
@@ -501,6 +579,56 @@ function PeriodView({
           <p className="text-sm font-semibold">{stats.bestDay.date} — {stats.bestDay.qty} viáveis</p>
         </div>
       )}
+
+      <div className="pt-2">
+        <Button
+          className="h-12 w-full text-sm font-semibold"
+          variant="default"
+          onClick={handleExportPdf}
+        >
+          <FileDown className="mr-2 size-4" /> Gerar relatório em PDF (paisagem)
+        </Button>
+        <p className="mt-1 text-center text-[10px] text-muted-foreground">
+          Abre em nova aba com layout de apresentação; use "Salvar como PDF" no diálogo do navegador.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function PaceBar({ current, projected, period }: { current: number; projected: number; period: Period }) {
+  const elapsed = elapsedRatio(period);
+  const paceRatio = projected > 0 ? Math.min(1, current / projected) : 0;
+  const elapsedPct = Math.round(elapsed * 100);
+  const paceCount = Math.round(paceRatio * 100);
+  const onPace = paceCount >= elapsedPct;
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>
+          Ritmo: <span className="font-semibold text-foreground">{current}</span> de{" "}
+          <span className="font-semibold text-foreground">{projected}</span> projetados
+        </span>
+        <span className={onPace ? "text-success font-semibold" : "text-destructive font-semibold"}>
+          {paceCount}% da projeção
+        </span>
+      </div>
+      <div className="relative h-3 overflow-hidden rounded-full bg-muted">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all"
+          style={{ width: `${paceCount}%` }}
+        />
+        <div
+          className="absolute -top-0.5 bottom-[-2px] w-[2px] bg-destructive"
+          style={{ left: `${elapsedPct}%` }}
+          title={`Tempo decorrido: ${elapsedPct}%`}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-[9px] text-muted-foreground">
+        <span>0%</span>
+        <span>Marcador vermelho = {elapsedPct}% do {period === "week" ? "semana" : period === "month" ? "mês" : "ano"} decorrido</span>
+        <span>100%</span>
+      </div>
     </div>
   );
 }
