@@ -54,7 +54,7 @@ function HomePage() {
   useEffect(() => {
     if (isLeader.data === true) return;
     if (team && !team.onboarded) navigate({ to: "/onboarding" });
-  }, [team, navigate]);
+  }, [team, navigate, isLeader.data]);
 
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
