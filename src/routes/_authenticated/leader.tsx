@@ -507,7 +507,6 @@ function PeriodView({
         <Kpi label="Total" value={fmtQty(stats.current.total)} delta={deltaPct(stats.current.total, stats.previous.total)} hint={`vs ${previousLabel(period)}: ${stats.previous.total}`} />
         <Kpi label="Viabilidade" value={`${stats.pctV}%`} delta={deltaPct(stats.pctV, stats.pctVPrev)} hint={`${stats.current.viable} viáv. / ${stats.current.unviable} inviáv.`} tone="success" />
         <Kpi label="Negociado" value={formatBRL(stats.current.negotiated_value)} delta={deltaPct(stats.current.negotiated_value, stats.previous.negotiated_value)} hint={`${stats.current.negotiations} negociações`} small />
-        <Kpi label="Variável est." value={formatBRL(stats.variable)} hint={`${stats.current.negotiations} × ${formatBRL(meta.rate)}`} tone="primary" small />
         <Kpi label="Expedientes" value={String(stats.current.shifts)} hint="fechados no período" small />
         <Kpi label="Média/expediente" value={String(stats.avgPerShift)} hint="serviços por dia trabalhado" small />
       </div>
