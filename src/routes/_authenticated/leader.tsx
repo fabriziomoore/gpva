@@ -80,7 +80,7 @@ const PAGE = 1000;
 
 function LeaderPage() {
   const navigate = useNavigate();
-  const { userId } = useAuthSession();
+  const { userId, session } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const [scope, setScope] = useState<string>(ALL);
   const queryClient = useQueryClient();
@@ -504,7 +504,7 @@ function PeriodView({
         compare_bars: stats.compareBars,
         evolution: stats.evolution,
         company: "GPVA",
-        generated_by: meta.leader,
+        generated_by: session?.user.email ?? meta.leader,
         collaborators_count: null,
         best_day: stats.bestDay,
         teams: teamsBreakdown,
