@@ -497,6 +497,11 @@ function PeriodView({
         top_reasons: stats.topReasons,
         top_impacts: stats.topImpacts,
         top_complements: stats.topComps,
+        compare_bars: stats.compareBars,
+        evolution: stats.evolution,
+        company: "GPVA",
+        generated_by: meta.leader,
+        collaborators_count: null,
         best_day: stats.bestDay,
         teams: teamsBreakdown,
       });
