@@ -329,6 +329,7 @@ function PeriodView({
   allShifts: ShiftRow[];
   scopeIsAll: boolean;
 }) {
+  const { session } = useAuthSession();
   const stats = useMemo(() => {
     const cur = periodRange(period);
     const prev = previousRange(period);
