@@ -275,6 +275,80 @@ export function buildLeaderPdfHtml(s: LeaderPdfInput): string {
 
   <div class="footer">GPVA · Painel do Líder — impressão em paisagem, use "Salvar como PDF" no diálogo do navegador.</div>
 </div>
-<script>window.addEventListener("load", () => setTimeout(() => window.print(), 400));</script>
 </body></html>`;
+}
+
+export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> {
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+
+  // A4 paisagem em pixels a 96dpi ≈ 1123 x 794.
+  const PAGE_W = 1123;
+  const PAGE_H = 794;
+
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-10000px";
+  host.style.top = "0";
+  host.style.width = `${PAGE_W}px`;
+  host.style.background = "#ffffff";
+  host.innerHTML = buildLeaderPdfHtml(input);
+  document.body.appendChild(host);
+
+  try {
+    // Renderiza cada .page separadamente (o HTML tem uma única .page + teams-block com page-break)
+    const pages = Array.from(host.querySelectorAll<HTMLElement>(".page"));
+    const blocks: HTMLElement[] = [];
+    if (pages.length === 0) {
+      blocks.push(host);
+    } else {
+      for (const p of pages) {
+        const teams = p.querySelector<HTMLElement>(".teams-block");
+        if (teams) {
+          // separa em duas páginas
+          const clone = p.cloneNode(true) as HTMLElement;
+          clone.querySelector(".teams-block")?.remove();
+          blocks.push(mountBlock(host, clone));
+          const tOnly = document.createElement("div");
+          tOnly.appendChild(teams);
+          blocks.push(mountBlock(host, tOnly));
+          p.remove();
+        } else {
+          blocks.push(p);
+        }
+      }
+    }
+
+    const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [PAGE_W, PAGE_H], hotfixes: ["px_scaling"] });
+
+    for (let i = 0; i < blocks.length; i++) {
+      const el = blocks[i];
+      el.style.width = `${PAGE_W}px`;
+      el.style.background = "#ffffff";
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+        windowWidth: PAGE_W,
+      });
+      const img = canvas.toDataURL("image/jpeg", 0.92);
+      const ratio = canvas.height / canvas.width;
+      const w = PAGE_W;
+      const h = Math.min(PAGE_H, w * ratio);
+      if (i > 0) pdf.addPage([PAGE_W, PAGE_H], "landscape");
+      pdf.addImage(img, "JPEG", 0, 0, w, h, undefined, "FAST");
+    }
+
+    return pdf.output("blob");
+  } finally {
+    host.remove();
+  }
+}
+
+function mountBlock(host: HTMLElement, el: HTMLElement): HTMLElement {
+  host.appendChild(el);
+  return el;
 }
