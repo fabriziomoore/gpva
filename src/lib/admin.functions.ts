@@ -287,22 +287,23 @@ export const adminUpdateShiftReport = createServerFn({ method: "POST" })
 
 // ============= Líderes =============
 
-function leaderSlug(name: string): string {
-  const slug = name
+function sanitizeLogin(login: string): string {
+  const slug = login
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  if (!slug) throw new Error("Nome de líder inválido.");
-  return `lider-${slug}`;
+  if (!slug) throw new Error("Login inválido.");
+  if (slug.length < 3) throw new Error("Login precisa ter ao menos 3 caracteres.");
+  return slug;
 }
 
 export const adminCreateLeader = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; leaderName: string; password: string }) => data)
+  .inputValidator((data: { adminPassword: string; leaderName: string; login: string; password: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
-    const slug = leaderSlug(data.leaderName);
+    const slug = sanitizeLogin(data.login);
     const email = `${slug}@gpva.local`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
