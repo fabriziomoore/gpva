@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
@@ -83,10 +83,37 @@ function LeaderPage() {
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const [scope, setScope] = useState<string>(ALL);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (isLeader.data === false) navigate({ to: "/" });
   }, [isLeader.data, navigate]);
+
+  // Realtime: invalida as queries do painel quando algo muda no banco.
+  useEffect(() => {
+    if (!userId || isLeader.data !== true) return;
+    const tables: Array<{ table: string; key: string }> = [
+      { table: "servicos", key: "leader-services" },
+      { table: "expedientes", key: "leader-shifts" },
+      { table: "impactos_expediente", key: "leader-impacts" },
+      { table: "vinculos_complementos", key: "leader-complements" },
+      { table: "equipes", key: "leader-teams" },
+    ];
+    const channel = supabase.channel("leader-dashboard");
+    for (const { table, key } of tables) {
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table },
+        () => {
+          queryClient.invalidateQueries({ queryKey: [key, userId] });
+        },
+      );
+    }
+    channel.subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, isLeader.data, queryClient]);
 
   const teams = useQuery({
     queryKey: ["leader-teams", userId],
