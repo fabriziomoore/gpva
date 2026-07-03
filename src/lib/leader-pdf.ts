@@ -108,7 +108,6 @@ export function buildLeaderPdfHtml(s: LeaderPdfInput): string {
         <td>${t.current.unviable}</td>
         <td>${t.current.negotiations}</td>
         <td>${formatBRL(t.current.negotiated_value)} ${deltaBadge(t.current.negotiated_value, t.previous.negotiated_value)}</td>
-        <td>${formatBRL(t.variable_estimated)}</td>
       </tr>`;
     })
     .join("");
@@ -205,7 +204,6 @@ export function buildLeaderPdfHtml(s: LeaderPdfInput): string {
     ${kpi("Viabilidade", `${pctV}% ${deltaBadge(pctV, pctVPrev)}`, `${s.current.viable} viáveis · ${s.current.unviable} inviáveis`)}
     ${kpi("Negociações", `${s.current.negotiations} ${deltaBadge(s.current.negotiations, s.previous.negotiations)}`, `${previousLabel(s.period)}: ${s.previous.negotiations}`)}
     ${kpi("Total negociado", `${formatBRL(s.current.negotiated_value)}`, `${deltaBadge(s.current.negotiated_value, s.previous.negotiated_value)}`)}
-    ${kpi("Variável estimada", `${formatBRL(s.variable_estimated)}`, "com base nas negociações")}
     ${kpi("Expedientes / Média", `${s.current.shifts} · ${avgPerShift}`, "fechados · serviços por dia")}
   </div>
 
@@ -267,7 +265,7 @@ export function buildLeaderPdfHtml(s: LeaderPdfInput): string {
           <h2>Desempenho por equipe — ${esc(periodTitle(s.period))}</h2>
           <table class="teams-t">
             <thead><tr>
-              <th>Equipe</th><th>Exped.</th><th>Serviços</th><th>Viáveis</th><th>Inviáv.</th><th>Negoc.</th><th>Negociado</th><th>Variável est.</th>
+              <th>Equipe</th><th>Exped.</th><th>Serviços</th><th>Viáveis</th><th>Inviáv.</th><th>Negoc.</th><th>Negociado</th>
             </tr></thead>
             <tbody>${teamsRows}</tbody>
           </table>
