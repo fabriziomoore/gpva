@@ -80,7 +80,7 @@ const PAGE = 1000;
 
 function LeaderPage() {
   const navigate = useNavigate();
-  const { userId, session } = useAuthSession();
+  const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const [scope, setScope] = useState<string>(ALL);
   const queryClient = useQueryClient();
