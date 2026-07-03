@@ -1,63 +1,77 @@
-## Reordenação de catálogos por equipe (sincronizada na nuvem)
 
-Permitir que cada equipe defina a ordem dos itens exibidos durante o expediente para: Tipos de serviço, Motivos de inviabilidade, Complementos e Impactos. Reordenação feita direto nas telas de seleção, com pressionar e arrastar. Preferências salvas no banco por equipe e sincronizadas offline.
+## Objetivo
 
-### 1. Banco de dados
+Transformar a aba **Produtividade** (hoje mostra apenas o período atual) em um verdadeiro **Painel do Líder**, focado em responder as perguntas que ele leva para a reunião com supervisores/coordenadores:
 
-Nova tabela `catalog_order` guardando a ordem preferida de cada equipe por catálogo:
+- Como estamos hoje?
+- Estamos melhor ou pior que o período anterior?
+- Se mantivermos o ritmo, onde chegamos?
+- Quais serviços puxam a produtividade? Onde perdemos (inviáveis)?
+- O que compartilhar rapidamente no grupo do WhatsApp?
 
-- `team_id` (uuid, ref `equipes.id`)
-- `catalog` (text: `tipos_servico` | `motivos_inviabilidade` | `complementos_servico` | `impactos`)
-- `item_ids` (uuid[]) — ordem escolhida
-- PK composta (`team_id`, `catalog`)
-- RLS: cada equipe lê/escreve apenas suas linhas (`auth.uid() = team_id`); admin (service_role) acesso total
-- GRANTs para `authenticated` e `service_role`
-- Trigger `updated_at`
+Tudo agrupado, sem precisar caçar mensagem antiga no WhatsApp.
 
-### 2. Sync offline
+## O que muda na experiência
 
-- Adicionar `catalog_orders` no Dexie (`src/lib/db/local-db.ts`) com chave `[team_id, catalog]`
-- Cachear localmente ao carregar; escrever otimista + outbox `upsert` em `catalog_order` (mesmo padrão de `equipes`)
-- Hook `useCatalogOrder(catalog)` combina catálogo global + ordem local da equipe
+### 1. Cabeçalho "Resumo do período"
+No topo de cada aba (Dia / Semana / Mês / Ano):
+- **Total de serviços** com variação vs período anterior (ex.: `128  ▲ +14% vs semana passada`).
+- **Taxa de viabilidade** (%) com variação.
+- **Total negociado (R$)** com variação.
+- **Variável estimada (R$)** — reforça o que já existe hoje na aba Variável.
+- **Média por expediente** (serviços/dia trabalhado) — a métrica que o líder mais usa.
 
-### 3. Ordenação aplicada
+Cada card mostra: valor atual · seta de tendência (▲ ▼ ▬) · % vs período anterior equivalente (semana anterior, mês anterior, etc.).
 
-Em `src/lib/db/catalogs.ts`, novo helper `applyOrder(items, orderIds)`:
-- Itens presentes em `orderIds` aparecem primeiro na ordem definida
-- Itens novos (ainda não ordenados) aparecem no fim em ordem alfabética
+### 2. Comparativo lado a lado
+Card **"Atual vs Anterior"** com barras duplas (período atual x período anterior) para: Total, Viáveis, Inviáveis, Negociações, R$ negociado. Um olhar responde "melhoramos?".
 
-`useTiposServicoCached`, `useMotivosCached`, `useComplementosCached`, `useImpactsCached` retornam já ordenados por equipe.
+### 3. Projeção (previsão de ritmo)
+Card **"Se mantivermos o ritmo"**:
+- Semana: projeção até domingo baseada em (média diária corrente × dias restantes).
+- Mês: projeção até o último dia útil.
+- Ano: projeção até 31/12.
+Cada um mostra: projetado, meta anterior (o total do período passado), e diferença — assim o líder já leva "vamos fechar o mês com ~X, +Y% que o mês passado" pronto.
 
-### 4. UI — arrastar direto nas telas
+### 4. Ranking e destaques (o "roteiro" da apresentação)
+- **Top 5 tipos de serviço** executados (viáveis).
+- **Top 5 motivos de inviabilidade** — mostra onde a operação perde tempo/serviço.
+- **Impactos mais recorrentes** no período (agrega os impactos dos expedientes fechados).
+- **Melhor dia do período** (dia com mais viáveis).
+- **Complementos mais usados** — reforça o padrão de execução.
 
-Componente `ReorderableGrid` reutilizável (grid 2 col para chips) usando `@dnd-kit/core` + `@dnd-kit/sortable` (leve, touch nativo).
+### 5. Histórico enriquecido
+A lista de expedientes anteriores hoje só mostra data e link para o relatório. Passa a mostrar em cada linha: total, viáveis, inviáveis, R$ negociado. Assim o líder localiza rapidamente o dia que quer citar.
 
-Interação:
-- Botão "Reorganizar" (ícone `ArrowUpDown`) no cabeçalho de cada sheet
-- Ao ativar: chips ganham handle visual, arrastar para reposicionar; ao soltar, salva a nova ordem otimista
-- Botão "Concluído" sai do modo
+### 6. Exportar resumo pronto para o WhatsApp / apresentação
+Dois botões no topo da tela:
+- **Copiar resumo do período** → gera um texto formatado (mesmo padrão dos relatórios de expediente já existentes) com todos os KPIs, comparativo e destaques do período selecionado. Cola direto no grupo.
+- **Exportar PDF** → mesma tela em formato retrato, pronto para anexar em e-mail/apresentação.
 
-Locais:
-- `AddServiceSheet.tsx` — tipos de serviço, motivos (etapa inviável), complementos
-- `FinishShiftSheet.tsx` — impactos
+Reaproveita o helper `src/lib/report.ts` (já usado em `shift_.$id.report.tsx`) estendido com uma função `buildPeriodReport`.
 
-### 5. Arquivos afetados
+## Detalhes técnicos
 
-**Novos**
-- `src/components/shift/ReorderableGrid.tsx`
-- `src/hooks/use-catalog-order.ts`
-- Migration criando `catalog_order`
+Tudo é **frontend / camada de apresentação** — sem mudanças de schema, sem novas tabelas, sem nova policy. Apenas agregações em cima das queries que já existem (`servicos`, `expedientes`, `impactos_expediente`, `complementos_servico`).
 
-**Modificados**
-- `src/lib/db/local-db.ts` — nova tabela Dexie + bump de versão
-- `src/lib/db/catalogs.ts` — aplicar ordem nos hooks
-- `src/lib/db/repos.ts` — `repoSaveCatalogOrder`
-- `src/lib/sync/engine.ts` — suporte à tabela `catalog_order` no outbox
-- `src/components/shift/AddServiceSheet.tsx`
-- `src/components/shift/FinishShiftSheet.tsx`
-- `package.json` — `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
+- Nova rota mantém `src/routes/_authenticated/productivity.tsx` (não cria rota nova, apenas evolui a existente).
+- Introduzir helpers puros em `src/lib/analytics.ts`:
+  - `bucketByPeriod(rows, period)` — reaproveitável.
+  - `compareWithPrevious(rows, period)` → `{ current, previous, deltaPct }`.
+  - `projectPace(rows, period)` → projeção linear pelo ritmo diário corrente.
+- Nova função `buildPeriodReport(...)` em `src/lib/report.ts` (mesmo estilo BRL/pad2 já usado).
+- Consultas adicionais no `productivity.tsx`:
+  - `expedientes` (fechados) — já existe; expandir `select` para incluir contagens agregadas via joins/`count` quando possível, ou calcular no cliente a partir de `servicos.shift_id`.
+  - `motivos` — usar `reason_name` já denormalizado em `servicos` (não precisa join).
+  - `impactos_expediente` filtrado pelos ids dos expedientes do período — nova `useQuery`.
+  - `complementos_servico` idem — nova `useQuery`.
+- Gráfico "Atual vs Anterior": `BarChart` com duas séries (`recharts` já instalado).
+- Sem novas dependências.
 
-### Notas
-- Como `equipes.id = auth.uid()`, RLS por `team_id = auth.uid()` funciona direto
-- Escrita otimista: UI muda na hora; sync empurra depois (mantém offline)
-- Itens excluídos pelo admin somem naturalmente (helper filtra pelos ids existentes)
+## Fora de escopo (fica para depois, se você quiser)
+
+- Metas configuráveis por equipe (hoje comparamos com o período anterior; meta manual pode entrar num próximo passo).
+- Ranking entre equipes / visão do supervisor consolidando várias equipes (exigiria mudança de policy — hoje cada equipe só vê a si mesma).
+- Notificações automáticas para o grupo do WhatsApp (integração externa).
+
+Confirma que posso seguir com esse escopo?
