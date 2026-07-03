@@ -41,7 +41,7 @@ export type LeaderPdfInput = {
   best_day: { date: string; qty: number } | null;
   teams: TeamBreakdown[];
   compare_bars?: { name: string; atual: number; anterior: number }[];
-  evolution?: { date: string; qty: number }[];
+  evolution?: { date: string; qty: number; unviable?: number }[];
   company?: string;
   generated_by?: string;
   collaborators_count?: number | null;
@@ -140,7 +140,10 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     };
   };
   const deltaPill = (d: ReturnType<typeof delta>, x: number, y: number) => {
-    const label = d.tone === "up" ? `▲ ${d.label}` : d.tone === "down" ? `▼ ${d.label}` : d.label;
+    const label =
+      d.tone === "up" ? `+ ${d.label.replace(/^\+/, "")}` :
+      d.tone === "down" ? `- ${d.label.replace(/^-/, "")}` :
+      d.label;
     font(7.5, "bold");
     const tw = pdf.getTextWidth(label);
     const pw = tw + 4;
@@ -179,7 +182,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   // Título e período
   font(14, "bold"); setText(C.ink);
-  text("RELATÓRIO EXECUTIVO DE PRODUÇÃO", M + 26, M + 8);
+  text("RELATÓRIO DE PRODUÇÃO", M + 26, M + 8);
   font(9, "normal"); setText(C.sub);
   text(`Período analisado: ${periodStr}`, M + 26, M + 14);
   font(8, "normal"); setText(C.muted);
@@ -188,8 +191,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Centro: metadados
   const centerX = M + 118;
   const kvRows: [string, string][] = [
-    ["Empresa:", company],
     ["Supervisor:", input.supervisor || "-"],
+    ["Líder:", input.leader || "-"],
     ["Escopo:", input.scope_label],
     ["Período:", periodTitle(input.period)],
     ["Gerado em:", formatDateBR(now)],
@@ -209,11 +212,10 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   setFill(C.bgAlt); setStroke(C.border);
   pdf.roundedRect(boxX, M, 55, 26, 2, 2, "FD");
   const teamsCount = input.teams.length || 1;
-  const collabs = input.collaborators_count ?? null;
   const infos: [string, string][] = [
     ["Equipes", String(teamsCount)],
-    ["Colaboradores", collabs !== null ? String(collabs) : "—"],
     ["Expedientes", String(input.current.shifts)],
+    ["Viabilidade", `${pctV}%`],
   ];
   infos.forEach((row, i) => {
     const y = M + 8 + i * 7;
@@ -299,7 +301,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     { name: "Negoc.", atual: input.current.negotiations, anterior: input.previous.negotiations },
   ];
   drawGroupedBar(pdf, M, chY, chW, chH, "Atual × Mês anterior", compareBars);
-  drawLineChart(pdf, M + chW + 5, chY, chW, chH, "Evolução (viáveis)", input.evolution ?? []);
+  drawLineChart(pdf, M + chW + 5, chY, chW, chH, "Evolução — Viáveis × Inviáveis", input.evolution ?? []);
 
   // Footer p1
   footer(1, 3);
@@ -336,7 +338,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // PAGE 3 — Resumo Executivo
   // =========================================================================
   pdf.addPage("a4", "landscape");
-  pageTitle(pdf, "RESUMO EXECUTIVO", input.scope_label, periodStr);
+  pageTitle(pdf, "RESUMO", input.scope_label, periodStr);
 
   const analysis = buildAnalysis(input, { pctV, pctVPrev, avgPerShift, avgPerShiftPrev });
   const blocks = [
@@ -368,21 +370,6 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const lines = pdf.splitTextToSize(b.body, colW - 8) as string[];
     lines.slice(0, 6).forEach((l, li) => pdf.text(l, x + 4, y + 10.5 + li * 3.6));
   });
-
-  // Assinaturas
-  const sigY = PH - 25;
-  const sigW = 90;
-  const sigLeft = M + 30;
-  const sigRight = PW - M - 30 - sigW;
-  setStroke(C.ink);
-  hline(sigLeft, sigY, sigLeft + sigW, sigY, 0.4);
-  hline(sigRight, sigY, sigRight + sigW, sigY, 0.4);
-  font(8, "bold"); setText(C.ink);
-  text("Supervisor", sigLeft + sigW / 2, sigY + 5, { align: "center" });
-  text("Gerência", sigRight + sigW / 2, sigY + 5, { align: "center" });
-  font(7, "normal"); setText(C.muted);
-  text(input.supervisor || "-", sigLeft + sigW / 2, sigY + 9, { align: "center" });
-  text("_", sigRight + sigW / 2, sigY + 9, { align: "center" });
 
   footer(3, 3);
 
@@ -548,7 +535,7 @@ function drawLineChart(
   pdf: import("jspdf").jsPDF,
   x: number, y: number, w: number, h: number,
   title: string,
-  data: { date: string; qty: number }[],
+  data: { date: string; qty: number; unviable?: number }[],
 ) {
   pdf.setFillColor(255, 255, 255);
   pdf.setDrawColor(C.border[0], C.border[1], C.border[2]);
@@ -558,6 +545,17 @@ function drawLineChart(
   pdf.setFontSize(8);
   pdf.setTextColor(C.primaryDark[0], C.primaryDark[1], C.primaryDark[2]);
   pdf.text(title.toUpperCase(), x + 4, y + 5.5);
+  // Legend
+  const lx = x + w - 4;
+  pdf.setFontSize(7);
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(C.sub[0], C.sub[1], C.sub[2]);
+  pdf.setFillColor(C.primary[0], C.primary[1], C.primary[2]);
+  pdf.rect(lx - 32, y + 3.6, 2, 2, "F");
+  pdf.text("Viáveis", lx - 29, y + 5.5);
+  pdf.setFillColor(C.danger[0], C.danger[1], C.danger[2]);
+  pdf.rect(lx - 14, y + 3.6, 2, 2, "F");
+  pdf.text("Inviáveis", lx - 11, y + 5.5);
 
   const px = x + 12;
   const py = y + 12;
@@ -571,7 +569,7 @@ function drawLineChart(
     pdf.text("Sem dados no período", x + w / 2, y + h / 2, { align: "center" });
     return;
   }
-  const maxV = Math.max(1, ...data.map((d) => d.qty));
+  const maxV = Math.max(1, ...data.map((d) => Math.max(d.qty, d.unviable ?? 0)));
   pdf.setDrawColor(C.border[0], C.border[1], C.border[2]);
   pdf.setLineWidth(0.15);
   pdf.setFontSize(6.5);
@@ -584,24 +582,30 @@ function drawLineChart(
 
   const n = data.length;
   const step = n > 1 ? pw / (n - 1) : 0;
-  // line
-  pdf.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
-  pdf.setLineWidth(0.7);
-  data.forEach((d, i) => {
-    if (i === 0) return;
-    const x1 = px + (i - 1) * step;
-    const y1 = py + ph - (data[i - 1].qty / maxV) * ph;
-    const x2 = px + i * step;
-    const y2 = py + ph - (d.qty / maxV) * ph;
-    pdf.line(x1, y1, x2, y2);
-  });
-  // dots
-  pdf.setFillColor(C.primary[0], C.primary[1], C.primary[2]);
-  data.forEach((d, i) => {
-    const cx = px + i * step;
-    const cy = py + ph - (d.qty / maxV) * ph;
-    pdf.circle(cx, cy, 0.9, "F");
-  });
+  const drawSeries = (
+    values: number[],
+    color: RGB,
+  ) => {
+    pdf.setDrawColor(color[0], color[1], color[2]);
+    pdf.setLineWidth(0.7);
+    for (let i = 1; i < values.length; i++) {
+      const x1 = px + (i - 1) * step;
+      const y1 = py + ph - (values[i - 1] / maxV) * ph;
+      const x2 = px + i * step;
+      const y2 = py + ph - (values[i] / maxV) * ph;
+      pdf.line(x1, y1, x2, y2);
+    }
+    pdf.setFillColor(color[0], color[1], color[2]);
+    values.forEach((v, i) => {
+      const cx = px + i * step;
+      const cy = py + ph - (v / maxV) * ph;
+      pdf.circle(cx, cy, 0.9, "F");
+    });
+  };
+  drawSeries(data.map((d) => d.qty), C.primary);
+  if (data.some((d) => (d.unviable ?? 0) > 0)) {
+    drawSeries(data.map((d) => d.unviable ?? 0), C.danger);
+  }
   // x labels (thin out if many)
   pdf.setFontSize(6.5);
   pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
