@@ -284,7 +284,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const PAGE_H = 794;
   const M = 42;
   const CONTENT_W = PAGE_W - M * 2;
-  const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [PAGE_W, PAGE_H], hotfixes: ["px_scaling"] });
+  const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: [PAGE_W, PAGE_H] });
 
   const rgb = (hex: string): [number, number, number] => {
     const h = hex.replace("#", "");
