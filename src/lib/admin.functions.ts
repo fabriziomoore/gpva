@@ -284,3 +284,81 @@ export const adminUpdateShiftReport = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+// ============= Líderes =============
+
+function leaderSlug(name: string): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!slug) throw new Error("Nome de líder inválido.");
+  return `lider-${slug}`;
+}
+
+export const adminCreateLeader = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; leaderName: string; password: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+    const slug = leaderSlug(data.leaderName);
+    const email = `${slug}@gpva.local`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { is_leader: true, display_name: data.leaderName.trim() },
+    });
+    if (error) throw new Error(error.message);
+    // O trigger handle_new_team já grava o papel; garantia extra:
+    if (created.user?.id) {
+      await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: created.user.id, role: "leader" }, { onConflict: "user_id,role" });
+    }
+    return { ok: true as const, login: slug.toUpperCase() };
+  });
+
+export const adminListLeaders = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roles, error } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id,created_at")
+      .eq("role", "leader");
+    if (error) throw new Error(error.message);
+    const ids = (roles ?? []).map((r) => r.user_id);
+    if (ids.length === 0) return [];
+    // Fetch emails via admin API
+    const list = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (list.error) throw new Error(list.error.message);
+    const byId = new Map(list.data.users.map((u) => [u.id, u]));
+    return ids
+      .map((id) => {
+        const u = byId.get(id);
+        if (!u) return null;
+        const display = (u.user_metadata as { display_name?: string } | null)?.display_name ?? "";
+        return {
+          id,
+          email: u.email ?? "",
+          login: (u.email ?? "").split("@")[0].toUpperCase(),
+          display_name: display,
+        };
+      })
+      .filter((x): x is { id: string; email: string; login: string; display_name: string } => !!x)
+      .sort((a, b) => a.login.localeCompare(b.login));
+  });
+
+export const adminDeleteLeader = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; leaderId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.leaderId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });

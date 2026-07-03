@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Home, BarChart3, Wallet, Settings } from "lucide-react";
+import { useAuthSession } from "@/hooks/use-auth";
+import { useIsLeader } from "@/hooks/use-is-leader";
 
 const items = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
@@ -9,6 +11,9 @@ const items = [
 ];
 
 export function BottomNav() {
+  const { userId } = useAuthSession();
+  const isLeader = useIsLeader(userId);
+  if (isLeader.data === true) return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]">
       <ul className="mx-auto flex max-w-md items-stretch justify-around">

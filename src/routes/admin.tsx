@@ -21,6 +21,9 @@ import {
   adminDeleteShift,
   adminUpdateShiftReport,
   listTeams,
+  adminCreateLeader,
+  adminListLeaders,
+  adminDeleteLeader,
 } from "@/lib/admin.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
@@ -38,7 +41,8 @@ type SectionId =
   | "complementos_servico"
   | "impactos"
   | "variable"
-  | "create_team";
+  | "create_team"
+  | "leaders";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "tipos_servico", label: "Serviços" },
@@ -47,6 +51,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "impactos", label: "Impactos" },
   { id: "variable", label: "Variável" },
   { id: "create_team", label: "Criar Equipe" },
+  { id: "leaders", label: "Líderes" },
 ];
 
 function AdminPage() {
@@ -174,6 +179,8 @@ function AdminPage() {
             <CreateTeamSection adminPw={adminPw} />
           ) : section === "variable" ? (
             <VariableSection adminPw={adminPw} />
+          ) : section === "leaders" ? (
+            <LeadersSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
@@ -823,6 +830,120 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div className="rounded-xl border border-border bg-card p-3">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-bold">{value}</div>
+    </div>
+  );
+}
+
+function LeadersSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const listFn = useServerFn(adminListLeaders);
+  const createFn = useServerFn(adminCreateLeader);
+  const delFn = useServerFn(adminDeleteLeader);
+
+  const leaders = useQuery({
+    queryKey: ["admin-leaders"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+  });
+
+  const createMut = useMutation({
+    mutationFn: () =>
+      createFn({ data: { adminPassword: adminPw, leaderName: name, password } }),
+    onSuccess: (res) => {
+      setName("");
+      setPassword("");
+      toast.success(`Líder criado. Login: ${res.login}`);
+      qc.invalidateQueries({ queryKey: ["admin-leaders"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (leaderId: string) =>
+      delFn({ data: { adminPassword: adminPw, leaderId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-leaders"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="mb-3 text-base font-semibold">Novo líder</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          O líder acessa o app com um usuário próprio e vê os dados de todas as equipes,
+          sem interferir na operação delas.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!name.trim() || password.length < 6) {
+              toast.error("Nome e senha (mín. 6) são obrigatórios.");
+              return;
+            }
+            createMut.mutate();
+          }}
+          className="space-y-2"
+        >
+          <div>
+            <Label>Nome do líder</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: João Silva"
+              className="h-11"
+            />
+          </div>
+          <div>
+            <Label>Senha</Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-11"
+            />
+          </div>
+          <Button type="submit" disabled={createMut.isPending} className="h-11 w-full">
+            {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : (<><Plus className="mr-2 size-4" /> Criar líder</>)}
+          </Button>
+        </form>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-base font-semibold">Líderes cadastrados</h2>
+        {leaders.isLoading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (leaders.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum líder cadastrado.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(leaders.data ?? []).map((l) => (
+              <li
+                key={l.id}
+                className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {l.display_name || l.login}
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">Login: {l.login}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm("Excluir este líder?")) delMut.mutate(l.id);
+                  }}
+                  className="rounded-md p-2 text-muted-foreground hover:text-destructive"
+                  aria-label="Excluir líder"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

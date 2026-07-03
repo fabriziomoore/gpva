@@ -15,6 +15,7 @@ import { getLocalDB } from "@/lib/db/local-db";
 import { repoCreateShift } from "@/lib/db/repos";
 import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
+import { useIsLeader } from "@/hooks/use-is-leader";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({ meta: [{ title: "Início — GPVA" }] }),
@@ -24,9 +25,14 @@ export const Route = createFileRoute("/_authenticated/")({
 function HomePage() {
   const navigate = useNavigate();
   const { userId } = useAuthSession();
+  const isLeader = useIsLeader(userId);
   const { data: team, isLoading } = useTeam(userId);
   const [starting, setStarting] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+
+  useEffect(() => {
+    if (isLeader.data === true) navigate({ to: "/leader" });
+  }, [isLeader.data, navigate]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -46,8 +52,9 @@ function HomePage() {
   }
 
   useEffect(() => {
+    if (isLeader.data === true) return;
     if (team && !team.onboarded) navigate({ to: "/onboarding" });
-  }, [team, navigate]);
+  }, [team, navigate, isLeader.data]);
 
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
