@@ -3,7 +3,6 @@ import { Capacitor } from "@capacitor/core";
 export async function downloadOrShare(blob: Blob, filename: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const { Share } = await import("@capacitor/share");
     const base64 = await blobToBase64(blob);
     await Filesystem.writeFile({
       path: filename,
@@ -11,65 +10,32 @@ export async function downloadOrShare(blob: Blob, filename: string): Promise<voi
       directory: Directory.Documents,
       recursive: true,
     });
-    const { uri } = await Filesystem.getUri({
-      path: filename,
-      directory: Directory.Documents,
-    });
-    try {
-      await Share.share({ title: filename, url: uri, dialogTitle: "Salvar/compartilhar relatório" });
-    } catch {
-      // usuário cancelou o share — arquivo já está salvo em Documentos
-    }
     return;
   }
 
-  if (await saveWithFilePicker(blob, filename)) return;
-
   const url = URL.createObjectURL(blob);
+  const frameName = `download-frame-${Date.now()}`;
+  const frame = document.createElement("iframe");
+  frame.name = frameName;
+  frame.style.display = "none";
+  frame.setAttribute("aria-hidden", "true");
+  document.body.appendChild(frame);
+
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.type = blob.type || "application/pdf";
-  // Se algum navegador/WebView ignorar `download`, abre fora da página atual
-  // em vez de substituir o app pela URL blob.
-  a.target = "_blank";
-  a.rel = "noopener";
+  // Se o navegador ignorar o atributo download, a URL blob abre no iframe
+  // oculto, não na tela principal do app.
+  a.target = frameName;
   a.style.display = "none";
   document.body.appendChild(a);
-  a.dispatchEvent(new MouseEvent("click", { bubbles: false, cancelable: true, view: window }));
+  a.click();
   document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
-
-type FileSaveWindow = Window & {
-  showSaveFilePicker?: (options: {
-    suggestedName?: string;
-    types?: Array<{ description: string; accept: Record<string, string[]> }>;
-  }) => Promise<{
-    createWritable: () => Promise<{
-      write: (data: Blob) => Promise<void>;
-      close: () => Promise<void>;
-    }>;
-  }>;
-};
-
-async function saveWithFilePicker(blob: Blob, filename: string): Promise<boolean> {
-  const picker = (window as FileSaveWindow).showSaveFilePicker;
-  if (!window.isSecureContext || typeof picker !== "function") return false;
-
-  try {
-    const handle = await picker({
-      suggestedName: filename,
-      types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }],
-    });
-    const writable = await handle.createWritable();
-    await writable.write(blob);
-    await writable.close();
-    return true;
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") return true;
-    return false;
-  }
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    frame.remove();
+  }, 30_000);
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
