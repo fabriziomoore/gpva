@@ -301,7 +301,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     { name: "Negoc.", atual: input.current.negotiations, anterior: input.previous.negotiations },
   ];
   drawGroupedBar(pdf, M, chY, chW, chH, "Atual × Mês anterior", compareBars);
-  drawLineChart(pdf, M + chW + 5, chY, chW, chH, "Evolução (viáveis)", input.evolution ?? []);
+  drawLineChart(pdf, M + chW + 5, chY, chW, chH, "Evolução — Viáveis × Inviáveis", input.evolution ?? []);
 
   // Footer p1
   footer(1, 3);
@@ -535,7 +535,7 @@ function drawLineChart(
   pdf: import("jspdf").jsPDF,
   x: number, y: number, w: number, h: number,
   title: string,
-  data: { date: string; qty: number }[],
+  data: { date: string; qty: number; unviable?: number }[],
 ) {
   pdf.setFillColor(255, 255, 255);
   pdf.setDrawColor(C.border[0], C.border[1], C.border[2]);
@@ -545,6 +545,17 @@ function drawLineChart(
   pdf.setFontSize(8);
   pdf.setTextColor(C.primaryDark[0], C.primaryDark[1], C.primaryDark[2]);
   pdf.text(title.toUpperCase(), x + 4, y + 5.5);
+  // Legend
+  const lx = x + w - 4;
+  pdf.setFontSize(7);
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(C.sub[0], C.sub[1], C.sub[2]);
+  pdf.setFillColor(C.primary[0], C.primary[1], C.primary[2]);
+  pdf.rect(lx - 32, y + 3.6, 2, 2, "F");
+  pdf.text("Viáveis", lx - 29, y + 5.5);
+  pdf.setFillColor(C.danger[0], C.danger[1], C.danger[2]);
+  pdf.rect(lx - 14, y + 3.6, 2, 2, "F");
+  pdf.text("Inviáveis", lx - 11, y + 5.5);
 
   const px = x + 12;
   const py = y + 12;
@@ -558,7 +569,7 @@ function drawLineChart(
     pdf.text("Sem dados no período", x + w / 2, y + h / 2, { align: "center" });
     return;
   }
-  const maxV = Math.max(1, ...data.map((d) => d.qty));
+  const maxV = Math.max(1, ...data.map((d) => Math.max(d.qty, d.unviable ?? 0)));
   pdf.setDrawColor(C.border[0], C.border[1], C.border[2]);
   pdf.setLineWidth(0.15);
   pdf.setFontSize(6.5);
@@ -571,24 +582,30 @@ function drawLineChart(
 
   const n = data.length;
   const step = n > 1 ? pw / (n - 1) : 0;
-  // line
-  pdf.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
-  pdf.setLineWidth(0.7);
-  data.forEach((d, i) => {
-    if (i === 0) return;
-    const x1 = px + (i - 1) * step;
-    const y1 = py + ph - (data[i - 1].qty / maxV) * ph;
-    const x2 = px + i * step;
-    const y2 = py + ph - (d.qty / maxV) * ph;
-    pdf.line(x1, y1, x2, y2);
-  });
-  // dots
-  pdf.setFillColor(C.primary[0], C.primary[1], C.primary[2]);
-  data.forEach((d, i) => {
-    const cx = px + i * step;
-    const cy = py + ph - (d.qty / maxV) * ph;
-    pdf.circle(cx, cy, 0.9, "F");
-  });
+  const drawSeries = (
+    values: number[],
+    color: RGB,
+  ) => {
+    pdf.setDrawColor(color[0], color[1], color[2]);
+    pdf.setLineWidth(0.7);
+    for (let i = 1; i < values.length; i++) {
+      const x1 = px + (i - 1) * step;
+      const y1 = py + ph - (values[i - 1] / maxV) * ph;
+      const x2 = px + i * step;
+      const y2 = py + ph - (values[i] / maxV) * ph;
+      pdf.line(x1, y1, x2, y2);
+    }
+    pdf.setFillColor(color[0], color[1], color[2]);
+    values.forEach((v, i) => {
+      const cx = px + i * step;
+      const cy = py + ph - (v / maxV) * ph;
+      pdf.circle(cx, cy, 0.9, "F");
+    });
+  };
+  drawSeries(data.map((d) => d.qty), C.primary);
+  if (data.some((d) => (d.unviable ?? 0) > 0)) {
+    drawSeries(data.map((d) => d.unviable ?? 0), C.danger);
+  }
   // x labels (thin out if many)
   pdf.setFontSize(6.5);
   pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
