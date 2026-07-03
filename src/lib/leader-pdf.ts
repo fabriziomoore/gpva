@@ -284,48 +284,61 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     import("jspdf"),
   ]);
 
-  // A4 paisagem em pixels a 96dpi ≈ 1123 x 794.
+  // A4 paisagem em px @ 96dpi ≈ 1123 x 794
   const PAGE_W = 1123;
   const PAGE_H = 794;
 
-  const host = document.createElement("div");
-  host.style.position = "fixed";
-  host.style.left = "-10000px";
-  host.style.top = "0";
-  host.style.width = `${PAGE_W}px`;
-  host.style.background = "#ffffff";
-  host.innerHTML = buildLeaderPdfHtml(input);
-  document.body.appendChild(host);
+  // Isola o render em um iframe para escapar de CSS global do app
+  // (Tailwind v4 usa oklch() que quebra o html2canvas).
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-10000px";
+  iframe.style.top = "0";
+  iframe.style.width = `${PAGE_W}px`;
+  iframe.style.height = `${PAGE_H}px`;
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
 
   try {
-    // Renderiza cada .page separadamente (o HTML tem uma única .page + teams-block com page-break)
-    const pages = Array.from(host.querySelectorAll<HTMLElement>(".page"));
+    const doc = iframe.contentDocument!;
+    doc.open();
+    doc.write(buildLeaderPdfHtml(input));
+    doc.close();
+    // aguarda parse/layout
+    await new Promise<void>((r) => {
+      if (doc.readyState === "complete") r();
+      else iframe.addEventListener("load", () => r(), { once: true });
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const body = doc.body;
+    body.style.margin = "0";
+    body.style.background = "#ffffff";
+
+    const page = doc.querySelector<HTMLElement>(".page") ?? body;
+    const teamsBlock = page.querySelector<HTMLElement>(".teams-block");
+
     const blocks: HTMLElement[] = [];
-    if (pages.length === 0) {
-      blocks.push(host);
+    if (teamsBlock) {
+      const teamsParent = teamsBlock.parentElement!;
+      teamsParent.removeChild(teamsBlock);
+      blocks.push(page);
+      // segunda página com só a tabela de equipes
+      const wrapper = doc.createElement("div");
+      wrapper.className = "page";
+      wrapper.style.padding = "0";
+      wrapper.appendChild(teamsBlock);
+      body.appendChild(wrapper);
+      blocks.push(wrapper);
     } else {
-      for (const p of pages) {
-        const teams = p.querySelector<HTMLElement>(".teams-block");
-        if (teams) {
-          // separa em duas páginas
-          const clone = p.cloneNode(true) as HTMLElement;
-          clone.querySelector(".teams-block")?.remove();
-          blocks.push(mountBlock(host, clone));
-          const tOnly = document.createElement("div");
-          tOnly.appendChild(teams);
-          blocks.push(mountBlock(host, tOnly));
-          p.remove();
-        } else {
-          blocks.push(p);
-        }
-      }
+      blocks.push(page);
     }
 
     const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [PAGE_W, PAGE_H], hotfixes: ["px_scaling"] });
 
     for (let i = 0; i < blocks.length; i++) {
       const el = blocks[i];
-      el.style.width = `${PAGE_W}px`;
+      el.style.width = `${PAGE_W - 40}px`;
       el.style.background = "#ffffff";
       const canvas = await html2canvas(el, {
         scale: 2,
@@ -333,6 +346,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
         useCORS: true,
         logging: false,
         windowWidth: PAGE_W,
+        width: PAGE_W,
       });
       const img = canvas.toDataURL("image/jpeg", 0.92);
       const ratio = canvas.height / canvas.width;
@@ -344,11 +358,6 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
     return pdf.output("blob");
   } finally {
-    host.remove();
+    iframe.remove();
   }
-}
-
-function mountBlock(host: HTMLElement, el: HTMLElement): HTMLElement {
-  host.appendChild(el);
-  return el;
 }
