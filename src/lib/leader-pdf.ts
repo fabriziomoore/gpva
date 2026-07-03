@@ -215,7 +215,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const infos: [string, string][] = [
     ["Equipes", String(teamsCount)],
     ["Expedientes", String(input.current.shifts)],
-    ["Viabilidade", `${pctVHeader}%`],
+    ["Viabilidade", `${pctV}%`],
   ];
   infos.forEach((row, i) => {
     const y = M + 8 + i * 7;
