@@ -695,7 +695,7 @@ function PaceBar({ current, projected, period }: { current: number; projected: n
   const paceRatio = projected > 0 ? Math.min(1, current / projected) : 0;
   const elapsedPct = Math.round(elapsed * 100);
   const paceCount = Math.round(paceRatio * 100);
-  const onPace = paceCount >= elapsedPct;
+  const reached = paceCount >= 100;
   return (
     <div className="mt-3">
       <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
@@ -703,25 +703,25 @@ function PaceBar({ current, projected, period }: { current: number; projected: n
           Ritmo: <span className="font-semibold text-foreground">{current}</span> de{" "}
           <span className="font-semibold text-foreground">{projected}</span> projetados
         </span>
-        <span className={onPace ? "text-success font-semibold" : "text-destructive font-semibold"}>
+        <span className={reached ? "font-semibold text-blue-500" : "font-semibold text-destructive"}>
           {paceCount}% da projeção
         </span>
       </div>
       <div className="relative h-3 overflow-hidden rounded-full border border-border bg-white">
         <div
-          className={`absolute inset-y-0 left-0 transition-all ${onPace ? "bg-blue-500" : "bg-red-500"}`}
-          style={{ width: `${paceCount}%` }}
+          className={`absolute inset-y-0 left-0 transition-all ${reached ? "bg-blue-500" : "bg-red-500"}`}
+          style={{ width: `${Math.min(100, paceCount)}%` }}
           title={`Alcançado: ${paceCount}% da projeção`}
         />
       </div>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[9px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-sm border border-border bg-white" />
-          Projeção ({elapsedPct}% do {period === "week" ? "semana" : period === "month" ? "mês" : "ano"} decorrido)
+          Projeção do fechamento
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className={`inline-block h-2 w-2 rounded-sm ${onPace ? "bg-blue-500" : "bg-red-500"}`} />
-          Alcançado ({paceCount}%)
+          <span className={`inline-block h-2 w-2 rounded-sm ${reached ? "bg-blue-500" : "bg-red-500"}`} />
+          {reached ? `Projeção alcançada (${paceCount}%)` : `Andamento (${paceCount}%)`}
         </span>
       </div>
     </div>
