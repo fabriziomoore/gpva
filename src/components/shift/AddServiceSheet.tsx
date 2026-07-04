@@ -17,8 +17,14 @@ import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X } from "lucide-re
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReorderableGrid } from "./ReorderableGrid";
+import { useTeam } from "@/hooks/use-team";
+import {
+  submitNegotiationToGoogleForm,
+  PAYMENT_OPTIONS,
+  type PaymentOption,
+} from "@/lib/google-form";
 
-type Step = "type" | "viability" | "reason" | "registration" | "amount" | "complements";
+type Step = "type" | "viability" | "reason" | "registration" | "amount" | "payment" | "complements";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 type Reason = { id: string; name: string };
@@ -43,6 +49,9 @@ export function AddServiceSheet({
   const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
+  const [payment, setPayment] = useState<PaymentOption | null>(null);
+  const [parcelas, setParcelas] = useState("");
+  const team = useTeam(teamId).data;
 
   useEffect(() => {
     if (open) {
@@ -53,6 +62,8 @@ export function AddServiceSheet({
       setAmount("");
       setSelectedComplements(new Set());
       setReorderMode(false);
+      setPayment(null);
+      setParcelas("");
       void fetchAndCacheCatalogOrder(teamId);
     }
   }, [open, teamId]);
@@ -147,6 +158,7 @@ export function AddServiceSheet({
               {step === "reason" && "Motivo da inviabilidade"}
               {step === "registration" && "Matrícula"}
               {step === "amount" && "Valor negociado"}
+              {step === "payment" && "Forma de pagamento"}
               {step === "complements" && "Complemento(s) do Serviço"}
             </SheetTitle>
             <div className="flex items-center gap-2">
