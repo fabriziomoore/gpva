@@ -20,9 +20,11 @@ import { ReorderableGrid } from "./ReorderableGrid";
 import { useTeam } from "@/hooks/use-team";
 import {
   submitNegotiationToGoogleForm,
+  submitNegotiationSilent,
   PAYMENT_OPTIONS,
   type PaymentOption,
 } from "@/lib/google-form";
+import { shareNegotiation } from "@/lib/share-negotiation";
 
 type Step = "type" | "viability" | "reason" | "registration" | "amount" | "payment" | "complements";
 
@@ -433,10 +435,24 @@ export function AddServiceSheet({
               </div>
               )}
               {!reorderMode && (
-              <Button
-                disabled={saving}
-                onClick={() => {
-                  const negotiated = type?.is_negotiation ? Number(amount.replace(",", ".")) : undefined;
+              (() => {
+                const negotiated = type?.is_negotiation ? Number(amount.replace(",", ".")) : undefined;
+                const parc = payment === "PARCELAMENTO BOLETO" ? Number(parcelas) : 0;
+                const submission =
+                  type?.is_negotiation && payment && negotiated != null
+                    ? {
+                        date: new Date(),
+                        leader: team?.leader,
+                        setor: team?.setor_nome,
+                        matricula: registration.trim(),
+                        paymentMethod: payment,
+                        valorAVista: parc >= 2 ? undefined : negotiated,
+                        valorTotalParcelado: parc >= 2 ? negotiated : undefined,
+                        qtdParcelas: parc >= 2 ? parc : undefined,
+                      }
+                    : null;
+
+                const finalizeService = () =>
                   saveService({
                     viable: true,
                     negotiated,
@@ -444,30 +460,54 @@ export function AddServiceSheet({
                     complementIds: Array.from(selectedComplements),
                   });
 
-                  // Envio do descritivo de negociação em segundo plano com feedback.
-                  if (type?.is_negotiation && payment && negotiated != null) {
-                    const parc = payment === "PARCELAMENTO BOLETO" ? Number(parcelas) : 0;
-                    const opened = submitNegotiationToGoogleForm({
-                      date: new Date(),
-                      leader: team?.leader,
-                      setor: team?.setor_nome,
-                      matricula: registration.trim(),
-                      paymentMethod: payment,
-                      valorAVista: parc >= 2 ? undefined : negotiated,
-                      valorTotalParcelado: parc >= 2 ? negotiated : undefined,
-                      qtdParcelas: parc >= 2 ? parc : undefined,
-                    });
-                    if (opened) {
-                      toast.success("Confirmação do Forms abriu em nova aba — tire o print para compartilhar");
-                    } else {
-                      toast.error("Permita pop-ups para ver a confirmação do Google Forms");
-                    }
-                  }
-                }}
-                className="h-14 w-full text-base font-semibold"
-              >
-                {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar"}
-              </Button>
+                if (!submission) {
+                  return (
+                    <Button
+                      disabled={saving}
+                      onClick={finalizeService}
+                      className="h-14 w-full text-base font-semibold"
+                    >
+                      {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar"}
+                    </Button>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    <Button
+                      disabled={saving}
+                      onClick={() => {
+                        finalizeService();
+                        const opened = submitNegotiationToGoogleForm(submission);
+                        if (opened) {
+                          toast.success("Tela do Forms abriu em nova aba — tire o print");
+                        } else {
+                          toast.error("Permita pop-ups para ver a confirmação do Forms");
+                        }
+                      }}
+                      className="h-14 w-full text-base font-semibold"
+                    >
+                      {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms (print manual)"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={saving}
+                      onClick={() => {
+                        finalizeService();
+                        void submitNegotiationSilent(submission);
+                        void shareNegotiation(submission)
+                          .then((ok) => {
+                            if (ok) toast.success("Descritivo pronto para compartilhar");
+                          })
+                          .catch(() => toast.error("Falha ao gerar imagem do descritivo"));
+                      }}
+                      className="h-14 w-full text-base font-semibold"
+                    >
+                      Finalizar e compartilhar imagem no WhatsApp
+                    </Button>
+                  </div>
+                );
+              })()
               )}
             </div>
           )}
