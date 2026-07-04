@@ -351,7 +351,7 @@ export function AddServiceSheet({
                         type="button"
                         onClick={() => {
                           setPayment(p);
-                          if (p !== "PARCELAMENTO BOLETO") setParcelas("");
+                          if (p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO") setParcelas("");
                         }}
                         className={
                           "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
@@ -366,7 +366,7 @@ export function AddServiceSheet({
                   })}
                 </div>
               </div>
-              {payment === "PARCELAMENTO BOLETO" && (
+              {(payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO") && (
                 <div>
                   <Label htmlFor="parc">Quantidade de parcelas</Label>
                   <Input
@@ -384,7 +384,8 @@ export function AddServiceSheet({
                   saving ||
                   !registration.trim() ||
                   !payment ||
-                  (payment === "PARCELAMENTO BOLETO" && (!parcelas || Number(parcelas) < 2))
+                  ((payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO") &&
+                    (!parcelas || Number(parcelas) < 2))
                 }
                 onClick={() => setStep("complements")}
                 className="h-14 w-full text-base font-semibold"
