@@ -194,7 +194,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
                 catch { toast.error("Falha ao copiar"); }
               }}
             >
-              <Copy className="mr-2 size-4" /> Gerar Prompt para Lovable
+              <Copy className="mr-2 size-4" /> Gerar Prompt de Correção
             </Button>
             <Button
               variant="outline"
