@@ -73,7 +73,16 @@ type SvcRow = {
 type ShiftRow = { id: string; team_id: string; started_at: string };
 type ImpactRow = { shift_id: string; impact_name: string };
 type CompRow = { shift_id: string; complement_name: string };
-type TeamRow = { id: string; team_name: string; leader: string; supervisor: string; variable_rate: number };
+type TeamRow = {
+  id: string;
+  team_name: string;
+  leader: string;
+  supervisor: string;
+  variable_rate: number;
+  setor_id: string | null;
+  setor_nome: string | null;
+  setor_supervisor: string | null;
+};
 
 const ALL = "__all__";
 const PAGE = 1000;
@@ -121,10 +130,23 @@ function LeaderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("equipes")
-        .select("id,team_name,leader,supervisor,variable_rate")
+        .select("id,team_name,leader,supervisor,variable_rate,setor_id,setores(nome,supervisor_nome)")
         .order("team_name");
       if (error) throw error;
-      return (data ?? []) as TeamRow[];
+      type Row = {
+        id: string; team_name: string; leader: string; supervisor: string; variable_rate: number;
+        setor_id: string | null; setores: { nome: string; supervisor_nome: string } | null;
+      };
+      return ((data ?? []) as unknown as Row[]).map<TeamRow>((r) => ({
+        id: r.id,
+        team_name: r.team_name,
+        leader: r.leader,
+        supervisor: r.setores?.supervisor_nome || r.supervisor,
+        variable_rate: r.variable_rate,
+        setor_id: r.setor_id,
+        setor_nome: r.setores?.nome ?? null,
+        setor_supervisor: r.setores?.supervisor_nome ?? null,
+      }));
     },
   });
 
