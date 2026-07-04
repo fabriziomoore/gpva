@@ -15,6 +15,7 @@ const ACTIVE_CHECK_THROTTLE_MS = 750;
 let started = false;
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let globalSessionProbeTimer: ReturnType<typeof setInterval> | null = null;
 let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 let shiftsChannel: ReturnType<typeof supabase.channel> | null = null;
 let currentUserId: string | null = null;
@@ -134,6 +135,18 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
   });
 
   return activeCheckPromise;
+}
+
+async function attachSessionForUser(userId: string, opts: { claim: boolean }): Promise<void> {
+  if (opts.claim || !localSessionId()) {
+    await claimSession(userId);
+    return;
+  }
+
+  currentUserId = userId;
+  startPerUserWatchers(userId);
+  void pullRemote();
+  void verifyActiveSession({ force: true });
 }
 
 export async function assertActiveSession(): Promise<void> {
@@ -276,26 +289,19 @@ export function startSessionGuard(): void {
     const { data } = await supabase.auth.getUser();
     if (data.user) {
       if (!getLoginTs()) setLoginTs(Date.now());
-      // Se ainda não temos session_id local, reivindicamos agora (equivalente
-      // a "novo login" — o dispositivo anterior será expulso). Caso contrário,
-      // só religamos o watcher.
-      if (!localSessionId()) {
-        await claimSession(data.user.id);
-      } else {
-        currentUserId = data.user.id;
-        startPerUserWatchers(data.user.id);
-        void pullRemote();
-      }
+      // Sessão já existente ao abrir/recarregar o app: religamos os watchers
+      // globais em qualquer tela, sem depender da tela inicial montar.
+      await attachSessionForUser(data.user.id, { claim: false });
       checkExpiration();
     }
   })();
 
   supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "SIGNED_IN" && session?.user) {
+    if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+      if (!getLoginTs()) setLoginTs(Date.now());
+      const isExplicitLogin = event === "SIGNED_IN";
       // Login explícito em outro dispositivo sempre deve tomar a sessão ativa.
-      if (currentUserId !== session.user.id || !localSessionId()) {
-        void claimSession(session.user.id);
-      }
+      void attachSessionForUser(session.user.id, { claim: isExplicitLogin });
     } else if (event === "SIGNED_OUT") {
       stopPerUserWatchers();
       try {
@@ -310,6 +316,14 @@ export function startSessionGuard(): void {
   });
 
   expiryTimer = setInterval(checkExpiration, EXPIRY_CHECK_MS);
+  globalSessionProbeTimer = setInterval(() => {
+    checkExpiration();
+    // Rede de segurança para qualquer rota/tela: mesmo se o realtime não
+    // reconectar ou o app iniciar em uma tela interna, a sessão ativa é
+    // validada periodicamente e expulsa quando outro dispositivo assumir.
+    void verifyActiveSession({ force: true });
+  }, HEARTBEAT_MS);
+  void globalSessionProbeTimer;
 
   if (typeof document !== "undefined") {
     const probeOnInteraction = () => {
