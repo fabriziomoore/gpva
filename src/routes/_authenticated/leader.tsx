@@ -691,12 +691,9 @@ function PeriodView({
           {pdfLoading ? (
             <><Loader2 className="mr-2 size-4 animate-spin" /> Gerando PDF…</>
           ) : (
-            <><FileDown className="mr-2 size-4" /> Baixar relatório em PDF (paisagem)</>
+            <><FileDown className="mr-2 size-4" /> Baixar relatório</>
           )}
         </Button>
-        <p className="mt-1 text-center text-[10px] text-muted-foreground">
-          Faz o download do arquivo. No app Android, abre a tela de compartilhar após salvar em Documentos.
-        </p>
       </div>
     </div>
   );
