@@ -19,11 +19,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ReorderableGrid } from "./ReorderableGrid";
 import { useTeam } from "@/hooks/use-team";
 import {
-  submitNegotiationSilent,
+  submitNegotiationToGoogleForm,
   PAYMENT_OPTIONS,
   type PaymentOption,
 } from "@/lib/google-form";
-import { shareNegotiation } from "@/lib/share-negotiation";
 
 type Step = "type" | "viability" | "reason" | "registration" | "amount" | "payment" | "complements";
 
@@ -448,7 +447,7 @@ export function AddServiceSheet({
                   // Envio do descritivo de negociação em segundo plano com feedback.
                   if (type?.is_negotiation && payment && negotiated != null) {
                     const parc = payment === "PARCELAMENTO BOLETO" ? Number(parcelas) : 0;
-                    const submission = {
+                    const opened = submitNegotiationToGoogleForm({
                       date: new Date(),
                       leader: team?.leader,
                       setor: team?.setor_nome,
@@ -457,14 +456,12 @@ export function AddServiceSheet({
                       valorAVista: parc >= 2 ? undefined : negotiated,
                       valorTotalParcelado: parc >= 2 ? negotiated : undefined,
                       qtdParcelas: parc >= 2 ? parc : undefined,
-                    };
-                    // Envio silencioso ao Google Forms + compartilhar imagem via WhatsApp.
-                    void submitNegotiationSilent(submission);
-                    void shareNegotiation(submission)
-                      .then((ok) => {
-                        if (ok) toast.success("Descritivo pronto para compartilhar");
-                      })
-                      .catch(() => toast.error("Falha ao gerar imagem do descritivo"));
+                    });
+                    if (opened) {
+                      toast.success("Confirmação do Forms abriu em nova aba — tire o print para compartilhar");
+                    } else {
+                      toast.error("Permita pop-ups para ver a confirmação do Google Forms");
+                    }
                   }
                 }}
                 className="h-14 w-full text-base font-semibold"
