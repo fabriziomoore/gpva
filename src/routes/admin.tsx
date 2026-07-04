@@ -39,6 +39,7 @@ import {
   adminUpdateGoogleForm,
 } from "@/lib/google-form.functions";
 import { Textarea } from "@/components/ui/textarea";
+import { AuditSection } from "@/components/admin/AuditSection";
 import { formatDateBR } from "@/lib/format";
 
 export const Route = createFileRoute("/admin")({
@@ -56,7 +57,8 @@ type SectionId =
   | "create_team"
   | "leaders"
   | "setores"
-  | "google_form";
+  | "google_form"
+  | "audit";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "setores", label: "Setores" },
@@ -68,6 +70,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "create_team", label: "Criar Equipe" },
   { id: "leaders", label: "Líderes" },
   { id: "google_form", label: "Google Forms" },
+  { id: "audit", label: "Auditoria Inteligente" },
 ];
 
 function AdminPage() {
@@ -189,6 +192,8 @@ function AdminPage() {
             <SetoresSection adminPw={adminPw} />
           ) : section === "google_form" ? (
             <GoogleFormSection adminPw={adminPw} />
+          ) : section === "audit" ? (
+            <AuditSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
