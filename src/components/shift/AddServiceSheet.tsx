@@ -25,7 +25,7 @@ import {
   type PaymentOption,
 } from "@/lib/google-form";
 import { shareNegotiation } from "@/lib/share-negotiation";
-import { showFormsFeedback } from "@/components/FormsFeedbackOverlay";
+import { setFormsStatus } from "@/lib/forms-status";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
 
@@ -116,14 +116,14 @@ export function AddServiceSheet({
     registration?: string;
     negotiated?: number;
     complementIds?: string[];
-  }) {
-    if (!type) return;
+  }): Promise<string | null> {
+    if (!type) return null;
     setSaving(true);
     try {
       const chosen = (complements.data ?? []).filter((c) =>
         (opts.complementIds ?? []).includes(c.id),
       );
-      await repoAddService({
+      const created = await repoAddService({
         team_id: teamId,
         shift_id: shiftId,
         service_type_id: type.id,
@@ -140,8 +140,10 @@ export function AddServiceSheet({
       await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
       toast.success("Serviço registrado");
       onOpenChange(false);
+      return created.id;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar");
+      return null;
     } finally {
       setSaving(false);
     }
