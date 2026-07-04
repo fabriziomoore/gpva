@@ -32,13 +32,7 @@ function AuthPage() {
   const [team, setTeam] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [nativeApp, setNativeApp] = useState(false);
   const [remember, setRemember] = useState(false);
-
-  useEffect(() => {
-    const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
-    setNativeApp(!!w.Capacitor?.isNativePlatform?.());
-  }, []);
 
   // Preencher equipe salva, se houver
   useEffect(() => {
