@@ -709,19 +709,25 @@ function PaceBar({ current, projected, period }: { current: number; projected: n
       </div>
       <div className="relative h-3 overflow-hidden rounded-full bg-muted">
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all"
-          style={{ width: `${paceCount}%` }}
+          className="absolute inset-y-0 left-0 bg-primary/30 transition-all"
+          style={{ width: `${elapsedPct}%` }}
+          title={`Projeção: ${elapsedPct}% do período decorrido`}
         />
         <div
-          className="absolute -top-0.5 bottom-[-2px] w-[2px] bg-destructive"
-          style={{ left: `${elapsedPct}%` }}
-          title={`Tempo decorrido: ${elapsedPct}%`}
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/80 transition-all"
+          style={{ width: `${paceCount}%` }}
+          title={`Alcançado: ${paceCount}% da projeção`}
         />
       </div>
-      <div className="mt-1 flex justify-between text-[9px] text-muted-foreground">
-        <span>0%</span>
-        <span>Marcador vermelho = {elapsedPct}% do {period === "week" ? "semana" : period === "month" ? "mês" : "ano"} decorrido</span>
-        <span>100%</span>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[9px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-sm bg-primary/30" />
+          Projeção ({elapsedPct}% do {period === "week" ? "semana" : period === "month" ? "mês" : "ano"} decorrido)
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-sm bg-primary" />
+          Alcançado ({paceCount}%)
+        </span>
       </div>
     </div>
   );
