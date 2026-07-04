@@ -141,6 +141,29 @@ export function submitNegotiationToGoogleForm(input: NegotiationSubmission): boo
   return true;
 }
 
+/**
+ * Envia a resposta em segundo plano (no-cors) — sem abrir nova aba.
+ * A resposta é opaque; consideramos sucesso quando o fetch não lança.
+ */
+export async function submitNegotiationSilent(input: NegotiationSubmission): Promise<boolean> {
+  try {
+    const params = buildParams(input);
+    await fetch(ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body: params.toString(),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function formatMoneyBR(n: number): string {
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 function formatMoney(n: number): string {
   return n.toFixed(2).replace(".", ",");
 }
