@@ -184,7 +184,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
 
   // Título e período
-  font(14, "bold"); setText(C.ink);
+  font(12, "bold"); setText(C.ink);
   text("RELATÓRIO DE PRODUTIVIDADE", M + 26, M + 8);
   font(9, "normal"); setText(C.sub);
   text(`Período analisado: ${periodStr}`, M + 26, M + 14);
@@ -192,26 +192,31 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   text(`Comparativo vs ${previousLabel(input.period)}`, M + 26, M + 19);
 
   // Centro: metadados (encaixa entre o título à esquerda e a caixa destaque à direita)
-  const centerX = M + 92;
-  const colGap = 44;
+  const centerX = M + 110;
+  const colGap = 48;
   const labelW = 18;
   const valueMax = colGap - labelW - 2;
-  const kvRows: [string, string][] = [
-    ["Setor:", input.setor || "-"],
-    ["Supervisor:", input.supervisor || "-"],
-    ["Líder:", input.leader || "-"],
-    ["Escopo:", input.scope_label],
-    ["Período:", periodTitle(input.period)],
-    ["Gerado em:", formatDateBR(now)],
-    ["Gerado por:", generatedBy],
+  const fullValueMax = colGap * 2 - labelW - 2;
+  const kvRows: { label: string; value: string; full?: boolean }[] = [
+    { label: "Setor:", value: input.setor || "-" },
+    { label: "Supervisor:", value: input.supervisor || "-" },
+    { label: "Líder:", value: input.leader || "-" },
+    { label: "Escopo:", value: input.scope_label },
+    { label: "Período:", value: periodTitle(input.period) },
+    { label: "Gerado em:", value: formatDateBR(now) },
+    { label: "Gerado por:", value: generatedBy, full: true },
   ];
-  kvRows.forEach((row, i) => {
-    const col = i % 2;
-    const line = Math.floor(i / 2);
-    const x = centerX + col * colGap;
-    const y = M + 6 + line * 6;
-    font(7.5, "bold"); setText(C.muted); text(row[0], x, y);
-    font(8.5, "normal"); setText(C.ink); text(row[1], x + labelW, y, { maxWidth: valueMax });
+  let lineIdx = 0;
+  let colIdx = 0;
+  kvRows.forEach((row) => {
+    if (row.full && colIdx !== 0) { lineIdx += 1; colIdx = 0; }
+    const x = centerX + colIdx * colGap;
+    const y = M + 6 + lineIdx * 6;
+    font(7.5, "bold"); setText(C.muted); text(row.label, x, y);
+    font(8.5, "normal"); setText(C.ink);
+    text(row.value, x + labelW, y, { maxWidth: row.full ? fullValueMax : valueMax });
+    if (row.full) { lineIdx += 1; colIdx = 0; }
+    else { colIdx += 1; if (colIdx > 1) { colIdx = 0; lineIdx += 1; } }
   });
 
   // Caixa destaque à direita
