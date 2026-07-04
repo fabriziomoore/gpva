@@ -308,7 +308,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   drawLineChart(pdf, M + chW + 5, chY, chW, chH, "Evolução — Viáveis × Inviáveis", input.evolution ?? []);
 
   // Footer p1
-  footer(1, 3);
+  footer(1, totalPages);
 
   // =========================================================================
   // PAGE 2 — Indicadores Operacionais
@@ -336,7 +336,106 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   } else {
     font(9, "normal"); text("Sem dados suficientes para eleger o melhor dia.", M + 4, bestY + 11);
   }
-  footer(2, 3);
+  footer(2, totalPages);
+
+  // =========================================================================
+  // PAGE 3 (opcional) — Detalhamento por equipe
+  // =========================================================================
+  if (hasTeams) {
+    pdf.addPage("a4", "landscape");
+    pageTitle(pdf, "DETALHAMENTO POR EQUIPE", input.scope_label, periodStr);
+
+    const tblY = M + 18;
+    const cols: { label: string; w: number; align?: "left" | "right" | "center" }[] = [
+      { label: "Equipe", w: 55 },
+      { label: "Líder", w: 42 },
+      { label: "Total", w: 18, align: "right" },
+      { label: "Viáveis", w: 20, align: "right" },
+      { label: "Inviáveis", w: 22, align: "right" },
+      { label: "Viab. %", w: 18, align: "right" },
+      { label: "Negoc.", w: 18, align: "right" },
+      { label: "Valor negoc.", w: 30, align: "right" },
+      { label: "Expedientes", w: 24, align: "right" },
+      { label: "Var. estim.", w: 20, align: "right" },
+    ];
+    const totalW = cols.reduce((s, c) => s + c.w, 0);
+    const startX = M + Math.max(0, (CW - totalW) / 2);
+    const rowH = 6.2;
+
+    // Header row
+    setFill(C.primaryDark); setStroke(C.primaryDark);
+    pdf.rect(startX, tblY, totalW, rowH, "F");
+    font(7.5, "bold"); setText(C.white);
+    let cx = startX;
+    for (const c of cols) {
+      const tx = c.align === "right" ? cx + c.w - 2 : cx + 2;
+      pdf.text(c.label, tx, tblY + 4, { align: c.align ?? "left", baseline: "alphabetic" });
+      cx += c.w;
+    }
+
+    // Body
+    const rows = [...input.teams].sort((a, b) => b.current.total - a.current.total);
+    let ry = tblY + rowH;
+    const maxRows = Math.floor((PH - M - 20 - (tblY + rowH)) / rowH);
+    rows.slice(0, maxRows).forEach((t, i) => {
+      if (i % 2 === 0) { setFill(C.bgAlt); pdf.rect(startX, ry, totalW, rowH, "F"); }
+      const pct = t.current.total ? Math.round((t.current.viable / t.current.total) * 100) : 0;
+      const values: string[] = [
+        t.team_name,
+        t.leader || "-",
+        String(t.current.total),
+        String(t.current.viable),
+        String(t.current.unviable),
+        `${pct}%`,
+        String(t.current.negotiations),
+        formatBRL(t.current.negotiated_value),
+        String(t.current.shifts),
+        formatBRL(t.variable_estimated),
+      ];
+      font(7.5, "normal"); setText(C.ink);
+      let bx = startX;
+      values.forEach((v, ci) => {
+        const c = cols[ci];
+        const tx = c.align === "right" ? bx + c.w - 2 : bx + 2;
+        pdf.text(fit(v, c.w - 3), tx, ry + 4, { align: c.align ?? "left", baseline: "alphabetic" });
+        bx += c.w;
+      });
+      ry += rowH;
+    });
+
+    // Totals row
+    const agg = rows.reduce(
+      (a, t) => ({
+        total: a.total + t.current.total,
+        viable: a.viable + t.current.viable,
+        unviable: a.unviable + t.current.unviable,
+        negotiations: a.negotiations + t.current.negotiations,
+        negotiated_value: a.negotiated_value + t.current.negotiated_value,
+        shifts: a.shifts + t.current.shifts,
+        variable: a.variable + t.variable_estimated,
+      }),
+      { total: 0, viable: 0, unviable: 0, negotiations: 0, negotiated_value: 0, shifts: 0, variable: 0 },
+    );
+    const pctT = agg.total ? Math.round((agg.viable / agg.total) * 100) : 0;
+    setFill(C.primary); setStroke(C.primary);
+    pdf.rect(startX, ry, totalW, rowH, "F");
+    font(8, "bold"); setText(C.white);
+    const totals: string[] = [
+      `TOTAL (${rows.length})`, "",
+      String(agg.total), String(agg.viable), String(agg.unviable),
+      `${pctT}%`, String(agg.negotiations), formatBRL(agg.negotiated_value),
+      String(agg.shifts), formatBRL(agg.variable),
+    ];
+    let tx = startX;
+    totals.forEach((v, ci) => {
+      const c = cols[ci];
+      const px = c.align === "right" ? tx + c.w - 2 : tx + 2;
+      pdf.text(v, px, ry + 4, { align: c.align ?? "left", baseline: "alphabetic" });
+      tx += c.w;
+    });
+
+    footer(3, totalPages);
+  }
 
   // =========================================================================
   // PAGE 3 — Resumo Executivo
