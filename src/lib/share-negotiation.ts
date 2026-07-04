@@ -148,30 +148,24 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
   const file = new File([blob], `negociacao-${input.matricula}.png`, { type: "image/png" });
   const caption = buildCaption(input);
 
-  // Copia o descritivo para a área de transferência para colar na legenda da imagem.
-  try {
-    await navigator.clipboard.writeText(caption);
-  } catch {
-    /* alguns navegadores bloqueiam sem gesto do usuário */
-  }
-
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare && nav.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: "Descritivo negociação" });
+      await navigator.share({ files: [file], title: "Descritivo negociação", text: caption });
       return true;
     } catch {
       return false;
     }
   }
 
-  // Fallback: baixa a imagem para anexar manualmente.
+  // Fallback (desktop): baixa a imagem e abre o WhatsApp Web já com a legenda.
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = file.name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+  window.open(`https://wa.me/?text=${encodeURIComponent(caption)}`, "_blank");
 
   return true;
 }
