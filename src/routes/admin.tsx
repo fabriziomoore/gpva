@@ -1451,3 +1451,201 @@ function AdminSideMenu({
     </Dialog.Root>
   );
 }
+
+function TestAccountSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListTestTeams);
+  const createFn = useServerFn(adminCreateTestTeam);
+  const updateFn = useServerFn(adminUpdateTeam);
+  const deleteFn = useServerFn(adminDeleteTeam);
+
+  const list = useQuery({
+    queryKey: ["admin-test-teams"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+  });
+
+  const [teamName, setTeamName] = useState("");
+  const [password, setPassword] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const createMut = useMutation({
+    mutationFn: () => createFn({ data: { adminPassword: adminPw, teamName, password } }),
+    onSuccess: () => {
+      toast.success("Conta de teste criada");
+      setTeamName("");
+      setPassword("");
+      qc.invalidateQueries({ queryKey: ["admin-test-teams"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (v: { teamId: string; name: string }) =>
+      updateFn({ data: { adminPassword: adminPw, teamId: v.teamId, teamName: v.name } }),
+    onSuccess: () => {
+      toast.success("Conta atualizada");
+      setEditingId(null);
+      qc.invalidateQueries({ queryKey: ["admin-test-teams"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (teamId: string) => deleteFn({ data: { adminPassword: adminPw, teamId } }),
+    onSuccess: () => {
+      toast.success("Conta de teste excluída");
+      setConfirmDeleteId(null);
+      qc.invalidateQueries({ queryKey: ["admin-test-teams"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-base font-semibold">Conta de Teste</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Contas isoladas para apresentações. Não aparecem no ranking nem influenciam a produtividade real.
+        </p>
+      </div>
+
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold">Criar nova conta de teste</h3>
+        <div className="space-y-2">
+          <Label htmlFor="tt-name">Nome da equipe</Label>
+          <Input
+            id="tt-name"
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+            autoCapitalize="characters"
+            className="h-11 text-base"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="tt-pw">Senha (mín. 6)</Label>
+          <Input
+            id="tt-pw"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 text-base"
+          />
+        </div>
+        <Button
+          onClick={() => createMut.mutate()}
+          disabled={createMut.isPending || !teamName.trim() || password.length < 6}
+          className="h-11 w-full text-sm font-semibold"
+        >
+          {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Criar Conta de Teste"}
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Contas existentes</h3>
+        {list.isLoading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (list.data ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhuma conta de teste cadastrada.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(list.data ?? []).map((t) => (
+              <li
+                key={t.id}
+                className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3"
+              >
+                {editingId === t.id ? (
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="h-10"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        className="h-9 flex-1 text-xs"
+                        disabled={updateMut.isPending || !editName.trim()}
+                        onClick={() => updateMut.mutate({ teamId: t.id, name: editName })}
+                      >
+                        Salvar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-9 flex-1 text-xs"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{t.team_name}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-orange-500">
+                        Conta de teste
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        className="h-8 px-3 text-xs"
+                        onClick={() => {
+                          setEditingId(t.id);
+                          setEditName(t.team_name);
+                        }}
+                      >
+                        Editar
+                      </Button>
+                      <button
+                        onClick={() => setConfirmDeleteId(t.id)}
+                        className="rounded p-1.5 text-muted-foreground hover:text-destructive"
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <Dialog.Root
+        open={confirmDeleteId !== null}
+        onOpenChange={(o) => !o && setConfirmDeleteId(null)}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-xl">
+            <Dialog.Title className="text-base font-semibold">Excluir conta de teste?</Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+              Todos os dados vinculados a esta conta serão removidos.
+            </Dialog.Description>
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="outline"
+                className="h-10 flex-1"
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="h-10 flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteMut.isPending}
+                onClick={() => confirmDeleteId && deleteMut.mutate(confirmDeleteId)}
+              >
+                {deleteMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Excluir"}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </div>
+  );
+}
