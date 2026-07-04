@@ -27,7 +27,7 @@ import {
 import { shareNegotiation } from "@/lib/share-negotiation";
 import { showFormsFeedback } from "@/components/FormsFeedbackOverlay";
 
-type Step = "type" | "viability" | "reason" | "registration" | "amount" | "payment" | "complements";
+type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 type Reason = { id: string; name: string };
@@ -48,11 +48,12 @@ export function AddServiceSheet({
   const [type, setType] = useState<ServiceType | null>(null);
   const [reason, setReason] = useState<Reason | null>(null);
   const [registration, setRegistration] = useState("");
-  const [amount, setAmount] = useState("");
   const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
-  const [payment, setPayment] = useState<PaymentOption | null>(null);
+  const [payments, setPayments] = useState<Set<PaymentOption>>(new Set());
+  const [valorAVista, setValorAVista] = useState("");
+  const [valorParcelado, setValorParcelado] = useState("");
   const [parcelas, setParcelas] = useState("");
   const team = useTeam(teamId).data;
 
@@ -62,10 +63,11 @@ export function AddServiceSheet({
       setType(null);
       setReason(null);
       setRegistration("");
-      setAmount("");
       setSelectedComplements(new Set());
       setReorderMode(false);
-      setPayment(null);
+      setPayments(new Set());
+      setValorAVista("");
+      setValorParcelado("");
       setParcelas("");
       void fetchAndCacheCatalogOrder(teamId);
     }
@@ -160,7 +162,6 @@ export function AddServiceSheet({
               {step === "viability" && type?.name}
               {step === "reason" && "Motivo da inviabilidade"}
               {step === "registration" && "Matrícula"}
-              {step === "amount" && "Valor negociado"}
               {step === "payment" && "Forma de pagamento"}
               {step === "complements" && "Complemento(s) do Serviço"}
             </SheetTitle>
@@ -221,7 +222,7 @@ export function AddServiceSheet({
               <button
                 disabled={saving}
                 onClick={() => {
-                  if (type?.is_negotiation) setStep("amount");
+                  if (type?.is_negotiation) setStep("payment");
                   else setStep("complements");
                 }}
                 className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
@@ -296,37 +297,6 @@ export function AddServiceSheet({
             </div>
           )}
 
-          {step === "amount" && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="val">Valor negociado (R$)</Label>
-                <Input
-                  id="val"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, ""))}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  className="h-14 text-lg"
-                  autoFocus
-                />
-              </div>
-              <Button
-                disabled={saving || !amount.trim()}
-                onClick={() => {
-                  const n = Number(amount.replace(",", "."));
-                  if (!isFinite(n) || n <= 0) {
-                    toast.error("Valor inválido");
-                    return;
-                  }
-                  setStep("payment");
-                }}
-                className="h-14 w-full text-base font-semibold"
-              >
-                Continuar
-              </Button>
-            </div>
-          )}
-
           {step === "payment" && (
             <div className="space-y-4">
               <div>
@@ -342,17 +312,24 @@ export function AddServiceSheet({
                 />
               </div>
               <div>
-                <Label>Forma de pagamento</Label>
+                <Label>Forma(s) de pagamento</Label>
+                <p className="mb-1 text-xs text-muted-foreground">
+                  Toque para selecionar uma ou mais. Ao combinar à vista + parcelado, preencha os dois valores abaixo.
+                </p>
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   {PAYMENT_OPTIONS.map((p) => {
-                    const on = payment === p;
+                    const on = payments.has(p);
                     return (
                       <button
                         key={p}
                         type="button"
                         onClick={() => {
-                          setPayment(p);
-                          if (p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO") setParcelas("");
+                          setPayments((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(p)) next.delete(p);
+                            else next.add(p);
+                            return next;
+                          });
                         }}
                         className={
                           "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
@@ -367,32 +344,76 @@ export function AddServiceSheet({
                   })}
                 </div>
               </div>
-              {(payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO") && (
-                <div>
-                  <Label htmlFor="parc">Quantidade de parcelas</Label>
-                  <Input
-                    id="parc"
-                    value={parcelas}
-                    onChange={(e) => setParcelas(e.target.value.replace(/[^0-9]/g, ""))}
-                    inputMode="numeric"
-                    placeholder="Ex: 6"
-                    className="h-14 text-lg"
-                  />
-                </div>
-              )}
-              <Button
-                disabled={
-                  saving ||
-                  !registration.trim() ||
-                  !payment ||
-                  ((payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO") &&
-                    (!parcelas || Number(parcelas) < 2))
-                }
-                onClick={() => setStep("complements")}
-                className="h-14 w-full text-base font-semibold"
-              >
-                Continuar
-              </Button>
+              {(() => {
+                const hasInstallment =
+                  payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
+                const hasUpfront = Array.from(payments).some(
+                  (p) => p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO",
+                );
+                const nVista = Number(valorAVista.replace(",", "."));
+                const nParc = Number(valorParcelado.replace(",", "."));
+                const nParcelas = Number(parcelas);
+                const invalidVista = hasUpfront && (!valorAVista.trim() || !isFinite(nVista) || nVista <= 0);
+                const invalidParc = hasInstallment && (!valorParcelado.trim() || !isFinite(nParc) || nParc <= 0);
+                const invalidQtd = hasInstallment && (!parcelas || nParcelas < 2);
+                return (
+                  <>
+                    {hasUpfront && (
+                      <div>
+                        <Label htmlFor="val-vista">Valor à vista (R$)</Label>
+                        <Input
+                          id="val-vista"
+                          value={valorAVista}
+                          onChange={(e) => setValorAVista(e.target.value.replace(/[^0-9.,]/g, ""))}
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          className="h-14 text-lg"
+                        />
+                      </div>
+                    )}
+                    {hasInstallment && (
+                      <>
+                        <div>
+                          <Label htmlFor="val-parc">Valor total parcelado (R$)</Label>
+                          <Input
+                            id="val-parc"
+                            value={valorParcelado}
+                            onChange={(e) => setValorParcelado(e.target.value.replace(/[^0-9.,]/g, ""))}
+                            inputMode="decimal"
+                            placeholder="0,00"
+                            className="h-14 text-lg"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="parc">Quantidade de parcelas</Label>
+                          <Input
+                            id="parc"
+                            value={parcelas}
+                            onChange={(e) => setParcelas(e.target.value.replace(/[^0-9]/g, ""))}
+                            inputMode="numeric"
+                            placeholder="Ex: 6"
+                            className="h-14 text-lg"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <Button
+                      disabled={
+                        saving ||
+                        !registration.trim() ||
+                        payments.size === 0 ||
+                        invalidVista ||
+                        invalidParc ||
+                        invalidQtd
+                      }
+                      onClick={() => setStep("complements")}
+                      className="h-14 w-full text-base font-semibold"
+                    >
+                      Continuar
+                    </Button>
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -438,22 +459,28 @@ export function AddServiceSheet({
               )}
               {!reorderMode && (
               (() => {
-                const negotiated = type?.is_negotiation ? Number(amount.replace(",", ".")) : undefined;
-                const parc =
-                  payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO"
-                    ? Number(parcelas)
-                    : 0;
+                const hasInstallment =
+                  payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
+                const hasUpfront = Array.from(payments).some(
+                  (p) => p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO",
+                );
+                const nVista = hasUpfront ? Number(valorAVista.replace(",", ".")) : 0;
+                const nParc = hasInstallment ? Number(valorParcelado.replace(",", ".")) : 0;
+                const nParcelas = hasInstallment ? Number(parcelas) : 0;
+                const negotiated = type?.is_negotiation
+                  ? (isFinite(nVista) ? nVista : 0) + (isFinite(nParc) ? nParc : 0)
+                  : undefined;
                 const submission =
-                  type?.is_negotiation && payment && negotiated != null
+                  type?.is_negotiation && payments.size > 0 && negotiated != null && negotiated > 0
                     ? {
                         date: new Date(),
                         leader: team?.leader,
                         setor: team?.setor_nome,
                         matricula: registration.trim(),
-                        paymentMethod: payment,
-                        valorAVista: parc >= 2 ? undefined : negotiated,
-                        valorTotalParcelado: parc >= 2 ? negotiated : undefined,
-                        qtdParcelas: parc >= 2 ? parc : undefined,
+                        paymentMethods: Array.from(payments),
+                        valorAVista: hasUpfront ? nVista : undefined,
+                        valorTotalParcelado: hasInstallment ? nParc : undefined,
+                        qtdParcelas: hasInstallment ? nParcelas : undefined,
                       }
                     : null;
 

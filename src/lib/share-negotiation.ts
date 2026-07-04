@@ -7,7 +7,11 @@ import { formatMoneyBR, type NegotiationSubmission } from "./google-form";
 function buildCaption(input: NegotiationSubmission): string {
   const lines: string[] = ["*DESCRITIVO NEGOCIAÇÃO*"];
   lines.push(`Matrícula: ${input.matricula}`);
-  lines.push(`Forma de pagamento: ${input.paymentMethod}`);
+  lines.push(
+    `Forma de pagamento: ${
+      input.paymentMethods.length ? input.paymentMethods.join(" + ") : "-"
+    }`,
+  );
   if (input.valorAVista != null) lines.push(`Valor à vista: ${formatMoneyBR(input.valorAVista)}`);
   if (input.valorTotalParcelado != null) {
     lines.push(`Valor total parcelado: ${formatMoneyBR(input.valorTotalParcelado)}`);
