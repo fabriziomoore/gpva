@@ -24,7 +24,7 @@ import {
   PAYMENT_OPTIONS,
   type PaymentOption,
 } from "@/lib/google-form";
-import { shareNegotiation } from "@/lib/share-negotiation";
+import { shareNegotiation, buildCaption } from "@/lib/share-negotiation";
 import { setFormsStatus } from "@/lib/forms-status";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
@@ -503,6 +503,12 @@ export function AddServiceSheet({
                     <Button
                       disabled={saving}
                       onClick={async () => {
+                        const caption = buildCaption(submission);
+                        try {
+                          await navigator.clipboard.writeText(caption);
+                        } catch {
+                          /* alguns navegadores exigem gesto — ignorado */
+                        }
                         const [serviceId, result] = await Promise.all([
                           finalizeService(),
                           submitNegotiationToGoogleForm(submission)
@@ -513,7 +519,7 @@ export function AddServiceSheet({
                           setFormsStatus(serviceId, result.ok ? "sent" : "failed");
                         }
                         if (result.ok) {
-                          toast.success("Tela do Forms abriu em nova aba — tire o print");
+                          toast.success("Forms aberto — descritivo copiado para colar");
                         } else if (result.err) {
                           toast.error(
                             `Falha ao enviar para o Forms: ${
