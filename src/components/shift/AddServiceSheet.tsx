@@ -447,7 +447,7 @@ export function AddServiceSheet({
                   // Envio do descritivo de negociação em segundo plano com feedback.
                   if (type?.is_negotiation && payment && negotiated != null) {
                     const parc = payment === "PARCELAMENTO BOLETO" ? Number(parcelas) : 0;
-                    const p = submitNegotiationToGoogleForm({
+                    const opened = submitNegotiationToGoogleForm({
                       date: new Date(),
                       leader: team?.leader,
                       setor: team?.setor_nome,
@@ -457,11 +457,11 @@ export function AddServiceSheet({
                       valorTotalParcelado: parc >= 2 ? negotiated : undefined,
                       qtdParcelas: parc >= 2 ? parc : undefined,
                     });
-                    toast.promise(p.then((ok) => { if (!ok) throw new Error("falha"); }), {
-                      loading: "Enviando descritivo…",
-                      success: "Descritivo enviado ao Google Forms",
-                      error: "Falha ao enviar descritivo",
-                    });
+                    if (opened) {
+                      toast.success("Descritivo enviado — confirmação abriu em nova aba");
+                    } else {
+                      toast.error("Permita pop-ups para ver a confirmação do Google Forms");
+                    }
                   }
                 }}
                 className="h-14 w-full text-base font-semibold"
