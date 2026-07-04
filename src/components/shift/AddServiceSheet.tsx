@@ -498,7 +498,7 @@ export function AddServiceSheet({
                         void shareNegotiation(submission)
                           .then((ok) => {
                             if (ok) {
-                              toast.success("Imagem pronta com o descritivo dentro dela");
+                              toast.success("Legenda copiada — cole no campo de legenda da imagem no WhatsApp");
                             }
                           })
                           .catch(() => toast.error("Falha ao gerar imagem do descritivo"));
