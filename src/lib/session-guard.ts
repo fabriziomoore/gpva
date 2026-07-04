@@ -18,6 +18,8 @@ let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 let shiftsChannel: ReturnType<typeof supabase.channel> | null = null;
 let currentUserId: string | null = null;
 let signingOut = false;
+let claimedAt = 0;
+const CLAIM_GRACE_MS = 10_000;
 
 function localSessionId(): string | null {
   try {
@@ -91,6 +93,7 @@ async function claimSession(userId: string): Promise<void> {
       { onConflict: "user_id" },
     );
   if (error) console.warn("[session-guard] claim failed", error);
+  claimedAt = Date.now();
   startPerUserWatchers(userId);
   void pullRemote();
 }
@@ -107,7 +110,10 @@ function startPerUserWatchers(userId: string): void {
         const row = (payload.new ?? payload.old) as { session_id?: string } | null;
         if (!row?.session_id) return;
         const mine = localSessionId();
-        if (mine && row.session_id !== mine) void forceSignOut("taken_over");
+        if (!mine || row.session_id === mine) return;
+        // Ignora eventos ecoados enquanto o próprio claim está propagando.
+        if (Date.now() - claimedAt < CLAIM_GRACE_MS) return;
+        void forceSignOut("taken_over");
       },
     )
     .subscribe();
@@ -139,7 +145,9 @@ function startPerUserWatchers(userId: string): void {
         .eq("user_id", userId)
         .maybeSingle();
       if (error || !data) return;
-      if (data.session_id !== mine) void forceSignOut("taken_over");
+      if (data.session_id === mine) return;
+      if (Date.now() - claimedAt < CLAIM_GRACE_MS) return;
+      void forceSignOut("taken_over");
     })();
   }, HEARTBEAT_MS);
 }
@@ -263,7 +271,9 @@ export function startSessionGuard(): void {
               .select("session_id")
               .eq("user_id", currentUserId)
               .maybeSingle();
-            if (data && data.session_id !== mine) void forceSignOut("taken_over");
+            if (!data || data.session_id === mine) return;
+            if (Date.now() - claimedAt < CLAIM_GRACE_MS) return;
+            void forceSignOut("taken_over");
           })();
         }
       }
