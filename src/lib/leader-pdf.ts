@@ -250,9 +250,9 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     ["COLABORADORES", collaborators !== null ? String(collaborators) : "—"],
     ["EXPEDIENTES", String(input.current.shifts)],
   ];
-  const cellW = rcW / 3;
+  const rcCellW = rcW / 3;
   rcStats.forEach((s, i) => {
-    const cx = rcX + cellW * i + cellW / 2;
+    const cx = rcX + rcCellW * i + rcCellW / 2;
     font(14, "bold"); setText(C.primary);
     text(s[1], cx, headerY + 13, { align: "center" });
     font(6.5, "bold"); setText(C.white);
