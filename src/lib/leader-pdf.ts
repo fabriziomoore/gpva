@@ -474,7 +474,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     lines.slice(0, 6).forEach((l, li) => pdf.text(l, x + 4, y + 10.5 + li * 3.6));
   });
 
-  footer(3, 3);
+  footer(hasTeams ? 4 : 3, totalPages);
 
   return pdf.output("blob");
 }
