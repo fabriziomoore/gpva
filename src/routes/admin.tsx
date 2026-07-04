@@ -508,6 +508,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   const leaders = useQuery({
     queryKey: ["admin-leaders"],
     queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
+    staleTime: 60_000,
   });
 
   const mut = useMutation({
@@ -781,6 +782,7 @@ function TeamHeader({
   const leadersList = useQuery({
     queryKey: ["admin-leaders"],
     queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
+    staleTime: 60_000,
   });
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(team.team_name);
@@ -1082,6 +1084,7 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
   const leaders = useQuery({
     queryKey: ["admin-leaders"],
     queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+    staleTime: 60_000,
   });
 
   const createMut = useMutation({
