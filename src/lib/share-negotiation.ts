@@ -148,10 +148,21 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
   const file = new File([blob], `negociacao-${input.matricula}.png`, { type: "image/png" });
   const caption = buildCaption(input);
 
+  // Copia o descritivo para a área de transferência. No WhatsApp mobile,
+  // ao anexar a imagem aparece o campo "Adicionar legenda" — basta colar
+  // ali para o texto ficar EMBAIXO da imagem, no mesmo balão. Se mandarmos
+  // o texto junto no navigator.share, o WhatsApp envia como mensagem
+  // separada ANTES da imagem.
+  try {
+    await navigator.clipboard.writeText(caption);
+  } catch {
+    /* alguns navegadores exigem gesto do usuário */
+  }
+
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare && nav.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: "Descritivo negociação", text: caption });
+      await navigator.share({ files: [file], title: "Descritivo negociação" });
       return true;
     } catch {
       return false;
