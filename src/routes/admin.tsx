@@ -24,6 +24,10 @@ import {
   adminCreateLeader,
   adminListLeaders,
   adminDeleteLeader,
+  adminListSetores,
+  adminCreateSetor,
+  adminUpdateSetor,
+  adminDeleteSetor,
 } from "@/lib/admin.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
@@ -42,9 +46,11 @@ type SectionId =
   | "impactos"
   | "variable"
   | "create_team"
-  | "leaders";
+  | "leaders"
+  | "setores";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
+  { id: "setores", label: "Setores" },
   { id: "tipos_servico", label: "Serviços" },
   { id: "motivos_inviabilidade", label: "Motivos de Inviabilidade" },
   { id: "complementos_servico", label: "Complemento(s) do Serviço" },
