@@ -140,9 +140,9 @@ function ShiftPage() {
                             com {first}
                             {rest.length > 0 && (
                               <>
-                                {" "}
+                                {"  "}
                                 <Popover>
-                                  <PopoverTrigger className="text-primary underline underline-offset-2">
+                                  <PopoverTrigger className="ml-2 text-foreground underline underline-offset-2">
                                     ver mais
                                   </PopoverTrigger>
                                   <PopoverContent align="start" className="w-64">
