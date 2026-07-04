@@ -1,0 +1,1 @@
+GRANT SELECT ON public.google_form_settings TO anon, authenticated; GRANT ALL ON public.google_form_settings TO service_role;
