@@ -31,11 +31,13 @@ function SettingsPage() {
 
   const [supervisor, setSupervisor] = useState("");
   const [leader, setLeader] = useState("");
+  const [teamName, setTeamName] = useState("");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const teamPhoto = useTeamPhoto(userId);
+  const isTestAccountRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -67,7 +69,8 @@ function SettingsPage() {
     }
   }
 
-  const isTestAccount = team?.team_name === TEST_TEAM_NAME;
+  if (team?.team_name === TEST_TEAM_NAME) isTestAccountRef.current = true;
+  const isTestAccount = isTestAccountRef.current;
 
   async function resetTestData() {
     if (!isTestAccount || !userId) return;
@@ -104,15 +107,26 @@ function SettingsPage() {
     if (team) {
       setSupervisor(team.supervisor);
       setLeader(team.leader);
+      setTeamName(team.team_name);
     }
   }, [team]);
 
   async function saveTeam() {
     setSaving(true);
     try {
-      await repoUpdateTeam(userId!, { supervisor, leader });
+      const patch: { supervisor: string; leader: string; team_name?: string } = { supervisor, leader };
+      if (isTestAccount) {
+        const trimmed = teamName.trim();
+        if (!trimmed) {
+          toast.error("Nome da equipe não pode ficar vazio");
+          setSaving(false);
+          return;
+        }
+        patch.team_name = trimmed;
+      }
+      await repoUpdateTeam(userId!, patch);
       qc.setQueryData<Team | null>(["team", userId], (old) =>
-        old ? { ...old, supervisor, leader } : old,
+        old ? { ...old, ...patch } : old,
       );
       toast.success("Equipe atualizada");
     } catch (err) {
@@ -194,7 +208,12 @@ function SettingsPage() {
             </div>
             <div>
               <Label>Nome da equipe</Label>
-              <Input value={team.team_name} disabled className="h-11" />
+              <Input
+                value={isTestAccount ? teamName : team.team_name}
+                disabled={!isTestAccount}
+                onChange={(e) => setTeamName(e.target.value)}
+                className="h-11"
+              />
             </div>
             <div>
               <Label htmlFor="sup">Supervisor</Label>

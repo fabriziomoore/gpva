@@ -40,7 +40,7 @@ export async function repoSaveCatalogOrder(input: {
 
 export async function repoUpdateTeam(
   teamId: string,
-  patch: Partial<Pick<CatTeam, "supervisor" | "leader" | "variable_rate" | "onboarded" | "photo_url" | "collaborator1" | "collaborator2">>,
+  patch: Partial<Pick<CatTeam, "supervisor" | "leader" | "variable_rate" | "onboarded" | "photo_url" | "collaborator1" | "collaborator2" | "team_name">>,
 ): Promise<CatTeam | null> {
   const db = getLocalDB();
   const current = await getCachedTeam(teamId);
