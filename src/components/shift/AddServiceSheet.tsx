@@ -482,11 +482,17 @@ export function AddServiceSheet({
                       disabled={saving}
                       onClick={async () => {
                         finalizeService();
-                        const opened = await submitNegotiationToGoogleForm(submission);
-                        if (opened) {
-                          toast.success("Tela do Forms abriu em nova aba — tire o print");
-                        } else {
-                          toast.error("Permita pop-ups para ver a confirmação do Forms");
+                        try {
+                          const opened = await submitNegotiationToGoogleForm(submission);
+                          if (opened) {
+                            toast.success("Tela do Forms abriu em nova aba — tire o print");
+                          } else {
+                            toast.error("Permita pop-ups para ver a confirmação do Forms");
+                          }
+                        } catch (err) {
+                          toast.error(
+                            `Falha ao enviar para o Forms: ${err instanceof Error ? err.message : "erro desconhecido"}`,
+                          );
                         }
                       }}
                       className="h-14 w-full text-base font-semibold"
@@ -498,7 +504,13 @@ export function AddServiceSheet({
                       disabled={saving}
                       onClick={() => {
                         finalizeService();
-                        void submitNegotiationSilent(submission);
+                        void submitNegotiationSilent(submission).then((ok) => {
+                          if (ok) {
+                            toast.success("Resposta enviada ao Forms");
+                          } else {
+                            toast.error("Falha ao enviar para o Forms — verifique sua conexão");
+                          }
+                        });
                         void shareNegotiation(submission)
                           .then((ok) => {
                             if (ok) {
