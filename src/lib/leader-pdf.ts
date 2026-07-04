@@ -201,7 +201,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     { label: "Setor:", value: input.setor || "-" },
     { label: "Supervisor:", value: input.supervisor || "-" },
     { label: "Escopo:", value: input.scope_label },
-    { label: "Líder:", value: input.leader || "-", full: true },
+    { label: "Líder:", value: input.leader || "-" },
     { label: "Período:", value: periodTitle(input.period) },
     { label: "Gerado em:", value: formatDateBR(now) },
     { label: "Gerado por:", value: generatedBy, full: true },
