@@ -222,7 +222,7 @@ export function AddServiceSheet({
               <button
                 disabled={saving}
                 onClick={() => {
-                  if (type?.is_negotiation) setStep("amount");
+                  if (type?.is_negotiation) setStep("payment");
                   else setStep("complements");
                 }}
                 className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
