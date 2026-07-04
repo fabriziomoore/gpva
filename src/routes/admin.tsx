@@ -33,12 +33,6 @@ import {
   adminUpdateSetor,
   adminDeleteSetor,
 } from "@/lib/admin.functions";
-import {
-  adminGetGoogleFormSettings,
-  adminSetGoogleFormMode,
-  adminUpdateGoogleForm,
-} from "@/lib/google-form.functions";
-import { invalidateGoogleFormCache } from "@/lib/google-form";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
 
@@ -56,8 +50,7 @@ type SectionId =
   | "variable"
   | "create_team"
   | "leaders"
-  | "setores"
-  | "google_form";
+  | "setores";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "setores", label: "Setores" },
@@ -68,7 +61,6 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "variable", label: "Variável" },
   { id: "create_team", label: "Criar Equipe" },
   { id: "leaders", label: "Líderes" },
-  { id: "google_form", label: "Google Forms" },
 ];
 
 function AdminPage() {
@@ -199,8 +191,6 @@ function AdminPage() {
             <LeadersSection adminPw={adminPw} />
           ) : section === "setores" ? (
             <SetoresSection adminPw={adminPw} />
-          ) : section === "google_form" ? (
-            <GoogleFormSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
@@ -1231,126 +1221,6 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
           </ul>
         )}
       </div>
-    </div>
-  );
-}
-
-function GoogleFormSection({ adminPw }: { adminPw: string }) {
-  const qc = useQueryClient();
-  const getFn = useServerFn(adminGetGoogleFormSettings);
-  const setModeFn = useServerFn(adminSetGoogleFormMode);
-  const updateFn = useServerFn(adminUpdateGoogleForm);
-
-  const q = useQuery({
-    queryKey: ["admin-google-form"],
-    queryFn: () => getFn({ data: { adminPassword: adminPw } }),
-  });
-
-  const [prodInput, setProdInput] = useState("");
-  const [testInput, setTestInput] = useState("");
-
-  const modeMut = useMutation({
-    mutationFn: (mode: "prod" | "test") => setModeFn({ data: { adminPassword: adminPw, mode } }),
-    onSuccess: () => {
-      invalidateGoogleFormCache();
-      toast.success("Formulário ativo atualizado");
-      qc.invalidateQueries({ queryKey: ["admin-google-form"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const updateMut = useMutation({
-    mutationFn: (v: { target: "prod" | "test"; formIdOrUrl: string }) =>
-      updateFn({ data: { adminPassword: adminPw, ...v } }),
-    onSuccess: (_r, v) => {
-      invalidateGoogleFormCache();
-      toast.success(`Formulário ${v.target === "prod" ? "de produção" : "de teste"} atualizado`);
-      if (v.target === "prod") setProdInput("");
-      else setTestInput("");
-      qc.invalidateQueries({ queryKey: ["admin-google-form"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (q.isLoading) {
-    return (
-      <div className="flex justify-center py-10">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-  const row = q.data;
-  if (!row) return <p className="text-sm text-muted-foreground">Configuração não encontrada.</p>;
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Google Forms</h2>
-        <p className="text-sm text-muted-foreground">
-          Escolha qual formulário recebe as respostas de negociação e cole uma nova URL/ID caso o
-          formulário mude.
-        </p>
-      </div>
-
-      <div className="rounded-xl border bg-card p-4">
-        <Label className="text-sm font-semibold">Formulário ativo</Label>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {(["prod", "test"] as const).map((m) => {
-            const on = row.mode === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                disabled={modeMut.isPending}
-                onClick={() => modeMut.mutate(m)}
-                className={
-                  "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
-                  (on
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border bg-card hover:border-primary/50")
-                }
-              >
-                {m === "prod" ? "Produção (real)" : "Teste"}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Ativo agora: <strong>{row.mode === "prod" ? "Produção" : "Teste"}</strong>
-        </p>
-      </div>
-
-      {(["prod", "test"] as const).map((target) => {
-        const currentId = target === "prod" ? row.prod_form_id : row.test_form_id;
-        const value = target === "prod" ? prodInput : testInput;
-        const setValue = target === "prod" ? setProdInput : setTestInput;
-        return (
-          <div key={target} className="rounded-xl border bg-card p-4 space-y-2">
-            <Label className="text-sm font-semibold">
-              {target === "prod" ? "Formulário de produção" : "Formulário de teste"}
-            </Label>
-            <p className="text-xs text-muted-foreground break-all">
-              ID atual: <code>{currentId}</code>
-            </p>
-            <Input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="Cole a URL ou o ID do novo Google Forms"
-            />
-            <Button
-              className="w-full"
-              disabled={updateMut.isPending || !value.trim()}
-              onClick={() => updateMut.mutate({ target, formIdOrUrl: value.trim() })}
-            >
-              {updateMut.isPending && updateMut.variables?.target === target ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                "Salvar formulário"
-              )}
-            </Button>
-          </div>
-        );
-      })}
     </div>
   );
 }

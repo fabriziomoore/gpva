@@ -13,8 +13,8 @@ const CACHE_KEY = "gpva-google-form-active";
 async function loadActiveForm(): Promise<ActiveForm> {
   const row = await getGoogleFormSettings();
   if (!row) throw new Error("Configuração do Google Forms ausente.");
-  const formId = row.mode === "test" ? row.test_form_id : row.prod_form_id;
-  const entries = (row.mode === "test" ? row.test_entries : row.prod_entries) as EntryIds;
+  const formId = row.form_id;
+  const entries = row.entries as EntryIds;
   return {
     formId,
     endpoint: `https://docs.google.com/forms/d/e/${formId}/formResponse`,
