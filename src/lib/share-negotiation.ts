@@ -19,8 +19,9 @@ function buildCaption(input: NegotiationSubmission): string {
 // Reproduz fielmente a tela de confirmação do Google Forms (mobile).
 // Proporção e cores tiradas do print real.
 export async function buildNegotiationImage(_input: NegotiationSubmission): Promise<Blob> {
-  const W = 720;
-  const H = 1600;
+  // Proporção próxima de 1:1 para o preview do WhatsApp não recortar as bordas.
+  const W = 1080;
+  const H = 1080;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -31,11 +32,11 @@ export async function buildNegotiationImage(_input: NegotiationSubmission): Prom
   c.fillRect(0, 0, W, H);
 
   // Cartão branco
-  const CARD_X = 24;
-  const CARD_Y = 24;
+  const CARD_X = 40;
+  const CARD_Y = 60;
   const CARD_W = W - CARD_X * 2;
-  const CARD_H = 470;
-  const RADIUS = 12;
+  const CARD_H = 620;
+  const RADIUS = 18;
 
   // Sombra sutil
   c.save();
@@ -49,40 +50,40 @@ export async function buildNegotiationImage(_input: NegotiationSubmission): Prom
 
   // Barra roxa superior do cartão
   c.fillStyle = "#673ab7";
-  roundRect(c, CARD_X, CARD_Y, CARD_W, 14, RADIUS, "top");
+  roundRect(c, CARD_X, CARD_Y, CARD_W, 20, RADIUS, "top");
   c.fill();
 
   // "NEGOCIAÇÃO"
   c.fillStyle = "#202124";
-  c.font = '400 46px "Roboto", "Segoe UI", system-ui, sans-serif';
-  c.fillText("NEGOCIAÇÃO", CARD_X + 40, CARD_Y + 110);
+  c.font = '400 70px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.fillText("NEGOCIAÇÃO", CARD_X + 56, CARD_Y + 150);
 
   // "Sua resposta foi registrada."
   c.fillStyle = "#202124";
-  c.font = '400 24px "Roboto", "Segoe UI", system-ui, sans-serif';
-  c.fillText("Sua resposta foi registrada.", CARD_X + 40, CARD_Y + 175);
+  c.font = '400 36px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.fillText("Sua resposta foi registrada.", CARD_X + 56, CARD_Y + 240);
 
   // "Enviar outra resposta" (link roxo sublinhado)
   const link = "Enviar outra resposta";
   c.fillStyle = "#5c2f9e";
-  c.font = '400 22px "Roboto", "Segoe UI", system-ui, sans-serif';
-  const linkX = CARD_X + 40;
-  const linkY = CARD_Y + 260;
+  c.font = '400 32px "Roboto", "Segoe UI", system-ui, sans-serif';
+  const linkX = CARD_X + 56;
+  const linkY = CARD_Y + 360;
   c.fillText(link, linkX, linkY);
   const linkW = c.measureText(link).width;
-  c.fillRect(linkX, linkY + 5, linkW, 1);
+  c.fillRect(linkX, linkY + 6, linkW, 2);
 
   // Rodapé cinza abaixo do cartão
-  const footerY = CARD_Y + CARD_H + 60;
+  const footerY = CARD_Y + CARD_H + 70;
   c.fillStyle = "#5f6368";
-  c.font = '400 20px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.font = '400 24px "Roboto", "Segoe UI", system-ui, sans-serif';
   centerText(c, "Este conteúdo não foi criado nem aprovado pelo Google. -", W / 2, footerY);
-  centerText(c, "Termos de Serviço - Política de Privacidade", W / 2, footerY + 32);
-  centerText(c, "Este formulário parece suspeito? Denunciar", W / 2, footerY + 90);
+  centerText(c, "Termos de Serviço - Política de Privacidade", W / 2, footerY + 40);
+  centerText(c, "Este formulário parece suspeito? Denunciar", W / 2, footerY + 110);
 
   // "Google Formulários"
-  const gy = footerY + 180;
-  c.font = '400 40px "Roboto", "Segoe UI", system-ui, sans-serif';
+  const gy = footerY + 220;
+  c.font = '400 48px "Roboto", "Segoe UI", system-ui, sans-serif';
   const label1 = "Google";
   const label2 = " Formulários";
   c.fillStyle = "#5f6368";
@@ -146,14 +147,18 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
   const file = new File([blob], `negociacao-${input.matricula}.png`, { type: "image/png" });
   const caption = buildCaption(input);
 
+  // WhatsApp não aceita legenda automaticamente via Web Share — o texto vira mensagem
+  // separada. Copiamos a legenda para o clipboard para o usuário colar na legenda da imagem.
+  try {
+    await navigator.clipboard?.writeText(caption);
+  } catch {
+    /* clipboard pode falhar sem gesto do usuário; seguimos mesmo assim */
+  }
+
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare && nav.canShare({ files: [file] })) {
     try {
-      await navigator.share({
-        files: [file],
-        title: "Descritivo negociação",
-        text: caption,
-      });
+      await navigator.share({ files: [file], title: "Descritivo negociação" });
       return true;
     } catch {
       return false;
