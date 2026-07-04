@@ -18,6 +18,7 @@ const router = createRouter({
   history: createMemoryHistory({ initialEntries: ["/"] }),
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,
+  defaultPreload: "intent",
 });
 
 declare module "@tanstack/react-router" {
