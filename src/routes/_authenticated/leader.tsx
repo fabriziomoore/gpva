@@ -35,6 +35,8 @@ import {
   inRange,
   deltaPct,
   paceProjection,
+  blendedProjection,
+  historicalRanges,
   previousLabel,
   projectionLabel,
   elapsedRatio,
