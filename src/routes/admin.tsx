@@ -524,6 +524,11 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
     queryKey: ["admin-setores"],
     queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
   });
+  const leadersFn = useServerFn(adminListLeaders);
+  const leaders = useQuery({
+    queryKey: ["admin-leaders"],
+    queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
+  });
 
   const mut = useMutation({
     mutationFn: () =>
@@ -569,13 +574,27 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
       </div>
       <div className="space-y-2">
         <Label htmlFor="ld">Nome do líder</Label>
-        <Input
+        <select
           id="ld"
           value={leaderName}
           onChange={(e) => setLeaderName(e.target.value)}
-          placeholder="Ex: Gabriel Araújo"
-          className="h-12 text-base"
-        />
+          className="h-12 w-full rounded-md border border-input bg-background px-3 text-base"
+        >
+          <option value="">Selecione um líder…</option>
+          {(leaders.data ?? []).map((l) => {
+            const label = l.display_name || l.login;
+            return (
+              <option key={l.id} value={label}>
+                {label}
+              </option>
+            );
+          })}
+        </select>
+        {(leaders.data ?? []).length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Cadastre um líder em "Líderes" antes de criar a equipe.
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="np">Senha (mín. 6)</Label>
