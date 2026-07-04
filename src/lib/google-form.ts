@@ -9,57 +9,27 @@ type EntryIds = FormEntries;
 type ActiveForm = { formId: string; endpoint: string; entries: EntryIds };
 
 const CACHE_KEY = "gpva-google-form-active";
-let cache: ActiveForm | null = null;
-
-function readLocalCache(): ActiveForm | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(CACHE_KEY);
-    return raw ? (JSON.parse(raw) as ActiveForm) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeLocalCache(v: ActiveForm): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify(v));
-  } catch {
-    /* ignore */
-  }
-}
 
 async function loadActiveForm(): Promise<ActiveForm> {
   const row = await getGoogleFormSettings();
   if (!row) throw new Error("Configuração do Google Forms ausente.");
   const formId = row.mode === "test" ? row.test_form_id : row.prod_form_id;
   const entries = (row.mode === "test" ? row.test_entries : row.prod_entries) as EntryIds;
-  const active: ActiveForm = {
+  return {
     formId,
     endpoint: `https://docs.google.com/forms/d/e/${formId}/formResponse`,
     entries,
   };
-  cache = active;
-  writeLocalCache(active);
-  return active;
 }
 
+// Sempre relê a configuração antes de enviar, para que a troca prod/test
+// feita no admin passe a valer imediatamente em todos os dispositivos.
 async function getActiveForm(): Promise<ActiveForm> {
-  if (cache) return cache;
-  const local = readLocalCache();
-  if (local) {
-    cache = local;
-    // Atualiza em segundo plano para refletir troca feita pelo admin.
-    void loadActiveForm().catch(() => {});
-    return local;
-  }
   return await loadActiveForm();
 }
 
-/** Força uma releitura da configuração no próximo envio. */
+/** Mantido por compatibilidade; hoje não há cache para invalidar. */
 export function invalidateGoogleFormCache(): void {
-  cache = null;
   if (typeof window !== "undefined") {
     try { window.localStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
   }
