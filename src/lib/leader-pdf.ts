@@ -6,13 +6,13 @@ import {
   previousLabel,
   projectionLabel,
 } from "./analytics";
-import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
+import logoUrl from "@/assets/gpva-logo.png";
 
 let _logoDataUrl: string | null = null;
 async function loadLogoDataUrl(): Promise<string | null> {
   if (_logoDataUrl) return _logoDataUrl;
   try {
-    const res = await fetch(logoAsset.url);
+    const res = await fetch(logoUrl);
     if (!res.ok) return null;
     const blob = await res.blob();
     _logoDataUrl = await new Promise<string>((resolve, reject) => {
