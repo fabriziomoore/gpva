@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { startSync } from "@/lib/sync/init";
+import { startSessionGuard } from "@/lib/session-guard";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -38,6 +39,7 @@ function RootComponent(): ReactNode {
 
   useEffect(() => {
     void startSync();
+    startSessionGuard();
   }, []);
 
   return (
