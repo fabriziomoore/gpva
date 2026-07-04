@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2 } from "lucide-react";
@@ -29,6 +29,15 @@ export function LeaderRankingSection() {
     staleTime: 60_000,
   });
   const [selected, setSelected] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !selected) return;
+    window.history.pushState({ __leaderRanking: true }, "");
+    const onPop = () => setSelected(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [selected]);
+
   const now = useMemo(() => new Date(), []);
   const [year, setYear] = useState<number>(now.getFullYear());
   const [month, setMonth] = useState<number>(now.getMonth() + 1);
