@@ -98,7 +98,13 @@ export function blendedProjection(
   const ratio = elapsedRatio(period, ref);
   if (ratio <= 0) return Math.round(historicalAvg);
   const paceExtrapolated = currentValue / ratio;
-  const blended = paceExtrapolated * ratio + historicalAvg * (1 - ratio);
+  // Sem histórico (equipe nova): projeção puramente pelo ritmo atual.
+  if (historicalAvg <= 0) return Math.round(paceExtrapolated);
+  // Peso do ritmo atual cresce com sqrt(ratio) para não cancelar o
+  // fator 1/ratio da extrapolação. Assim, no início do período a
+  // projeção fica ancorada no histórico e no fim converge para o real.
+  const w = Math.sqrt(ratio);
+  const blended = paceExtrapolated * w + historicalAvg * (1 - w);
   return Math.round(blended);
 }
 
