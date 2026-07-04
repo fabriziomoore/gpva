@@ -125,7 +125,7 @@ function HomePage() {
   const teamPhoto = useTeamPhoto(userId);
 
   const titleNode = (
-    <div className="w-[calc(100vw-2rem)] max-w-[26rem]">
+    <div className="w-full min-w-0">
       <svg
         viewBox="0 0 300 20"
         preserveAspectRatio="none"
