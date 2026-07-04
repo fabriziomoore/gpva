@@ -55,6 +55,39 @@ export const adminAddRow = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+// Cria (idempotente) a conta de administrador padrão "ADM" / 137889 e
+// garante o papel `admin`. Executado a partir do form de login para
+// permitir o primeiro acesso sem precisar de dashboard.
+export const adminBootstrap = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Se já existir, apenas garante o papel.
+    const list = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (list.error) throw new Error(list.error.message);
+    let user = list.data.users.find((u) => u.email === ADMIN_EMAIL);
+
+    if (!user) {
+      const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+        email_confirm: true,
+        user_metadata: { is_admin: true, display_name: "Administrador" },
+      });
+      if (error) throw new Error(error.message);
+      user = created.user ?? undefined;
+    }
+
+    if (user?.id) {
+      await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: user.id, role: "admin" }, { onConflict: "user_id,role" });
+    }
+    return { ok: true as const, login: ADMIN_LOGIN.toUpperCase() };
+  });
+
 export const adminDeleteRow = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; table: CrudTable; id: string }) => data)
   .handler(async ({ data }) => {
