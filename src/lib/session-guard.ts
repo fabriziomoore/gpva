@@ -70,7 +70,11 @@ async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
     }
     // Evita relogin automático offline após ser expulso.
     await clearRemembered().catch(() => undefined);
-    await supabase.auth.signOut().catch(() => undefined);
+    // Escopo local: revogar apenas a sessão deste dispositivo. O padrão
+    // ("global") invalidaria o refresh token em TODOS os dispositivos do
+    // usuário — inclusive o novo device que acabou de logar — deixando-o
+    // travado sem conseguir autenticar requisições.
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     if (reason === "expired") {
       toast.error("Sessão expirada. Faça login novamente.");
     } else {
