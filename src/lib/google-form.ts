@@ -44,7 +44,7 @@ const ENTRY_TEST: EntryIds = {
   pagamento: "entry.831927898",
   valorAVista: "entry.99377781",
   valorTotalParcelado: "entry.1571776838",
-  // Formulário de teste não possui campo de quantidade de parcelas.
+  qtdParcelas: "entry.712185748",
 };
 
 const ENTRIES: EntryIds = USE_TEST_FORM ? ENTRY_TEST : ENTRY_PROD;
