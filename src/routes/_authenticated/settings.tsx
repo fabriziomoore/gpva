@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -27,7 +27,6 @@ export const Route = createFileRoute("/_authenticated/settings")({
 function SettingsPage() {
   const { userId } = useAuthSession();
   const { data: team } = useTeam(userId);
-  const navigate = useNavigate();
   const qc = useQueryClient();
 
   const [supervisor, setSupervisor] = useState("");
