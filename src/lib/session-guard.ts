@@ -301,10 +301,10 @@ export function startSessionGuard(): void {
     if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
       if (!getLoginTs()) setLoginTs(Date.now());
       // SIGNED_IN também pode disparar ao reidratar/focar a sessão. O login
-      // manual toma a sessão via signInTeam() -> claimCurrentSession(); aqui só
-      // reivindicamos quando ainda não existe id local para este dispositivo.
-      const shouldClaim = currentUserId !== session.user.id || !localSessionId();
-      void attachSessionForUser(session.user.id, { claim: shouldClaim });
+      // manual toma a sessão via signInTeam() -> claimCurrentSession(); aqui
+      // apenas religamos a vigilância e validamos se este dispositivo ainda é
+      // o ativo, sem uma sessão antiga conseguir tomar a sessão de volta.
+      void attachSessionForUser(session.user.id, { claim: false });
     } else if (event === "SIGNED_OUT") {
       stopPerUserWatchers();
       try {
