@@ -8,13 +8,6 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -324,20 +317,22 @@ function LeaderPage() {
       }
     >
       <div className="mb-4">
-        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Equipe</label>
-        <Select value={effectiveScope} onValueChange={setScope}>
-          <SelectTrigger className="h-11">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas as equipes ({filteredTeams.length})</SelectItem>
-            {filteredTeams.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.team_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <label htmlFor="leader-team-scope" className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          Equipe
+        </label>
+        <select
+          id="leader-team-scope"
+          value={effectiveScope}
+          onChange={(event) => setScope(event.target.value)}
+          className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value={ALL}>Todas as equipes ({filteredTeams.length})</option>
+          {filteredTeams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.team_name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
