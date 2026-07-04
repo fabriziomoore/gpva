@@ -22,6 +22,8 @@ import {
   adminTeamsRanking,
   adminUpdateTeam,
   adminDeleteTeam,
+  adminListTestTeams,
+  adminCreateTestTeam,
   adminListShifts,
   adminDeleteShift,
   adminUpdateShiftReport,
@@ -59,6 +61,7 @@ type SectionId =
   | "leaders"
   | "setores"
   | "google_form"
+  | "test_account"
   | "audit";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
@@ -71,6 +74,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "create_team", label: "Criar Equipe" },
   { id: "leaders", label: "Líderes" },
   { id: "google_form", label: "Google Forms" },
+  { id: "test_account", label: "Conta de Teste" },
   { id: "audit", label: "Auditoria Inteligente" },
 ];
 
@@ -194,6 +198,8 @@ function AdminPage() {
             <SetoresSection adminPw={adminPw} />
           ) : section === "google_form" ? (
             <GoogleFormSection adminPw={adminPw} />
+          ) : section === "test_account" ? (
+            <TestAccountSection adminPw={adminPw} />
           ) : section === "audit" ? (
             <AuditSection adminPw={adminPw} />
           ) : (
