@@ -6,6 +6,26 @@ import {
   previousLabel,
   projectionLabel,
 } from "./analytics";
+import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
+
+let _logoDataUrl: string | null = null;
+async function loadLogoDataUrl(): Promise<string | null> {
+  if (_logoDataUrl) return _logoDataUrl;
+  try {
+    const res = await fetch(logoAsset.url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    _logoDataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    });
+    return _logoDataUrl;
+  } catch {
+    return null;
+  }
+}
 
 export type PeriodAgg = {
   total: number;
@@ -177,11 +197,23 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Header (15% ~ 31mm)
   const headerBottom = M + 26;
 
-  // Logotipo box
-  setFill(C.primary); setStroke(C.primary);
-  pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
-  font(11, "bold"); setText(C.white);
-  text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
+  // Logotipo — imagem oficial GPVA (fallback para caixa colorida)
+  const logoDataUrl = await loadLogoDataUrl();
+  if (logoDataUrl) {
+    try {
+      pdf.addImage(logoDataUrl, "JPEG", M, M, 22, 22);
+    } catch {
+      setFill(C.primary); setStroke(C.primary);
+      pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
+      font(11, "bold"); setText(C.white);
+      text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
+    }
+  } else {
+    setFill(C.primary); setStroke(C.primary);
+    pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
+    font(11, "bold"); setText(C.white);
+    text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
+  }
 
   // Título e período
   font(12, "bold"); setText(C.ink);
