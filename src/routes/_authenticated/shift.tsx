@@ -128,7 +128,7 @@ function ShiftPage() {
           ))}
         </div>
 
-        <div className="fixed inset-x-0 z-30 mx-auto flex max-w-md justify-between gap-2 px-4 bottom-[calc(env(safe-area-inset-bottom)+5rem)]">
+      <div className="fixed inset-x-0 z-30 mx-auto flex max-w-md justify-between gap-2 px-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
           <Button
             onClick={() => setFinishOpen(true)}
             className="h-14 flex-1 border-0 bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90"
