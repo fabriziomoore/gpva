@@ -758,6 +758,7 @@ type TeamRow = {
   collaborator2: string | null;
   variable_rate: number;
   setor_id: string | null;
+  leader: string | null;
 };
 
 function TeamHeader({
@@ -782,6 +783,7 @@ function TeamHeader({
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
   const [setorId, setSetorId] = useState(team.setor_id ?? "");
+  const [leader, setLeader] = useState(team.leader ?? "");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const updateMut = useMutation({
@@ -794,6 +796,7 @@ function TeamHeader({
           collaborator1: c1.trim() || null,
           collaborator2: c2.trim() || null,
           setorId: setorId || undefined,
+          leaderName: leader.trim() || undefined,
         },
       }),
     onSuccess: () => {
@@ -857,6 +860,10 @@ function TeamHeader({
           <div className="space-y-1">
             <Label className="text-xs">Colaborador 2</Label>
             <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Líder</Label>
+            <Input value={leader} onChange={(e) => setLeader(e.target.value)} className="h-10" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Setor</Label>
