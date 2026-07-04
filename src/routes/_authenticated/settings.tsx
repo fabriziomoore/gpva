@@ -239,14 +239,6 @@ function SettingsPage() {
             </Button>
           </div>
 
-          <Button
-            variant="outline"
-            className="h-11 w-full"
-            onClick={() => setExitOpen(true)}
-          >
-            <LogOut className="mr-2 size-4" /> Sair
-          </Button>
-
           {isTestAccount && (
             <div className="space-y-2 border-t border-border pt-6">
               <p className="text-sm font-semibold text-destructive">Conta de teste</p>
