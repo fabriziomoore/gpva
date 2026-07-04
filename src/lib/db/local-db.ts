@@ -29,6 +29,10 @@ export interface LocalService {
   reason_name?: string | null;
   registration_number?: string | null;
   negotiated_value?: number | null;
+  lat?: number | null;
+  lng?: number | null;
+  accuracy_m?: number | null;
+  captured_at?: string | null;
   created_at: string;
   updated_at: string;
   sync_state: SyncState;
@@ -100,6 +104,10 @@ class GpvaDB extends Dexie {
     this.version(2).stores({
       shifts:
         "id, team_id, status, started_at, sync_state, [team_id+status+started_at]",
+    });
+    // v3: add geo fields to services (no new index required — plain columns).
+    this.version(3).stores({
+      services: "id, shift_id, team_id, sync_state, created_at",
     });
   }
 }
