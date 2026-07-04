@@ -17,8 +17,11 @@ export type FormEntries = {
 };
 
 export type FormSettingsRow = {
-  form_id: string;
-  entries: FormEntries;
+  mode: "prod" | "test";
+  prod_form_id: string;
+  test_form_id: string;
+  prod_entries: FormEntries;
+  test_entries: FormEntries;
 };
 
 function stripDiacritics(s: string): string {
@@ -82,7 +85,7 @@ export const getGoogleFormSettings = createServerFn({ method: "GET" }).handler(a
   );
   const { data, error } = await sb
     .from("google_form_settings")
-    .select("form_id,entries")
+    .select("mode,prod_form_id,test_form_id,prod_entries,test_entries")
     .eq("id", "singleton")
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -96,10 +99,44 @@ export const adminGetGoogleFormSettings = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("google_form_settings")
-      .select("form_id,entries,updated_at")
+      .select("mode,prod_form_id,test_form_id,prod_entries,test_entries,updated_at")
       .eq("id", "singleton")
       .maybeSingle();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+export const adminSetGoogleFormMode = createServerFn({ method: "POST" })
+  .inputValidator((d: { adminPassword: string; mode: "prod" | "test" }) => d)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("google_form_settings")
+      // @ts-expect-error mode column exists in DB (added via migration)
+      .update({ mode: data.mode, updated_at: new Date().toISOString() })
+      .eq("id", "singleton");
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminUpdateGoogleForm = createServerFn({ method: "POST" })
+  .inputValidator((d: { adminPassword: string; target: "prod" | "test"; formIdOrUrl: string }) => d)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const formId = parseGoogleFormId(data.formIdOrUrl);
+    const entries = await extractEntriesFromForm(formId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const patch =
+      data.target === "prod"
+        ? { prod_form_id: formId, prod_entries: entries }
+        : { test_form_id: formId, test_entries: entries };
+    const { error } = await supabaseAdmin
+      .from("google_form_settings")
+      // @ts-expect-error prod_* columns exist in DB (added via migration)
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", "singleton");
+    if (error) throw new Error(error.message);
+    return { ok: true as const, formId, entries };
   });
 
