@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   leaderTeamsRanking,
   leaderListShifts,
@@ -23,12 +24,14 @@ type TeamRow = {
 export function LeaderRankingSection() {
   const fn = useServerFn(leaderTeamsRanking);
   const teamsFn = useServerFn(leaderListTeams);
+  const qc = useQueryClient();
   const teams = useQuery({
     queryKey: ["leader-ranking-teams"],
     queryFn: () => teamsFn(),
     staleTime: 60_000,
   });
   const [selected, setSelected] = useState<string | null>(null);
+  const [mode, setMode] = useState<"day" | "month">("day");
 
   useEffect(() => {
     if (typeof window === "undefined" || !selected) return;
@@ -42,10 +45,29 @@ export function LeaderRankingSection() {
   const [year, setYear] = useState<number>(now.getFullYear());
   const [month, setMonth] = useState<number>(now.getMonth() + 1);
   const [day, setDay] = useState<number>(now.getDate());
+  const dayParam = mode === "day" ? day : null;
   const q = useQuery({
-    queryKey: ["leader-ranking", year, month],
-    queryFn: () => fn({ data: { year, month } }),
+    queryKey: ["leader-ranking", year, month, dayParam],
+    queryFn: () => fn({ data: { year, month, day: dayParam } }),
+    // Atualização periódica para acompanhar as equipes durante o expediente.
+    refetchInterval: mode === "day" ? 15_000 : false,
+    refetchOnWindowFocus: true,
   });
+
+  // Realtime: invalida ao inserir/atualizar/excluir serviços.
+  useEffect(() => {
+    const channel = supabase
+      .channel("leader-ranking-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "servicos" },
+        () => qc.invalidateQueries({ queryKey: ["leader-ranking"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
   if (q.isLoading) {
     return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
@@ -159,8 +181,29 @@ export function LeaderRankingSection() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-semibold">Ranking de Equipes</h2>
-      {periodSelector(false)}
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">Ranking de Equipes</h2>
+        <div className="inline-flex overflow-hidden rounded-lg border border-border">
+          <button
+            onClick={() => setMode("day")}
+            className={`px-3 py-1 text-xs font-semibold ${mode === "day" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+          >
+            Dia
+          </button>
+          <button
+            onClick={() => setMode("month")}
+            className={`px-3 py-1 text-xs font-semibold ${mode === "month" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+          >
+            Mês
+          </button>
+        </div>
+      </div>
+      {periodSelector(mode === "day")}
+      {mode === "day" && (
+        <p className="text-[11px] text-muted-foreground">
+          Atualizando em tempo real durante o expediente.
+        </p>
+      )}
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
