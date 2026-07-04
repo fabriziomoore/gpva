@@ -162,6 +162,10 @@ export async function repoAddService(input: {
   registration_number?: string | null;
   negotiated_value?: number | null;
   complements?: { id: string | null; name: string }[];
+  lat?: number | null;
+  lng?: number | null;
+  accuracy_m?: number | null;
+  captured_at?: string | null;
 }): Promise<LocalService> {
   await assertActiveSession();
   const db = getLocalDB();
@@ -177,6 +181,10 @@ export async function repoAddService(input: {
     reason_name: input.reason_name ?? null,
     registration_number: input.registration_number ?? null,
     negotiated_value: input.negotiated_value ?? null,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
+    accuracy_m: input.accuracy_m ?? null,
+    captured_at: input.captured_at ?? null,
     created_at: nowIso(),
     updated_at: nowIso(),
     sync_state: "pending",
@@ -249,6 +257,10 @@ function toServicePayload(r: LocalService) {
     reason_name: r.reason_name,
     registration_number: r.registration_number,
     negotiated_value: r.negotiated_value,
+    lat: r.lat ?? null,
+    lng: r.lng ?? null,
+    accuracy_m: r.accuracy_m ?? null,
+    captured_at: r.captured_at ?? null,
     created_at: r.created_at,
   };
 }
