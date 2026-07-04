@@ -25,7 +25,7 @@ import {
   type PaymentOption,
 } from "@/lib/google-form";
 import { shareNegotiation } from "@/lib/share-negotiation";
-import { showFormsFeedback } from "@/components/FormsFeedbackOverlay";
+import { setFormsStatus } from "@/lib/forms-status";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
 
@@ -116,14 +116,14 @@ export function AddServiceSheet({
     registration?: string;
     negotiated?: number;
     complementIds?: string[];
-  }) {
-    if (!type) return;
+  }): Promise<string | null> {
+    if (!type) return null;
     setSaving(true);
     try {
       const chosen = (complements.data ?? []).filter((c) =>
         (opts.complementIds ?? []).includes(c.id),
       );
-      await repoAddService({
+      const created = await repoAddService({
         team_id: teamId,
         shift_id: shiftId,
         service_type_id: type.id,
@@ -140,8 +140,10 @@ export function AddServiceSheet({
       await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
       toast.success("Serviço registrado");
       onOpenChange(false);
+      return created.id;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar");
+      return null;
     } finally {
       setSaving(false);
     }
@@ -507,21 +509,25 @@ export function AddServiceSheet({
                     <Button
                       disabled={saving}
                       onClick={async () => {
-                        finalizeService();
-                        try {
-                          const opened = await submitNegotiationToGoogleForm(submission);
-                          if (opened) {
-                            showFormsFeedback("success");
-                            toast.success("Tela do Forms abriu em nova aba — tire o print");
-                          } else {
-                            showFormsFeedback("error");
-                            toast.error("Permita pop-ups para ver a confirmação do Forms");
-                          }
-                        } catch (err) {
-                          showFormsFeedback("error");
+                        const [serviceId, result] = await Promise.all([
+                          finalizeService(),
+                          submitNegotiationToGoogleForm(submission)
+                            .then((opened) => ({ ok: opened as boolean, err: null as unknown }))
+                            .catch((err: unknown) => ({ ok: false, err })),
+                        ]);
+                        if (serviceId) {
+                          setFormsStatus(serviceId, result.ok ? "sent" : "failed");
+                        }
+                        if (result.ok) {
+                          toast.success("Tela do Forms abriu em nova aba — tire o print");
+                        } else if (result.err) {
                           toast.error(
-                            `Falha ao enviar para o Forms: ${err instanceof Error ? err.message : "erro desconhecido"}`,
+                            `Falha ao enviar para o Forms: ${
+                              result.err instanceof Error ? result.err.message : "erro desconhecido"
+                            }`,
                           );
+                        } else {
+                          toast.error("Permita pop-ups para ver a confirmação do Forms");
                         }
                       }}
                       className="h-14 w-full text-base font-semibold"
@@ -532,16 +538,17 @@ export function AddServiceSheet({
                       variant="outline"
                       disabled={saving}
                       onClick={() => {
-                        finalizeService();
-                        void submitNegotiationSilent(submission).then((ok) => {
-                          if (ok) {
-                            showFormsFeedback("success");
-                            toast.success("Resposta enviada ao Forms");
-                          } else {
-                            showFormsFeedback("error");
-                            toast.error("Falha ao enviar para o Forms — verifique sua conexão");
+                        void (async () => {
+                          const [serviceId, ok] = await Promise.all([
+                            finalizeService(),
+                            submitNegotiationSilent(submission),
+                          ]);
+                          if (serviceId) {
+                            setFormsStatus(serviceId, ok ? "sent" : "failed");
                           }
-                        });
+                          if (ok) toast.success("Resposta enviada ao Forms");
+                          else toast.error("Falha ao enviar para o Forms — verifique sua conexão");
+                        })();
                         void shareNegotiation(submission)
                           .then((ok) => {
                             if (ok) {

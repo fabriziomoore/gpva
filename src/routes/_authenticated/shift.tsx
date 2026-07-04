@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatBRL } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
+import type { LocalService } from "@/lib/db/local-db";
+import { useFormsStatus } from "@/lib/forms-status";
 
 export const Route = createFileRoute("/_authenticated/shift")({
   head: () => ({ meta: [{ title: "Expediente" }] }),
@@ -112,71 +114,9 @@ function ShiftPage() {
             </p>
           )}
           {services.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
-            >
-              <div className="flex items-center gap-3">
-                {s.is_negotiation ? (
-                  <Banknote className="size-5 text-primary" />
-                ) : s.viable ? (
-                  <CheckCircle2 className="size-5 text-success" />
-                ) : (
-                  <XCircle className="size-5 text-destructive" />
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold">{s.service_type_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {s.is_negotiation ? (
-                      formatBRL(Number(s.negotiated_value) || 0)
-                    ) : s.viable ? (
-                      (() => {
-                        const comps = complementsByService.get(s.id) ?? [];
-                        const first = comps[0];
-                        const rest = comps.slice(1);
-                        if (!first) return null;
-                        return (
-                          <>
-                            com {first}
-                            {rest.length > 0 && (
-                              <>
-                                {"  "}
-                                <Popover>
-                                  <PopoverTrigger className="ml-2 text-foreground underline underline-offset-2">
-                                    ver mais
-                                  </PopoverTrigger>
-                                  <PopoverContent align="start" className="w-64">
-                                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                      Complementos
-                                    </p>
-                                    <ul className="space-y-1 text-sm">
-                                      {comps.map((c, i) => (
-                                        <li key={i}>• {c}</li>
-                                      ))}
-                                    </ul>
-                                  </PopoverContent>
-                                </Popover>
-                              </>
-                            )}
-                          </>
-                        );
-                      })()
-                    ) : (
-                      `${s.registration_number ?? "-"} • ${s.reason_name ?? ""}`
-                    )}
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                {new Date(s.created_at).toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
+            <ServiceRow key={s.id} s={s} complementsByService={complementsByService} />
           ))}
         </div>
-
       <div className="fixed inset-x-0 z-30 mx-auto flex max-w-md justify-between gap-2 px-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
           <Button
             onClick={() => setFinishOpen(true)}
@@ -250,6 +190,91 @@ function Kpi({
     <div className="rounded-xl border border-border bg-card p-3">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+    </div>
+  );
+}
+
+function ServiceRow({
+  s,
+  complementsByService,
+}: {
+  s: LocalService;
+  complementsByService: Map<string, string[]>;
+}) {
+  const formsStatus = useFormsStatus(s.id);
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+      <div className="flex items-center gap-3">
+        {s.is_negotiation ? (
+          <Banknote className="size-5 text-primary" />
+        ) : s.viable ? (
+          <CheckCircle2 className="size-5 text-success" />
+        ) : (
+          <XCircle className="size-5 text-destructive" />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">
+            {s.service_type_name}
+            {s.is_negotiation && formsStatus && (
+              <>
+                {" - "}
+                <span
+                  className={
+                    formsStatus === "sent" ? "text-success" : "text-destructive"
+                  }
+                >
+                  {formsStatus === "sent" ? "Forms enviado" : "Forms não enviado"}
+                </span>
+              </>
+            )}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {s.is_negotiation ? (
+              formatBRL(Number(s.negotiated_value) || 0)
+            ) : s.viable ? (
+              (() => {
+                const comps = complementsByService.get(s.id) ?? [];
+                const first = comps[0];
+                const rest = comps.slice(1);
+                if (!first) return null;
+                return (
+                  <>
+                    com {first}
+                    {rest.length > 0 && (
+                      <>
+                        {"  "}
+                        <Popover>
+                          <PopoverTrigger className="ml-2 text-foreground underline underline-offset-2">
+                            ver mais
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-64">
+                            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Complementos
+                            </p>
+                            <ul className="space-y-1 text-sm">
+                              {comps.map((c, i) => (
+                                <li key={i}>• {c}</li>
+                              ))}
+                            </ul>
+                          </PopoverContent>
+                        </Popover>
+                      </>
+                    )}
+                  </>
+                );
+              })()
+            ) : (
+              `${s.registration_number ?? "-"} • ${s.reason_name ?? ""}`
+            )}
+          </p>
+        </div>
+      </div>
+      <span className="text-xs font-medium tabular-nums text-muted-foreground">
+        {new Date(s.created_at).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </span>
     </div>
   );
 }
