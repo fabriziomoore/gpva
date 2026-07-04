@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { AppShell } from "@/components/layout/AppShell";
+import { LeaderMeta } from "@/components/layout/LeaderMeta";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,7 +87,7 @@ function LeaderConfigPage() {
   }
 
   return (
-    <AppShell title="Configuração">
+    <AppShell title="Configuração" right={<LeaderMeta />}>
       <div className="space-y-8">
         <section className="space-y-4">
           <div className="flex items-center justify-between">
