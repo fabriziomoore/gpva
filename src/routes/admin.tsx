@@ -1355,3 +1355,96 @@ function GoogleFormSection({ adminPw }: { adminPw: string }) {
   );
 }
 
+
+function AdminSideMenu({
+  open,
+  onOpenChange,
+  currentView,
+  currentSection,
+  onSelectMenu,
+  onSelectRanking,
+  onSelectSection,
+  onSignOut,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currentView: "menu" | "section" | "ranking";
+  currentSection: SectionId;
+  onSelectMenu: () => void;
+  onSelectRanking: () => void;
+  onSelectSection: (id: SectionId) => void;
+  onSignOut: () => void;
+}) {
+  const itemCls =
+    "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
+  const activeCls = "bg-primary/10 text-primary";
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-background/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Content
+          className="fixed inset-y-0 left-0 z-50 flex h-full w-72 max-w-[80vw] flex-col border-r border-border bg-card/70 backdrop-blur-xl shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        >
+          <Dialog.Title className="sr-only">Menu de administração</Dialog.Title>
+          <div className="flex items-center justify-between px-4 py-4">
+            <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Administração
+            </span>
+            <Dialog.Close
+              aria-label="Fechar menu"
+              className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
+            >
+              <X className="size-5" />
+            </Dialog.Close>
+          </div>
+          <nav className="flex-1 overflow-y-auto px-2">
+            <ul className="space-y-1">
+              <li>
+                <button
+                  onClick={onSelectMenu}
+                  className={itemCls + " " + (currentView === "menu" ? activeCls : "")}
+                >
+                  <LayoutDashboard className="size-5" />
+                  <span>Início</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={onSelectRanking}
+                  className={itemCls + " " + (currentView === "ranking" ? activeCls : "")}
+                >
+                  <LayoutDashboard className="size-5" />
+                  <span>Painel</span>
+                </button>
+              </li>
+              <li className="pt-2 pb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Seções
+              </li>
+              {SECTIONS.map((s) => {
+                const active = currentView === "section" && currentSection === s.id;
+                return (
+                  <li key={s.id}>
+                    <button
+                      onClick={() => onSelectSection(s.id)}
+                      className={itemCls + " " + (active ? activeCls : "")}
+                    >
+                      <span>{s.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="flex w-full items-center gap-3 border-t border-border bg-destructive px-5 py-4 text-left text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
+          >
+            <LogOut className="size-5" />
+            <span>Sair</span>
+          </button>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
