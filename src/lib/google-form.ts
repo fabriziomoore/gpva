@@ -108,8 +108,9 @@ function buildParams(input: NegotiationSubmission): URLSearchParams {
 
   params.set(ENTRIES.matricula, input.matricula);
   params.set(ENTRIES.pagamento, input.paymentMethod);
-  if (input.valorAVista != null) params.set(ENTRIES.valorAVista, formatMoney(input.valorAVista));
-  if (input.valorTotalParcelado != null) params.set(ENTRIES.valorTotalParcelado, formatMoney(input.valorTotalParcelado));
+  // Ambos os campos de valor são obrigatórios no formulário; preencha o não usado com 0,00.
+  params.set(ENTRIES.valorAVista, formatMoney(input.valorAVista ?? 0));
+  params.set(ENTRIES.valorTotalParcelado, formatMoney(input.valorTotalParcelado ?? 0));
   if (input.qtdParcelas != null && ENTRIES.qtdParcelas) params.set(ENTRIES.qtdParcelas, String(input.qtdParcelas));
   return params;
 }
