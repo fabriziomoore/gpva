@@ -457,10 +457,8 @@ export function AddServiceSheet({
               (() => {
                 const hasInstallment =
                   payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
-                const hasUpfront = Array.from(payments).some(
-                  (p) => p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO",
-                );
-                const nVista = hasUpfront ? Number(valorAVista.replace(",", ".")) : 0;
+                const rawVista = Number(valorAVista.replace(",", "."));
+                const nVista = valorAVista.trim() && isFinite(rawVista) && rawVista > 0 ? rawVista : 0;
                 const nParc = hasInstallment ? Number(valorParcelado.replace(",", ".")) : 0;
                 const nParcelas = hasInstallment ? Number(parcelas) : 0;
                 const negotiated = type?.is_negotiation
@@ -474,7 +472,7 @@ export function AddServiceSheet({
                         setor: team?.setor_nome,
                         matricula: registration.trim(),
                         paymentMethods: Array.from(payments),
-                        valorAVista: hasUpfront ? nVista : undefined,
+                        valorAVista: nVista > 0 ? nVista : undefined,
                         valorTotalParcelado: hasInstallment ? nParc : undefined,
                         qtdParcelas: hasInstallment ? nParcelas : undefined,
                       }
