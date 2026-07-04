@@ -27,7 +27,7 @@ import {
 import { shareNegotiation } from "@/lib/share-negotiation";
 import { showFormsFeedback } from "@/components/FormsFeedbackOverlay";
 
-type Step = "type" | "viability" | "reason" | "registration" | "amount" | "payment" | "complements";
+type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 type Reason = { id: string; name: string };
@@ -48,11 +48,12 @@ export function AddServiceSheet({
   const [type, setType] = useState<ServiceType | null>(null);
   const [reason, setReason] = useState<Reason | null>(null);
   const [registration, setRegistration] = useState("");
-  const [amount, setAmount] = useState("");
   const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
-  const [payment, setPayment] = useState<PaymentOption | null>(null);
+  const [payments, setPayments] = useState<Set<PaymentOption>>(new Set());
+  const [valorAVista, setValorAVista] = useState("");
+  const [valorParcelado, setValorParcelado] = useState("");
   const [parcelas, setParcelas] = useState("");
   const team = useTeam(teamId).data;
 
@@ -62,10 +63,11 @@ export function AddServiceSheet({
       setType(null);
       setReason(null);
       setRegistration("");
-      setAmount("");
       setSelectedComplements(new Set());
       setReorderMode(false);
-      setPayment(null);
+      setPayments(new Set());
+      setValorAVista("");
+      setValorParcelado("");
       setParcelas("");
       void fetchAndCacheCatalogOrder(teamId);
     }
@@ -160,7 +162,6 @@ export function AddServiceSheet({
               {step === "viability" && type?.name}
               {step === "reason" && "Motivo da inviabilidade"}
               {step === "registration" && "Matrícula"}
-              {step === "amount" && "Valor negociado"}
               {step === "payment" && "Forma de pagamento"}
               {step === "complements" && "Complemento(s) do Serviço"}
             </SheetTitle>
