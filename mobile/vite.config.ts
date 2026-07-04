@@ -23,6 +23,18 @@ export default defineConfig({
         find: /^@\/integrations\/supabase\/client$/,
         replacement: resolve(srcDir, "integrations/supabase/client.mobile.ts"),
       },
+      // Leader panel server functions are replaced with direct Supabase
+      // calls (RLS enforced) since Capacitor has no server runtime.
+      {
+        find: /^@\/lib\/leader\.functions$/,
+        replacement: resolve(srcDir, "lib/leader.functions.mobile.ts"),
+      },
+      // Stub @tanstack/react-start on mobile: useServerFn becomes a
+      // pass-through, createServerFn/createMiddleware are unused.
+      {
+        find: /^@tanstack\/react-start$/,
+        replacement: resolve(__dirname, "src/shims/tanstack-react-start.ts"),
+      },
       { find: "@", replacement: srcDir },
     ],
     dedupe: ["react", "react-dom", "@tanstack/react-router", "@tanstack/react-query"],
