@@ -154,7 +154,7 @@ function ShiftPage() {
             onOpenChange={setFinishOpen}
             teamId={userId}
             shiftId={openShift.id}
-            onClosed={(id) => navigate({ to: "/shift/$id/report", params: { id } })}
+            onClosed={(id) => navigate({ to: "/shift/$id/report", params: { id }, replace: true })}
           />
         </>
       )}
