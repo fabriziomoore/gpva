@@ -200,8 +200,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const kvRows: { label: string; value: string; full?: boolean }[] = [
     { label: "Setor:", value: input.setor || "-" },
     { label: "Supervisor:", value: input.supervisor || "-" },
-    { label: "Líder:", value: input.leader || "-" },
     { label: "Escopo:", value: input.scope_label },
+    { label: "Líder:", value: input.leader || "-", full: true },
     { label: "Período:", value: periodTitle(input.period) },
     { label: "Gerado em:", value: formatDateBR(now) },
     { label: "Gerado por:", value: generatedBy, full: true },
