@@ -2,8 +2,6 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { signInTeam } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { useServerFn } from "@tanstack/react-start";
-import { adminBootstrap } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,12 +29,9 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const bootstrap = useServerFn(adminBootstrap);
   const [team, setTeam] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [adminPw, setAdminPw] = useState("");
   const [nativeApp, setNativeApp] = useState(false);
   const [remember, setRemember] = useState(false);
 
@@ -159,64 +154,6 @@ function AuthPage() {
             </Button>
         </form>
 
-        {!nativeApp && <div className="mt-6 text-center">
-          {!adminOpen ? (
-            <button
-              type="button"
-              onClick={() => setAdminOpen(true)}
-              className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Configuração
-            </button>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (adminPw !== "137889") {
-                  toast.error("Senha de administrador incorreta.");
-                  return;
-                }
-                void (async () => {
-                  try {
-                    await bootstrap({ data: { adminPassword: adminPw } });
-                    await signInTeam("adm", "137889");
-                    setAdminOpen(false);
-                    setAdminPw("");
-                    toast.success("Conta de administrador pronta. Use ADM / 137889.");
-                  } catch (err) {
-                    const msg = err instanceof Error ? err.message : "Erro";
-                    toast.error(msg);
-                  }
-                })();
-              }}
-              className="flex items-center gap-2"
-            >
-              <Input
-                type="password"
-                value={adminPw}
-                onChange={(e) => setAdminPw(e.target.value)}
-                placeholder="Senha admin"
-                autoFocus
-                className="h-9 text-sm"
-              />
-              <Button type="submit" variant="secondary" size="sm" className="h-9">
-                OK
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-9"
-                onClick={() => {
-                  setAdminOpen(false);
-                  setAdminPw("");
-                }}
-              >
-                Cancelar
-              </Button>
-            </form>
-          )}
-        </div>}
       </div>
       <p className="absolute inset-x-0 bottom-3 whitespace-nowrap overflow-hidden text-ellipsis px-4 text-center text-[10px] uppercase tracking-[0.18em] text-foreground dark:text-muted-foreground/60">
         Criado e desenvolvido por Fabrízio Moore
