@@ -4,11 +4,11 @@
 
 // Troque para true para enviar ao formulário de TESTE (sua cópia pessoal).
 // Deixe em false para enviar ao formulário oficial da liderança.
-const USE_TEST_FORM = false;
+const USE_TEST_FORM = true;
 
 const FORM_ID_PROD = "1FAIpQLSeuWfzbudZ4ZLs0upHcE4mD4kI97fMVdd4GIvG1Y8FIEn5Jgw";
-// COLE AQUI o ID do seu Google Forms de teste (o pedaço entre /d/e/ e /viewform).
-const FORM_ID_TEST = "COLE_O_ID_DO_FORMULARIO_DE_TESTE_AQUI";
+// ID do Google Forms de teste (cópia que recebe as respostas de teste).
+const FORM_ID_TEST = "1FAIpQLScPmHLgySgoSmwaWod-c0S7QZyOZDDEjeqgATt-Eir_b1kCyg";
 
 const FORM_ID = USE_TEST_FORM ? FORM_ID_TEST : FORM_ID_PROD;
 const ENDPOINT = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`;
