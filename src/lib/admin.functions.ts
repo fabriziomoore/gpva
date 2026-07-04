@@ -146,6 +146,52 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+// ============= Conta de Teste =============
+
+export const adminListTestTeams = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("equipes")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
+      .eq("is_test", true)
+      .order("team_name");
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const adminCreateTestTeam = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; teamName: string; password: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const slug = data.teamName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    if (!slug) throw new Error("Nome de equipe inválido.");
+    if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+    const email = `${slug}@gpva.local`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { team_name: data.teamName.trim() },
+    });
+    if (error) throw new Error(error.message);
+    if (created.user?.id) {
+      const { error: upErr } = await supabaseAdmin
+        .from("equipes")
+        .update({ is_test: true, onboarded: true, leader: "TESTE" })
+        .eq("id", created.user.id);
+      if (upErr) throw new Error(upErr.message);
+    }
+    return { ok: true as const };
+  });
+
 export const adminUpdateTeam = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
