@@ -597,6 +597,7 @@ function PeriodView({
         scope_label: meta.team_name,
         leader: meta.leader,
         supervisor: meta.supervisor,
+        setor: meta.setor_nome,
         current: { ...stats.current },
         previous: { ...stats.previous, shifts: 0 } as PeriodAgg,
         projected: stats.projected,
