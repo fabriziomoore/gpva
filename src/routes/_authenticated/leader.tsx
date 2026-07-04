@@ -45,6 +45,7 @@ import { renderLeaderPdfBlob, type PeriodAgg, type TeamBreakdown } from "@/lib/l
 import { downloadOrShare, slugFilename } from "@/lib/download";
 import { FileDown } from "lucide-react";
 import { LeaderRankingSection } from "@/components/leader/RankingSection";
+import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
 
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
@@ -62,6 +63,8 @@ type SvcRow = {
   reason_name: string | null;
   negotiated_value: number | null;
   created_at: string;
+  lat?: number | null;
+  lng?: number | null;
 };
 type ShiftRow = { id: string; team_id: string; started_at: string };
 type ImpactRow = { shift_id: string; impact_name: string };
@@ -156,7 +159,7 @@ function LeaderPage() {
       while (true) {
         const { data, error } = await supabase
           .from("servicos")
-          .select("id,team_id,shift_id,service_type_name,is_negotiation,viable,reason_name,negotiated_value,created_at")
+          .select("id,team_id,shift_id,service_type_name,is_negotiation,viable,reason_name,negotiated_value,created_at,lat,lng")
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
@@ -299,9 +302,10 @@ function LeaderPage() {
   return (
     <AppShell title="Painel do Líder" right={<LeaderMeta />}>
       <Tabs defaultValue="overview" className="mb-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="ranking">Ranking & Perfis</TabsTrigger>
+          <TabsTrigger value="map">Mapa</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="mt-4">
       <div className="mb-4">
@@ -357,9 +361,45 @@ function LeaderPage() {
         <TabsContent value="ranking" className="mt-4">
           <LeaderRankingSection />
         </TabsContent>
+        <TabsContent value="map" className="mt-4">
+          <LeaderMapSection services={filteredSvc} teams={filteredTeams} />
+        </TabsContent>
       </Tabs>
     </AppShell>
   );
+}
+
+function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: TeamRow[] }) {
+  const teamName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of teams) m.set(t.id, t.team_name);
+    return m;
+  }, [teams]);
+  const points = useMemo<MapPoint[]>(() => {
+    return services
+      .filter((s) => s.lat != null && s.lng != null)
+      .map((s) => ({
+        id: s.id,
+        lat: Number(s.lat),
+        lng: Number(s.lng),
+        viable: s.viable,
+        label: s.viable
+          ? s.service_type_name
+          : `Inviável — ${s.reason_name ?? "sem motivo"}`,
+        sub: teamName.get(s.team_id) ?? undefined,
+        when: new Date(s.created_at).toLocaleString("pt-BR"),
+      }));
+  }, [services, teamName]);
+
+  if (points.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        Nenhum serviço com localização registrado ainda. Ative o GPS no celular
+        para que novos registros apareçam aqui.
+      </div>
+    );
+  }
+  return <ServicesMap points={points} height={560} />;
 }
 
 function cleanName(name: string | null | undefined) {
