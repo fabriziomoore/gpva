@@ -184,30 +184,21 @@ export type Database = {
       }
       google_form_settings: {
         Row: {
+          entries: Json
+          form_id: string
           id: string
-          mode: string
-          prod_entries: Json
-          prod_form_id: string
-          test_entries: Json
-          test_form_id: string
           updated_at: string
         }
         Insert: {
+          entries: Json
+          form_id: string
           id?: string
-          mode?: string
-          prod_entries: Json
-          prod_form_id: string
-          test_entries: Json
-          test_form_id: string
           updated_at?: string
         }
         Update: {
+          entries?: Json
+          form_id?: string
           id?: string
-          mode?: string
-          prod_entries?: Json
-          prod_form_id?: string
-          test_entries?: Json
-          test_form_id?: string
           updated_at?: string
         }
         Relationships: []
