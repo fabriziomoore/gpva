@@ -15,7 +15,7 @@ import {
 import { restoreSession } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import gpvaLogo from "@/assets/gpva-logo-wide.png";
+import gpvaLogo from "@/assets/gpva-logo-wide.webp";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
