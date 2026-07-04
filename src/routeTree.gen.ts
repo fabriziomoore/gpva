@@ -18,6 +18,7 @@ import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
 import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
 import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift_.$id.report'
 
@@ -66,6 +67,12 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeaderConfigRoute =
+  AuthenticatedLeaderConfigRouteImport.update({
+    id: '/leader-config',
+    path: '/leader-config',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLeaderRoute = AuthenticatedLeaderRouteImport.update({
   id: '/leader',
   path: '/leader',
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/leader': typeof AuthenticatedLeaderRoute
+  '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/leader': typeof AuthenticatedLeaderRoute
+  '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -108,6 +117,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/_authenticated/leader': typeof AuthenticatedLeaderRoute
+  '/_authenticated/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/leader'
+    | '/leader-config'
     | '/onboarding'
     | '/productivity'
     | '/settings'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/leader'
+    | '/leader-config'
     | '/onboarding'
     | '/productivity'
     | '/settings'
@@ -147,6 +159,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/_authenticated/leader'
+    | '/_authenticated/leader-config'
     | '/_authenticated/onboarding'
     | '/_authenticated/productivity'
     | '/_authenticated/settings'
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leader-config': {
+      id: '/_authenticated/leader-config'
+      path: '/leader-config'
+      fullPath: '/leader-config'
+      preLoaderRoute: typeof AuthenticatedLeaderConfigRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leader': {
       id: '/_authenticated/leader'
       path: '/leader'
@@ -246,6 +266,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeaderRoute: typeof AuthenticatedLeaderRoute
+  AuthenticatedLeaderConfigRoute: typeof AuthenticatedLeaderConfigRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -257,6 +278,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLeaderRoute: AuthenticatedLeaderRoute,
+  AuthenticatedLeaderConfigRoute: AuthenticatedLeaderConfigRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,

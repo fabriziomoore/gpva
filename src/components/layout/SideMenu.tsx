@@ -16,6 +16,7 @@ const teamItems = [
 
 const leaderItems = [
   { to: "/leader" as const, label: "Painel do Líder", icon: BarChart3, exact: true },
+  { to: "/leader-config" as const, label: "Configuração", icon: Settings, exact: false },
 ];
 
 export function SideMenu() {
