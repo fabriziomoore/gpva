@@ -255,14 +255,14 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Caixa destaque à direita
   const boxX = PW - M - 55;
   setFill(C.bgAlt); setStroke(C.border);
-  pdf.roundedRect(boxX, M, 55, 26, 2, 2, "FD");
+  pdf.roundedRect(boxX, M, 55, 22, 2, 2, "FD");
   const teamsCount = input.teams.length || 1;
   const infos: [string, string][] = [
     ["Equipes", String(teamsCount)],
     ["Expedientes", String(input.current.shifts)],
   ];
   infos.forEach((row, i) => {
-    const y = M + 10 + i * 9;
+    const y = M + 8 + i * 8;
     font(7.5, "normal"); setText(C.muted); text(row[0].toUpperCase(), boxX + 3, y);
     font(11, "bold"); setText(C.primaryDark); text(row[1], boxX + 52, y, { align: "right" });
   });
