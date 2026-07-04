@@ -16,6 +16,7 @@ import { repoCreateShift } from "@/lib/db/repos";
 import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({ meta: [{ title: "Início — GPVA" }] }),
@@ -26,6 +27,7 @@ function HomePage() {
   const navigate = useNavigate();
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
+  const isAdmin = useIsAdmin(userId);
   const { data: team, isLoading } = useTeam(userId);
   const [starting, setStarting] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
@@ -33,6 +35,13 @@ function HomePage() {
   useEffect(() => {
     if (isLeader.data === true) navigate({ to: "/leader" });
   }, [isLeader.data, navigate]);
+
+  useEffect(() => {
+    if (isAdmin.data === true) {
+      sessionStorage.setItem("gpva-admin-pw", "137889");
+      navigate({ to: "/admin" });
+    }
+  }, [isAdmin.data, navigate]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
