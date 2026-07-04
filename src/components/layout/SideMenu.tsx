@@ -69,16 +69,14 @@ export function SideMenu() {
               ))}
             </ul>
           </nav>
-          <div className="border-t border-border p-3">
-            <button
-              type="button"
-              onClick={() => setExitOpen(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-destructive px-3 py-3 text-sm font-semibold text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90"
-            >
-              <LogOut className="size-5" />
-              <span>Sair</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setExitOpen(true)}
+            className="flex w-full items-center gap-3 border-t border-border bg-destructive px-5 py-4 text-left text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
+          >
+            <LogOut className="size-5" />
+            <span>Sair</span>
+          </button>
         </Dialog.Content>
       </Dialog.Portal>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
