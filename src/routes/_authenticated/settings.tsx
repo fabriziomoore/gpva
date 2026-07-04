@@ -217,15 +217,29 @@ function SettingsPage() {
             </div>
             <div>
               <Label htmlFor="sup">Supervisor</Label>
-              <Input id="sup" value={supervisor} onChange={(e) => setSupervisor(e.target.value)} className="h-11" />
+              <Input
+                id="sup"
+                value={supervisor}
+                onChange={(e) => setSupervisor(e.target.value)}
+                disabled={!isTestAccount}
+                className="h-11"
+              />
             </div>
             <div>
               <Label htmlFor="lid">Líder</Label>
-              <Input id="lid" value={leader} onChange={(e) => setLeader(e.target.value)} className="h-11" />
+              <Input
+                id="lid"
+                value={leader}
+                onChange={(e) => setLeader(e.target.value)}
+                disabled={!isTestAccount}
+                className="h-11"
+              />
             </div>
-            <Button onClick={saveTeam} disabled={saving} className="h-11 w-full">
-              {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
-            </Button>
+            {isTestAccount && (
+              <Button onClick={saveTeam} disabled={saving} className="h-11 w-full">
+                {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
+              </Button>
+            )}
           </div>
 
           <div className="space-y-3 border-t border-border pt-6">
