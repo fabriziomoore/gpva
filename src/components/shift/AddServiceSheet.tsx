@@ -323,14 +323,7 @@ export function AddServiceSheet({
                       <button
                         key={p}
                         type="button"
-                        onClick={() => {
-                          setPayments((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(p)) next.delete(p);
-                            else next.add(p);
-                            return next;
-                          });
-                        }}
+                        onClick={() => setPayments(new Set([p]))}
                         className={
                           "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
                           (on
@@ -347,20 +340,23 @@ export function AddServiceSheet({
               {(() => {
                 const hasInstallment =
                   payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
-                const hasUpfront = Array.from(payments).some(
-                  (p) => p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO",
-                );
+                // Quando é parcelado, o campo à vista também abre (opcional) para casos
+                // em que o cliente paga parte à vista e o restante parcelado.
+                const showUpfront = payments.size > 0;
                 const nVista = Number(valorAVista.replace(",", "."));
                 const nParc = Number(valorParcelado.replace(",", "."));
                 const nParcelas = Number(parcelas);
-                const invalidVista = hasUpfront && (!valorAVista.trim() || !isFinite(nVista) || nVista <= 0);
+                const vistaFilled = valorAVista.trim() !== "" && isFinite(nVista) && nVista > 0;
+                const invalidVista = !hasInstallment && !vistaFilled;
                 const invalidParc = hasInstallment && (!valorParcelado.trim() || !isFinite(nParc) || nParc <= 0);
                 const invalidQtd = hasInstallment && (!parcelas || nParcelas < 2);
                 return (
                   <>
-                    {hasUpfront && (
+                    {showUpfront && (
                       <div>
-                        <Label htmlFor="val-vista">Valor à vista (R$)</Label>
+                        <Label htmlFor="val-vista">
+                          Valor à vista (R$){hasInstallment ? " — opcional" : ""}
+                        </Label>
                         <Input
                           id="val-vista"
                           value={valorAVista}
