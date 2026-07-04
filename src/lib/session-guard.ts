@@ -181,6 +181,7 @@ export async function claimCurrentSession(): Promise<void> {
 
 function startPerUserWatchers(userId: string): void {
   stopPerUserWatchers();
+  currentUserId = userId;
 
   realtimeChannel = supabase
     .channel(`active_sessions:${userId}`)
