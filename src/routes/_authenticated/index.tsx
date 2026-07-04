@@ -145,7 +145,17 @@ function HomePage() {
     </div>
   );
 
-  if (isLoading) {
+  // Enquanto papel (líder/admin) ainda carrega, ou o próprio usuário indica ser
+  // líder/admin, não renderizamos o home de equipe para evitar o "flash" antes
+  // do redirect.
+  const rolePending =
+    !userId ||
+    isLeader.isLoading ||
+    isAdmin.isLoading ||
+    isLeader.data === true ||
+    isAdmin.data === true;
+
+  if (isLoading || rolePending) {
     return (
       <AppShell title={titleNode} showBack={false}>
         <div className="flex items-center justify-center py-20">
