@@ -32,6 +32,33 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_reports: {
+        Row: {
+          counts: Json
+          created_at: string
+          duration_ms: number
+          id: string
+          overall_score: number
+          report: Json
+        }
+        Insert: {
+          counts?: Json
+          created_at?: string
+          duration_ms: number
+          id?: string
+          overall_score: number
+          report: Json
+        }
+        Update: {
+          counts?: Json
+          created_at?: string
+          duration_ms?: number
+          id?: string
+          overall_score?: number
+          report?: Json
+        }
+        Relationships: []
+      }
       catalog_order: {
         Row: {
           catalog: string
