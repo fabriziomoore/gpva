@@ -725,12 +725,12 @@ function PaceBar({ current, projected, period }: { current: number; projected: n
       </div>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[9px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-sm border border-border bg-white" />
-          Projeção do fechamento
-        </span>
-        <span className="inline-flex items-center gap-1">
           <span className={`inline-block h-2 w-2 rounded-sm ${reached ? "bg-blue-500" : "bg-red-500"}`} />
           {reached ? `Projeção alcançada (${paceCount}%)` : `Andamento (${paceCount}%)`}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-sm border border-border bg-white" />
+          Projeção do fechamento
         </span>
       </div>
     </div>
