@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { ADMIN_PASSWORD } from "../admin.functions";
 import type { CheckResult } from "./types";
+import type { JsonValue } from "./types";
 
 function assertAdmin(pw: string) {
   if (pw !== ADMIN_PASSWORD) throw new Error("Senha de administrador inválida.");
@@ -274,7 +275,7 @@ export const runConfigAudit = createServerFn({ method: "POST" })
 
 // -------- Histórico --------
 export const saveAuditReport = createServerFn({ method: "POST" })
-  .inputValidator((d: AdminInput & { report: unknown; duration_ms: number; overall_score: number; counts: unknown }) => d)
+  .inputValidator((d: AdminInput & { report: JsonValue; duration_ms: number; overall_score: number; counts: JsonValue }) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
