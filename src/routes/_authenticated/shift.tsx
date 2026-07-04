@@ -139,7 +139,7 @@ function ShiftPage() {
                             Viável
                             {first && (
                               <>
-                                {" — "}
+                                {" c/ "}
                                 <span className="italic">{first}</span>
                               </>
                             )}
