@@ -109,7 +109,10 @@ export function blendedProjection(
   // o prior segura oscilações, mas com poucos dias a mais a projeção já
   // acompanha o ritmo real.
   const nObs = ratio; // fração do período (unidade normalizada)
-  const nPrior = 0.15;
+  // Peso do prior decai para 0 no fim do período: no último dia a
+  // projeção equivale ao valor real acumulado, sem mais influência do histórico.
+  const nPrior = 0.15 * (1 - ratio);
+  if (nPrior <= 0) return Math.round(currentValue);
   const observedRate = currentValue / nObs;
   const priorRate = historicalAvg; // já é "total do período"
   const blendedTotal = (nObs * observedRate + nPrior * priorRate) / (nObs + nPrior);
