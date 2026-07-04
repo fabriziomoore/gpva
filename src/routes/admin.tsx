@@ -662,7 +662,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
     const teamFull = teams.data?.find((t) => t.id === current.id);
     return (
       <div className="space-y-4">
-        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0 }} onDeleted={() => setSelected(null)} />
+        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null }} onDeleted={() => setSelected(null)} />
         {periodSelector(true)}
         <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
@@ -745,6 +745,7 @@ type TeamRow = {
   collaborator1: string | null;
   collaborator2: string | null;
   variable_rate: number;
+  setor_id: string | null;
 };
 
 function TeamHeader({
@@ -759,10 +760,16 @@ function TeamHeader({
   const qc = useQueryClient();
   const updateFn = useServerFn(adminUpdateTeam);
   const deleteFn = useServerFn(adminDeleteTeam);
+  const setoresFn = useServerFn(adminListSetores);
+  const setores = useQuery({
+    queryKey: ["admin-setores"],
+    queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
+  });
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(team.team_name);
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
+  const [setorId, setSetorId] = useState(team.setor_id ?? "");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const updateMut = useMutation({
@@ -774,6 +781,7 @@ function TeamHeader({
           teamName: name,
           collaborator1: c1.trim() || null,
           collaborator2: c2.trim() || null,
+          setorId: setorId || undefined,
         },
       }),
     onSuccess: () => {
@@ -838,13 +846,29 @@ function TeamHeader({
             <Label className="text-xs">Colaborador 2</Label>
             <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Setor</Label>
+            <select
+              value={setorId}
+              onChange={(e) => setSetorId(e.target.value)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Selecione…</option>
+              {setores.data?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                  {s.supervisor_nome ? ` — ${s.supervisor_nome}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="h-10 flex-1" onClick={() => setEditing(false)}>
               Cancelar
             </Button>
             <Button
               className="h-10 flex-1"
-              disabled={updateMut.isPending || !name.trim()}
+              disabled={updateMut.isPending || !name.trim() || !setorId}
               onClick={() => updateMut.mutate()}
             >
               {updateMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
