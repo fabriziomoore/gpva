@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -270,5 +270,3 @@ function SevBadge({ sev }: { sev: CheckResult["severity"] }) {
   const m = map[sev];
   return <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${m.cls}`}>{m.label}</span>;
 }
-
-useEffect;
