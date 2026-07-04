@@ -14,7 +14,7 @@ import {
 } from "@/lib/remember-access";
 import { restoreSession } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.webp";
 
 export const Route = createFileRoute("/auth")({
@@ -33,6 +33,8 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Preencher equipe salva, se houver
   useEffect(() => {
@@ -55,8 +57,9 @@ function AuthPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMsg(null);
     if (!team.trim() || password.length < 6) {
-      toast.error("Preencha equipe e senha (mín. 6 caracteres).");
+      setErrorMsg("Preencha equipe e senha (mín. 6 caracteres).");
       return;
     }
     setLoading(true);
@@ -90,9 +93,9 @@ function AuthPage() {
           toast.error("Sem internet. Marque 'Lembrar acesso' em um login online.");
         }
       } else if (msg.includes("Invalid login")) {
-        toast.error("Equipe ou senha incorretas.");
+        setErrorMsg("Usuário ou senha incorretos.");
       } else {
-        toast.error(msg);
+        setErrorMsg(msg);
       }
     } finally {
       setLoading(false);
@@ -123,15 +126,30 @@ function AuthPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="pw">Senha</Label>
-              <Input
-                id="pw"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                className="h-12 text-base"
-              />
+              <div className="relative">
+                <Input
+                  id="pw"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="h-12 pr-12 text-base"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                </button>
+              </div>
             </div>
+            {errorMsg && (
+              <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {errorMsg}
+              </p>
+            )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
               <Checkbox
                 checked={remember}
