@@ -97,6 +97,10 @@ class GpvaDB extends Dexie {
       outbox: "++id, table, row_id, created_at",
       kv: "key",
     });
+    this.version(2).stores({
+      shifts:
+        "id, team_id, status, started_at, sync_state, [team_id+status+started_at]",
+    });
   }
 }
 

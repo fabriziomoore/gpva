@@ -26,9 +26,11 @@ function ShiftPage() {
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
     const db = getLocalDB();
-    const rows = await db.shifts.where("status").equals("open").toArray();
-    rows.sort((a, b) => (b.started_at > a.started_at ? 1 : -1));
-    return rows[0] ?? null;
+    const row = await db.shifts
+      .where("[team_id+status+started_at]")
+      .between([userId, "open", ""], [userId, "open", "\uffff"])
+      .last();
+    return row ?? null;
   }, [userId]);
 
   const services = useLiveQuery(async () => {
