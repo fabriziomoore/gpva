@@ -47,7 +47,7 @@ export function SideMenu() {
             </span>
             <Dialog.Close
               aria-label="Fechar menu"
-              className="inline-flex size-9 items-center justify-center rounded-lg border border-white bg-destructive text-white hover:bg-destructive/90"
+              className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
             >
               <X className="size-5" />
             </Dialog.Close>
