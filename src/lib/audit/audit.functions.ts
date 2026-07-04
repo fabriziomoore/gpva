@@ -316,3 +316,18 @@ export const deleteAuditReport = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const getAuditReport = createServerFn({ method: "POST" })
+  .inputValidator((d: AdminInput & { id: string }) => d)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("audit_reports")
+      .select("id, created_at, duration_ms, overall_score, counts, report")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Relatório não encontrado");
+    return row;
+  });

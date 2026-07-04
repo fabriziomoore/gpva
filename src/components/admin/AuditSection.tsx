@@ -5,8 +5,11 @@ import { toast } from "sonner";
 import { Loader2, Trash2, Play, Copy, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
   runDbAudit, runSecurityAudit, runAccountsAudit, runConfigAudit,
-  saveAuditReport, listAuditReports, deleteAuditReport,
+  saveAuditReport, listAuditReports, deleteAuditReport, getAuditReport,
 } from "@/lib/audit/audit.functions";
 import { runClientChecks } from "@/lib/audit/client-checks";
 import { scoreFromResults, CATEGORY_LABELS, OUT_OF_SCOPE } from "@/lib/audit/types";
@@ -24,6 +27,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
   const saveFn = useServerFn(saveAuditReport);
   const listFn = useServerFn(listAuditReports);
   const delFn = useServerFn(deleteAuditReport);
+  const getFn = useServerFn(getAuditReport);
 
   const steps: Step[] = useMemo(() => [
     { key: "cfg", label: "Verificando configurações...", run: () => cfgFn({ data: { adminPassword: adminPw } }) },
@@ -36,6 +40,8 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0, current: "" });
   const [report, setReport] = useState<AuditReport | null>(null);
+  const [viewing, setViewing] = useState<AuditReport | null>(null);
+  const [loadingView, setLoadingView] = useState<string | null>(null);
 
   const history = useQuery({
     queryKey: ["audit-history"],
@@ -100,6 +106,18 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
     mutationFn: (id: string) => delFn({ data: { adminPassword: adminPw, id } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["audit-history"] }),
   });
+
+  async function openHistory(id: string) {
+    setLoadingView(id);
+    try {
+      const row = await getFn({ data: { adminPassword: adminPw, id } });
+      setViewing(row.report as unknown as AuditReport);
+    } catch (e) {
+      toast.error(`Falha ao carregar: ${(e as Error).message}`);
+    } finally {
+      setLoadingView(null);
+    }
+  }
 
   const status = report ? statusLabel(report.overall_score) : null;
 
@@ -229,14 +247,20 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
               const c = (h.counts ?? {}) as { errors?: number; warnings?: number; improvements?: number };
               return (
                 <li key={h.id} className="flex items-center justify-between rounded-lg border p-2 text-sm">
-                  <div>
+                  <button
+                    type="button"
+                    className="flex-1 text-left hover:opacity-80"
+                    onClick={() => openHistory(h.id)}
+                    disabled={loadingView === h.id}
+                  >
                     <div className="font-medium">
                       {new Date(h.created_at).toLocaleString("pt-BR")} — {h.overall_score}%
+                      {loadingView === h.id && <Loader2 className="ml-2 inline size-3 animate-spin" />}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {(h.duration_ms / 1000).toFixed(1)}s · Erros {c.errors ?? 0} · Avisos {c.warnings ?? 0} · Melhorias {c.improvements ?? 0}
                     </div>
-                  </div>
+                  </button>
                   <button
                     className="rounded-md p-2 text-muted-foreground hover:text-destructive"
                     onClick={() => { if (confirm("Excluir esta auditoria?")) delMut.mutate(h.id); }}
@@ -250,6 +274,63 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
           </ul>
         )}
       </div>
+
+      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Relatório de Auditoria</DialogTitle>
+            {viewing && (
+              <DialogDescription>
+                {new Date(viewing.started_at).toLocaleString("pt-BR")} — {viewing.overall_score}% ·
+                {" "}Erros {viewing.counts.errors} · Avisos {viewing.counts.warnings} · Melhorias {viewing.counts.improvements}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {viewing && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const prompt = buildLovablePrompt(viewing);
+                    try { await navigator.clipboard.writeText(prompt); toast.success("Prompt copiado"); }
+                    catch { toast.error("Falha ao copiar"); }
+                  }}
+                >
+                  <Copy className="mr-2 size-4" /> Gerar Prompt de Correção
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const blob = new Blob([JSON.stringify(viewing, null, 2)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url; a.download = `audit-${Date.now()}.json`; a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 3000);
+                  }}
+                >
+                  <Download className="mr-2 size-4" /> Exportar JSON
+                </Button>
+              </div>
+              <ul className="space-y-2">
+                {viewing.results.map((r) => (
+                  <li key={r.id} className="rounded-lg border p-3">
+                    <div className="flex items-center gap-2">
+                      <SevBadge sev={r.severity} />
+                      <span className="text-sm font-medium">{r.title}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{r.message}</div>
+                    {r.suggestion && <div className="mt-1 text-xs text-primary">→ {r.suggestion}</div>}
+                    {r.location && <div className="mt-1 text-[10px] text-muted-foreground">{r.location}</div>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
