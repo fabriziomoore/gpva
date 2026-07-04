@@ -113,7 +113,6 @@ export const adminSetGoogleFormMode = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("google_form_settings")
-      // @ts-expect-error mode column exists in DB (added via migration)
       .update({ mode: data.mode, updated_at: new Date().toISOString() })
       .eq("id", "singleton");
     if (error) throw new Error(error.message);
@@ -133,7 +132,6 @@ export const adminUpdateGoogleForm = createServerFn({ method: "POST" })
         : { test_form_id: formId, test_entries: entries };
     const { error } = await supabaseAdmin
       .from("google_form_settings")
-      // @ts-expect-error prod_* columns exist in DB (added via migration)
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq("id", "singleton");
     if (error) throw new Error(error.message);
