@@ -101,34 +101,7 @@ export async function buildNegotiationImage(input: NegotiationSubmission): Promi
   c.fillStyle = "#5f6368";
   c.fillText(label2, x, gy);
 
-  // Descritivo embutido na própria imagem. Isso evita que o WhatsApp envie o texto
-  // como balão separado quando a legenda é colada manualmente.
-  const noteX = CARD_X;
-  const noteY = gy + 82;
-  const noteW = CARD_W;
-  const noteH = 250;
-  c.save();
-  c.shadowColor = "rgba(60, 64, 67, 0.14)";
-  c.shadowBlur = 5;
-  c.shadowOffsetY = 1;
-  c.fillStyle = "#ffffff";
-  roundRect(c, noteX, noteY, noteW, noteH, 18);
-  c.fill();
-  c.restore();
-
-  c.fillStyle = "#0f5132";
-  roundRect(c, noteX, noteY, noteW, 14, 18, "top");
-  c.fill();
-
-  const lines = buildCaptionLines(input);
-  c.fillStyle = "#202124";
-  c.font = '700 34px "Roboto", "Segoe UI", system-ui, sans-serif';
-  c.fillText(lines[0], noteX + 46, noteY + 68);
-  c.font = '600 30px "Roboto", "Segoe UI", system-ui, sans-serif';
-  lines.slice(1).forEach((line, index) => {
-    c.fillText(line, noteX + 46, noteY + 116 + index * 42);
-  });
-
+  void input;
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao gerar imagem"))), "image/png");
   });
@@ -173,6 +146,14 @@ function roundRect(
 export async function shareNegotiation(input: NegotiationSubmission): Promise<boolean> {
   const blob = await buildNegotiationImage(input);
   const file = new File([blob], `negociacao-${input.matricula}.png`, { type: "image/png" });
+  const caption = buildCaption(input);
+
+  // Copia o descritivo para a área de transferência para colar na legenda da imagem.
+  try {
+    await navigator.clipboard.writeText(caption);
+  } catch {
+    /* alguns navegadores bloqueiam sem gesto do usuário */
+  }
 
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare && nav.canShare({ files: [file] })) {
