@@ -51,10 +51,7 @@ function HomePage() {
     navigate({ to: "/auth" });
   }
 
-  useEffect(() => {
-    if (isLeader.data === true) return;
-    if (team && !team.onboarded) navigate({ to: "/onboarding" });
-  }, [team, navigate, isLeader.data]);
+  // Onboarding is handled by admin at team creation; no auto-redirect.
 
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;

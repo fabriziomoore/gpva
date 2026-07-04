@@ -517,6 +517,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   const [teamName, setTeamName] = useState("");
   const [password, setPassword] = useState("");
   const [setorId, setSetorId] = useState("");
+  const [leaderName, setLeaderName] = useState("");
   const createFn = useServerFn(adminCreateTeam);
   const setoresFn = useServerFn(adminListSetores);
   const setores = useQuery({
@@ -526,12 +527,13 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
 
   const mut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, teamName, password, setorId } }),
+      createFn({ data: { adminPassword: adminPw, teamName, password, setorId, leaderName } }),
     onSuccess: () => {
       toast.success("Equipe criada");
       setTeamName("");
       setPassword("");
       setSetorId("");
+      setLeaderName("");
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -566,6 +568,16 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
         />
       </div>
       <div className="space-y-2">
+        <Label htmlFor="ld">Nome do líder</Label>
+        <Input
+          id="ld"
+          value={leaderName}
+          onChange={(e) => setLeaderName(e.target.value)}
+          placeholder="Ex: Gabriel Araújo"
+          className="h-12 text-base"
+        />
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="np">Senha (mín. 6)</Label>
         <Input
           id="np"
@@ -577,7 +589,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
       </div>
       <Button
         onClick={() => mut.mutate()}
-        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId}
+        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId || !leaderName.trim()}
         className="h-12 w-full text-base font-semibold"
       >
         {mut.isPending ? <Loader2 className="size-5 animate-spin" /> : "Criar Equipe"}
@@ -662,7 +674,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
     const teamFull = teams.data?.find((t) => t.id === current.id);
     return (
       <div className="space-y-4">
-        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null }} onDeleted={() => setSelected(null)} />
+        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, leader: null }} onDeleted={() => setSelected(null)} />
         {periodSelector(true)}
         <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
@@ -746,6 +758,7 @@ type TeamRow = {
   collaborator2: string | null;
   variable_rate: number;
   setor_id: string | null;
+  leader: string | null;
 };
 
 function TeamHeader({
@@ -770,6 +783,7 @@ function TeamHeader({
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
   const [setorId, setSetorId] = useState(team.setor_id ?? "");
+  const [leader, setLeader] = useState(team.leader ?? "");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const updateMut = useMutation({
@@ -782,6 +796,7 @@ function TeamHeader({
           collaborator1: c1.trim() || null,
           collaborator2: c2.trim() || null,
           setorId: setorId || undefined,
+          leaderName: leader.trim() || undefined,
         },
       }),
     onSuccess: () => {
@@ -845,6 +860,10 @@ function TeamHeader({
           <div className="space-y-1">
             <Label className="text-xs">Colaborador 2</Label>
             <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Líder</Label>
+            <Input value={leader} onChange={(e) => setLeader(e.target.value)} className="h-10" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Setor</Label>

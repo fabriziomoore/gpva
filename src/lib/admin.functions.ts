@@ -19,7 +19,7 @@ export const listTeams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader")
       .order("team_name");
     if (error) throw new Error(error.message);
     return (rows ?? []).filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name));
@@ -80,7 +80,7 @@ export const adminUpdateRate = createServerFn({ method: "POST" })
   });
 
 export const adminCreateTeam = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; teamName: string; password: string; setorId: string }) => data)
+  .inputValidator((data: { adminPassword: string; teamName: string; password: string; setorId: string; leaderName: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const slug = data.teamName
@@ -91,6 +91,8 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
     if (!slug) throw new Error("Nome de equipe inválido.");
     if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
     if (!data.setorId) throw new Error("Selecione um setor.");
+    const leaderName = data.leaderName.trim();
+    if (!leaderName) throw new Error("Informe o nome do líder.");
     const email = `${slug}@gpva.local`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
@@ -100,11 +102,11 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
       user_metadata: { team_name: data.teamName.trim() },
     });
     if (error) throw new Error(error.message);
-    // The handle_new_team trigger creates the equipes row; set its setor_id.
+    // The handle_new_team trigger creates the equipes row; set setor + leader + onboarded.
     if (created.user?.id) {
       const { error: setorErr } = await supabaseAdmin
         .from("equipes")
-        .update({ setor_id: data.setorId })
+        .update({ setor_id: data.setorId, leader: leaderName, onboarded: true })
         .eq("id", created.user.id);
       if (setorErr) throw new Error(setorErr.message);
     }
@@ -120,6 +122,7 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
       collaborator1?: string | null;
       collaborator2?: string | null;
       setorId?: string;
+      leaderName?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -130,6 +133,8 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
       collaborator1?: string | null;
       collaborator2?: string | null;
       setor_id?: string;
+      leader?: string;
+      onboarded?: boolean;
     } = {};
     if (data.teamName !== undefined) {
       const name = data.teamName.trim();
@@ -145,6 +150,12 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
     if (data.setorId !== undefined) {
       if (!data.setorId) throw new Error("Setor obrigatório.");
       patch.setor_id = data.setorId;
+    }
+    if (data.leaderName !== undefined) {
+      const l = data.leaderName.trim();
+      if (!l) throw new Error("Informe o nome do líder.");
+      patch.leader = l;
+      patch.onboarded = true;
     }
     if (Object.keys(patch).length === 0) return { ok: true as const };
     const { error } = await supabaseAdmin
