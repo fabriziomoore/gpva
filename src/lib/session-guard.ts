@@ -19,6 +19,7 @@ let globalSessionProbeTimer: ReturnType<typeof setInterval> | null = null;
 let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 let shiftsChannel: ReturnType<typeof supabase.channel> | null = null;
 let currentUserId: string | null = null;
+let watchedUserId: string | null = null;
 let signingOut = false;
 let claimedAt = 0;
 let lastActiveCheckAt = 0;
@@ -144,8 +145,13 @@ async function attachSessionForUser(userId: string, opts: { claim: boolean }): P
   }
 
   currentUserId = userId;
-  startPerUserWatchers(userId);
-  void pullRemote();
+  // Só re-cria os canais realtime se o usuário mudou. Reassinar a cada
+  // INITIAL_SESSION/SIGNED_IN (dispara em foco/refresh de token) abre uma
+  // janela em que o evento de takeover do outro dispositivo é perdido.
+  if (watchedUserId !== userId) {
+    startPerUserWatchers(userId);
+    void pullRemote();
+  }
   void verifyActiveSession({ force: true });
 }
 
@@ -182,6 +188,7 @@ export async function claimCurrentSession(): Promise<void> {
 function startPerUserWatchers(userId: string): void {
   stopPerUserWatchers();
   currentUserId = userId;
+  watchedUserId = userId;
 
   realtimeChannel = supabase
     .channel(`active_sessions:${userId}`)
@@ -273,6 +280,7 @@ function stopPerUserWatchers(): void {
     heartbeatTimer = null;
   }
   currentUserId = null;
+  watchedUserId = null;
 }
 
 function checkExpiration(): void {
