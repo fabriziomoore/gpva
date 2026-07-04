@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatBRL } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
+import type { LocalService } from "@/lib/db/local-db";
 import { useFormsStatus } from "@/lib/forms-status";
 
 export const Route = createFileRoute("/_authenticated/shift")({
