@@ -192,7 +192,7 @@ function AdminPage() {
           ) : (
             <CrudSection
               adminPw={adminPw}
-              table={section}
+              table={section as "tipos_servico" | "motivos_inviabilidade" | "complementos_servico" | "impactos"}
               label={SECTIONS.find((s) => s.id === section)!.label}
             />
           )}
