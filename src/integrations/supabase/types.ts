@@ -182,6 +182,36 @@ export type Database = {
           },
         ]
       }
+      google_form_settings: {
+        Row: {
+          id: string
+          mode: string
+          prod_entries: Json
+          prod_form_id: string
+          test_entries: Json
+          test_form_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          mode?: string
+          prod_entries: Json
+          prod_form_id: string
+          test_entries: Json
+          test_form_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          mode?: string
+          prod_entries?: Json
+          prod_form_id?: string
+          test_entries?: Json
+          test_form_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       impactos: {
         Row: {
           active: boolean
