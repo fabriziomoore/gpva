@@ -50,7 +50,7 @@ export type NegotiationSubmission = {
   qtdParcelas?: number;
 };
 
-export async function submitNegotiationToGoogleForm(input: NegotiationSubmission): Promise<boolean> {
+function buildParams(input: NegotiationSubmission): URLSearchParams {
   const params = new URLSearchParams();
   const d = input.date;
   params.set("entry.1838130926_year", String(d.getFullYear()));
@@ -67,22 +67,33 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
   if (input.valorAVista != null) params.set("entry.1890321124", formatMoney(input.valorAVista));
   if (input.valorTotalParcelado != null) params.set("entry.2131072094", formatMoney(input.valorTotalParcelado));
   if (input.qtdParcelas != null) params.set("entry.1468389727", String(input.qtdParcelas));
+  return params;
+}
 
-  // Resposta é opaca por causa do no-cors, mas se o fetch resolver
-  // significa que a requisição chegou ao Google sem erro de rede.
-  try {
-    await fetch(ENDPOINT, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
-      keepalive: true,
-    });
-    return true;
-  } catch (err) {
-    console.warn("[google-form] envio falhou", err);
-    return false;
+/**
+ * Envia a resposta abrindo uma nova aba com POST real ao Google Forms,
+ * fazendo o navegador exibir a tela "Sua resposta foi registrada".
+ * Retorna true se a aba foi aberta; false se foi bloqueada por popup blocker.
+ */
+export function submitNegotiationToGoogleForm(input: NegotiationSubmission): boolean {
+  const params = buildParams(input);
+  const win = window.open("about:blank", "_blank");
+  if (!win) return false;
+
+  const form = win.document.createElement("form");
+  form.method = "POST";
+  form.action = ENDPOINT;
+  form.acceptCharset = "UTF-8";
+  for (const [k, v] of params) {
+    const i = win.document.createElement("input");
+    i.type = "hidden";
+    i.name = k;
+    i.value = v;
+    form.appendChild(i);
   }
+  win.document.body.appendChild(form);
+  form.submit();
+  return true;
 }
 
 function formatMoney(n: number): string {
