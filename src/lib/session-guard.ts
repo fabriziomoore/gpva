@@ -299,9 +299,11 @@ export function startSessionGuard(): void {
   supabase.auth.onAuthStateChange((event, session) => {
     if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
       if (!getLoginTs()) setLoginTs(Date.now());
-      const isExplicitLogin = event === "SIGNED_IN";
-      // Login explícito em outro dispositivo sempre deve tomar a sessão ativa.
-      void attachSessionForUser(session.user.id, { claim: isExplicitLogin });
+      // SIGNED_IN também pode disparar ao reidratar/focar a sessão. O login
+      // manual toma a sessão via signInTeam() -> claimCurrentSession(); aqui só
+      // reivindicamos quando ainda não existe id local para este dispositivo.
+      const shouldClaim = currentUserId !== session.user.id || !localSessionId();
+      void attachSessionForUser(session.user.id, { claim: shouldClaim });
     } else if (event === "SIGNED_OUT") {
       stopPerUserWatchers();
       try {
