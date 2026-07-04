@@ -19,7 +19,7 @@ export const listTeams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader")
       .order("team_name");
     if (error) throw new Error(error.message);
     return (rows ?? []).filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name));
