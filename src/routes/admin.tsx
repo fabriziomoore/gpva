@@ -73,6 +73,10 @@ const SECTIONS: { id: SectionId; label: string }[] = [
 
 function AdminPage() {
   const navigate = useNavigate();
+  return <AdminPageInner navigate={navigate} />;
+}
+
+function AdminPageInner({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const { userId, loading: authLoading } = useAuthSession();
   const isAdmin = useIsAdmin(userId);
   const adminPw = "137889";
