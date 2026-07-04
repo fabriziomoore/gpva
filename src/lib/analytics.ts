@@ -100,12 +100,23 @@ export function blendedProjection(
   const paceExtrapolated = currentValue / ratio;
   // Sem histórico (equipe nova): projeção puramente pelo ritmo atual.
   if (historicalAvg <= 0) return Math.round(paceExtrapolated);
-  // Peso do ritmo atual cresce com sqrt(ratio) para não cancelar o
-  // fator 1/ratio da extrapolação. Assim, no início do período a
-  // projeção fica ancorada no histórico e no fim converge para o real.
-  const w = Math.sqrt(ratio);
-  const blended = paceExtrapolated * w + historicalAvg * (1 - w);
-  return Math.round(blended);
+  // Shrinkage Bayesiano sobre a *taxa* diária:
+  //   taxa_observada = currentValue / dias_decorridos
+  //   taxa_prior     = historicalAvg / duracao_periodo
+  //   taxa_blend     = (n_obs * taxa_obs + n_prior * taxa_prior) / (n_obs + n_prior)
+  // n_prior = 15% da duração do período (≈ 4,6 dias num mês). Assim, cada
+  // dia observado reduz proporcionalmente o peso do histórico — no início
+  // o prior segura oscilações, mas com poucos dias a mais a projeção já
+  // acompanha o ritmo real.
+  const nObs = ratio; // fração do período (unidade normalizada)
+  // Peso do prior decai para 0 no fim do período: no último dia a
+  // projeção equivale ao valor real acumulado, sem mais influência do histórico.
+  const nPrior = 0.15 * (1 - ratio);
+  if (nPrior <= 0) return Math.round(currentValue);
+  const observedRate = currentValue / nObs;
+  const priorRate = historicalAvg; // já é "total do período"
+  const blendedTotal = (nObs * observedRate + nPrior * priorRate) / (nObs + nPrior);
+  return Math.round(blendedTotal);
 }
 
 export function elapsedRatio(period: Period, ref: Date = new Date()): number {
