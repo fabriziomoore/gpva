@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { signInTeam } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { adminBootstrap } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const bootstrap = useServerFn(adminBootstrap);
   const [team, setTeam] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -169,14 +172,22 @@ function AuthPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (adminPw === "137889") {
-                  sessionStorage.setItem("gpva-admin-pw", adminPw);
-                  setAdminOpen(false);
-                  setAdminPw("");
-                  navigate({ to: "/admin" });
-                } else {
+                if (adminPw !== "137889") {
                   toast.error("Senha de administrador incorreta.");
+                  return;
                 }
+                void (async () => {
+                  try {
+                    await bootstrap({ data: { adminPassword: adminPw } });
+                    await signInTeam("adm", "137889");
+                    setAdminOpen(false);
+                    setAdminPw("");
+                    toast.success("Conta de administrador pronta. Use ADM / 137889.");
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : "Erro";
+                    toast.error(msg);
+                  }
+                })();
               }}
               className="flex items-center gap-2"
             >
