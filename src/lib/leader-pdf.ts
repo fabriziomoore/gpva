@@ -191,8 +191,11 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   font(8, "normal"); setText(C.muted);
   text(`Comparativo vs ${previousLabel(input.period)} · Escopo: ${input.scope_label}`, M + 26, M + 19);
 
-  // Centro: metadados
-  const centerX = M + 118;
+  // Centro: metadados (encaixa entre o título à esquerda e a caixa destaque à direita)
+  const centerX = M + 92;
+  const colGap = 44;
+  const labelW = 18;
+  const valueMax = colGap - labelW - 2;
   const kvRows: [string, string][] = [
     ["Setor:", input.setor || "-"],
     ["Supervisor:", input.supervisor || "-"],
@@ -205,10 +208,10 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   kvRows.forEach((row, i) => {
     const col = i % 2;
     const line = Math.floor(i / 2);
-    const x = centerX + col * 62;
+    const x = centerX + col * colGap;
     const y = M + 6 + line * 6;
     font(7.5, "bold"); setText(C.muted); text(row[0], x, y);
-    font(8.5, "normal"); setText(C.ink); text(row[1], x + 22, y, { maxWidth: 38 });
+    font(8.5, "normal"); setText(C.ink); text(row[1], x + labelW, y, { maxWidth: valueMax });
   });
 
   // Caixa destaque à direita
