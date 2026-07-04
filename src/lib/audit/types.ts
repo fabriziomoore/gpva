@@ -7,13 +7,15 @@ export type Category =
   | "performance"
   | "cliente";
 
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
+
 export type CheckResult = {
   id: string;
   category: Category;
   title: string;
   severity: Severity;
   message: string;
-  evidence?: Record<string, unknown>;
+  evidence?: { [k: string]: JsonValue };
   location?: string;
   suggestion?: string;
 };
