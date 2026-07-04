@@ -2,7 +2,19 @@
 // Fallback: se o navegador não aceitar compartilhar arquivos (ex.: desktop), baixa a imagem
 // e abre o WhatsApp Web com um texto pronto para o usuário anexar o PNG baixado.
 
-import { type NegotiationSubmission } from "./google-form";
+import { formatMoneyBR, type NegotiationSubmission } from "./google-form";
+
+function buildCaption(input: NegotiationSubmission): string {
+  const lines: string[] = ["*DESCRITIVO NEGOCIAÇÃO*"];
+  lines.push(`Matrícula: ${input.matricula}`);
+  lines.push(`Forma de pagamento: ${input.paymentMethod}`);
+  if (input.valorAVista != null) lines.push(`Valor à vista: ${formatMoneyBR(input.valorAVista)}`);
+  if (input.valorTotalParcelado != null) {
+    lines.push(`Valor total parcelado: ${formatMoneyBR(input.valorTotalParcelado)}`);
+  }
+  if (input.qtdParcelas != null) lines.push(`Qtd parcelas: ${input.qtdParcelas}`);
+  return lines.join("\n");
+}
 
 // Reproduz fielmente a tela de confirmação do Google Forms (mobile).
 // Proporção e cores tiradas do print real.
@@ -132,11 +144,16 @@ function roundRect(
 export async function shareNegotiation(input: NegotiationSubmission): Promise<boolean> {
   const blob = await buildNegotiationImage(input);
   const file = new File([blob], `negociacao-${input.matricula}.png`, { type: "image/png" });
+  const caption = buildCaption(input);
 
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare && nav.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: "Descritivo negociação" });
+      await navigator.share({
+        files: [file],
+        title: "Descritivo negociação",
+        text: caption,
+      });
       return true;
     } catch {
       return false;
@@ -151,9 +168,6 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-  const text = encodeURIComponent(
-    `Descritivo negociação — matrícula ${input.matricula}. Anexe a imagem baixada.`,
-  );
-  window.open(`https://wa.me/?text=${text}`, "_blank");
+  window.open(`https://wa.me/?text=${encodeURIComponent(caption)}`, "_blank");
   return true;
 }
