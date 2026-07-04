@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatBRL } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
+import { useFormsStatus } from "@/lib/forms-status";
 
 export const Route = createFileRoute("/_authenticated/shift")({
   head: () => ({ meta: [{ title: "Expediente" }] }),
@@ -112,20 +113,11 @@ function ShiftPage() {
             </p>
           )}
           {services.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
-            >
-              <div className="flex items-center gap-3">
-                {s.is_negotiation ? (
-                  <Banknote className="size-5 text-primary" />
-                ) : s.viable ? (
-                  <CheckCircle2 className="size-5 text-success" />
-                ) : (
-                  <XCircle className="size-5 text-destructive" />
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold">{s.service_type_name}</p>
+            <ServiceRow key={s.id} s={s} complementsByService={complementsByService} />
+          ))}
+        </div>
+
+      <div className="fixed inset-x-0 z-30 mx-auto flex max-w-md justify-between gap-2 px-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
                   <p className="truncate text-xs text-muted-foreground">
                     {s.is_negotiation ? (
                       formatBRL(Number(s.negotiated_value) || 0)
