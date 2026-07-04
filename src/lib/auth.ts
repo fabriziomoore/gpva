@@ -12,7 +12,15 @@ export function teamNameToEmail(teamName: string): string {
 
 export async function signInTeam(teamName: string, password: string) {
   const email = teamNameToEmail(teamName);
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  // Fallback: usuário pode ter sido cadastrado sem hífens (ex.: "gabrielaraujo"
+  // em vez de "gabriel-araujo"). Tenta o mesmo slug sem hífens.
+  if (error && email.includes("-")) {
+    const compact = email.replace(/-/g, "");
+    const retry = await supabase.auth.signInWithPassword({ email: compact, password });
+    data = retry.data;
+    error = retry.error;
+  }
   if (error) throw error;
   await claimCurrentSession();
   return data;
