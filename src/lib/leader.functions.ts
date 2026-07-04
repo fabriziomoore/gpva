@@ -45,11 +45,13 @@ export const leaderTeamsRanking = createServerFn({ method: "POST" })
         .map((t) => t.id),
     );
 
+    // Boundaries em horário de Brasília (UTC-3) para "dia" corresponder ao dia local.
+    const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
     const start = data.day
-      ? new Date(Date.UTC(data.year, data.month - 1, data.day)).toISOString()
+      ? new Date(Date.UTC(data.year, data.month - 1, data.day) + TZ_OFFSET_MS).toISOString()
       : new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
     const end = data.day
-      ? new Date(Date.UTC(data.year, data.month - 1, data.day + 1)).toISOString()
+      ? new Date(Date.UTC(data.year, data.month - 1, data.day + 1) + TZ_OFFSET_MS).toISOString()
       : new Date(Date.UTC(data.year, data.month, 1)).toISOString();
 
     const all: {
