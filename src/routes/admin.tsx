@@ -177,6 +177,8 @@ function AdminPage() {
             <LeadersSection adminPw={adminPw} />
           ) : section === "setores" ? (
             <SetoresSection adminPw={adminPw} />
+          ) : section === "google_form" ? (
+            <GoogleFormSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
