@@ -103,12 +103,6 @@ export function LeaderRankingSection() {
       | undefined;
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => setSelected(null)}
-          className="text-xs text-muted-foreground underline"
-        >
-          ← Voltar ao ranking
-        </button>
         <TeamHeaderReadOnly
           team={
             teamFull ?? {
