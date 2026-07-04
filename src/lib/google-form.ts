@@ -1,53 +1,69 @@
 // Envia respostas ao Google Forms "DESCRITIVO NEGOCIAÇÃO" em segundo plano.
-// Usa fetch no-cors + application/x-www-form-urlencoded (não requer preflight).
-// Campos extraídos do FB_PUBLIC_LOAD_DATA_ do formulário.
+// A configuração (form ativo + IDs de entry.*) vem do banco via server fn
+// `getGoogleFormSettings` e o admin pode trocar em Administração → Google Forms.
 
-// Troque para true para enviar ao formulário de TESTE (sua cópia pessoal).
-// Deixe em false para enviar ao formulário oficial da liderança.
-const USE_TEST_FORM = true;
+import { getGoogleFormSettings, type FormEntries } from "./google-form.functions";
 
-const FORM_ID_PROD = "1FAIpQLSeuWfzbudZ4ZLs0upHcE4mD4kI97fMVdd4GIvG1Y8FIEn5Jgw";
-// ID do Google Forms de teste (cópia que recebe as respostas de teste).
-const FORM_ID_TEST = "1FAIpQLScPmHLgySgoSmwaWod-c0S7QZyOZDDEjeqgATt-Eir_b1kCyg";
+type EntryIds = FormEntries;
 
-const FORM_ID = USE_TEST_FORM ? FORM_ID_TEST : FORM_ID_PROD;
-const ENDPOINT = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`;
+type ActiveForm = { formId: string; endpoint: string; entries: EntryIds };
 
-// Cada cópia do Google Forms gera IDs de entry.* diferentes. Mantemos um mapa por form.
-type EntryIds = {
-  data: string;
-  lider: string;
-  setor: string;
-  matricula: string;
-  pagamento: string;
-  valorAVista: string;
-  valorTotalParcelado: string;
-  qtdParcelas?: string;
-};
+const CACHE_KEY = "gpva-google-form-active";
+let cache: ActiveForm | null = null;
 
-const ENTRY_PROD: EntryIds = {
-  data: "entry.1838130926",
-  lider: "entry.529203145",
-  setor: "entry.1711428450",
-  matricula: "entry.909324107",
-  pagamento: "entry.2138182077",
-  valorAVista: "entry.1890321124",
-  valorTotalParcelado: "entry.2131072094",
-  qtdParcelas: "entry.1468389727",
-};
+function readLocalCache(): ActiveForm | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as ActiveForm) : null;
+  } catch {
+    return null;
+  }
+}
 
-const ENTRY_TEST: EntryIds = {
-  data: "entry.1623872850",
-  lider: "entry.468998940",
-  setor: "entry.1405459175",
-  matricula: "entry.673101343",
-  pagamento: "entry.831927898",
-  valorAVista: "entry.99377781",
-  valorTotalParcelado: "entry.1571776838",
-  qtdParcelas: "entry.712185748",
-};
+function writeLocalCache(v: ActiveForm): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(v));
+  } catch {
+    /* ignore */
+  }
+}
 
-const ENTRIES: EntryIds = USE_TEST_FORM ? ENTRY_TEST : ENTRY_PROD;
+async function loadActiveForm(): Promise<ActiveForm> {
+  const row = await getGoogleFormSettings();
+  if (!row) throw new Error("Configuração do Google Forms ausente.");
+  const formId = row.mode === "test" ? row.test_form_id : row.prod_form_id;
+  const entries = (row.mode === "test" ? row.test_entries : row.prod_entries) as EntryIds;
+  const active: ActiveForm = {
+    formId,
+    endpoint: `https://docs.google.com/forms/d/e/${formId}/formResponse`,
+    entries,
+  };
+  cache = active;
+  writeLocalCache(active);
+  return active;
+}
+
+async function getActiveForm(): Promise<ActiveForm> {
+  if (cache) return cache;
+  const local = readLocalCache();
+  if (local) {
+    cache = local;
+    // Atualiza em segundo plano para refletir troca feita pelo admin.
+    void loadActiveForm().catch(() => {});
+    return local;
+  }
+  return await loadActiveForm();
+}
+
+/** Força uma releitura da configuração no próximo envio. */
+export function invalidateGoogleFormCache(): void {
+  cache = null;
+  if (typeof window !== "undefined") {
+    try { window.localStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
+  }
+}
 
 export const LEADER_OPTIONS = [
   "RODRIGO OLIVEIRA","WELLINGTON COUTO","LEONARDO SANTOS","SERGIO LUIZ",
@@ -94,7 +110,7 @@ export type NegotiationSubmission = {
   qtdParcelas?: number;
 };
 
-function buildParams(input: NegotiationSubmission): URLSearchParams {
+function buildParams(input: NegotiationSubmission, ENTRIES: EntryIds): URLSearchParams {
   const params = new URLSearchParams();
   const d = input.date;
   params.set(`${ENTRIES.data}_year`, String(d.getFullYear()));
@@ -126,14 +142,15 @@ function buildParams(input: NegotiationSubmission): URLSearchParams {
  * fazendo o navegador exibir a tela "Sua resposta foi registrada".
  * Retorna true se a aba foi aberta; false se foi bloqueada por popup blocker.
  */
-export function submitNegotiationToGoogleForm(input: NegotiationSubmission): boolean {
-  const params = buildParams(input);
+export async function submitNegotiationToGoogleForm(input: NegotiationSubmission): Promise<boolean> {
+  const active = await getActiveForm();
+  const params = buildParams(input, active.entries);
   const win = window.open("about:blank", "_blank");
   if (!win) return false;
 
   const form = win.document.createElement("form");
   form.method = "POST";
-  form.action = ENDPOINT;
+  form.action = active.endpoint;
   form.acceptCharset = "UTF-8";
   for (const [k, v] of params) {
     const i = win.document.createElement("input");
@@ -153,8 +170,9 @@ export function submitNegotiationToGoogleForm(input: NegotiationSubmission): boo
  */
 export async function submitNegotiationSilent(input: NegotiationSubmission): Promise<boolean> {
   try {
-    const params = buildParams(input);
-    await fetch(ENDPOINT, {
+    const active = await getActiveForm();
+    const params = buildParams(input, active.entries);
+    await fetch(active.endpoint, {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
