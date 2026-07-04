@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -6,12 +6,11 @@ import { useTeam } from "@/hooks/use-team";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
-import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, LogOut } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useTeamPhoto, saveTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
@@ -28,7 +27,6 @@ export const Route = createFileRoute("/_authenticated/settings")({
 function SettingsPage() {
   const { userId } = useAuthSession();
   const { data: team } = useTeam(userId);
-  const navigate = useNavigate();
   const qc = useQueryClient();
 
   const [supervisor, setSupervisor] = useState("");
@@ -36,7 +34,6 @@ function SettingsPage() {
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
-  const [exitOpen, setExitOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const teamPhoto = useTeamPhoto(userId);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -101,12 +98,6 @@ function SettingsPage() {
     } finally {
       setResetting(false);
     }
-  }
-
-  async function confirmSignOut() {
-    setExitOpen(false);
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
   }
 
   useEffect(() => {
@@ -239,14 +230,6 @@ function SettingsPage() {
             </Button>
           </div>
 
-          <Button
-            variant="outline"
-            className="h-11 w-full"
-            onClick={() => setExitOpen(true)}
-          >
-            <LogOut className="mr-2 size-4" /> Sair
-          </Button>
-
           {isTestAccount && (
             <div className="space-y-2 border-t border-border pt-6">
               <p className="text-sm font-semibold text-destructive">Conta de teste</p>
@@ -265,7 +248,6 @@ function SettingsPage() {
           )}
         </section>
       </div>
-      <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
     </AppShell>
   );
 }

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Link } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
+import { supabase } from "@/integrations/supabase/client";
 
 const items = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
@@ -16,6 +17,12 @@ export function SideMenu() {
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  async function handleSignOut() {
+    setOpen(false);
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
+  }
   if (isLeader.data === true) return null;
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -59,6 +66,16 @@ export function SideMenu() {
               ))}
             </ul>
           </nav>
+          <div className="border-t border-border px-2 py-2">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="size-5" />
+              <span>Sair</span>
+            </button>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
