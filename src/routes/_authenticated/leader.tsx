@@ -606,12 +606,12 @@ function PeriodView({
         <div className="rounded-2xl border border-border bg-card p-4">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{projectionLabel(period)}</p>
           <div className="mt-2 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-orange-500 p-3 text-white">
+            <div className="rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
               <p className="text-xs text-white/80">Serviços</p>
               <p className="text-2xl font-bold text-white">{stats.projected.total}</p>
               <ProjectionDelta projected={stats.projected.total} previous={stats.previous.total} />
             </div>
-            <div className="rounded-xl bg-orange-500 p-3 text-white">
+            <div className="rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
               <p className="text-xs text-white/80">Negociado</p>
               <p className="text-2xl font-bold text-white">{formatBRL(stats.projected.negotiated_value)}</p>
               <ProjectionDelta projected={stats.projected.negotiated_value} previous={stats.previous.negotiated_value} currency />
