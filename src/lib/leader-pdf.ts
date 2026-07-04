@@ -364,7 +364,6 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
       { label: "Negoc.", w: 18, align: "right" },
       { label: "Valor negoc.", w: 30, align: "right" },
       { label: "Expedientes", w: 24, align: "right" },
-      { label: "Var. estim.", w: 20, align: "right" },
     ];
     const totalW = cols.reduce((s, c) => s + c.w, 0);
     const startX = M + Math.max(0, (CW - totalW) / 2);
@@ -398,7 +397,6 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
         String(t.current.negotiations),
         formatBRL(t.current.negotiated_value),
         String(t.current.shifts),
-        formatBRL(t.variable_estimated),
       ];
       font(7.5, "normal"); setText(C.ink);
       let bx = startX;
@@ -432,7 +430,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
       `TOTAL (${rows.length})`, "",
       String(agg.total), String(agg.viable), String(agg.unviable),
       `${pctT}%`, String(agg.negotiations), formatBRL(agg.negotiated_value),
-      String(agg.shifts), formatBRL(agg.variable),
+      String(agg.shifts),
     ];
     let tx = startX;
     totals.forEach((v, ci) => {
