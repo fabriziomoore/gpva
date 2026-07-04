@@ -184,7 +184,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
 
   // Título e período
-  font(14, "bold"); setText(C.ink);
+  font(12, "bold"); setText(C.ink);
   text("RELATÓRIO DE PRODUTIVIDADE", M + 26, M + 8);
   font(9, "normal"); setText(C.sub);
   text(`Período analisado: ${periodStr}`, M + 26, M + 14);
