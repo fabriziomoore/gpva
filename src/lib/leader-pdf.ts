@@ -197,11 +197,23 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Header (15% ~ 31mm)
   const headerBottom = M + 26;
 
-  // Logotipo box
-  setFill(C.primary); setStroke(C.primary);
-  pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
-  font(11, "bold"); setText(C.white);
-  text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
+  // Logotipo — imagem oficial GPVA (fallback para caixa colorida)
+  const logoDataUrl = await loadLogoDataUrl();
+  if (logoDataUrl) {
+    try {
+      pdf.addImage(logoDataUrl, "JPEG", M, M, 22, 22);
+    } catch {
+      setFill(C.primary); setStroke(C.primary);
+      pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
+      font(11, "bold"); setText(C.white);
+      text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
+    }
+  } else {
+    setFill(C.primary); setStroke(C.primary);
+    pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
+    font(11, "bold"); setText(C.white);
+    text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
+  }
 
   // Título e período
   font(12, "bold"); setText(C.ink);
