@@ -233,11 +233,14 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: teams, error: teamsErr } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name");
+      .select("id,team_name,is_test");
     if (teamsErr) throw new Error(teamsErr.message);
-    const HIDDEN_TEAMS = new Set(["TESTANDO"]);
-    const visibleTeams = (teams ?? []).filter((t) => !HIDDEN_TEAMS.has(t.team_name));
-    const hiddenIds = new Set((teams ?? []).filter((t) => HIDDEN_TEAMS.has(t.team_name)).map((t) => t.id));
+    const isTest = (t: { team_name: string; is_test?: boolean | null }) =>
+      t.is_test === true || t.team_name === "TESTANDO";
+    const visibleTeams = (teams ?? []).filter((t) => !isTest(t));
+    const hiddenIds = new Set(
+      (teams ?? []).filter((t) => isTest(t)).map((t) => t.id),
+    );
 
     // Compute month range [start, nextMonthStart) in UTC ISO
     const start = new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
