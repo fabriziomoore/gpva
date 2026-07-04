@@ -703,7 +703,7 @@ function PaceBar({ current, projected, period }: { current: number; projected: n
           Ritmo: <span className="font-semibold text-foreground">{current}</span> de{" "}
           <span className="font-semibold text-foreground">{projected}</span> projetados
         </span>
-        <span className={onPace ? "text-success font-semibold" : "text-destructive font-semibold"}>
+        <span className={reached ? "font-semibold text-blue-500" : "font-semibold text-destructive"}>
           {paceCount}% da projeção
         </span>
       </div>
