@@ -156,7 +156,7 @@ function AdminPage() {
         currentSection={section}
         onSelectMenu={() => { setView("menu"); setMenuOpen(false); }}
         onSelectRanking={() => { setView("ranking"); setMenuOpen(false); }}
-        onSelectSection={(id) => { setSection(id); setView("section"); setMenuOpen(false); }}
+        onSelectSection={(id: SectionId) => { setSection(id); setView("section"); setMenuOpen(false); }}
         onSignOut={() => { setMenuOpen(false); setExitOpen(true); }}
       />
 
