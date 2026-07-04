@@ -32,8 +32,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Copy,
-  Share2,
   LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -322,28 +320,6 @@ function LeaderPage() {
       }
     >
       <div className="mb-4">
-        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Setor</label>
-        <Select
-          value={setorScope}
-          onValueChange={(v) => {
-            setSetorScope(v);
-            setScope(ALL);
-          }}
-        >
-          <SelectTrigger className="h-11">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos os setores</SelectItem>
-            {setores.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.nome}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="mb-4">
         <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Equipe</label>
         <Select value={effectiveScope} onValueChange={setScope}>
           <SelectTrigger className="h-11">
@@ -627,29 +603,6 @@ function PeriodView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          className="h-11 text-sm font-semibold"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(buildText());
-              toast.success("Resumo copiado");
-            } catch {
-              toast.error("Não foi possível copiar");
-            }
-          }}
-        >
-          <Copy className="mr-2 size-4" /> Copiar resumo
-        </Button>
-        <Button
-          variant="outline"
-          className="h-11 text-sm font-semibold"
-          onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(buildText())}`, "_blank")}
-        >
-          <Share2 className="mr-2 size-4" /> WhatsApp
-        </Button>
-      </div>
-
       <div className="grid grid-cols-2 gap-2">
         <Kpi label="Total" value={fmtQty(stats.current.total)} delta={deltaPct(stats.current.total, stats.previous.total)} hint={`vs ${previousLabel(period)}: ${stats.previous.total}`} />
         <Kpi label="Viabilidade" value={`${stats.pctV}%`} delta={deltaPct(stats.pctV, stats.pctVPrev)} hint={`${stats.current.viable} viáv. / ${stats.current.unviable} inviáv.`} tone="success" />
