@@ -10,7 +10,7 @@ export function LeaderMeta() {
     year: "2-digit",
   });
   return (
-    <div className="flex flex-col items-end leading-tight">
+    <div className="flex flex-col items-start leading-tight">
       <span className="max-w-[9rem] truncate text-xs font-semibold uppercase tracking-wide text-primary">
         {name}
       </span>
