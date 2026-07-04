@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut } from "lucide-react";
@@ -7,11 +7,15 @@ import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 
-const items = [
+const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
   { to: "/productivity" as const, label: "Produtividade", icon: BarChart3, exact: false },
   { to: "/variable" as const, label: "Variável", icon: Wallet, exact: false },
   { to: "/settings" as const, label: "Configurações", icon: Settings, exact: false },
+];
+
+const leaderItems = [
+  { to: "/leader" as const, label: "Painel do Líder", icon: BarChart3, exact: true },
 ];
 
 export function SideMenu() {
@@ -26,7 +30,10 @@ export function SideMenu() {
     await supabase.auth.signOut();
     navigate({ to: "/auth" });
   }
-  if (isLeader.data === true) return null;
+  const items = useMemo(
+    () => (isLeader.data === true ? leaderItems : teamItems),
+    [isLeader.data],
+  );
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
