@@ -8,8 +8,9 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, LogOut } from "lucide-react";
+import { Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard } from "lucide-react";
 import { toast } from "sonner";
+import * as Dialog from "@radix-ui/react-dialog";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import {
   adminAddRow,
@@ -78,6 +79,7 @@ function AdminPage() {
   const [section, setSection] = useState<SectionId>("tipos_servico");
   const [view, setView] = useState<"menu" | "section" | "ranking">("menu");
   const [exitOpen, setExitOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !isAdmin.data) return;
@@ -123,7 +125,16 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="-ml-1 inline-flex size-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
+            aria-label="Abrir menu"
+          >
+            <Menu className="size-6" />
+          </button>
+          <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
+        </div>
         <button
           onClick={async () => {
             sessionStorage.removeItem("gpva-admin-pw");
@@ -137,6 +148,17 @@ function AdminPage() {
         </button>
       </header>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
+
+      <AdminSideMenu
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        currentView={view}
+        currentSection={section}
+        onSelectMenu={() => { setView("menu"); setMenuOpen(false); }}
+        onSelectRanking={() => { setView("ranking"); setMenuOpen(false); }}
+        onSelectSection={(id) => { setSection(id); setView("section"); setMenuOpen(false); }}
+        onSignOut={() => { setMenuOpen(false); setExitOpen(true); }}
+      />
 
       {view === "menu" ? (
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-10">
