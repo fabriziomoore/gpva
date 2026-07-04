@@ -297,37 +297,6 @@ export function AddServiceSheet({
             </div>
           )}
 
-          {step === "amount" && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="val">Valor negociado (R$)</Label>
-                <Input
-                  id="val"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, ""))}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  className="h-14 text-lg"
-                  autoFocus
-                />
-              </div>
-              <Button
-                disabled={saving || !amount.trim()}
-                onClick={() => {
-                  const n = Number(amount.replace(",", "."));
-                  if (!isFinite(n) || n <= 0) {
-                    toast.error("Valor inválido");
-                    return;
-                  }
-                  setStep("payment");
-                }}
-                className="h-14 w-full text-base font-semibold"
-              >
-                Continuar
-              </Button>
-            </div>
-          )}
-
           {step === "payment" && (
             <div className="space-y-4">
               <div>
@@ -343,17 +312,24 @@ export function AddServiceSheet({
                 />
               </div>
               <div>
-                <Label>Forma de pagamento</Label>
+                <Label>Forma(s) de pagamento</Label>
+                <p className="mb-1 text-xs text-muted-foreground">
+                  Toque para selecionar uma ou mais. Ao combinar à vista + parcelado, preencha os dois valores abaixo.
+                </p>
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   {PAYMENT_OPTIONS.map((p) => {
-                    const on = payment === p;
+                    const on = payments.has(p);
                     return (
                       <button
                         key={p}
                         type="button"
                         onClick={() => {
-                          setPayment(p);
-                          if (p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO") setParcelas("");
+                          setPayments((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(p)) next.delete(p);
+                            else next.add(p);
+                            return next;
+                          });
                         }}
                         className={
                           "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
@@ -368,32 +344,76 @@ export function AddServiceSheet({
                   })}
                 </div>
               </div>
-              {(payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO") && (
-                <div>
-                  <Label htmlFor="parc">Quantidade de parcelas</Label>
-                  <Input
-                    id="parc"
-                    value={parcelas}
-                    onChange={(e) => setParcelas(e.target.value.replace(/[^0-9]/g, ""))}
-                    inputMode="numeric"
-                    placeholder="Ex: 6"
-                    className="h-14 text-lg"
-                  />
-                </div>
-              )}
-              <Button
-                disabled={
-                  saving ||
-                  !registration.trim() ||
-                  !payment ||
-                  ((payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO") &&
-                    (!parcelas || Number(parcelas) < 2))
-                }
-                onClick={() => setStep("complements")}
-                className="h-14 w-full text-base font-semibold"
-              >
-                Continuar
-              </Button>
+              {(() => {
+                const hasInstallment =
+                  payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
+                const hasUpfront = Array.from(payments).some(
+                  (p) => p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO",
+                );
+                const nVista = Number(valorAVista.replace(",", "."));
+                const nParc = Number(valorParcelado.replace(",", "."));
+                const nParcelas = Number(parcelas);
+                const invalidVista = hasUpfront && (!valorAVista.trim() || !isFinite(nVista) || nVista <= 0);
+                const invalidParc = hasInstallment && (!valorParcelado.trim() || !isFinite(nParc) || nParc <= 0);
+                const invalidQtd = hasInstallment && (!parcelas || nParcelas < 2);
+                return (
+                  <>
+                    {hasUpfront && (
+                      <div>
+                        <Label htmlFor="val-vista">Valor à vista (R$)</Label>
+                        <Input
+                          id="val-vista"
+                          value={valorAVista}
+                          onChange={(e) => setValorAVista(e.target.value.replace(/[^0-9.,]/g, ""))}
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          className="h-14 text-lg"
+                        />
+                      </div>
+                    )}
+                    {hasInstallment && (
+                      <>
+                        <div>
+                          <Label htmlFor="val-parc">Valor total parcelado (R$)</Label>
+                          <Input
+                            id="val-parc"
+                            value={valorParcelado}
+                            onChange={(e) => setValorParcelado(e.target.value.replace(/[^0-9.,]/g, ""))}
+                            inputMode="decimal"
+                            placeholder="0,00"
+                            className="h-14 text-lg"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="parc">Quantidade de parcelas</Label>
+                          <Input
+                            id="parc"
+                            value={parcelas}
+                            onChange={(e) => setParcelas(e.target.value.replace(/[^0-9]/g, ""))}
+                            inputMode="numeric"
+                            placeholder="Ex: 6"
+                            className="h-14 text-lg"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <Button
+                      disabled={
+                        saving ||
+                        !registration.trim() ||
+                        payments.size === 0 ||
+                        invalidVista ||
+                        invalidParc ||
+                        invalidQtd
+                      }
+                      onClick={() => setStep("complements")}
+                      className="h-14 w-full text-base font-semibold"
+                    >
+                      Continuar
+                    </Button>
+                  </>
+                );
+              })()}
             </div>
           )}
 
