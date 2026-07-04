@@ -649,10 +649,10 @@ function PeriodView({
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-3">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Evolução (viáveis)</p>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Evolução (viáveis x inviáveis)</p>
         <div className="h-44">
           {stats.evolution.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Sem serviços viáveis no período.</div>
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Sem serviços no período.</div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats.evolution}>
@@ -660,7 +660,9 @@ function PeriodView({
                 <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={10} />
                 <YAxis stroke="var(--color-muted-foreground)" fontSize={10} allowDecimals={false} />
                 <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} />
-                <Line type="monotone" dataKey="qty" stroke="var(--color-chart-1)" strokeWidth={2} dot={{ r: 3 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="qty" name="Viáveis" stroke="var(--color-chart-1)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="unviable" name="Inviáveis" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           )}
