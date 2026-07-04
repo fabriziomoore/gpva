@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { claimCurrentSession } from "@/lib/session-guard";
 
 export function teamNameToEmail(teamName: string): string {
   const slug = teamName
@@ -13,6 +14,7 @@ export async function signInTeam(teamName: string, password: string) {
   const email = teamNameToEmail(teamName);
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  await claimCurrentSession();
   return data;
 }
 
