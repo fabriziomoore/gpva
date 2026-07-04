@@ -14,7 +14,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { startSync } from "../lib/sync/init";
 import { startSessionGuard } from "../lib/session-guard";
 import { THEME_BOOT_SCRIPT } from "../hooks/use-theme";
-import { FormsFeedbackOverlay } from "../components/FormsFeedbackOverlay";
 
 function NotFoundComponent() {
   return (
@@ -143,7 +142,6 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <FormsFeedbackOverlay />
     </QueryClientProvider>
   );
 }
