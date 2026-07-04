@@ -25,6 +25,7 @@ import {
   type PaymentOption,
 } from "@/lib/google-form";
 import { shareNegotiation } from "@/lib/share-negotiation";
+import { showFormsFeedback } from "@/components/FormsFeedbackOverlay";
 
 type Step = "type" | "viability" | "reason" | "registration" | "amount" | "payment" | "complements";
 
@@ -485,11 +486,14 @@ export function AddServiceSheet({
                         try {
                           const opened = await submitNegotiationToGoogleForm(submission);
                           if (opened) {
+                            showFormsFeedback("success");
                             toast.success("Tela do Forms abriu em nova aba — tire o print");
                           } else {
+                            showFormsFeedback("error");
                             toast.error("Permita pop-ups para ver a confirmação do Forms");
                           }
                         } catch (err) {
+                          showFormsFeedback("error");
                           toast.error(
                             `Falha ao enviar para o Forms: ${err instanceof Error ? err.message : "erro desconhecido"}`,
                           );
@@ -506,8 +510,10 @@ export function AddServiceSheet({
                         finalizeService();
                         void submitNegotiationSilent(submission).then((ok) => {
                           if (ok) {
+                            showFormsFeedback("success");
                             toast.success("Resposta enviada ao Forms");
                           } else {
+                            showFormsFeedback("error");
                             toast.error("Falha ao enviar para o Forms — verifique sua conexão");
                           }
                         });
