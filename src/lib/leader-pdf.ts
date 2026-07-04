@@ -88,9 +88,9 @@ function periodPeriodLabel(p: Period, ref: Date = new Date()): string {
 type RGB = [number, number, number];
 const C = {
   ink: [15, 23, 42] as RGB,
-  sub: [71, 85, 105] as RGB,
-  muted: [100, 116, 139] as RGB,
-  soft: [148, 163, 184] as RGB,
+  sub: [51, 65, 85] as RGB,
+  muted: [71, 85, 105] as RGB,
+  soft: [100, 116, 139] as RGB,
   border: [226, 232, 240] as RGB,
   bgAlt: [248, 250, 252] as RGB,
   bgHead: [241, 245, 249] as RGB,
