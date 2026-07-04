@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { newId } from "@/lib/db/local-db";
 import { pullRemote } from "@/lib/sync/engine";
+import { getLocalDB, type LocalShift } from "@/lib/db/local-db";
 import { clearRemembered } from "@/lib/remember-access";
 import { toast } from "sonner";
 
@@ -14,6 +15,7 @@ let started = false;
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+let shiftsChannel: ReturnType<typeof supabase.channel> | null = null;
 let currentUserId: string | null = null;
 let signingOut = false;
 
@@ -110,6 +112,23 @@ function startPerUserWatchers(userId: string): void {
     )
     .subscribe();
 
+  // Espelha em tempo real o fechamento remoto do expediente para o Dexie local,
+  // evitando duplicação quando outro dispositivo finaliza antes.
+  shiftsChannel = supabase
+    .channel(`expedientes:${userId}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "expedientes", filter: `team_id=eq.${userId}` },
+      (payload) => {
+        const row = (payload.new ?? payload.old) as
+          | { id: string; status: string; ended_at: string | null; report_text: string | null; variable_rate_snapshot: number | null; started_at: string; team_id: string }
+          | null;
+        if (!row) return;
+        void mirrorRemoteShift(row);
+      },
+    )
+    .subscribe();
+
   heartbeatTimer = setInterval(() => {
     void (async () => {
       const mine = localSessionId();
@@ -125,10 +144,51 @@ function startPerUserWatchers(userId: string): void {
   }, HEARTBEAT_MS);
 }
 
+async function mirrorRemoteShift(remote: {
+  id: string;
+  status: string;
+  ended_at: string | null;
+  report_text: string | null;
+  variable_rate_snapshot: number | null;
+  started_at: string;
+  team_id: string;
+}): Promise<void> {
+  try {
+    const db = getLocalDB();
+    const local = await db.shifts.get(remote.id);
+    // Ignora se local ainda tem escrita pendente (sync se encarrega).
+    if (local?.sync_state === "pending") return;
+    const merged: LocalShift = {
+      id: remote.id,
+      team_id: remote.team_id,
+      started_at: remote.started_at,
+      ended_at: remote.ended_at,
+      status: remote.status as "open" | "closed",
+      report_text: remote.report_text,
+      variable_rate_snapshot: remote.variable_rate_snapshot,
+      updated_at: new Date().toISOString(),
+      sync_state: "synced",
+    };
+    await db.shifts.put(merged);
+    if (remote.status === "closed" && local?.status === "open") {
+      toast.message("Expediente finalizado em outro dispositivo.");
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/shift")) {
+        window.location.replace("/");
+      }
+    }
+  } catch (err) {
+    console.warn("[session-guard] mirrorRemoteShift failed", err);
+  }
+}
+
 function stopPerUserWatchers(): void {
   if (realtimeChannel) {
     supabase.removeChannel(realtimeChannel);
     realtimeChannel = null;
+  }
+  if (shiftsChannel) {
+    supabase.removeChannel(shiftsChannel);
+    shiftsChannel = null;
   }
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
@@ -191,7 +251,21 @@ export function startSessionGuard(): void {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         checkExpiration();
-        if (currentUserId) void pullRemote();
+        if (currentUserId) {
+          void pullRemote();
+          // Ao voltar ao primeiro plano, valida imediatamente se ainda somos a
+          // sessão ativa — evita continuar operando após "takeover".
+          void (async () => {
+            const mine = localSessionId();
+            if (!mine || !currentUserId) return;
+            const { data } = await supabase
+              .from("active_sessions")
+              .select("session_id")
+              .eq("user_id", currentUserId)
+              .maybeSingle();
+            if (data && data.session_id !== mine) void forceSignOut("taken_over");
+          })();
+        }
       }
     });
   }
