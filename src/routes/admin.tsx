@@ -34,7 +34,6 @@ import {
 } from "@/lib/admin.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
-import gpvaLogo from "@/assets/gpva-logo-wide.png";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
