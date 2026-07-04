@@ -357,7 +357,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   pageTitle(pdf, "INDICADORES OPERACIONAIS", input.scope_label, periodStr);
 
   const blkY = M + 18;
-  const blkH = 88;
+  const blkH = 74;
   const blkW = (CW - 5) / 2;
   drawRankBlock(pdf, M, blkY, blkW, blkH, "Top serviços (viáveis)", input.by_type);
   drawRankBlock(pdf, M + blkW + 5, blkY, blkW, blkH, "Principais motivos de inviabilidade", input.top_reasons);
@@ -365,7 +365,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   drawRankBlock(pdf, M + blkW + 5, blkY + blkH + 4, blkW, blkH, "Impactos recorrentes", input.top_impacts);
 
   // Quadro melhor dia
-  const bestY = blkY + blkH * 2 + 10;
+  const bestY = blkY + blkH * 2 + 6;
   setFill(C.primaryDark); setStroke(C.primaryDark);
   pdf.roundedRect(M, bestY, CW, 14, 2, 2, "F");
   font(8, "bold"); setText(C.white);
