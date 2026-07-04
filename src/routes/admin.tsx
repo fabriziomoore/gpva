@@ -1236,6 +1236,8 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
 
 
 function AdminSideMenu({
+  // moved: GoogleFormSection component definition below
+  // (placeholder — see actual component definition inserted above via patch)
   open,
   onOpenChange,
   currentView,
