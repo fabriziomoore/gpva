@@ -104,11 +104,17 @@ export type NegotiationSubmission = {
   leader: string | null | undefined;
   setor: string | null | undefined;
   matricula: string;
-  paymentMethod: PaymentOption;
+  paymentMethods: PaymentOption[];
   valorAVista?: number;
   valorTotalParcelado?: number;
   qtdParcelas?: number;
 };
+
+function hasInstallmentMethod(methods: PaymentOption[]): boolean {
+  return methods.some(
+    (m) => m === "CARTÃO DE CRÉDITO" || m === "PARCELAMENTO BOLETO",
+  );
+}
 
 function buildParams(input: NegotiationSubmission, ENTRIES: EntryIds): URLSearchParams {
   const params = new URLSearchParams();
@@ -123,15 +129,13 @@ function buildParams(input: NegotiationSubmission, ENTRIES: EntryIds): URLSearch
   if (setor) params.set(ENTRIES.setor, setor);
 
   params.set(ENTRIES.matricula, input.matricula);
-  params.set(ENTRIES.pagamento, input.paymentMethod);
+  // Campo do Forms é checkbox: envia um valor por método selecionado.
+  for (const m of input.paymentMethods) params.append(ENTRIES.pagamento, m);
   // Ambos os campos de valor são obrigatórios no formulário; preencha o não usado com 0,00.
   params.set(ENTRIES.valorAVista, formatMoney(input.valorAVista ?? 0));
   params.set(ENTRIES.valorTotalParcelado, formatMoney(input.valorTotalParcelado ?? 0));
   if (ENTRIES.qtdParcelas) {
-    const allowsParcelas =
-      input.paymentMethod === "CARTÃO DE CRÉDITO" ||
-      input.paymentMethod === "PARCELAMENTO BOLETO";
-    const qtd = allowsParcelas ? input.qtdParcelas ?? 0 : 0;
+    const qtd = hasInstallmentMethod(input.paymentMethods) ? input.qtdParcelas ?? 0 : 0;
     params.set(ENTRIES.qtdParcelas, String(qtd));
   }
   return params;
