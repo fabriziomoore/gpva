@@ -8,14 +8,34 @@ export function useServerFn<T extends (...args: any[]) => any>(fn: T): T {
   return fn;
 }
 
-export function createServerFn(): never {
-  throw new Error("createServerFn is not available in the mobile build");
+// Chainable builder that mirrors createServerFn().inputValidator().handler()
+// without executing anything at module load. Errors are deferred until the
+// resulting server function is actually invoked at runtime — which should
+// never happen on mobile because those code paths are aliased to *.mobile.ts
+// equivalents. This keeps modules that define server functions importable
+// without crashing the app bundle on boot.
+export function createServerFn(_opts?: unknown): any {
+  const invoke = () => {
+    throw new Error("Server functions are not available in the mobile build");
+  };
+  const builder: any = {
+    inputValidator: () => builder,
+    middleware: () => builder,
+    handler: () => invoke,
+  };
+  return builder;
 }
 
-export function createMiddleware(): never {
-  throw new Error("createMiddleware is not available in the mobile build");
+export function createMiddleware(_opts?: unknown): any {
+  const builder: any = {
+    server: () => builder,
+    client: () => builder,
+    middleware: () => builder,
+    validator: () => builder,
+  };
+  return builder;
 }
 
-export function createStart(): never {
-  throw new Error("createStart is not available in the mobile build");
+export function createStart(_factory?: unknown): any {
+  return { startInstance: {} };
 }
