@@ -192,6 +192,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Centro: metadados
   const centerX = M + 118;
   const kvRows: [string, string][] = [
+    ["Setor:", input.setor || "-"],
     ["Supervisor:", input.supervisor || "-"],
     ["Líder:", input.leader || "-"],
     ["Escopo:", input.scope_label],
