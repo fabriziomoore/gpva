@@ -189,7 +189,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   font(9, "normal"); setText(C.sub);
   text(`Período analisado: ${periodStr}`, M + 26, M + 14);
   font(8, "normal"); setText(C.muted);
-  text(`Comparativo vs ${previousLabel(input.period)} · Escopo: ${input.scope_label}`, M + 26, M + 19);
+  text(`Comparativo vs ${previousLabel(input.period)}`, M + 26, M + 19);
 
   // Centro: metadados (encaixa entre o título à esquerda e a caixa destaque à direita)
   const centerX = M + 92;
