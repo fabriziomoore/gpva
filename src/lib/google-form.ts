@@ -50,7 +50,7 @@ export type NegotiationSubmission = {
   qtdParcelas?: number;
 };
 
-export function submitNegotiationToGoogleForm(input: NegotiationSubmission): void {
+export async function submitNegotiationToGoogleForm(input: NegotiationSubmission): Promise<boolean> {
   const params = new URLSearchParams();
   const d = input.date;
   params.set("entry.1838130926_year", String(d.getFullYear()));
@@ -68,16 +68,21 @@ export function submitNegotiationToGoogleForm(input: NegotiationSubmission): voi
   if (input.valorTotalParcelado != null) params.set("entry.2131072094", formatMoney(input.valorTotalParcelado));
   if (input.qtdParcelas != null) params.set("entry.1468389727", String(input.qtdParcelas));
 
-  // Fire-and-forget; resposta é opaca por causa do no-cors, tudo bem.
-  void fetch(ENDPOINT, {
-    method: "POST",
-    mode: "no-cors",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-    keepalive: true,
-  }).catch((err) => {
+  // Resposta é opaca por causa do no-cors, mas se o fetch resolver
+  // significa que a requisição chegou ao Google sem erro de rede.
+  try {
+    await fetch(ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+      keepalive: true,
+    });
+    return true;
+  } catch (err) {
     console.warn("[google-form] envio falhou", err);
-  });
+    return false;
+  }
 }
 
 function formatMoney(n: number): string {

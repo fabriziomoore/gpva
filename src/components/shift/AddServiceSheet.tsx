@@ -444,10 +444,10 @@ export function AddServiceSheet({
                     complementIds: Array.from(selectedComplements),
                   });
 
-                  // Envio do descritivo de negociação em segundo plano.
+                  // Envio do descritivo de negociação em segundo plano com feedback.
                   if (type?.is_negotiation && payment && negotiated != null) {
                     const parc = payment === "PARCELAMENTO BOLETO" ? Number(parcelas) : 0;
-                    submitNegotiationToGoogleForm({
+                    const p = submitNegotiationToGoogleForm({
                       date: new Date(),
                       leader: team?.leader,
                       setor: team?.setor_nome,
@@ -456,6 +456,11 @@ export function AddServiceSheet({
                       valorAVista: parc >= 2 ? undefined : negotiated,
                       valorTotalParcelado: parc >= 2 ? negotiated : undefined,
                       qtdParcelas: parc >= 2 ? parc : undefined,
+                    });
+                    toast.promise(p.then((ok) => { if (!ok) throw new Error("falha"); }), {
+                      loading: "Enviando descritivo…",
+                      success: "Descritivo enviado ao Google Forms",
+                      error: "Falha ao enviar descritivo",
                     });
                   }
                 }}
