@@ -438,7 +438,10 @@ export function AddServiceSheet({
               {!reorderMode && (
               (() => {
                 const negotiated = type?.is_negotiation ? Number(amount.replace(",", ".")) : undefined;
-                const parc = payment === "PARCELAMENTO BOLETO" ? Number(parcelas) : 0;
+                const parc =
+                  payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO"
+                    ? Number(parcelas)
+                    : 0;
                 const submission =
                   type?.is_negotiation && payment && negotiated != null
                     ? {
