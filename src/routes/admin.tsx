@@ -517,6 +517,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   const [teamName, setTeamName] = useState("");
   const [password, setPassword] = useState("");
   const [setorId, setSetorId] = useState("");
+  const [leaderName, setLeaderName] = useState("");
   const createFn = useServerFn(adminCreateTeam);
   const setoresFn = useServerFn(adminListSetores);
   const setores = useQuery({
@@ -526,12 +527,13 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
 
   const mut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, teamName, password, setorId } }),
+      createFn({ data: { adminPassword: adminPw, teamName, password, setorId, leaderName } }),
     onSuccess: () => {
       toast.success("Equipe criada");
       setTeamName("");
       setPassword("");
       setSetorId("");
+      setLeaderName("");
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -566,6 +568,16 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
         />
       </div>
       <div className="space-y-2">
+        <Label htmlFor="ld">Nome do líder</Label>
+        <Input
+          id="ld"
+          value={leaderName}
+          onChange={(e) => setLeaderName(e.target.value)}
+          placeholder="Ex: Gabriel Araújo"
+          className="h-12 text-base"
+        />
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="np">Senha (mín. 6)</Label>
         <Input
           id="np"
@@ -577,7 +589,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
       </div>
       <Button
         onClick={() => mut.mutate()}
-        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId}
+        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId || !leaderName.trim()}
         className="h-12 w-full text-base font-semibold"
       >
         {mut.isPending ? <Loader2 className="size-5 animate-spin" /> : "Criar Equipe"}
