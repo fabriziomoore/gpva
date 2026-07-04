@@ -245,7 +245,7 @@ export const runConfigAudit = createServerFn({ method: "POST" })
       if (!row) {
         results.push({ id: "cfg.form.singleton", category: "config", title: "google_form_settings singleton", severity: "error", message: "Registro singleton ausente" });
       } else {
-        const r = row as { mode: string; prod_form_id: string; test_form_id: string; prod_entries: Record<string, unknown>; test_entries: Record<string, unknown> };
+        const r = row as { mode: string; prod_form_id: string; test_form_id: string; prod_entries: Record<string, string>; test_entries: Record<string, string> };
         results.push({
           id: "cfg.form.mode", category: "config", title: "Modo do Google Forms",
           severity: r.mode === "prod" || r.mode === "test" ? "info" : "error",
