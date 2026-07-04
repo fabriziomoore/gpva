@@ -34,7 +34,8 @@ import {
   previousRange,
   inRange,
   deltaPct,
-  paceProjection,
+  blendedProjection,
+  historicalRanges,
   previousLabel,
   projectionLabel,
   elapsedRatio,
@@ -423,9 +424,17 @@ function PeriodView({
     };
     const current = { ...agg(curSvc), shifts: curShifts.length };
     const previous = agg(prevSvc);
+    // Média histórica dos últimos 3 períodos equivalentes (mês/semana/dia/ano),
+    // usada como âncora estável na projeção ponderada.
+    const histRanges = historicalRanges(period, new Date(), 3);
+    const histAggs = histRanges.map((r) => agg(services.filter((s) => inRange(s.created_at, r))));
+    const avg = (arr: number[]) =>
+      arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const histAvgTotal = avg(histAggs.map((h) => h.total));
+    const histAvgNeg = avg(histAggs.map((h) => h.negotiated_value));
     const projected = {
-      total: paceProjection(current.total, period),
-      negotiated_value: paceProjection(current.negotiated_value, period),
+      total: blendedProjection(current.total, histAvgTotal, period),
+      negotiated_value: blendedProjection(current.negotiated_value, histAvgNeg, period),
     };
     const variable = current.negotiations * meta.rate;
 

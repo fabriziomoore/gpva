@@ -62,6 +62,46 @@ export function paceProjection(
   return Math.round(currentValue / ratio);
 }
 
+// Últimos N períodos equivalentes (exclui o período atual).
+// Útil para calcular médias históricas usadas na projeção ponderada.
+export function historicalRanges(
+  period: Period,
+  ref: Date = new Date(),
+  count = 3,
+): Range[] {
+  const ranges: Range[] = [];
+  let cursor = ref;
+  for (let i = 0; i < count; i++) {
+    const cur = periodRange(period, cursor);
+    const prevRef = new Date(cur.start);
+    if (period === "day") prevRef.setDate(prevRef.getDate() - 1);
+    else if (period === "week") prevRef.setDate(prevRef.getDate() - 7);
+    else if (period === "month") prevRef.setMonth(prevRef.getMonth() - 1);
+    else prevRef.setFullYear(prevRef.getFullYear() - 1);
+    ranges.push(periodRange(period, prevRef));
+    cursor = prevRef;
+  }
+  return ranges;
+}
+
+// Projeção ponderada: mistura o ritmo atual extrapolado com a média
+// histórica dos últimos períodos equivalentes. O peso do ritmo cresce
+// conforme o período avança, e o peso do histórico diminui.
+//   - início do período  → predomina o histórico (estável)
+//   - fim do período     → predomina o ritmo atual (converge para o real)
+export function blendedProjection(
+  currentValue: number,
+  historicalAvg: number,
+  period: Period,
+  ref: Date = new Date(),
+): number {
+  const ratio = elapsedRatio(period, ref);
+  if (ratio <= 0) return Math.round(historicalAvg);
+  const paceExtrapolated = currentValue / ratio;
+  const blended = paceExtrapolated * ratio + historicalAvg * (1 - ratio);
+  return Math.round(blended);
+}
+
 export function elapsedRatio(period: Period, ref: Date = new Date()): number {
   const r = periodRange(period, ref);
   const total = r.end.getTime() - r.start.getTime();
