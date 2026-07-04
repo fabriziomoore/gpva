@@ -378,3 +378,79 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+// ============= Setores =============
+
+export type SetorRow = {
+  id: string;
+  nome: string;
+  supervisor_nome: string;
+};
+
+export const adminListSetores = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }): Promise<SetorRow[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("setores")
+      .select("id,nome,supervisor_nome")
+      .order("nome");
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as SetorRow[];
+  });
+
+export const adminCreateSetor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; nome: string; supervisorNome: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const nome = data.nome.trim();
+    if (!nome) throw new Error("Nome do setor obrigatório.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("setores")
+      .insert({ nome, supervisor_nome: data.supervisorNome.trim() });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminUpdateSetor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; setorId: string; nome?: string; supervisorNome?: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const patch: { nome?: string; supervisor_nome?: string } = {};
+    if (data.nome !== undefined) {
+      const nome = data.nome.trim();
+      if (!nome) throw new Error("Nome do setor obrigatório.");
+      patch.nome = nome;
+    }
+    if (data.supervisorNome !== undefined) patch.supervisor_nome = data.supervisorNome.trim();
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { error } = await supabaseAdmin
+      .from("setores")
+      .update(patch)
+      .eq("id", data.setorId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminDeleteSetor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; setorId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Bloqueia se ainda existirem equipes vinculadas
+    const { count, error: countErr } = await supabaseAdmin
+      .from("equipes")
+      .select("id", { count: "exact", head: true })
+      .eq("setor_id", data.setorId);
+    if (countErr) throw new Error(countErr.message);
+    if ((count ?? 0) > 0) throw new Error("Setor possui equipes vinculadas. Mova as equipes antes de excluir.");
+    const { error } = await supabaseAdmin
+      .from("setores")
+      .delete()
+      .eq("id", data.setorId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
