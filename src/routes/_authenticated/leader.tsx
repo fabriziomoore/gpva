@@ -263,15 +263,14 @@ function LeaderPage() {
   const filterByScope = <T extends { team_id?: string; shift_id?: string }>(rows: T[]): T[] => {
     const allowedTeamIds = new Set(filteredTeams.map((t) => t.id));
     if (effectiveScope === ALL) {
-      // Filter by sector if a sector is selected
-      if (setorScope === ALL) return rows;
+      // Sempre filtra pelas equipes visíveis (exclui contas de teste, etc.)
       return rows.filter((r) => {
         if (r.team_id) return allowedTeamIds.has(r.team_id);
         if (r.shift_id) {
           const s = (shifts.data ?? []).find((x) => x.id === r.shift_id);
           return s ? allowedTeamIds.has(s.team_id) : false;
         }
-        return true;
+        return false;
       });
     }
     // For rows with team_id, filter direct. For rows with only shift_id, filter via shifts scoped.
@@ -288,12 +287,9 @@ function LeaderPage() {
   const filteredSvc = filterByScope(services.data ?? []);
   const filteredShifts = (() => {
     const rows = shifts.data ?? [];
+    const allowed = new Set(filteredTeams.map((t) => t.id));
     if (effectiveScope !== ALL) return rows.filter((s) => s.team_id === effectiveScope);
-    if (setorScope !== ALL) {
-      const allowed = new Set(filteredTeams.map((t) => t.id));
-      return rows.filter((s) => allowed.has(s.team_id));
-    }
-    return rows;
+    return rows.filter((s) => allowed.has(s.team_id));
   })();
   const filteredImpacts = filterByScope(impacts.data ?? []);
   const filteredComps = filterByScope(complements.data ?? []);
