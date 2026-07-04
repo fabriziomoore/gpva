@@ -6,7 +6,8 @@ import {
   previousLabel,
   projectionLabel,
 } from "./analytics";
-import logoUrl from "@/assets/gpva-logo.png";
+import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
+const logoUrl = logoAsset.url;
 
 let _logoDataUrl: string | null = null;
 async function loadLogoDataUrl(): Promise<string | null> {
@@ -201,7 +202,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const logoDataUrl = await loadLogoDataUrl();
   if (logoDataUrl) {
     try {
-      pdf.addImage(logoDataUrl, "PNG", M, M, 22, 22);
+      pdf.addImage(logoDataUrl, "JPEG", M, M, 22, 22);
     } catch {
       setFill(C.primary); setStroke(C.primary);
       pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
@@ -259,10 +260,9 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const infos: [string, string][] = [
     ["Equipes", String(teamsCount)],
     ["Expedientes", String(input.current.shifts)],
-    ["Viabilidade", `${pctV}%`],
   ];
   infos.forEach((row, i) => {
-    const y = M + 8 + i * 7;
+    const y = M + 10 + i * 9;
     font(7.5, "normal"); setText(C.muted); text(row[0].toUpperCase(), boxX + 3, y);
     font(11, "bold"); setText(C.primaryDark); text(row[1], boxX + 52, y, { align: "right" });
   });
@@ -344,7 +344,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     { name: "Inviáveis", atual: input.current.unviable, anterior: input.previous.unviable },
     { name: "Negoc.", atual: input.current.negotiations, anterior: input.previous.negotiations },
   ];
-  drawGroupedBar(pdf, M, chY, chW, chH, "Atual × Mês anterior", compareBars);
+  drawGroupedBar(pdf, M, chY, chW, chH, "Mês anterior × Atual", compareBars);
   drawLineChart(pdf, M + chW + 5, chY, chW, chH, "Evolução — Viáveis × Inviáveis", input.evolution ?? []);
 
   // Footer p1
