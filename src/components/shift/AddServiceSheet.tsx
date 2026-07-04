@@ -354,9 +354,7 @@ export function AddServiceSheet({
                   <>
                     {showUpfront && (
                       <div>
-                        <Label htmlFor="val-vista">
-                          Valor à vista (R$){hasInstallment ? " — opcional" : ""}
-                        </Label>
+                        <Label htmlFor="val-vista">Valor à vista (R$)</Label>
                         <Input
                           id="val-vista"
                           value={valorAVista}
