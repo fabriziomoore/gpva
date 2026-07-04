@@ -12,8 +12,6 @@ function assertAdmin(pw: string) {
 
 type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
 
-const HIDDEN_TEAM_NAMES = new Set(["TESTANDO"]);
-
 export const listTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }) => {
@@ -21,10 +19,10 @@ export const listTeams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
       .order("team_name");
     if (error) throw new Error(error.message);
-    return (rows ?? []).filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name));
+    return (rows ?? []).filter((r) => !(r as { is_test?: boolean }).is_test);
   });
 
 export const adminListRows = createServerFn({ method: "POST" })

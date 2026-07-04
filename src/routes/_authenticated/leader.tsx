@@ -122,16 +122,16 @@ function LeaderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("equipes")
-        .select("id,team_name,leader,supervisor,variable_rate,setor_id,setores(nome,supervisor_nome)")
+        .select("id,team_name,leader,supervisor,variable_rate,setor_id,is_test,setores(nome,supervisor_nome)")
         .order("team_name");
       if (error) throw error;
       type Row = {
         id: string; team_name: string; leader: string; supervisor: string; variable_rate: number;
-        setor_id: string | null; setores: { nome: string; supervisor_nome: string } | null;
+        setor_id: string | null; is_test: boolean | null;
+        setores: { nome: string; supervisor_nome: string } | null;
       };
-      const HIDDEN_TEAM_NAMES = new Set(["TESTANDO"]);
       return ((data ?? []) as unknown as Row[])
-        .filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name))
+        .filter((r) => !r.is_test)
         .map<TeamRow>((r) => ({
         id: r.id,
         team_name: r.team_name,

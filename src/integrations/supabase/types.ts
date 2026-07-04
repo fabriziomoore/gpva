@@ -94,6 +94,7 @@ export type Database = {
           collaborator2: string | null
           created_at: string
           id: string
+          is_test: boolean
           leader: string
           onboarded: boolean
           photo_url: string | null
@@ -107,6 +108,7 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id: string
+          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
@@ -120,6 +122,7 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id?: string
+          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
