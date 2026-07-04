@@ -276,7 +276,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
       </div>
 
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-screen h-screen sm:h-screen sm:max-h-screen max-w-2xl overflow-y-auto rounded-none sm:rounded-none [&>button]:bg-destructive [&>button]:text-white [&>button]:opacity-100 [&>button]:rounded-md [&>button]:p-1.5 [&>button]:hover:bg-destructive/90">
           <DialogHeader>
             <DialogTitle>Relatório de Auditoria</DialogTitle>
             {viewing && (
