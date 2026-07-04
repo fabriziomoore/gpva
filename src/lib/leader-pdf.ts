@@ -201,7 +201,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const logoDataUrl = await loadLogoDataUrl();
   if (logoDataUrl) {
     try {
-      pdf.addImage(logoDataUrl, "JPEG", M, M, 22, 22);
+      pdf.addImage(logoDataUrl, "PNG", M, M, 22, 22);
     } catch {
       setFill(C.primary); setStroke(C.primary);
       pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
