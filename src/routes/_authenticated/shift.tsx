@@ -137,7 +137,7 @@ function ShiftPage() {
                         if (!first) return null;
                         return (
                           <>
-                            com <span className="italic">{first}</span>
+                            com {first}
                             {rest.length > 0 && (
                               <>
                                 {" "}
