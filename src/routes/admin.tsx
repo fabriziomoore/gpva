@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard } from "lucide-react";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
@@ -137,6 +138,7 @@ function AdminPage() {
           </button>
           <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
         </div>
+        <ThemeToggle />
       </header>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
 
