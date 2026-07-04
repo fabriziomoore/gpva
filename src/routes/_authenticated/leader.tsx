@@ -92,6 +92,7 @@ function LeaderPage() {
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const [scope, setScope] = useState<string>(ALL);
+  const [setorScope, setSetorScope] = useState<string>(ALL);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -227,26 +228,78 @@ function LeaderPage() {
     services.isLoading || shifts.isLoading || teams.isLoading || impacts.isLoading || complements.isLoading;
 
   const teamList = teams.data ?? [];
-  const scopedTeam = scope === ALL ? null : teamList.find((t) => t.id === scope) ?? null;
+  const setores = Array.from(
+    new Map(
+      teamList
+        .filter((t) => t.setor_id)
+        .map((t) => [t.setor_id!, { id: t.setor_id!, nome: t.setor_nome ?? "—", supervisor: t.setor_supervisor ?? "" }]),
+    ).values(),
+  ).sort((a, b) => a.nome.localeCompare(b.nome));
+  const filteredTeams = setorScope === ALL ? teamList : teamList.filter((t) => t.setor_id === setorScope);
+  // If the currently-selected team is not in the sector, reset to ALL teams for that sector.
+  const effectiveScope = scope === ALL || filteredTeams.some((t) => t.id === scope) ? scope : ALL;
+  const scopedTeam = effectiveScope === ALL ? null : filteredTeams.find((t) => t.id === effectiveScope) ?? null;
+  const setorObj = setorScope === ALL ? null : setores.find((s) => s.id === setorScope) ?? null;
+  const setorSupervisor =
+    scopedTeam?.setor_supervisor ||
+    setorObj?.supervisor ||
+    (setorScope === ALL && filteredTeams[0]?.setor_supervisor) ||
+    "-";
+  const setorName =
+    scopedTeam?.setor_nome ||
+    setorObj?.nome ||
+    (setorScope === ALL ? "Todos os setores" : "—");
   const scopeMeta = scopedTeam
-    ? { team_name: scopedTeam.team_name, leader: scopedTeam.leader, supervisor: scopedTeam.supervisor, rate: scopedTeam.variable_rate }
-    : { team_name: "Todas as equipes", leader: "-", supervisor: "-", rate: teamList[0]?.variable_rate ?? 7 };
+    ? {
+        team_name: scopedTeam.team_name,
+        leader: scopedTeam.leader,
+        supervisor: scopedTeam.supervisor || setorSupervisor,
+        rate: scopedTeam.variable_rate,
+        setor_nome: setorName,
+      }
+    : {
+        team_name: setorScope === ALL ? "Todas as equipes" : `Todas de ${setorName}`,
+        leader: "-",
+        supervisor: setorSupervisor,
+        rate: filteredTeams[0]?.variable_rate ?? 7,
+        setor_nome: setorName,
+      };
 
   const filterByScope = <T extends { team_id?: string; shift_id?: string }>(rows: T[]): T[] => {
-    if (scope === ALL) return rows;
+    const allowedTeamIds = new Set(filteredTeams.map((t) => t.id));
+    if (effectiveScope === ALL) {
+      // Filter by sector if a sector is selected
+      if (setorScope === ALL) return rows;
+      return rows.filter((r) => {
+        if (r.team_id) return allowedTeamIds.has(r.team_id);
+        if (r.shift_id) {
+          const s = (shifts.data ?? []).find((x) => x.id === r.shift_id);
+          return s ? allowedTeamIds.has(s.team_id) : false;
+        }
+        return true;
+      });
+    }
     // For rows with team_id, filter direct. For rows with only shift_id, filter via shifts scoped.
     return rows.filter((r) => {
-      if (r.team_id) return r.team_id === scope;
+      if (r.team_id) return r.team_id === effectiveScope;
       if (r.shift_id) {
         const s = (shifts.data ?? []).find((x) => x.id === r.shift_id);
-        return s?.team_id === scope;
+        return s?.team_id === effectiveScope;
       }
       return true;
     });
   };
 
   const filteredSvc = filterByScope(services.data ?? []);
-  const filteredShifts = scope === ALL ? shifts.data ?? [] : (shifts.data ?? []).filter((s) => s.team_id === scope);
+  const filteredShifts = (() => {
+    const rows = shifts.data ?? [];
+    if (effectiveScope !== ALL) return rows.filter((s) => s.team_id === effectiveScope);
+    if (setorScope !== ALL) {
+      const allowed = new Set(filteredTeams.map((t) => t.id));
+      return rows.filter((s) => allowed.has(s.team_id));
+    }
+    return rows;
+  })();
   const filteredImpacts = filterByScope(impacts.data ?? []);
   const filteredComps = filterByScope(complements.data ?? []);
 
@@ -269,14 +322,36 @@ function LeaderPage() {
       }
     >
       <div className="mb-4">
-        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Escopo</label>
-        <Select value={scope} onValueChange={setScope}>
+        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Setor</label>
+        <Select
+          value={setorScope}
+          onValueChange={(v) => {
+            setSetorScope(v);
+            setScope(ALL);
+          }}
+        >
           <SelectTrigger className="h-11">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>Todas as equipes ({teamList.length})</SelectItem>
-            {teamList.map((t) => (
+            <SelectItem value={ALL}>Todos os setores</SelectItem>
+            {setores.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="mb-4">
+        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Equipe</label>
+        <Select value={effectiveScope} onValueChange={setScope}>
+          <SelectTrigger className="h-11">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todas as equipes ({filteredTeams.length})</SelectItem>
+            {filteredTeams.map((t) => (
               <SelectItem key={t.id} value={t.id}>
                 {t.team_name}
               </SelectItem>
