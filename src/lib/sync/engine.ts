@@ -171,7 +171,7 @@ export async function pullRemote(): Promise<void> {
         status: r.status as "open" | "closed",
         report_text: r.report_text,
         variable_rate_snapshot: r.variable_rate_snapshot,
-        updated_at: r.updated_at ?? r.started_at,
+        updated_at: r.started_at,
         sync_state: "synced",
       }));
     if (shifts.length) await db.shifts.bulkPut(shifts);
@@ -191,7 +191,7 @@ export async function pullRemote(): Promise<void> {
         registration_number: r.registration_number,
         negotiated_value: r.negotiated_value,
         created_at: r.created_at,
-        updated_at: r.updated_at ?? r.created_at,
+        updated_at: r.created_at,
         sync_state: "synced",
       }));
     if (services.length) await db.services.bulkPut(services);
@@ -205,7 +205,7 @@ export async function pullRemote(): Promise<void> {
         service_id: r.service_id,
         complement_id: r.complement_id,
         complement_name: r.complement_name,
-        updated_at: r.updated_at ?? new Date().toISOString(),
+        updated_at: r.created_at ?? new Date().toISOString(),
         sync_state: "synced",
       }));
     if (links.length) await db.complement_links.bulkPut(links);
@@ -218,7 +218,7 @@ export async function pullRemote(): Promise<void> {
         shift_id: r.shift_id,
         impact_id: r.impact_id,
         impact_name: r.impact_name,
-        updated_at: r.updated_at ?? new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         sync_state: "synced",
       }));
     if (impacts.length) await db.shift_impacts.bulkPut(impacts);
