@@ -222,6 +222,39 @@ export async function pullRemote(): Promise<void> {
         sync_state: "synced",
       }));
     if (impacts.length) await db.shift_impacts.bulkPut(impacts);
+
+    // Reconcile deletions: rows that exist locally (as "synced") but are no
+    // longer present on the server were deleted remotely (e.g. admin removed
+    // a closed report). Remove them locally so the UI stops reflecting them.
+    // Skip rows with pending outbox writes to preserve unsynced local edits.
+    const remoteShiftIds = new Set((shiftsRes.data ?? []).map((r) => r.id));
+    const remoteServiceIds = new Set((servicesRes.data ?? []).map((r) => r.id));
+    const remoteLinkIds = new Set((linksRes.data ?? []).map((r) => r.id));
+    const remoteImpactIds = new Set((impactsRes.data ?? []).map((r) => r.id));
+
+    const localShifts = await db.shifts.where("team_id").equals(teamId).toArray();
+    const staleShiftIds = localShifts
+      .filter((r) => r.sync_state === "synced" && !remoteShiftIds.has(r.id) && !pendingIds.has(`expedientes:${r.id}`))
+      .map((r) => r.id);
+    if (staleShiftIds.length) await db.shifts.bulkDelete(staleShiftIds);
+
+    const localServices = await db.services.where("team_id").equals(teamId).toArray();
+    const staleServiceIds = localServices
+      .filter((r) => r.sync_state === "synced" && !remoteServiceIds.has(r.id) && !pendingIds.has(`servicos:${r.id}`))
+      .map((r) => r.id);
+    if (staleServiceIds.length) await db.services.bulkDelete(staleServiceIds);
+
+    const localLinks = await db.complement_links.where("team_id").equals(teamId).toArray();
+    const staleLinkIds = localLinks
+      .filter((r) => r.sync_state === "synced" && !remoteLinkIds.has(r.id) && !pendingIds.has(`vinculos_complementos:${r.id}`))
+      .map((r) => r.id);
+    if (staleLinkIds.length) await db.complement_links.bulkDelete(staleLinkIds);
+
+    const localImpacts = await db.shift_impacts.where("team_id").equals(teamId).toArray();
+    const staleImpactIds = localImpacts
+      .filter((r) => r.sync_state === "synced" && !remoteImpactIds.has(r.id) && !pendingIds.has(`impactos_expediente:${r.id}`))
+      .map((r) => r.id);
+    if (staleImpactIds.length) await db.shift_impacts.bulkDelete(staleImpactIds);
   } catch (err) {
     console.warn("[sync] pullRemote failed", err);
   }
