@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
-const ADMIN_PASSWORD = "137889";
+export const ADMIN_PASSWORD = "137889";
+export const ADMIN_LOGIN = "adm";
+export const ADMIN_EMAIL = `${ADMIN_LOGIN}@gpva.local`;
 
 function assertAdmin(pw: string) {
   if (pw !== ADMIN_PASSWORD) {
