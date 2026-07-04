@@ -134,15 +134,10 @@ function ShiftPage() {
                         const comps = complementsByService.get(s.id) ?? [];
                         const first = comps[0];
                         const rest = comps.slice(1);
+                        if (!first) return null;
                         return (
                           <>
-                            Viável
-                            {first && (
-                              <>
-                                {" c/ "}
-                                <span className="italic">{first}</span>
-                              </>
-                            )}
+                            com <span className="italic">{first}</span>
                             {rest.length > 0 && (
                               <>
                                 {" "}
