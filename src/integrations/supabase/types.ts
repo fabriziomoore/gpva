@@ -79,6 +79,7 @@ export type Database = {
           leader: string
           onboarded: boolean
           photo_url: string | null
+          setor_id: string
           supervisor: string
           team_name: string
           variable_rate: number
@@ -91,6 +92,7 @@ export type Database = {
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
+          setor_id: string
           supervisor?: string
           team_name: string
           variable_rate?: number
@@ -103,11 +105,20 @@ export type Database = {
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
+          setor_id?: string
           supervisor?: string
           team_name?: string
           variable_rate?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "equipes_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expedientes: {
         Row: {
@@ -333,6 +344,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      setores: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          supervisor_nome: string
+          supervisor_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          supervisor_nome?: string
+          supervisor_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          supervisor_nome?: string
+          supervisor_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       tipos_servico: {
         Row: {
