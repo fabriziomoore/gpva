@@ -4,8 +4,8 @@
 
 import { formatMoneyBR, type NegotiationSubmission } from "./google-form";
 
-function buildCaptionLines(input: NegotiationSubmission): string[] {
-  const lines: string[] = ["DESCRITIVO NEGOCIAÇÃO"];
+function buildCaption(input: NegotiationSubmission): string {
+  const lines: string[] = ["*DESCRITIVO NEGOCIAÇÃO*"];
   lines.push(`Matrícula: ${input.matricula}`);
   lines.push(`Forma de pagamento: ${input.paymentMethod}`);
   if (input.valorAVista != null) lines.push(`Valor à vista: ${formatMoneyBR(input.valorAVista)}`);
@@ -13,7 +13,7 @@ function buildCaptionLines(input: NegotiationSubmission): string[] {
     lines.push(`Valor total parcelado: ${formatMoneyBR(input.valorTotalParcelado)}`);
   }
   if (input.qtdParcelas != null) lines.push(`Qtd parcelas: ${input.qtdParcelas}`);
-  return lines;
+  return lines.join("\n");
 }
 
 // Reproduz fielmente a tela de confirmação do Google Forms (mobile).
