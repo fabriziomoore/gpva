@@ -26,6 +26,7 @@ import {
 } from "@/lib/google-form";
 import { shareNegotiation, buildCaption } from "@/lib/share-negotiation";
 import { setFormsStatus } from "@/lib/forms-status";
+import { tryGetGeoFix } from "@/lib/geo";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
 
@@ -123,6 +124,8 @@ export function AddServiceSheet({
       const chosen = (complements.data ?? []).filter((c) =>
         (opts.complementIds ?? []).includes(c.id),
       );
+      // Captura GPS em paralelo com o salvamento — nunca bloqueia.
+      const fix = await tryGetGeoFix();
       const created = await repoAddService({
         team_id: teamId,
         shift_id: shiftId,
@@ -135,6 +138,10 @@ export function AddServiceSheet({
         registration_number: opts.registration ?? null,
         negotiated_value: opts.negotiated ?? null,
         complements: chosen.map((c) => ({ id: c.id, name: c.name })),
+        lat: fix?.lat ?? null,
+        lng: fix?.lng ?? null,
+        accuracy_m: fix?.accuracy_m ?? null,
+        captured_at: fix?.captured_at ?? null,
       });
 
       await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
