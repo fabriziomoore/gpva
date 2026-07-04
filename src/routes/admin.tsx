@@ -33,12 +33,6 @@ import {
   adminUpdateSetor,
   adminDeleteSetor,
 } from "@/lib/admin.functions";
-import {
-  adminGetGoogleFormSettings,
-  adminSetGoogleFormMode,
-  adminUpdateGoogleForm,
-} from "@/lib/google-form.functions";
-import { invalidateGoogleFormCache } from "@/lib/google-form";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
 
@@ -56,8 +50,7 @@ type SectionId =
   | "variable"
   | "create_team"
   | "leaders"
-  | "setores"
-  | "google_form";
+  | "setores";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "setores", label: "Setores" },
@@ -68,7 +61,6 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "variable", label: "Variável" },
   { id: "create_team", label: "Criar Equipe" },
   { id: "leaders", label: "Líderes" },
-  { id: "google_form", label: "Google Forms" },
 ];
 
 function AdminPage() {
@@ -199,8 +191,6 @@ function AdminPage() {
             <LeadersSection adminPw={adminPw} />
           ) : section === "setores" ? (
             <SetoresSection adminPw={adminPw} />
-          ) : section === "google_form" ? (
-            <GoogleFormSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
