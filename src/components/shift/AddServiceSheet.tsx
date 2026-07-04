@@ -480,9 +480,9 @@ export function AddServiceSheet({
                   <div className="space-y-2">
                     <Button
                       disabled={saving}
-                      onClick={() => {
+                      onClick={async () => {
                         finalizeService();
-                        const opened = submitNegotiationToGoogleForm(submission);
+                        const opened = await submitNegotiationToGoogleForm(submission);
                         if (opened) {
                           toast.success("Tela do Forms abriu em nova aba — tire o print");
                         } else {
