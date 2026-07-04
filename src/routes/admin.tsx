@@ -134,17 +134,6 @@ function AdminPage() {
           </button>
           <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
         </div>
-        <button
-          onClick={async () => {
-            sessionStorage.removeItem("gpva-admin-pw");
-            await supabase.auth.signOut();
-            navigate({ to: "/auth" });
-          }}
-          className="rounded-md p-2 text-muted-foreground hover:text-foreground"
-          aria-label="Sair"
-        >
-          <LogOut className="size-5" />
-        </button>
       </header>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
 
