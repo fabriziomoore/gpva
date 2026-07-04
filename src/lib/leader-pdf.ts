@@ -30,6 +30,7 @@ export type LeaderPdfInput = {
   scope_label: string;
   leader: string;
   supervisor: string;
+  setor?: string;
   current: PeriodAgg;
   previous: PeriodAgg;
   projected: { total: number; negotiated_value: number };
