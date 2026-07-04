@@ -24,6 +24,10 @@ import {
   adminCreateLeader,
   adminListLeaders,
   adminDeleteLeader,
+  adminListSetores,
+  adminCreateSetor,
+  adminUpdateSetor,
+  adminDeleteSetor,
 } from "@/lib/admin.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
@@ -42,9 +46,11 @@ type SectionId =
   | "impactos"
   | "variable"
   | "create_team"
-  | "leaders";
+  | "leaders"
+  | "setores";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
+  { id: "setores", label: "Setores" },
   { id: "tipos_servico", label: "Serviços" },
   { id: "motivos_inviabilidade", label: "Motivos de Inviabilidade" },
   { id: "complementos_servico", label: "Complemento(s) do Serviço" },
@@ -181,10 +187,12 @@ function AdminPage() {
             <VariableSection adminPw={adminPw} />
           ) : section === "leaders" ? (
             <LeadersSection adminPw={adminPw} />
+          ) : section === "setores" ? (
+            <SetoresSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
-              table={section}
+              table={section as "tipos_servico" | "motivos_inviabilidade" | "complementos_servico" | "impactos"}
               label={SECTIONS.find((s) => s.id === section)!.label}
             />
           )}
@@ -310,6 +318,148 @@ function CrudSection({
   );
 }
 
+function SetoresSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListSetores);
+  const createFn = useServerFn(adminCreateSetor);
+  const updateFn = useServerFn(adminUpdateSetor);
+  const deleteFn = useServerFn(adminDeleteSetor);
+
+  const [nome, setNome] = useState("");
+  const [supervisor, setSupervisor] = useState("");
+
+  const rows = useQuery({
+    queryKey: ["admin-setores"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+  });
+
+  const createMut = useMutation({
+    mutationFn: () =>
+      createFn({ data: { adminPassword: adminPw, nome, supervisorNome: supervisor } }),
+    onSuccess: () => {
+      setNome("");
+      setSupervisor("");
+      toast.success("Setor criado");
+      qc.invalidateQueries({ queryKey: ["admin-setores"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (payload: { setorId: string; nome?: string; supervisorNome?: string }) =>
+      updateFn({ data: { adminPassword: adminPw, ...payload } }),
+    onSuccess: () => {
+      toast.success("Setor atualizado");
+      qc.invalidateQueries({ queryKey: ["admin-setores"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (setorId: string) =>
+      deleteFn({ data: { adminPassword: adminPw, setorId } }),
+    onSuccess: () => {
+      toast.success("Setor excluído");
+      qc.invalidateQueries({ queryKey: ["admin-setores"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-base font-semibold">Setores</h2>
+      <p className="text-xs text-muted-foreground">
+        Cada setor tem um supervisor responsável. As equipes são vinculadas a um setor
+        e herdam o supervisor no relatório executivo.
+      </p>
+
+      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+        <Label>Novo setor</Label>
+        <Input
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          placeholder="Nome do setor (ex.: Poda)"
+          className="h-11"
+        />
+        <Input
+          value={supervisor}
+          onChange={(e) => setSupervisor(e.target.value)}
+          placeholder="Nome do supervisor"
+          className="h-11"
+        />
+        <Button
+          onClick={() => nome.trim() && createMut.mutate()}
+          disabled={createMut.isPending || !nome.trim()}
+          className="h-11 w-full"
+        >
+          {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Adicionar setor"}
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {rows.isLoading ? (
+          <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+        ) : (
+          rows.data?.map((s) => (
+            <SetorEditRow
+              key={s.id}
+              setor={s}
+              onSave={(patch) => updateMut.mutate({ setorId: s.id, ...patch })}
+              onDelete={() => {
+                if (confirm(`Excluir setor "${s.nome}"?`)) deleteMut.mutate(s.id);
+              }}
+              saving={updateMut.isPending}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SetorEditRow({
+  setor,
+  onSave,
+  onDelete,
+  saving,
+}: {
+  setor: { id: string; nome: string; supervisor_nome: string };
+  onSave: (patch: { nome?: string; supervisorNome?: string }) => void;
+  onDelete: () => void;
+  saving: boolean;
+}) {
+  const [nome, setNome] = useState(setor.nome);
+  const [supervisor, setSupervisor] = useState(setor.supervisor_nome);
+  const dirty = nome !== setor.nome || supervisor !== setor.supervisor_nome;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
+        <Input value={supervisor} onChange={(e) => setSupervisor(e.target.value)} className="h-10" placeholder="Supervisor" />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onDelete}
+          className="h-8 text-destructive hover:text-destructive"
+        >
+          <Trash2 className="mr-1 size-3.5" /> Excluir
+        </Button>
+        <Button
+          size="sm"
+          disabled={!dirty || saving || !nome.trim()}
+          onClick={() => onSave({ nome, supervisorNome: supervisor })}
+          className="h-8"
+        >
+          {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Salvar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function VariableSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const teams = useTeamsList(adminPw);
@@ -366,15 +516,22 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const [teamName, setTeamName] = useState("");
   const [password, setPassword] = useState("");
+  const [setorId, setSetorId] = useState("");
   const createFn = useServerFn(adminCreateTeam);
+  const setoresFn = useServerFn(adminListSetores);
+  const setores = useQuery({
+    queryKey: ["admin-setores"],
+    queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
+  });
 
   const mut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, teamName, password } }),
+      createFn({ data: { adminPassword: adminPw, teamName, password, setorId } }),
     onSuccess: () => {
       toast.success("Equipe criada");
       setTeamName("");
       setPassword("");
+      setSetorId("");
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -383,6 +540,21 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-5">
       <h2 className="text-base font-semibold">Criar Equipe</h2>
+      <div className="space-y-2">
+        <Label>Setor</Label>
+        <select
+          value={setorId}
+          onChange={(e) => setSetorId(e.target.value)}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Selecione…</option>
+          {setores.data?.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nome}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="tn">Nome da equipe</Label>
         <Input
@@ -405,7 +577,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
       </div>
       <Button
         onClick={() => mut.mutate()}
-        disabled={mut.isPending || !teamName.trim() || password.length < 6}
+        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId}
         className="h-12 w-full text-base font-semibold"
       >
         {mut.isPending ? <Loader2 className="size-5 animate-spin" /> : "Criar Equipe"}

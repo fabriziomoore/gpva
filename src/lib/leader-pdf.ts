@@ -30,6 +30,7 @@ export type LeaderPdfInput = {
   scope_label: string;
   leader: string;
   supervisor: string;
+  setor?: string;
   current: PeriodAgg;
   previous: PeriodAgg;
   projected: { total: number; negotiated_value: number };
@@ -191,6 +192,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Centro: metadados
   const centerX = M + 118;
   const kvRows: [string, string][] = [
+    ["Setor:", input.setor || "-"],
     ["Supervisor:", input.supervisor || "-"],
     ["Líder:", input.leader || "-"],
     ["Escopo:", input.scope_label],

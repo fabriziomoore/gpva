@@ -19,7 +19,7 @@ export const listTeams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id")
       .order("team_name");
     if (error) throw new Error(error.message);
     return (rows ?? []).filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name));
@@ -80,7 +80,7 @@ export const adminUpdateRate = createServerFn({ method: "POST" })
   });
 
 export const adminCreateTeam = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; teamName: string; password: string }) => data)
+  .inputValidator((data: { adminPassword: string; teamName: string; password: string; setorId: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const slug = data.teamName
@@ -90,15 +90,24 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
       .replace(/^-+|-+$/g, "");
     if (!slug) throw new Error("Nome de equipe inválido.");
     if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+    if (!data.setorId) throw new Error("Selecione um setor.");
     const email = `${slug}@gpva.local`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.admin.createUser({
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: data.password,
       email_confirm: true,
       user_metadata: { team_name: data.teamName.trim() },
     });
     if (error) throw new Error(error.message);
+    // The handle_new_team trigger creates the equipes row; set its setor_id.
+    if (created.user?.id) {
+      const { error: setorErr } = await supabaseAdmin
+        .from("equipes")
+        .update({ setor_id: data.setorId })
+        .eq("id", created.user.id);
+      if (setorErr) throw new Error(setorErr.message);
+    }
     return { ok: true as const };
   });
 
@@ -110,6 +119,7 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
       teamName?: string;
       collaborator1?: string | null;
       collaborator2?: string | null;
+      setorId?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -119,6 +129,7 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
       team_name?: string;
       collaborator1?: string | null;
       collaborator2?: string | null;
+      setor_id?: string;
     } = {};
     if (data.teamName !== undefined) {
       const name = data.teamName.trim();
@@ -130,6 +141,10 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
     }
     if (data.collaborator2 !== undefined) {
       patch.collaborator2 = data.collaborator2?.trim() || null;
+    }
+    if (data.setorId !== undefined) {
+      if (!data.setorId) throw new Error("Setor obrigatório.");
+      patch.setor_id = data.setorId;
     }
     if (Object.keys(patch).length === 0) return { ok: true as const };
     const { error } = await supabaseAdmin
@@ -360,6 +375,82 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.leaderId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+// ============= Setores =============
+
+export type SetorRow = {
+  id: string;
+  nome: string;
+  supervisor_nome: string;
+};
+
+export const adminListSetores = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }): Promise<SetorRow[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("setores")
+      .select("id,nome,supervisor_nome")
+      .order("nome");
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as SetorRow[];
+  });
+
+export const adminCreateSetor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; nome: string; supervisorNome: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const nome = data.nome.trim();
+    if (!nome) throw new Error("Nome do setor obrigatório.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("setores")
+      .insert({ nome, supervisor_nome: data.supervisorNome.trim() });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminUpdateSetor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; setorId: string; nome?: string; supervisorNome?: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const patch: { nome?: string; supervisor_nome?: string } = {};
+    if (data.nome !== undefined) {
+      const nome = data.nome.trim();
+      if (!nome) throw new Error("Nome do setor obrigatório.");
+      patch.nome = nome;
+    }
+    if (data.supervisorNome !== undefined) patch.supervisor_nome = data.supervisorNome.trim();
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { error } = await supabaseAdmin
+      .from("setores")
+      .update(patch)
+      .eq("id", data.setorId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminDeleteSetor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; setorId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Bloqueia se ainda existirem equipes vinculadas
+    const { count, error: countErr } = await supabaseAdmin
+      .from("equipes")
+      .select("id", { count: "exact", head: true })
+      .eq("setor_id", data.setorId);
+    if (countErr) throw new Error(countErr.message);
+    if ((count ?? 0) > 0) throw new Error("Setor possui equipes vinculadas. Mova as equipes antes de excluir.");
+    const { error } = await supabaseAdmin
+      .from("setores")
+      .delete()
+      .eq("id", data.setorId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
