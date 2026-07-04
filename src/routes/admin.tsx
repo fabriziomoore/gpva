@@ -2,6 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthSession } from "@/hooks/use-auth";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +34,6 @@ import {
 } from "@/lib/admin.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateBR } from "@/lib/format";
-import gpvaLogo from "@/assets/gpva-logo-wide.png";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -62,14 +64,15 @@ const SECTIONS: { id: SectionId; label: string }[] = [
 
 function AdminPage() {
   const navigate = useNavigate();
-  const [adminPw, setAdminPw] = useState("");
-  const [pwInput, setPwInput] = useState("");
+  const { userId, loading: authLoading } = useAuthSession();
+  const isAdmin = useIsAdmin(userId);
+  const adminPw = "137889";
   const [section, setSection] = useState<SectionId>("tipos_servico");
   const [view, setView] = useState<"menu" | "section" | "ranking">("menu");
   const [exitOpen, setExitOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !adminPw) return;
+    if (typeof window === "undefined" || !isAdmin.data) return;
     window.history.pushState({ __gpvaAdminGuard: true }, "");
     const onPop = () => {
       if (view !== "menu") {
@@ -81,54 +84,30 @@ function AdminPage() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [adminPw, view]);
+  }, [isAdmin.data, view]);
 
-  function confirmExit() {
+  async function confirmExit() {
     setExitOpen(false);
     sessionStorage.removeItem("gpva-admin-pw");
+    await supabase.auth.signOut();
     navigate({ to: "/auth" });
   }
 
-  // Restore session from sessionStorage so reload doesn't lock out
+  // Marca a sessão de admin (compat com server fns) enquanto o papel for válido.
   useEffect(() => {
-    const stored = sessionStorage.getItem("gpva-admin-pw");
-    if (stored) setAdminPw(stored);
-  }, []);
+    if (isAdmin.data) sessionStorage.setItem("gpva-admin-pw", adminPw);
+  }, [isAdmin.data]);
 
-  if (!adminPw) {
+  // Sem sessão ou sem papel de admin → volta para o login.
+  useEffect(() => {
+    if (authLoading || isAdmin.isLoading) return;
+    if (!userId || isAdmin.data === false) navigate({ to: "/auth" });
+  }, [authLoading, isAdmin.isLoading, isAdmin.data, userId, navigate]);
+
+  if (authLoading || isAdmin.isLoading || !isAdmin.data) {
     return (
-      <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
-        <div className="mb-8 w-full max-w-sm px-4">
-          <div className="overflow-hidden rounded-2xl bg-[oklch(0.16_0.018_250)]">
-            <img src={gpvaLogo} alt="GPVA" className="block h-auto w-full" />
-          </div>
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (pwInput === "137889") {
-              sessionStorage.setItem("gpva-admin-pw", pwInput);
-              setAdminPw(pwInput);
-              setPwInput("");
-            } else {
-              toast.error("Senha de administrador incorreta.");
-            }
-          }}
-          className="w-full max-w-sm space-y-4 px-4"
-        >
-          <Label htmlFor="adm">Senha de administrador</Label>
-          <Input
-            id="adm"
-            type="password"
-            value={pwInput}
-            onChange={(e) => setPwInput(e.target.value)}
-            autoFocus
-            className="h-12 text-base"
-          />
-          <Button type="submit" className="h-12 w-full text-base font-semibold">
-            Acessar
-          </Button>
-        </form>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -138,8 +117,9 @@ function AdminPage() {
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
         <button
-          onClick={() => {
+          onClick={async () => {
             sessionStorage.removeItem("gpva-admin-pw");
+            await supabase.auth.signOut();
             navigate({ to: "/auth" });
           }}
           className="rounded-md p-2 text-muted-foreground hover:text-foreground"
