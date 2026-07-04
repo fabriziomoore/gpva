@@ -37,6 +37,7 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const teamPhoto = useTeamPhoto(userId);
+  const isTestAccountRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -68,7 +69,8 @@ function SettingsPage() {
     }
   }
 
-  const isTestAccount = team?.team_name === TEST_TEAM_NAME;
+  if (team?.team_name === TEST_TEAM_NAME) isTestAccountRef.current = true;
+  const isTestAccount = isTestAccountRef.current;
 
   async function resetTestData() {
     if (!isTestAccount || !userId) return;
