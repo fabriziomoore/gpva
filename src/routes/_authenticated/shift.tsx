@@ -126,44 +126,50 @@ function ShiftPage() {
                 )}
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{s.service_type_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {s.is_negotiation
-                      ? formatBRL(Number(s.negotiated_value) || 0)
-                      : s.viable
-                        ? "Viável"
-                        : `${s.registration_number ?? "-"} • ${s.reason_name ?? ""}`}
-                  </p>
-                  {(() => {
-                    const comps = complementsByService.get(s.id) ?? [];
-                    if (comps.length === 0) return null;
-                    const first = comps[0];
-                    const rest = comps.slice(1);
-                    return (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        <span className="italic">{first}</span>
-                        {rest.length > 0 && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {s.is_negotiation ? (
+                      formatBRL(Number(s.negotiated_value) || 0)
+                    ) : s.viable ? (
+                      (() => {
+                        const comps = complementsByService.get(s.id) ?? [];
+                        const first = comps[0];
+                        const rest = comps.slice(1);
+                        return (
                           <>
-                            {" "}
-                            <Popover>
-                              <PopoverTrigger className="text-primary underline underline-offset-2">
-                                ver mais
-                              </PopoverTrigger>
-                              <PopoverContent align="start" className="w-64">
-                                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Complementos
-                                </p>
-                                <ul className="space-y-1 text-sm">
-                                  {comps.map((c, i) => (
-                                    <li key={i}>• {c}</li>
-                                  ))}
-                                </ul>
-                              </PopoverContent>
-                            </Popover>
+                            Viável
+                            {first && (
+                              <>
+                                {" — "}
+                                <span className="italic">{first}</span>
+                              </>
+                            )}
+                            {rest.length > 0 && (
+                              <>
+                                {" "}
+                                <Popover>
+                                  <PopoverTrigger className="text-primary underline underline-offset-2">
+                                    ver mais
+                                  </PopoverTrigger>
+                                  <PopoverContent align="start" className="w-64">
+                                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                      Complementos
+                                    </p>
+                                    <ul className="space-y-1 text-sm">
+                                      {comps.map((c, i) => (
+                                        <li key={i}>• {c}</li>
+                                      ))}
+                                    </ul>
+                                  </PopoverContent>
+                                </Popover>
+                              </>
+                            )}
                           </>
-                        )}
-                      </p>
-                    );
-                  })()}
+                        );
+                      })()
+                    ) : (
+                      `${s.registration_number ?? "-"} • ${s.reason_name ?? ""}`
+                    )}
+                  </p>
                 </div>
               </div>
               <span className="text-xs font-medium tabular-nums text-muted-foreground">
