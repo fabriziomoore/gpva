@@ -14,12 +14,20 @@ import { Route as SettingsRoute } from "@/routes/_authenticated/settings";
 import { Route as VariableRoute } from "@/routes/_authenticated/variable";
 import { Route as ShiftReportRoute } from "@/routes/_authenticated/shift_.$id.report";
 import { Route as LeaderRoute } from "@/routes/_authenticated/leader";
+import { Route as LeaderConfigRoute } from "@/routes/_authenticated/leader-config";
+import { Route as AdminRoute } from "@/routes/admin";
 
 // Rebind parents. The original `createFileRoute("/path")` calls produce
 // route objects whose parent is resolved later via `_addFileChildren`.
 const auth = (AuthRoute as any).update({
   id: "/auth",
   path: "/auth",
+  getParentRoute: () => rootRoute,
+});
+
+const admin = (AdminRoute as any).update({
+  id: "/admin",
+  path: "/admin",
   getParentRoute: () => rootRoute,
 });
 
@@ -76,6 +84,12 @@ const leader = (LeaderRoute as any).update({
   getParentRoute: () => authenticated,
 });
 
+const leaderConfig = (LeaderConfigRoute as any).update({
+  id: "/leader-config",
+  path: "/leader-config",
+  getParentRoute: () => authenticated,
+});
+
 const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   IndexRoute: index,
   OnboardingRoute: onboarding,
@@ -85,9 +99,11 @@ const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   VariableRoute: variable,
   ShiftReportRoute: shiftReport,
   LeaderRoute: leader,
+  LeaderConfigRoute: leaderConfig,
 });
 
 export const routeTree = (rootRoute as any)._addFileChildren({
   AuthenticatedRoute: authenticatedWithChildren,
   AuthRoute: auth,
+  AdminRoute: admin,
 });
