@@ -111,7 +111,13 @@ function buildParams(input: NegotiationSubmission): URLSearchParams {
   // Ambos os campos de valor são obrigatórios no formulário; preencha o não usado com 0,00.
   params.set(ENTRIES.valorAVista, formatMoney(input.valorAVista ?? 0));
   params.set(ENTRIES.valorTotalParcelado, formatMoney(input.valorTotalParcelado ?? 0));
-  if (input.qtdParcelas != null && ENTRIES.qtdParcelas) params.set(ENTRIES.qtdParcelas, String(input.qtdParcelas));
+  if (ENTRIES.qtdParcelas) {
+    const allowsParcelas =
+      input.paymentMethod === "CARTÃO DE CRÉDITO" ||
+      input.paymentMethod === "PARCELAMENTO BOLETO";
+    const qtd = allowsParcelas ? input.qtdParcelas ?? 0 : 0;
+    params.set(ENTRIES.qtdParcelas, String(qtd));
+  }
   return params;
 }
 
