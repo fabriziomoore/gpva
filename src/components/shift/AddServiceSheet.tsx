@@ -222,7 +222,7 @@ export function AddServiceSheet({
               <button
                 disabled={saving}
                 onClick={() => {
-                  if (type?.is_negotiation) setStep("payment");
+                  if (type?.is_negotiation) setStep("registration");
                   else setStep("complements");
                 }}
                 className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
@@ -282,35 +282,33 @@ export function AddServiceSheet({
               </div>
               <Button
                 disabled={saving || !registration.trim()}
-                onClick={() =>
-                  saveService({
+                onClick={() => {
+                  if (type?.is_negotiation) {
+                    setStep("payment");
+                    return;
+                  }
+                  void saveService({
                     viable: false,
                     reasonId: reason?.id,
                     reasonName: reason?.name,
                     registration: registration.trim(),
-                  })
-                }
+                  });
+                }}
                 className="h-14 w-full text-base font-semibold"
               >
-                {saving ? <Loader2 className="size-5 animate-spin" /> : "Salvar"}
+                {saving ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : type?.is_negotiation ? (
+                  "Continuar"
+                ) : (
+                  "Salvar"
+                )}
               </Button>
             </div>
           )}
 
           {step === "payment" && (
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="mat-neg">Matrícula</Label>
-                <Input
-                  id="mat-neg"
-                  value={registration}
-                  onChange={(e) => setRegistration(e.target.value)}
-                  inputMode="numeric"
-                  placeholder="Ex: 103442500"
-                  className="h-14 text-lg"
-                  autoFocus
-                />
-              </div>
               <div>
                 <Label>Forma(s) de pagamento</Label>
                 <p className="mb-1 text-xs text-muted-foreground">
