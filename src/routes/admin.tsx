@@ -374,15 +374,22 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const [teamName, setTeamName] = useState("");
   const [password, setPassword] = useState("");
+  const [setorId, setSetorId] = useState("");
   const createFn = useServerFn(adminCreateTeam);
+  const setoresFn = useServerFn(adminListSetores);
+  const setores = useQuery({
+    queryKey: ["admin-setores"],
+    queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
+  });
 
   const mut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, teamName, password } }),
+      createFn({ data: { adminPassword: adminPw, teamName, password, setorId } }),
     onSuccess: () => {
       toast.success("Equipe criada");
       setTeamName("");
       setPassword("");
+      setSetorId("");
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -391,6 +398,21 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-5">
       <h2 className="text-base font-semibold">Criar Equipe</h2>
+      <div className="space-y-2">
+        <Label>Setor</Label>
+        <select
+          value={setorId}
+          onChange={(e) => setSetorId(e.target.value)}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Selecione…</option>
+          {setores.data?.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nome}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="tn">Nome da equipe</Label>
         <Input
@@ -413,7 +435,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
       </div>
       <Button
         onClick={() => mut.mutate()}
-        disabled={mut.isPending || !teamName.trim() || password.length < 6}
+        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId}
         className="h-12 w-full text-base font-semibold"
       >
         {mut.isPending ? <Loader2 className="size-5 animate-spin" /> : "Criar Equipe"}
