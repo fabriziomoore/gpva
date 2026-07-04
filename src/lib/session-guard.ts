@@ -154,6 +154,14 @@ async function claimSession(userId: string): Promise<void> {
   void pullRemote();
 }
 
+export async function claimCurrentSession(): Promise<void> {
+  if (typeof window === "undefined") return;
+  const { data, error } = await supabase.auth.getUser();
+  const userId = data.user?.id;
+  if (error || !userId) return;
+  await claimSession(userId);
+}
+
 function startPerUserWatchers(userId: string): void {
   stopPerUserWatchers();
 
@@ -280,7 +288,7 @@ export function startSessionGuard(): void {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_IN" && session?.user) {
-      // Só reivindica se for troca de usuário ou primeira vez; ignora refresh de token.
+      // Login explícito em outro dispositivo sempre deve tomar a sessão ativa.
       if (currentUserId !== session.user.id || !localSessionId()) {
         void claimSession(session.user.id);
       }
