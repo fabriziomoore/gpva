@@ -136,7 +136,10 @@ function LeaderPage() {
         id: string; team_name: string; leader: string; supervisor: string; variable_rate: number;
         setor_id: string | null; setores: { nome: string; supervisor_nome: string } | null;
       };
-      return ((data ?? []) as unknown as Row[]).map<TeamRow>((r) => ({
+      const HIDDEN_TEAM_NAMES = new Set(["TESTANDO"]);
+      return ((data ?? []) as unknown as Row[])
+        .filter((r) => !HIDDEN_TEAM_NAMES.has(r.team_name))
+        .map<TeamRow>((r) => ({
         id: r.id,
         team_name: r.team_name,
         leader: r.leader,
