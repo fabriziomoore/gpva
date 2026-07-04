@@ -1,11 +1,11 @@
-// Gera uma imagem PNG com o descritivo da negociação e compartilha via Web Share API.
-// Fallback: se o navegador não aceitar compartilhar arquivos (ex.: desktop), baixa a imagem
-// e abre o WhatsApp Web com um texto pronto para o usuário anexar o PNG baixado.
+// Gera uma imagem PNG com a confirmação do Forms e o descritivo da negociação
+// embutido na própria arte, para o WhatsApp não separar a legenda em outra mensagem.
+// Fallback: se o navegador não aceitar compartilhar arquivos (ex.: desktop), baixa a imagem.
 
 import { formatMoneyBR, type NegotiationSubmission } from "./google-form";
 
-function buildCaption(input: NegotiationSubmission): string {
-  const lines: string[] = ["*DESCRITIVO NEGOCIAÇÃO*"];
+function buildCaptionLines(input: NegotiationSubmission): string[] {
+  const lines: string[] = ["DESCRITIVO NEGOCIAÇÃO"];
   lines.push(`Matrícula: ${input.matricula}`);
   lines.push(`Forma de pagamento: ${input.paymentMethod}`);
   if (input.valorAVista != null) lines.push(`Valor à vista: ${formatMoneyBR(input.valorAVista)}`);
@@ -13,15 +13,15 @@ function buildCaption(input: NegotiationSubmission): string {
     lines.push(`Valor total parcelado: ${formatMoneyBR(input.valorTotalParcelado)}`);
   }
   if (input.qtdParcelas != null) lines.push(`Qtd parcelas: ${input.qtdParcelas}`);
-  return lines.join("\n");
+  return lines;
 }
 
 // Reproduz fielmente a tela de confirmação do Google Forms (mobile).
 // Proporção e cores tiradas do print real.
-export async function buildNegotiationImage(_input: NegotiationSubmission): Promise<Blob> {
+export async function buildNegotiationImage(input: NegotiationSubmission): Promise<Blob> {
   // Proporção próxima de 1:1 para o preview do WhatsApp não recortar as bordas.
   const W = 1080;
-  const H = 1080;
+  const H = 1350;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -35,7 +35,7 @@ export async function buildNegotiationImage(_input: NegotiationSubmission): Prom
   const CARD_X = 40;
   const CARD_Y = 60;
   const CARD_W = W - CARD_X * 2;
-  const CARD_H = 620;
+  const CARD_H = 570;
   const RADIUS = 18;
 
   // Sombra sutil
@@ -55,18 +55,18 @@ export async function buildNegotiationImage(_input: NegotiationSubmission): Prom
 
   // "NEGOCIAÇÃO"
   c.fillStyle = "#202124";
-  c.font = '400 70px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.font = '400 66px "Roboto", "Segoe UI", system-ui, sans-serif';
   c.fillText("NEGOCIAÇÃO", CARD_X + 56, CARD_Y + 150);
 
   // "Sua resposta foi registrada."
   c.fillStyle = "#202124";
-  c.font = '400 36px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.font = '400 34px "Roboto", "Segoe UI", system-ui, sans-serif';
   c.fillText("Sua resposta foi registrada.", CARD_X + 56, CARD_Y + 240);
 
   // "Enviar outra resposta" (link roxo sublinhado)
   const link = "Enviar outra resposta";
   c.fillStyle = "#5c2f9e";
-  c.font = '400 32px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.font = '400 30px "Roboto", "Segoe UI", system-ui, sans-serif';
   const linkX = CARD_X + 56;
   const linkY = CARD_Y + 360;
   c.fillText(link, linkX, linkY);
@@ -74,16 +74,16 @@ export async function buildNegotiationImage(_input: NegotiationSubmission): Prom
   c.fillRect(linkX, linkY + 6, linkW, 2);
 
   // Rodapé cinza abaixo do cartão
-  const footerY = CARD_Y + CARD_H + 70;
+  const footerY = CARD_Y + CARD_H + 58;
   c.fillStyle = "#5f6368";
-  c.font = '400 24px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.font = '400 22px "Roboto", "Segoe UI", system-ui, sans-serif';
   centerText(c, "Este conteúdo não foi criado nem aprovado pelo Google. -", W / 2, footerY);
-  centerText(c, "Termos de Serviço - Política de Privacidade", W / 2, footerY + 40);
-  centerText(c, "Este formulário parece suspeito? Denunciar", W / 2, footerY + 110);
+  centerText(c, "Termos de Serviço - Política de Privacidade", W / 2, footerY + 36);
+  centerText(c, "Este formulário parece suspeito? Denunciar", W / 2, footerY + 96);
 
   // "Google Formulários"
-  const gy = footerY + 220;
-  c.font = '400 48px "Roboto", "Segoe UI", system-ui, sans-serif';
+  const gy = footerY + 176;
+  c.font = '400 44px "Roboto", "Segoe UI", system-ui, sans-serif';
   const label1 = "Google";
   const label2 = " Formulários";
   c.fillStyle = "#5f6368";
@@ -100,6 +100,34 @@ export async function buildNegotiationImage(_input: NegotiationSubmission): Prom
   }
   c.fillStyle = "#5f6368";
   c.fillText(label2, x, gy);
+
+  // Descritivo embutido na própria imagem. Isso evita que o WhatsApp envie o texto
+  // como balão separado quando a legenda é colada manualmente.
+  const noteX = CARD_X;
+  const noteY = gy + 82;
+  const noteW = CARD_W;
+  const noteH = 250;
+  c.save();
+  c.shadowColor = "rgba(60, 64, 67, 0.14)";
+  c.shadowBlur = 5;
+  c.shadowOffsetY = 1;
+  c.fillStyle = "#ffffff";
+  roundRect(c, noteX, noteY, noteW, noteH, 18);
+  c.fill();
+  c.restore();
+
+  c.fillStyle = "#0f5132";
+  roundRect(c, noteX, noteY, noteW, 14, 18, "top");
+  c.fill();
+
+  const lines = buildCaptionLines(input);
+  c.fillStyle = "#202124";
+  c.font = '700 34px "Roboto", "Segoe UI", system-ui, sans-serif';
+  c.fillText(lines[0], noteX + 46, noteY + 68);
+  c.font = '600 30px "Roboto", "Segoe UI", system-ui, sans-serif';
+  lines.slice(1).forEach((line, index) => {
+    c.fillText(line, noteX + 46, noteY + 116 + index * 42);
+  });
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao gerar imagem"))), "image/png");
@@ -145,15 +173,6 @@ function roundRect(
 export async function shareNegotiation(input: NegotiationSubmission): Promise<boolean> {
   const blob = await buildNegotiationImage(input);
   const file = new File([blob], `negociacao-${input.matricula}.png`, { type: "image/png" });
-  const caption = buildCaption(input);
-
-  // WhatsApp não aceita legenda automaticamente via Web Share — o texto vira mensagem
-  // separada. Copiamos a legenda para o clipboard para o usuário colar na legenda da imagem.
-  try {
-    await navigator.clipboard?.writeText(caption);
-  } catch {
-    /* clipboard pode falhar sem gesto do usuário; seguimos mesmo assim */
-  }
 
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare && nav.canShare({ files: [file] })) {
@@ -165,7 +184,7 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
     }
   }
 
-  // Fallback: baixa a imagem e abre o WhatsApp Web
+  // Fallback: baixa a imagem para anexar manualmente.
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -173,6 +192,5 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-  window.open(`https://wa.me/?text=${encodeURIComponent(caption)}`, "_blank");
   return true;
 }
