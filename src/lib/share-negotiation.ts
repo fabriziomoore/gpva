@@ -8,31 +8,6 @@ function fmtDate(d: Date): string {
   return d.toLocaleDateString("pt-BR");
 }
 
-function drawWrapped(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-): number {
-  const words = text.split(" ");
-  let line = "";
-  let cy = y;
-  for (const w of words) {
-    const test = line ? line + " " + w : w;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, cy);
-      line = w;
-      cy += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  if (line) ctx.fillText(line, x, cy);
-  return cy;
-}
-
 export async function buildNegotiationImage(input: NegotiationSubmission): Promise<Blob> {
   const W = 1080;
   const canvas = document.createElement("canvas");
