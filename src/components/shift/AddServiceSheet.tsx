@@ -459,22 +459,28 @@ export function AddServiceSheet({
               )}
               {!reorderMode && (
               (() => {
-                const negotiated = type?.is_negotiation ? Number(amount.replace(",", ".")) : undefined;
-                const parc =
-                  payment === "PARCELAMENTO BOLETO" || payment === "CARTÃO DE CRÉDITO"
-                    ? Number(parcelas)
-                    : 0;
+                const hasInstallment =
+                  payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
+                const hasUpfront = Array.from(payments).some(
+                  (p) => p !== "PARCELAMENTO BOLETO" && p !== "CARTÃO DE CRÉDITO",
+                );
+                const nVista = hasUpfront ? Number(valorAVista.replace(",", ".")) : 0;
+                const nParc = hasInstallment ? Number(valorParcelado.replace(",", ".")) : 0;
+                const nParcelas = hasInstallment ? Number(parcelas) : 0;
+                const negotiated = type?.is_negotiation
+                  ? (isFinite(nVista) ? nVista : 0) + (isFinite(nParc) ? nParc : 0)
+                  : undefined;
                 const submission =
-                  type?.is_negotiation && payment && negotiated != null
+                  type?.is_negotiation && payments.size > 0 && negotiated != null && negotiated > 0
                     ? {
                         date: new Date(),
                         leader: team?.leader,
                         setor: team?.setor_nome,
                         matricula: registration.trim(),
-                        paymentMethod: payment,
-                        valorAVista: parc >= 2 ? undefined : negotiated,
-                        valorTotalParcelado: parc >= 2 ? negotiated : undefined,
-                        qtdParcelas: parc >= 2 ? parc : undefined,
+                        paymentMethods: Array.from(payments),
+                        valorAVista: hasUpfront ? nVista : undefined,
+                        valorTotalParcelado: hasInstallment ? nParc : undefined,
+                        qtdParcelas: hasInstallment ? nParcelas : undefined,
                       }
                     : null;
 
