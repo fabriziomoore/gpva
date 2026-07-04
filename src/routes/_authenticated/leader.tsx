@@ -246,7 +246,10 @@ function LeaderPage() {
   const setorName =
     scopedTeam?.setor_nome ||
     setorObj?.nome ||
-    (setorScope === ALL ? "Todos os setores" : "—");
+    (setorScope === ALL ? (filteredTeams[0]?.setor_nome ?? "—") : "—");
+  const allLeadersLabel = Array.from(
+    new Set(filteredTeams.map((t) => t.leader).filter(Boolean) as string[]),
+  ).join(", ") || "-";
   const scopeMeta = scopedTeam
     ? {
         team_name: scopedTeam.team_name,
@@ -257,7 +260,7 @@ function LeaderPage() {
       }
     : {
         team_name: setorScope === ALL ? "Todas as equipes" : `Todas de ${setorName}`,
-        leader: "-",
+        leader: allLeadersLabel,
         supervisor: setorSupervisor,
         rate: filteredTeams[0]?.variable_rate ?? 7,
         setor_nome: setorName,
