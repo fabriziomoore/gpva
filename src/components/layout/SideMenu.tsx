@@ -5,6 +5,7 @@ import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut } from "lucide-react
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
+import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 
 const items = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
@@ -17,8 +18,10 @@ export function SideMenu() {
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const [open, setOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
   const navigate = useNavigate();
-  async function handleSignOut() {
+  async function confirmSignOut() {
+    setExitOpen(false);
     setOpen(false);
     await supabase.auth.signOut();
     navigate({ to: "/auth" });
@@ -66,11 +69,11 @@ export function SideMenu() {
               ))}
             </ul>
           </nav>
-          <div className="border-t border-border px-2 py-2">
+          <div className="border-t border-border p-3">
             <button
               type="button"
-              onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setExitOpen(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-destructive px-3 py-3 text-sm font-semibold text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90"
             >
               <LogOut className="size-5" />
               <span>Sair</span>
@@ -78,6 +81,7 @@ export function SideMenu() {
           </div>
         </Dialog.Content>
       </Dialog.Portal>
+      <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
     </Dialog.Root>
   );
 }
