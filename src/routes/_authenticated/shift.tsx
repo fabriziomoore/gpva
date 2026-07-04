@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2 } from "lucide-react";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatBRL } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
@@ -40,6 +41,22 @@ function ShiftPage() {
     rows.sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
     return rows;
   }, [openShift?.id]);
+
+  const complementLinks = useLiveQuery(async () => {
+    if (!openShift?.id) return [];
+    const db = getLocalDB();
+    return db.complement_links.where("shift_id").equals(openShift.id).toArray();
+  }, [openShift?.id]);
+
+  const complementsByService = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const c of complementLinks ?? []) {
+      const arr = map.get(c.service_id) ?? [];
+      arr.push(c.complement_name);
+      map.set(c.service_id, arr);
+    }
+    return map;
+  }, [complementLinks]);
 
   const loading = openShift === undefined || services === undefined;
 
@@ -107,7 +124,7 @@ function ShiftPage() {
                 ) : (
                   <XCircle className="size-5 text-destructive" />
                 )}
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold">{s.service_type_name}</p>
                   <p className="text-xs text-muted-foreground">
                     {s.is_negotiation
@@ -116,6 +133,37 @@ function ShiftPage() {
                         ? "Viável"
                         : `${s.registration_number ?? "-"} • ${s.reason_name ?? ""}`}
                   </p>
+                  {(() => {
+                    const comps = complementsByService.get(s.id) ?? [];
+                    if (comps.length === 0) return null;
+                    const first = comps[0];
+                    const rest = comps.slice(1);
+                    return (
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        <span className="italic">{first}</span>
+                        {rest.length > 0 && (
+                          <>
+                            {" "}
+                            <Popover>
+                              <PopoverTrigger className="text-primary underline underline-offset-2">
+                                ver mais
+                              </PopoverTrigger>
+                              <PopoverContent align="start" className="w-64">
+                                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Complementos
+                                </p>
+                                <ul className="space-y-1 text-sm">
+                                  {comps.map((c, i) => (
+                                    <li key={i}>• {c}</li>
+                                  ))}
+                                </ul>
+                              </PopoverContent>
+                            </Popover>
+                          </>
+                        )}
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
               <span className="text-xs font-medium tabular-nums text-muted-foreground">
