@@ -1,5 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getLocalDB, type OutboxRow } from "@/lib/db/local-db";
+import {
+  getLocalDB,
+  type OutboxRow,
+  type LocalShift,
+  type LocalService,
+  type LocalComplementLink,
+  type LocalShiftImpact,
+} from "@/lib/db/local-db";
 import { useSyncStore } from "./store";
 
 let running = false;
@@ -121,5 +128,101 @@ async function markSynced(table: OutboxRow["table"], id: string): Promise<void> 
       if (row) await db.shift_impacts.put({ ...row, sync_state: "synced" });
       return;
     }
+  }
+}
+
+/**
+ * Pull remote rows for the current user into the local Dexie mirror so a new
+ * device can resume the open shift and see full history. Rows that still have
+ * pending outbox writes are left untouched to avoid clobbering local edits.
+ */
+export async function pullRemote(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (!useSyncStore.getState().online) return;
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes.user;
+  if (!user) return;
+  const teamId = user.id;
+  const db = getLocalDB();
+
+  const pendingIds = new Set<string>(
+    (await db.outbox.toArray()).map((r) => `${r.table}:${r.row_id}`),
+  );
+
+  try {
+    const [shiftsRes, servicesRes, linksRes, impactsRes] = await Promise.all([
+      supabase.from("expedientes").select("*").eq("team_id", teamId),
+      supabase.from("servicos").select("*").eq("team_id", teamId),
+      supabase.from("vinculos_complementos").select("*").eq("team_id", teamId),
+      supabase.from("impactos_expediente").select("*").eq("team_id", teamId),
+    ]);
+    if (shiftsRes.error) throw shiftsRes.error;
+    if (servicesRes.error) throw servicesRes.error;
+    if (linksRes.error) throw linksRes.error;
+    if (impactsRes.error) throw impactsRes.error;
+
+    const shifts: LocalShift[] = (shiftsRes.data ?? [])
+      .filter((r) => !pendingIds.has(`expedientes:${r.id}`))
+      .map((r) => ({
+        id: r.id,
+        team_id: r.team_id,
+        started_at: r.started_at,
+        ended_at: r.ended_at,
+        status: r.status as "open" | "closed",
+        report_text: r.report_text,
+        variable_rate_snapshot: r.variable_rate_snapshot,
+        updated_at: r.started_at,
+        sync_state: "synced",
+      }));
+    if (shifts.length) await db.shifts.bulkPut(shifts);
+
+    const services: LocalService[] = (servicesRes.data ?? [])
+      .filter((r) => !pendingIds.has(`servicos:${r.id}`))
+      .map((r) => ({
+        id: r.id,
+        team_id: r.team_id,
+        shift_id: r.shift_id,
+        service_type_id: r.service_type_id,
+        service_type_name: r.service_type_name,
+        viable: r.viable,
+        is_negotiation: r.is_negotiation,
+        reason_id: r.reason_id,
+        reason_name: r.reason_name,
+        registration_number: r.registration_number,
+        negotiated_value: r.negotiated_value,
+        created_at: r.created_at,
+        updated_at: r.created_at,
+        sync_state: "synced",
+      }));
+    if (services.length) await db.services.bulkPut(services);
+
+    const links: LocalComplementLink[] = (linksRes.data ?? [])
+      .filter((r) => !pendingIds.has(`vinculos_complementos:${r.id}`))
+      .map((r) => ({
+        id: r.id,
+        team_id: r.team_id,
+        shift_id: r.shift_id,
+        service_id: r.service_id,
+        complement_id: r.complement_id,
+        complement_name: r.complement_name,
+        updated_at: r.created_at ?? new Date().toISOString(),
+        sync_state: "synced",
+      }));
+    if (links.length) await db.complement_links.bulkPut(links);
+
+    const impacts: LocalShiftImpact[] = (impactsRes.data ?? [])
+      .filter((r) => !pendingIds.has(`impactos_expediente:${r.id}`))
+      .map((r) => ({
+        id: r.id,
+        team_id: r.team_id,
+        shift_id: r.shift_id,
+        impact_id: r.impact_id,
+        impact_name: r.impact_name,
+        updated_at: new Date().toISOString(),
+        sync_state: "synced",
+      }));
+    if (impacts.length) await db.shift_impacts.bulkPut(impacts);
+  } catch (err) {
+    console.warn("[sync] pullRemote failed", err);
   }
 }

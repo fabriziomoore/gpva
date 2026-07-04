@@ -1,6 +1,6 @@
 import { initNetwork, onNetworkChange, getNetworkStatus } from "./network";
 import { useSyncStore } from "./store";
-import { drainOutbox, refreshPendingCount, scheduleSync } from "./engine";
+import { drainOutbox, refreshPendingCount, scheduleSync, pullRemote } from "./engine";
 import { installSessionMirror, restoreSession } from "./session-backup";
 import { getLocalDB } from "@/lib/db/local-db";
 
@@ -56,6 +56,7 @@ async function runProbe(): Promise<void> {
       if (reachable) {
         offlineStep = 0;
         scheduleSync();
+        void pullRemote();
       } else {
         offlineStep = 0; // start backoff fresh on each fall
       }

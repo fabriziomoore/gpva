@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_sessions: {
+        Row: {
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       catalog_order: {
         Row: {
           catalog: string
