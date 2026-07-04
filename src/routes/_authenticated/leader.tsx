@@ -710,7 +710,7 @@ function PaceBar({ current, projected, period }: { current: number; projected: n
       <div className="relative h-3 overflow-hidden rounded-full bg-muted">
         <div
           className="absolute inset-y-0 left-0 bg-primary/30 transition-all"
-          style={{ width: `${elapsedPct}%` }}
+          style={{ width: `${Math.max(paceCount, elapsedPct)}%` }}
           title={`Projeção: ${elapsedPct}% do período decorrido`}
         />
         <div
