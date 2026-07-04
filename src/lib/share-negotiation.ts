@@ -4,7 +4,7 @@
 
 import { formatMoneyBR, type NegotiationSubmission } from "./google-form";
 
-function buildCaption(input: NegotiationSubmission): string {
+export function buildCaption(input: NegotiationSubmission): string {
   const lines: string[] = ["*DESCRITIVO NEGOCIAÇÃO*"];
   lines.push(`Matrícula: ${input.matricula}`);
   lines.push(
