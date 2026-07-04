@@ -143,7 +143,7 @@ export function FinishShiftSheet({
                 {reorderMode ? <Check className="size-4" /> : <ArrowUpDown className="size-4" />}
                 {reorderMode ? "Concluído" : "Reorganizar"}
               </button>
-              <SheetClose className="flex size-8 items-center justify-center rounded-lg border border-white bg-destructive text-white hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2">
+              <SheetClose className="flex size-8 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2">
                 <X className="size-4" />
                 <span className="sr-only">Fechar</span>
               </SheetClose>
