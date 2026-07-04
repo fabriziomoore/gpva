@@ -797,6 +797,11 @@ function TeamHeader({
     queryKey: ["admin-setores"],
     queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
   });
+  const leadersFn = useServerFn(adminListLeaders);
+  const leadersList = useQuery({
+    queryKey: ["admin-leaders"],
+    queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
+  });
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(team.team_name);
   const [c1, setC1] = useState(team.collaborator1 ?? "");
@@ -882,7 +887,24 @@ function TeamHeader({
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Líder</Label>
-            <Input value={leader} onChange={(e) => setLeader(e.target.value)} className="h-10" />
+            <select
+              value={leader}
+              onChange={(e) => setLeader(e.target.value)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Selecione…</option>
+              {(leadersList.data ?? []).map((l) => {
+                const label = l.display_name || l.login;
+                return (
+                  <option key={l.id} value={label}>
+                    {label}
+                  </option>
+                );
+              })}
+              {leader && !(leadersList.data ?? []).some((l) => (l.display_name || l.login) === leader) && (
+                <option value={leader}>{leader} (atual)</option>
+              )}
+            </select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Setor</Label>
