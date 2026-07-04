@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { AppShell } from "@/components/layout/AppShell";
+import { LeaderMeta } from "@/components/layout/LeaderMeta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +26,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -294,24 +294,8 @@ function LeaderPage() {
   const filteredImpacts = filterByScope(impacts.data ?? []);
   const filteredComps = filterByScope(complements.data ?? []);
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
-  }
-
   return (
-    <AppShell
-      title="Painel do Líder"
-      showBack={false}
-      right={
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          <LogOut className="size-4" /> Sair
-        </button>
-      }
-    >
+    <AppShell title="Painel do Líder" right={<LeaderMeta />}>
       <div className="mb-4">
         <label htmlFor="leader-team-scope" className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Equipe
