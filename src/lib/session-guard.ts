@@ -9,7 +9,8 @@ const LOGIN_TS_KEY = "gpva.loginAt";
 const SESSION_ID_KEY = "gpva.sessionId";
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
 const EXPIRY_CHECK_MS = 5 * 60 * 1000; // 5 min
-const HEARTBEAT_MS = 60 * 1000; // 60 s
+const HEARTBEAT_MS = 5 * 1000; // 5 s
+const ACTIVE_CHECK_THROTTLE_MS = 750;
 
 let started = false;
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
@@ -19,6 +20,8 @@ let shiftsChannel: ReturnType<typeof supabase.channel> | null = null;
 let currentUserId: string | null = null;
 let signingOut = false;
 let claimedAt = 0;
+let lastActiveCheckAt = 0;
+let activeCheckPromise: Promise<boolean> | null = null;
 const CLAIM_GRACE_MS = 10_000;
 
 function localSessionId(): string | null {
@@ -74,11 +77,64 @@ async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
       toast.error("Sua conta foi acessada em outro dispositivo.");
     }
     if (typeof window !== "undefined" && window.location.pathname !== "/auth") {
-      window.location.replace("/auth");
+      const event = new CustomEvent("gpva:force-auth", {
+        cancelable: true,
+        detail: { reason },
+      });
+      const shouldFallback = window.dispatchEvent(event);
+      if (shouldFallback) window.location.replace("/auth");
     }
   } finally {
     signingOut = false;
   }
+}
+
+export async function verifyActiveSession(opts: { force?: boolean } = {}): Promise<boolean> {
+  if (typeof window === "undefined" || signingOut) return !signingOut;
+
+  const now = Date.now();
+  if (!opts.force && activeCheckPromise && now - lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
+    return activeCheckPromise;
+  }
+  if (!opts.force && now - lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) return true;
+
+  lastActiveCheckAt = now;
+  activeCheckPromise = (async () => {
+    const mine = localSessionId();
+    let userId = currentUserId;
+    if (!userId) {
+      const { data } = await supabase.auth.getUser();
+      userId = data.user?.id ?? null;
+    }
+    if (!userId) return false;
+    if (!mine) {
+      await claimSession(userId);
+      return true;
+    }
+
+    const { data, error } = await supabase
+      .from("active_sessions")
+      .select("session_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    // Se estiver sem rede ou a leitura falhar, não bloqueia o modo offline.
+    if (error || !data) return true;
+    if (data.session_id === mine) return true;
+    if (Date.now() - claimedAt < CLAIM_GRACE_MS) return true;
+
+    await forceSignOut("taken_over");
+    return false;
+  })().finally(() => {
+    activeCheckPromise = null;
+  });
+
+  return activeCheckPromise;
+}
+
+export async function assertActiveSession(): Promise<void> {
+  const ok = await verifyActiveSession({ force: true });
+  if (!ok) throw new Error("Sua conta foi acessada em outro dispositivo. Faça login novamente.");
 }
 
 async function claimSession(userId: string): Promise<void> {
@@ -136,19 +192,7 @@ function startPerUserWatchers(userId: string): void {
     .subscribe();
 
   heartbeatTimer = setInterval(() => {
-    void (async () => {
-      const mine = localSessionId();
-      if (!mine) return;
-      const { data, error } = await supabase
-        .from("active_sessions")
-        .select("session_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (error || !data) return;
-      if (data.session_id === mine) return;
-      if (Date.now() - claimedAt < CLAIM_GRACE_MS) return;
-      void forceSignOut("taken_over");
-    })();
+    void verifyActiveSession({ force: true });
   }, HEARTBEAT_MS);
 }
 
@@ -256,6 +300,13 @@ export function startSessionGuard(): void {
   expiryTimer = setInterval(checkExpiration, EXPIRY_CHECK_MS);
 
   if (typeof document !== "undefined") {
+    const probeOnInteraction = () => {
+      void verifyActiveSession();
+    };
+    document.addEventListener("pointerdown", probeOnInteraction, { capture: true, passive: true });
+    document.addEventListener("touchstart", probeOnInteraction, { capture: true, passive: true });
+    document.addEventListener("keydown", probeOnInteraction, { capture: true });
+
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         checkExpiration();
@@ -263,18 +314,7 @@ export function startSessionGuard(): void {
           void pullRemote();
           // Ao voltar ao primeiro plano, valida imediatamente se ainda somos a
           // sessão ativa — evita continuar operando após "takeover".
-          void (async () => {
-            const mine = localSessionId();
-            if (!mine || !currentUserId) return;
-            const { data } = await supabase
-              .from("active_sessions")
-              .select("session_id")
-              .eq("user_id", currentUserId)
-              .maybeSingle();
-            if (!data || data.session_id === mine) return;
-            if (Date.now() - claimedAt < CLAIM_GRACE_MS) return;
-            void forceSignOut("taken_over");
-          })();
+          void verifyActiveSession({ force: true });
         }
       }
     });

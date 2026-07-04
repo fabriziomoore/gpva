@@ -2,6 +2,7 @@ import { getLocalDB, newId, type LocalService, type LocalShift } from "./local-d
 import { scheduleSync, refreshPendingCount } from "@/lib/sync/engine";
 import { cacheTeam, getCachedTeam, type CatTeam } from "@/lib/db/catalogs";
 import type { CatalogKind } from "@/lib/db/catalogs";
+import { assertActiveSession } from "@/lib/session-guard";
 
 const nowIso = () => new Date().toISOString();
 
@@ -10,6 +11,7 @@ export async function repoSaveCatalogOrder(input: {
   catalog: CatalogKind;
   item_ids: string[];
 }): Promise<void> {
+  await assertActiveSession();
   const db = getLocalDB();
   const key = `catord:${input.team_id}:${input.catalog}`;
   await db.kv.put({ key, value: input.item_ids });
@@ -42,6 +44,7 @@ export async function repoUpdateTeam(
   teamId: string,
   patch: Partial<Pick<CatTeam, "supervisor" | "leader" | "variable_rate" | "onboarded" | "photo_url" | "collaborator1" | "collaborator2" | "team_name">>,
 ): Promise<CatTeam | null> {
+  await assertActiveSession();
   const db = getLocalDB();
   const current = await getCachedTeam(teamId);
   const merged = current ? { ...current, ...patch } : null;
@@ -63,6 +66,7 @@ export async function repoCreateShift(input: {
   team_id: string;
   variable_rate_snapshot?: number | null;
 }): Promise<LocalShift> {
+  await assertActiveSession();
   const db = getLocalDB();
   const row: LocalShift = {
     id: newId(),
@@ -94,6 +98,7 @@ export async function repoCloseShift(opts: {
   report_text: string;
   impacts: { id: string | null; name: string; team_id: string; shift_id: string }[];
 }): Promise<void> {
+  await assertActiveSession();
   const db = getLocalDB();
   const shift = await db.shifts.get(opts.shift_id);
   if (!shift) throw new Error("Shift not found locally");
@@ -158,6 +163,7 @@ export async function repoAddService(input: {
   negotiated_value?: number | null;
   complements?: { id: string | null; name: string }[];
 }): Promise<LocalService> {
+  await assertActiveSession();
   const db = getLocalDB();
   const row: LocalService = {
     id: newId(),

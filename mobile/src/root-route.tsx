@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import { Outlet, createRootRouteWithContext, useRouter } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { startSync } from "@/lib/sync/init";
 import { startSessionGuard } from "@/lib/session-guard";
@@ -36,11 +36,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootComponent(): ReactNode {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
 
   useEffect(() => {
     void startSync();
     startSessionGuard();
-  }, []);
+    const onForceAuth = (event: Event) => {
+      event.preventDefault();
+      void router.navigate({ to: "/auth", replace: true });
+    };
+    window.addEventListener("gpva:force-auth", onForceAuth);
+    return () => window.removeEventListener("gpva:force-auth", onForceAuth);
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>
