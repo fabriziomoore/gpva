@@ -401,7 +401,13 @@ function fmtQty(q: number) {
   return q.toLocaleString("pt-BR");
 }
 
-type ScopeMeta = { team_name: string; leader: string; supervisor: string; rate: number };
+type ScopeMeta = {
+  team_name: string;
+  leader: string;
+  supervisor: string;
+  rate: number;
+  setor_nome?: string;
+};
 
 function PeriodView({
   period,
