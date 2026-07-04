@@ -104,7 +104,7 @@ function VariablePage() {
       ) : (
         <div className="space-y-4">
           <p className="text-center text-xs text-muted-foreground">
-            Valor estimado. Não reflete o total real
+            Valor estimado. Não reflete o total real.
           </p>
 
           <div className="grid grid-cols-2 gap-2">
@@ -139,7 +139,7 @@ function VariablePage() {
                       border: "1px solid var(--color-border)",
                       borderRadius: 8,
                     }}
-                    formatter={(v: number) => formatBRL(v)}
+                    formatter={(v: number) => [formatBRL(v), "Valor"]}
                   />
                   <Line type="monotone" dataKey="value" stroke="var(--color-chart-1)" strokeWidth={2} />
                 </LineChart>
