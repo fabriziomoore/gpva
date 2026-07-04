@@ -187,6 +187,8 @@ function AdminPage() {
             <VariableSection adminPw={adminPw} />
           ) : section === "leaders" ? (
             <LeadersSection adminPw={adminPw} />
+          ) : section === "setores" ? (
+            <SetoresSection adminPw={adminPw} />
           ) : (
             <CrudSection
               adminPw={adminPw}
