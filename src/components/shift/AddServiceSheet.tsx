@@ -17,8 +17,14 @@ import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X } from "lucide-re
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReorderableGrid } from "./ReorderableGrid";
+import { useTeam } from "@/hooks/use-team";
+import {
+  submitNegotiationToGoogleForm,
+  PAYMENT_OPTIONS,
+  type PaymentOption,
+} from "@/lib/google-form";
 
-type Step = "type" | "viability" | "reason" | "registration" | "amount" | "complements";
+type Step = "type" | "viability" | "reason" | "registration" | "amount" | "payment" | "complements";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 type Reason = { id: string; name: string };
@@ -43,6 +49,9 @@ export function AddServiceSheet({
   const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
+  const [payment, setPayment] = useState<PaymentOption | null>(null);
+  const [parcelas, setParcelas] = useState("");
+  const team = useTeam(teamId).data;
 
   useEffect(() => {
     if (open) {
@@ -53,6 +62,8 @@ export function AddServiceSheet({
       setAmount("");
       setSelectedComplements(new Set());
       setReorderMode(false);
+      setPayment(null);
+      setParcelas("");
       void fetchAndCacheCatalogOrder(teamId);
     }
   }, [open, teamId]);
@@ -147,6 +158,7 @@ export function AddServiceSheet({
               {step === "reason" && "Motivo da inviabilidade"}
               {step === "registration" && "Matrícula"}
               {step === "amount" && "Valor negociado"}
+              {step === "payment" && "Forma de pagamento"}
               {step === "complements" && "Complemento(s) do Serviço"}
             </SheetTitle>
             <div className="flex items-center gap-2">
@@ -303,8 +315,76 @@ export function AddServiceSheet({
                     toast.error("Valor inválido");
                     return;
                   }
-                  setStep("complements");
+                  setStep("payment");
                 }}
+                className="h-14 w-full text-base font-semibold"
+              >
+                Continuar
+              </Button>
+            </div>
+          )}
+
+          {step === "payment" && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="mat-neg">Matrícula</Label>
+                <Input
+                  id="mat-neg"
+                  value={registration}
+                  onChange={(e) => setRegistration(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="Ex: 103442500"
+                  className="h-14 text-lg"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label>Forma de pagamento</Label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  {PAYMENT_OPTIONS.map((p) => {
+                    const on = payment === p;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          setPayment(p);
+                          if (p !== "PARCELAMENTO BOLETO") setParcelas("");
+                        }}
+                        className={
+                          "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
+                          (on
+                            ? "border-primary bg-primary/15 text-primary"
+                            : "border-border bg-card text-foreground hover:border-primary/50")
+                        }
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {payment === "PARCELAMENTO BOLETO" && (
+                <div>
+                  <Label htmlFor="parc">Quantidade de parcelas</Label>
+                  <Input
+                    id="parc"
+                    value={parcelas}
+                    onChange={(e) => setParcelas(e.target.value.replace(/[^0-9]/g, ""))}
+                    inputMode="numeric"
+                    placeholder="Ex: 6"
+                    className="h-14 text-lg"
+                  />
+                </div>
+              )}
+              <Button
+                disabled={
+                  saving ||
+                  !registration.trim() ||
+                  !payment ||
+                  (payment === "PARCELAMENTO BOLETO" && (!parcelas || Number(parcelas) < 2))
+                }
+                onClick={() => setStep("complements")}
                 className="h-14 w-full text-base font-semibold"
               >
                 Continuar
@@ -360,8 +440,24 @@ export function AddServiceSheet({
                   saveService({
                     viable: true,
                     negotiated,
+                    registration: type?.is_negotiation ? registration.trim() : undefined,
                     complementIds: Array.from(selectedComplements),
                   });
+
+                  // Envio do descritivo de negociação em segundo plano.
+                  if (type?.is_negotiation && payment && negotiated != null) {
+                    const parc = payment === "PARCELAMENTO BOLETO" ? Number(parcelas) : 0;
+                    submitNegotiationToGoogleForm({
+                      date: new Date(),
+                      leader: team?.leader,
+                      setor: team?.setor_nome,
+                      matricula: registration.trim(),
+                      paymentMethod: payment,
+                      valorAVista: parc >= 2 ? undefined : negotiated,
+                      valorTotalParcelado: parc >= 2 ? negotiated : undefined,
+                      qtdParcelas: parc >= 2 ? parc : undefined,
+                    });
+                  }
                 }}
                 className="h-14 w-full text-base font-semibold"
               >
