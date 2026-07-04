@@ -13,6 +13,42 @@ const FORM_ID_TEST = "1FAIpQLScPmHLgySgoSmwaWod-c0S7QZyOZDDEjeqgATt-Eir_b1kCyg";
 const FORM_ID = USE_TEST_FORM ? FORM_ID_TEST : FORM_ID_PROD;
 const ENDPOINT = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`;
 
+// Cada cópia do Google Forms gera IDs de entry.* diferentes. Mantemos um mapa por form.
+type EntryIds = {
+  data: string;
+  lider: string;
+  setor: string;
+  matricula: string;
+  pagamento: string;
+  valorAVista: string;
+  valorTotalParcelado: string;
+  qtdParcelas?: string;
+};
+
+const ENTRY_PROD: EntryIds = {
+  data: "entry.1838130926",
+  lider: "entry.529203145",
+  setor: "entry.1711428450",
+  matricula: "entry.909324107",
+  pagamento: "entry.2138182077",
+  valorAVista: "entry.1890321124",
+  valorTotalParcelado: "entry.2131072094",
+  qtdParcelas: "entry.1468389727",
+};
+
+const ENTRY_TEST: EntryIds = {
+  data: "entry.1623872850",
+  lider: "entry.468998940",
+  setor: "entry.1405459175",
+  matricula: "entry.673101343",
+  pagamento: "entry.831927898",
+  valorAVista: "entry.99377781",
+  valorTotalParcelado: "entry.1571776838",
+  // Formulário de teste não possui campo de quantidade de parcelas.
+};
+
+const ENTRIES: EntryIds = USE_TEST_FORM ? ENTRY_TEST : ENTRY_PROD;
+
 export const LEADER_OPTIONS = [
   "RODRIGO OLIVEIRA","WELLINGTON COUTO","LEONARDO SANTOS","SERGIO LUIZ",
   "GABRIEL ARAÚJO","JEFFERSON GOES","DANIEL CUSTÓDIA","DIEGO BARROZO",
@@ -61,20 +97,20 @@ export type NegotiationSubmission = {
 function buildParams(input: NegotiationSubmission): URLSearchParams {
   const params = new URLSearchParams();
   const d = input.date;
-  params.set("entry.1838130926_year", String(d.getFullYear()));
-  params.set("entry.1838130926_month", String(d.getMonth() + 1));
-  params.set("entry.1838130926_day", String(d.getDate()));
+  params.set(`${ENTRIES.data}_year`, String(d.getFullYear()));
+  params.set(`${ENTRIES.data}_month`, String(d.getMonth() + 1));
+  params.set(`${ENTRIES.data}_day`, String(d.getDate()));
 
   const leader = normalizeLeader(input.leader);
-  if (leader) params.set("entry.529203145", leader);
+  if (leader) params.set(ENTRIES.lider, leader);
   const setor = normalizeSetor(input.setor);
-  if (setor) params.set("entry.1711428450", setor);
+  if (setor) params.set(ENTRIES.setor, setor);
 
-  params.set("entry.909324107", input.matricula);
-  params.set("entry.2138182077", input.paymentMethod);
-  if (input.valorAVista != null) params.set("entry.1890321124", formatMoney(input.valorAVista));
-  if (input.valorTotalParcelado != null) params.set("entry.2131072094", formatMoney(input.valorTotalParcelado));
-  if (input.qtdParcelas != null) params.set("entry.1468389727", String(input.qtdParcelas));
+  params.set(ENTRIES.matricula, input.matricula);
+  params.set(ENTRIES.pagamento, input.paymentMethod);
+  if (input.valorAVista != null) params.set(ENTRIES.valorAVista, formatMoney(input.valorAVista));
+  if (input.valorTotalParcelado != null) params.set(ENTRIES.valorTotalParcelado, formatMoney(input.valorTotalParcelado));
+  if (input.qtdParcelas != null && ENTRIES.qtdParcelas) params.set(ENTRIES.qtdParcelas, String(input.qtdParcelas));
   return params;
 }
 
