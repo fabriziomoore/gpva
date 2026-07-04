@@ -118,7 +118,7 @@ function AuthPage() {
 
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="team">Equipe</Label>
+              <Label htmlFor="team">Loguin</Label>
               <Input
                 id="team"
                 value={team}
