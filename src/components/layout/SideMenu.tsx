@@ -244,26 +244,6 @@ export function SideMenu() {
                 </p>
               </div>
             </button>
-            {isNativeRuntime() && (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  openArcgisLogin(setArcgisTitle, setArcgisEmbedUrl);
-                }}
-                className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left transition-colors hover:bg-muted"
-              >
-                <LogIn className="size-5 text-primary shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Login ArcGIS
-                  </div>
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Entre no mesmo WebView usado pela consulta.
-                  </p>
-                </div>
-              </button>
-            )}
           </nav>
           <button
             type="button"
