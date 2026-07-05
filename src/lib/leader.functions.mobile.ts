@@ -49,7 +49,13 @@ export const leaderTeamsRanking: Callable<
     negotiationValue: number;
     byType: Record<string, number>;
   }>,
-  { year: number; month: number; day?: number | null }
+  {
+    year: number;
+    month: number;
+    day?: number | null;
+    startISO?: string | null;
+    endISO?: string | null;
+  }
 > = async ({ data }) => {
   const { data: admins } = await supabase.rpc("admin_user_ids");
   const adminIds = new Set(((admins ?? []) as string[]));
@@ -67,12 +73,16 @@ export const leaderTeamsRanking: Callable<
   );
 
   const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
-  const start = data.day
-    ? new Date(Date.UTC(data.year, data.month - 1, data.day) + TZ_OFFSET_MS).toISOString()
-    : new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
-  const end = data.day
-    ? new Date(Date.UTC(data.year, data.month - 1, data.day + 1) + TZ_OFFSET_MS).toISOString()
-    : new Date(Date.UTC(data.year, data.month, 1)).toISOString();
+  const start = data.startISO
+    ? data.startISO
+    : data.day
+      ? new Date(Date.UTC(data.year, data.month - 1, data.day) + TZ_OFFSET_MS).toISOString()
+      : new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
+  const end = data.endISO
+    ? data.endISO
+    : data.day
+      ? new Date(Date.UTC(data.year, data.month - 1, data.day + 1) + TZ_OFFSET_MS).toISOString()
+      : new Date(Date.UTC(data.year, data.month, 1)).toISOString();
 
   const all: Array<{
     team_id: string;

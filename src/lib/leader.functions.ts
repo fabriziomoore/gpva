@@ -35,7 +35,15 @@ export const leaderListTeams = createServerFn({ method: "POST" })
 
 export const leaderTeamsRanking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { year: number; month: number; day?: number | null }) => data)
+  .inputValidator(
+    (data: {
+      year: number;
+      month: number;
+      day?: number | null;
+      startISO?: string | null;
+      endISO?: string | null;
+    }) => data,
+  )
   .handler(async ({ data, context }) => {
     await assertLeader(context);
     const { data: admins } = await context.supabase.rpc("admin_user_ids");
@@ -55,12 +63,16 @@ export const leaderTeamsRanking = createServerFn({ method: "POST" })
 
     // Boundaries em horário de Brasília (UTC-3) para "dia" corresponder ao dia local.
     const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
-    const start = data.day
-      ? new Date(Date.UTC(data.year, data.month - 1, data.day) + TZ_OFFSET_MS).toISOString()
-      : new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
-    const end = data.day
-      ? new Date(Date.UTC(data.year, data.month - 1, data.day + 1) + TZ_OFFSET_MS).toISOString()
-      : new Date(Date.UTC(data.year, data.month, 1)).toISOString();
+    const start = data.startISO
+      ? data.startISO
+      : data.day
+        ? new Date(Date.UTC(data.year, data.month - 1, data.day) + TZ_OFFSET_MS).toISOString()
+        : new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
+    const end = data.endISO
+      ? data.endISO
+      : data.day
+        ? new Date(Date.UTC(data.year, data.month - 1, data.day + 1) + TZ_OFFSET_MS).toISOString()
+        : new Date(Date.UTC(data.year, data.month, 1)).toISOString();
 
     const all: {
       team_id: string;
