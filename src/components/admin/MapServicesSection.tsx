@@ -126,7 +126,7 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
           variant="outline"
           className="h-10 w-full text-destructive hover:text-destructive"
           disabled={delRangeMut.isPending || !list.data?.length}
-          onClick={() => {
+          onClick={async () => {
             const n = list.data?.length ?? 0;
             if (!n) return;
             if (await confirmDelete({
