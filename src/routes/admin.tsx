@@ -1637,8 +1637,8 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-xl">
             <Dialog.Title className="text-base font-semibold">Excluir conta de teste?</Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-              Todos os dados vinculados a esta conta serão removidos.
+            <Dialog.Description className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+              {"⚠️ Ação irreversível.\n\nSerão apagados PERMANENTEMENTE do banco: expedientes, serviços no mapa, impactos, complementos e a própria conta. Não é possível desfazer."}
             </Dialog.Description>
             <div className="mt-4 flex gap-2">
               <Button
