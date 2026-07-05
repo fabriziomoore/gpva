@@ -498,7 +498,7 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
         onOpenChange={(o) => setOpenPop(o ? p : null)}
       >
         <PopoverTrigger asChild>{btn}</PopoverTrigger>
-        <PopoverContent align="center" className="w-auto p-2 pointer-events-auto">
+        <PopoverContent side="top" align="center" sideOffset={8} className="w-auto p-2 pointer-events-auto z-50">
           {p === "day" && (
             <Calendar
               mode="single"
