@@ -934,7 +934,7 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-function buildGeoAnalysis(
+async function buildGeoAnalysis(
   points: PdfMapPoint[],
   center: { lat: number; lng: number },
 ) {
@@ -1017,6 +1017,36 @@ function buildGeoAnalysis(
   // Zona mais produtiva (maior nº de viáveis)
   const best = [...qEntries].sort((a, b) => b.viable - a.viable || b.pctV - a.pctV)[0];
 
+  // Reverse-geocoding: descobre bairro/rua dos pontos-chave.
+  // Também amostra 1 ponto por quadrante para dar contexto local.
+  const centroidPt = centroid;
+  const farPt = far;
+  const quadrantSample: Record<Q, { lat: number; lng: number } | null> = {
+    NE: null, NO: null, SE: null, SO: null,
+  };
+  for (const p of pts) {
+    const north = p.lat >= center.lat;
+    const east = p.lng >= center.lng;
+    const q: Q = north ? (east ? "NE" : "NO") : (east ? "SE" : "SO");
+    // Usa o ponto mais próximo do centróide do quadrante como amostra.
+    if (!quadrantSample[q]) quadrantSample[q] = { lat: p.lat, lng: p.lng };
+  }
+
+  const [centroidGeo, farGeo, neGeo, noGeo, seGeo, soGeo] = await Promise.all([
+    reverseGeocode(centroidPt.lat, centroidPt.lng),
+    reverseGeocode(farPt.lat, farPt.lng),
+    quadrantSample.NE ? reverseGeocode(quadrantSample.NE.lat, quadrantSample.NE.lng) : Promise.resolve(null),
+    quadrantSample.NO ? reverseGeocode(quadrantSample.NO.lat, quadrantSample.NO.lng) : Promise.resolve(null),
+    quadrantSample.SE ? reverseGeocode(quadrantSample.SE.lat, quadrantSample.SE.lng) : Promise.resolve(null),
+    quadrantSample.SO ? reverseGeocode(quadrantSample.SO.lat, quadrantSample.SO.lng) : Promise.resolve(null),
+  ]);
+  const quadrantGeo: Record<Q, ReverseGeoInfo | null> = { NE: neGeo, NO: noGeo, SE: seGeo, SO: soGeo };
+  const nameOf = (g: ReverseGeoInfo | null): string => g?.bairro || g?.city || "";
+  const labelOfQuad = (q: Q): string => {
+    const n = nameOf(quadrantGeo[q]);
+    return n ? `${qLabel[q]} (${n})` : qLabel[q];
+  };
+
   // Deslocamento estimado — nearest-neighbor a partir do centróide (aprox. rota)
   const routeKm = (() => {
     if (pts.length < 2) return 0;
@@ -1041,13 +1071,15 @@ function buildGeoAnalysis(
     `Foram plotados ${total} pontos com coordenadas válidas (${viable.length} viáveis / ${unviable.length} inviáveis, ${pctV}% de viabilidade territorial). ` +
     `A cobertura alcançou ${covered} de 4 quadrantes${empty.length ? ` (sem atendimento em ${empty.join(", ")})` : ""}.`;
 
+  const centroidLoc = centroidGeo?.label || `${cLat.toFixed(4)}, ${cLng.toFixed(4)}`;
   const centroidTxt =
-    `O centro de gravidade das operações está em ${cLat.toFixed(4)}, ${cLng.toFixed(4)}, ${bearingRef}. ` +
+    `O centro de gravidade das operações fica em ${centroidLoc}, ${bearingRef}. ` +
     `Esse ponto representa a média geográfica dos serviços registrados e serve de referência para dimensionar bases de apoio.`;
 
+  const farLoc = farGeo?.label || `${far.lat.toFixed(4)}, ${far.lng.toFixed(4)}`;
   const dispersionTxt =
-    `A distância média dos serviços ao centróide é de ${avgD.toFixed(1)} km, com pico de ${maxD.toFixed(1)} km ` +
-    `(ponto mais distante em ${far.lat.toFixed(4)}, ${far.lng.toFixed(4)}). ` +
+    `A distância média dos serviços ao centro operacional é de ${avgD.toFixed(1)} km, com pico de ${maxD.toFixed(1)} km ` +
+    `(ponto mais distante em ${farLoc}). ` +
     (avgD < 2
       ? "Atuação bastante concentrada — otimize rotas curtas e reduza deslocamentos."
       : avgD < 5
@@ -1056,15 +1088,15 @@ function buildGeoAnalysis(
 
   const quadrantsTxt = qEntries
     .filter((q) => q.total > 0)
-    .map((q) => `${q.label}: ${q.total} pts (${q.pctV}% viáveis)`)
+    .map((q) => `${labelOfQuad(q.q)}: ${q.total} pts (${q.pctV}% viáveis)`)
     .join(" · ") || "Sem distribuição por quadrante disponível.";
 
   const criticalTxt = critical
-    ? `A região ${critical.label} apresenta a maior taxa de inviabilidade: ${critical.pctI}% dos ${critical.total} pontos plotados (${critical.unviable} inviáveis). Recomenda-se investigar causas locais — infraestrutura, acesso ou perfil dos serviços.`
+    ? `A região ${labelOfQuad(critical.q)} apresenta a maior taxa de inviabilidade: ${critical.pctI}% dos ${critical.total} pontos plotados (${critical.unviable} inviáveis). Recomenda-se investigar causas locais — infraestrutura, acesso ou perfil dos serviços.`
     : "Não há quadrante com amostra suficiente (≥3 pontos) para diagnosticar zona crítica.";
 
   const bestTxt = best && best.viable > 0
-    ? `A região ${best.label} concentra o maior volume viável: ${best.viable} serviços concluídos (${best.pctV}% de viabilidade em ${best.total} pontos). Boas práticas dessa área devem ser replicadas.`
+    ? `A região ${labelOfQuad(best.q)} concentra o maior volume viável: ${best.viable} serviços concluídos (${best.pctV}% de viabilidade em ${best.total} pontos). Boas práticas dessa área devem ser replicadas.`
     : "Ainda não há viáveis suficientes para eleger uma zona destaque.";
 
   const routeTxt = routeKm > 0
@@ -1073,8 +1105,8 @@ function buildGeoAnalysis(
 
   const recs: string[] = [];
   if (empty.length > 0) recs.push(`Cobrir quadrante(s) sem atendimento: ${empty.join(", ")}.`);
-  if (critical) recs.push(`Priorizar diagnóstico em ${critical.label} (inviabilidade ${critical.pctI}%).`);
-  if (best && best.viable > 0) recs.push(`Replicar boas práticas de ${best.label} nas demais regiões.`);
+  if (critical) recs.push(`Priorizar diagnóstico em ${labelOfQuad(critical.q)} (inviabilidade ${critical.pctI}%).`);
+  if (best && best.viable > 0) recs.push(`Replicar boas práticas de ${labelOfQuad(best.q)} nas demais regiões.`);
   if (avgD >= 5) recs.push("Dividir o roteiro por sub-região para reduzir tempo de deslocamento.");
   if (avgD < 2 && total >= 10) recs.push("Ampliar o raio de atuação para desconcentrar demanda.");
   if (recs.length === 0) recs.push("Padrão territorial equilibrado — manter a distribuição atual.");
