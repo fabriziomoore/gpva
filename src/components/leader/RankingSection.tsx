@@ -31,7 +31,7 @@ export function LeaderRankingSection() {
     staleTime: 60_000,
   });
   const [selected, setSelected] = useState<string | null>(null);
-  const [mode, setMode] = useState<"day" | "month">("day");
+  const [mode, setMode] = useState<"day" | "week" | "month">("day");
 
   useEffect(() => {
     if (typeof window === "undefined" || !selected) return;
@@ -45,10 +45,66 @@ export function LeaderRankingSection() {
   const [year, setYear] = useState<number>(now.getFullYear());
   const [month, setMonth] = useState<number>(now.getMonth() + 1);
   const [day, setDay] = useState<number>(now.getDate());
+  const weeks = useMemo(() => {
+    const y = year;
+    const m = month - 1;
+    const first = new Date(y, m, 1);
+    const dow = (first.getDay() + 6) % 7; // 0 = seg
+    const start = new Date(y, m, 1 - dow);
+    const list: { start: Date; end: Date; label: string }[] = [];
+    const cur = new Date(start);
+    for (let i = 0; i < 6; i++) {
+      const s = new Date(cur);
+      const e = new Date(cur);
+      e.setDate(e.getDate() + 6);
+      if (s.getMonth() === m || e.getMonth() === m) {
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        list.push({
+          start: s,
+          end: e,
+          label: `${pad(s.getDate())}/${pad(s.getMonth() + 1)} – ${pad(e.getDate())}/${pad(e.getMonth() + 1)}`,
+        });
+      }
+      cur.setDate(cur.getDate() + 7);
+    }
+    return list;
+  }, [year, month]);
+  const [weekIdx, setWeekIdx] = useState<number>(0);
+  useEffect(() => {
+    // Ao trocar mês/ano, seleciona a semana que contém o dia de referência (ou 0).
+    const idx = weeks.findIndex(
+      (w) => now >= w.start && now <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59),
+    );
+    setWeekIdx(idx >= 0 ? idx : 0);
+  }, [weeks, now]);
+
+  const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
+  const weekRange = useMemo(() => {
+    if (mode !== "week") return null;
+    const w = weeks[weekIdx];
+    if (!w) return null;
+    const startISO = new Date(
+      Date.UTC(w.start.getFullYear(), w.start.getMonth(), w.start.getDate()) + TZ_OFFSET_MS,
+    ).toISOString();
+    const endISO = new Date(
+      Date.UTC(w.end.getFullYear(), w.end.getMonth(), w.end.getDate() + 1) + TZ_OFFSET_MS,
+    ).toISOString();
+    return { startISO, endISO };
+  }, [mode, weeks, weekIdx]);
+
   const dayParam = mode === "day" ? day : null;
   const q = useQuery({
-    queryKey: ["leader-ranking", year, month, dayParam],
-    queryFn: () => fn({ data: { year, month, day: dayParam } }),
+    queryKey: ["leader-ranking", year, month, dayParam, mode, weekRange?.startISO ?? null],
+    queryFn: () =>
+      fn({
+        data: {
+          year,
+          month,
+          day: dayParam,
+          startISO: weekRange?.startISO ?? null,
+          endISO: weekRange?.endISO ?? null,
+        },
+      }),
     // Atualização periódica para acompanhar as equipes durante o expediente.
     refetchInterval: mode === "day" ? 15_000 : false,
     refetchOnWindowFocus: true,
@@ -94,9 +150,9 @@ export function LeaderRankingSection() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const periodSelector = (withDay: boolean) => (
+  const periodSelector = (variant: "day" | "week" | "month") => (
     <div className="flex gap-2">
-      {withDay && (
+      {variant === "day" && (
         <select
           value={day}
           onChange={(e) => setDay(Number(e.target.value))}
@@ -107,15 +163,28 @@ export function LeaderRankingSection() {
           ))}
         </select>
       )}
-      <select
-        value={month}
-        onChange={(e) => setMonth(Number(e.target.value))}
-        className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
-      >
-        {monthNames.map((n, i) => (
-          <option key={i} value={i + 1}>{n}</option>
-        ))}
-      </select>
+      {variant === "week" && (
+        <select
+          value={weekIdx}
+          onChange={(e) => setWeekIdx(Number(e.target.value))}
+          className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
+        >
+          {weeks.map((w, i) => (
+            <option key={i} value={i}>Sem. {i + 1} — {w.label}</option>
+          ))}
+        </select>
+      )}
+      {variant !== "week" && (
+        <select
+          value={month}
+          onChange={(e) => setMonth(Number(e.target.value))}
+          className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
+        >
+          {monthNames.map((n, i) => (
+            <option key={i} value={i + 1}>{n}</option>
+          ))}
+        </select>
+      )}
       <select
         value={year}
         onChange={(e) => setYear(Number(e.target.value))}
@@ -148,7 +217,7 @@ export function LeaderRankingSection() {
             }
           }
         />
-        {periodSelector(true)}
+        {periodSelector("day")}
         <TeamDayReportsReadOnly teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
@@ -184,21 +253,18 @@ export function LeaderRankingSection() {
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Ranking de Equipes</h2>
         <div className="inline-flex overflow-hidden rounded-lg border border-border">
-          <button
-            onClick={() => setMode("day")}
-            className={`px-3 py-1 text-xs font-semibold ${mode === "day" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
-          >
-            Dia
-          </button>
-          <button
-            onClick={() => setMode("month")}
-            className={`px-3 py-1 text-xs font-semibold ${mode === "month" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
-          >
-            Mês
-          </button>
+          {(["day", "week", "month"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`px-3 py-1 text-xs font-semibold ${mode === m ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+            >
+              {m === "day" ? "Dia" : m === "week" ? "Semana" : "Mês"}
+            </button>
+          ))}
         </div>
       </div>
-      {periodSelector(mode === "day")}
+      {periodSelector(mode)}
       {mode === "day" && (
         <p className="text-[11px] text-muted-foreground">
           Atualizando em tempo real durante o expediente.
