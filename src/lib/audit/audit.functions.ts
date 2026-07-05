@@ -19,11 +19,13 @@ type AuditHistoryRow = {
   report?: JsonValue;
 };
 
-function asUntypedClient(client: unknown): SupabaseClient {
-  return client as SupabaseClient;
+type AnySupabaseClient = SupabaseClient<any>;
+
+function asUntypedClient(client: unknown): AnySupabaseClient {
+  return client as AnySupabaseClient;
 }
 
-async function getAdminClient(): Promise<SupabaseClient> {
+async function getAdminClient(): Promise<AnySupabaseClient> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return asUntypedClient(supabaseAdmin);
 }
@@ -309,7 +311,7 @@ export const saveAuditReport = createServerFn({ method: "POST" })
       .select("id, created_at")
       .single();
     if (error) throw new Error(error.message);
-    return row;
+    return row as unknown as Pick<AuditHistoryRow, "id" | "created_at">;
   });
 
 export const listAuditReports = createServerFn({ method: "POST" })
@@ -323,7 +325,7 @@ export const listAuditReports = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(30);
     if (error) throw new Error(error.message);
-    return rows;
+    return (rows ?? []) as unknown as AuditHistoryRow[];
   });
 
 export const deleteAuditReport = createServerFn({ method: "POST" })
@@ -348,5 +350,5 @@ export const getAuditReport = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Relatório não encontrado");
-    return row;
+    return row as unknown as Required<AuditHistoryRow>;
   });

@@ -8,7 +8,7 @@ export function useUserRoles(userId: string | null) {
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const db = supabase as SupabaseClient;
+      const db = supabase as SupabaseClient<any>;
       const { data, error } = await db
         .from("user_roles")
         .select("role")

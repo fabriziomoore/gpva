@@ -2,8 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-function asUntypedClient(client: unknown): SupabaseClient {
-  return client as SupabaseClient;
+type AnySupabaseClient = SupabaseClient<any>;
+
+function asUntypedClient(client: unknown): AnySupabaseClient {
+  return client as AnySupabaseClient;
 }
 
 async function assertLeader(context: {

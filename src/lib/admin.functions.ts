@@ -13,11 +13,13 @@ function assertAdmin(pw: string) {
 
 type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
 
-function asUntypedClient(client: unknown): SupabaseClient {
-  return client as SupabaseClient;
+type AnySupabaseClient = SupabaseClient<any>;
+
+function asUntypedClient(client: unknown): AnySupabaseClient {
+  return client as AnySupabaseClient;
 }
 
-async function getAdminClient(): Promise<SupabaseClient> {
+async function getAdminClient(): Promise<AnySupabaseClient> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return asUntypedClient(supabaseAdmin);
 }
@@ -560,7 +562,7 @@ export const adminListSetores = createServerFn({ method: "POST" })
       .select("id,nome,supervisor_nome")
       .order("nome");
     if (error) throw new Error(error.message);
-    return (rows ?? []) as SetorRow[];
+    return (rows ?? []) as unknown as SetorRow[];
   });
 
 export const adminCreateSetor = createServerFn({ method: "POST" })
