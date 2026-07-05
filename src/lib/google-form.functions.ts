@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ADMIN_PASSWORD } from "./admin.functions";
 
 function assertAdmin(pw: string) {
@@ -76,21 +77,17 @@ export async function extractEntriesFromForm(formId: string): Promise<FormEntrie
   };
 }
 
-export const getGoogleFormSettings = createServerFn({ method: "GET" }).handler(async () => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const sb = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
-  const { data, error } = await sb
-    .from("google_form_settings")
-    .select("mode,prod_form_id,test_form_id,prod_entries,test_entries")
-    .eq("id", "singleton")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data as FormSettingsRow | null;
-});
+export const getGoogleFormSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("google_form_settings")
+      .select("mode,prod_form_id,test_form_id,prod_entries,test_entries")
+      .eq("id", "singleton")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as FormSettingsRow | null;
+  });
 
 export const adminGetGoogleFormSettings = createServerFn({ method: "POST" })
   .inputValidator((d: { adminPassword: string }) => d)
