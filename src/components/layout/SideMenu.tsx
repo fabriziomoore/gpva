@@ -43,15 +43,18 @@ export function SideMenu() {
 
   async function openArcgis() {
     const term = arcgisQuery.trim();
+    const url = term
+      ? `${ARCGIS_URL}&find=${encodeURIComponent(term)}`
+      : ARCGIS_URL;
     if (term) {
       try {
         await navigator.clipboard?.writeText(term);
-        toast.success("Termo copiado — cole na busca do mapa");
       } catch {
         // ignore clipboard errors
       }
+      toast.success("Buscando no mapa — termo também copiado");
     }
-    window.open(ARCGIS_URL, "_blank", "noopener,noreferrer");
+    window.open(url, "_blank", "noopener,noreferrer");
     setOpen(false);
   }
   return (
