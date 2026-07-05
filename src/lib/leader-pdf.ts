@@ -6,26 +6,35 @@ import {
   previousLabel,
   projectionLabel,
 } from "./analytics";
+// Logo bundlada localmente pelo Vite — garante que apareça também no APK
+// Android (o path absoluto do asset remoto não resolve em capacitor://localhost).
+import bundledLogoUrl from "@/assets/gpva-logo-bundled.jpg?url";
 import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
-const logoUrl = logoAsset.url;
+import { renderReportMapPng, MARICA_CENTER, type PdfMapPoint } from "./pdf-map";
+
+const logoCandidates: string[] = [bundledLogoUrl, logoAsset.url];
 
 let _logoDataUrl: string | null = null;
 async function loadLogoDataUrl(): Promise<string | null> {
   if (_logoDataUrl) return _logoDataUrl;
-  try {
-    const res = await fetch(logoUrl);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    _logoDataUrl = await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.onerror = () => reject(fr.error);
-      fr.readAsDataURL(blob);
-    });
-    return _logoDataUrl;
-  } catch {
-    return null;
+  for (const url of logoCandidates) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result));
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+      });
+      _logoDataUrl = dataUrl;
+      return _logoDataUrl;
+    } catch {
+      /* try next candidate */
+    }
   }
+  return null;
 }
 
 export type PeriodAgg = {
@@ -67,6 +76,7 @@ export type LeaderPdfInput = {
   company?: string;
   generated_by?: string;
   collaborators_count?: number | null;
+  map_points?: PdfMapPoint[];
 };
 
 function periodTitle(p: Period): string {
@@ -190,7 +200,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const avgPerShift = input.current.shifts ? +(input.current.total / input.current.shifts).toFixed(1) : 0;
   const avgPerShiftPrev = input.previous.shifts ? +(input.previous.total / input.previous.shifts).toFixed(1) : 0;
   const hasTeams = input.teams.length > 0;
-  const totalPages = hasTeams ? 4 : 3;
+  const hasMap = (input.map_points?.length ?? 0) > 0;
+  const totalPages = 3 + (hasTeams ? 1 : 0) + (hasMap ? 1 : 0);
 
   // =========================================================================
   // PAGE 1 — Cabeçalho, KPIs, Projeção, Gráficos
@@ -476,7 +487,58 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   }
 
   // =========================================================================
-  // PAGE 3 — Resumo Executivo
+  // PAGE MAPA (opcional) — Localizações dos serviços
+  // =========================================================================
+  let mapPageNumber = 0;
+  if (hasMap) {
+    pdf.addPage("a4", "landscape");
+    mapPageNumber = hasTeams ? 4 : 3;
+    pageTitle(pdf, "MAPA DE ATUAÇÃO — MARICÁ/RJ", input.scope_label, periodStr);
+
+    const mapY = M + 18;
+    const mapH = PH - mapY - 20;
+    const mapW = CW;
+    // Renderiza em resolução maior para nitidez no PDF (2x px por mm).
+    const pxPerMm = 4;
+    const dataUrl = await renderReportMapPng({
+      width: Math.round(mapW * pxPerMm),
+      height: Math.round(mapH * pxPerMm),
+      center: MARICA_CENTER,
+      zoom: 12,
+      points: input.map_points ?? [],
+    });
+    if (dataUrl) {
+      try {
+        pdf.addImage(dataUrl, "JPEG", M, mapY, mapW, mapH);
+      } catch {
+        setFill(C.bgAlt); setStroke(C.border);
+        pdf.roundedRect(M, mapY, mapW, mapH, 2, 2, "FD");
+        font(10, "normal"); setText(C.muted);
+        text("Não foi possível carregar o mapa neste dispositivo.", M + mapW / 2, mapY + mapH / 2, { align: "center" });
+      }
+    } else {
+      setFill(C.bgAlt); setStroke(C.border);
+      pdf.roundedRect(M, mapY, mapW, mapH, 2, 2, "FD");
+      font(10, "normal"); setText(C.muted);
+      text("Sem conexão para carregar o mapa. Tente gerar novamente com internet.", M + mapW / 2, mapY + mapH / 2, { align: "center" });
+    }
+    // Legenda
+    const totalPts = input.map_points?.length ?? 0;
+    const viaPts = (input.map_points ?? []).filter((p) => p.viable).length;
+    const invPts = totalPts - viaPts;
+    setFill(C.white); setStroke(C.border);
+    pdf.roundedRect(M, PH - M - 8, 90, 6, 1.5, 1.5, "FD");
+    setFill([22, 163, 74]); pdf.circle(M + 4, PH - M - 5, 1.6, "F");
+    font(7.5, "normal"); setText(C.ink);
+    text(`Viáveis: ${viaPts}`, M + 8, PH - M - 4);
+    setFill([220, 38, 38]); pdf.circle(M + 34, PH - M - 5, 1.6, "F");
+    text(`Inviáveis: ${invPts}`, M + 38, PH - M - 4);
+    text(`Total plotado: ${totalPts}`, M + 70, PH - M - 4);
+    footer(mapPageNumber, totalPages);
+  }
+
+  // =========================================================================
+  // PAGE FINAL — Resumo Executivo
   // =========================================================================
   pdf.addPage("a4", "landscape");
   pageTitle(pdf, "RESUMO", input.scope_label, periodStr);
@@ -512,7 +574,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     lines.slice(0, 6).forEach((l, li) => pdf.text(l, x + 4, y + 10.5 + li * 3.6));
   });
 
-  footer(hasTeams ? 4 : 3, totalPages);
+  footer(totalPages, totalPages);
 
   return pdf.output("blob");
 }
