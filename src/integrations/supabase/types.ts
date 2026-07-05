@@ -14,51 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      active_sessions: {
-        Row: {
-          session_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          session_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          session_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      audit_reports: {
-        Row: {
-          counts: Json
-          created_at: string
-          duration_ms: number
-          id: string
-          overall_score: number
-          report: Json
-        }
-        Insert: {
-          counts?: Json
-          created_at?: string
-          duration_ms: number
-          id?: string
-          overall_score: number
-          report: Json
-        }
-        Update: {
-          counts?: Json
-          created_at?: string
-          duration_ms?: number
-          id?: string
-          overall_score?: number
-          report?: Json
-        }
-        Relationships: []
-      }
       catalog_order: {
         Row: {
           catalog: string
@@ -121,11 +76,9 @@ export type Database = {
           collaborator2: string | null
           created_at: string
           id: string
-          is_test: boolean
           leader: string
           onboarded: boolean
           photo_url: string | null
-          setor_id: string
           supervisor: string
           team_name: string
           variable_rate: number
@@ -135,11 +88,9 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id: string
-          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
-          setor_id: string
           supervisor?: string
           team_name: string
           variable_rate?: number
@@ -149,24 +100,14 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id?: string
-          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
-          setor_id?: string
           supervisor?: string
           team_name?: string
           variable_rate?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "equipes_setor_id_fkey"
-            columns: ["setor_id"]
-            isOneToOne: false
-            referencedRelation: "setores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       expedientes: {
         Row: {
@@ -208,36 +149,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      google_form_settings: {
-        Row: {
-          id: string
-          mode: string
-          prod_entries: Json
-          prod_form_id: string
-          test_entries: Json
-          test_form_id: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          mode?: string
-          prod_entries: Json
-          prod_form_id: string
-          test_entries: Json
-          test_form_id: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          mode?: string
-          prod_entries?: Json
-          prod_form_id?: string
-          test_entries?: Json
-          test_form_id?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       impactos: {
         Row: {
@@ -351,13 +262,9 @@ export type Database = {
       }
       servicos: {
         Row: {
-          accuracy_m: number | null
-          captured_at: string | null
           created_at: string
           id: string
           is_negotiation: boolean
-          lat: number | null
-          lng: number | null
           negotiated_value: number | null
           reason_id: string | null
           reason_name: string | null
@@ -369,13 +276,9 @@ export type Database = {
           viable: boolean
         }
         Insert: {
-          accuracy_m?: number | null
-          captured_at?: string | null
           created_at?: string
           id?: string
           is_negotiation?: boolean
-          lat?: number | null
-          lng?: number | null
           negotiated_value?: number | null
           reason_id?: string | null
           reason_name?: string | null
@@ -387,13 +290,9 @@ export type Database = {
           viable?: boolean
         }
         Update: {
-          accuracy_m?: number | null
-          captured_at?: string | null
           created_at?: string
           id?: string
           is_negotiation?: boolean
-          lat?: number | null
-          lng?: number | null
           negotiated_value?: number | null
           reason_id?: string | null
           reason_name?: string | null
@@ -435,33 +334,6 @@ export type Database = {
           },
         ]
       }
-      setores: {
-        Row: {
-          created_at: string
-          id: string
-          nome: string
-          supervisor_nome: string
-          supervisor_user_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          nome: string
-          supervisor_nome?: string
-          supervisor_user_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          nome?: string
-          supervisor_nome?: string
-          supervisor_user_id?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       tipos_servico: {
         Row: {
           active: boolean
@@ -499,27 +371,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
       }
       vinculos_complementos: {
         Row: {
@@ -564,16 +415,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "leader" | "admin" | "supervisor"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -700,8 +545,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["leader", "admin", "supervisor"],
-    },
+    Enums: {},
   },
 } as const
