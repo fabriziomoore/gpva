@@ -285,7 +285,16 @@ export const adminDeleteTeam = createServerFn({ method: "POST" })
   });
 
 export const adminTeamsRanking = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; year: number; month: number }) => data)
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      year: number;
+      month: number;
+      day?: number | null;
+      startISO?: string | null;
+      endISO?: string | null;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -305,9 +314,25 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       (teams ?? []).filter((t) => isTest(t) || isReservedAdminTeam(t, adminIds)).map((t) => t.id),
     );
 
-    // Compute month range [start, nextMonthStart) in UTC ISO
-    const start = new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
-    const end = new Date(Date.UTC(data.year, data.month, 1)).toISOString();
+    // Range [start, end) — prioridade: startISO/endISO > day > mês inteiro.
+    // Ajuste UTC-3 (Brasília) para day range casar com o dia calendário local.
+    const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
+    let start: string;
+    let end: string;
+    if (data.startISO && data.endISO) {
+      start = data.startISO;
+      end = data.endISO;
+    } else if (typeof data.day === "number" && data.day > 0) {
+      start = new Date(
+        Date.UTC(data.year, data.month - 1, data.day) + TZ_OFFSET_MS,
+      ).toISOString();
+      end = new Date(
+        Date.UTC(data.year, data.month - 1, data.day + 1) + TZ_OFFSET_MS,
+      ).toISOString();
+    } else {
+      start = new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
+      end = new Date(Date.UTC(data.year, data.month, 1)).toISOString();
+    }
 
     // Fetch all services in pages to bypass row limits
     const all: {
