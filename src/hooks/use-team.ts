@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { cacheTeam, getCachedTeam } from "@/lib/db/catalogs";
 
@@ -23,7 +24,8 @@ export function useTeam(userId: string | null) {
     enabled: !!userId,
     queryFn: async (): Promise<Team | null> => {
       try {
-        const { data, error } = await supabase
+        const db = supabase as SupabaseClient<any>;
+        const { data, error } = await db
           .from("equipes")
           .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome)")
           .maybeSingle();

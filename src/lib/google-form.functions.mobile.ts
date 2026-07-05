@@ -1,5 +1,6 @@
 // Mobile (APK Android) equivalents of google-form server functions.
 import { callAdminApi } from "./admin-api.mobile";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 export type FormEntries = {
@@ -18,7 +19,8 @@ export function parseGoogleFormId(input: string): string {
 }
 
 export const getGoogleFormSettings = async (): Promise<FormSettingsRow | null> => {
-  const { data, error } = await supabase
+  const db = supabase as SupabaseClient<any>;
+  const { data, error } = await db
     .from("google_form_settings")
     .select("mode,prod_form_id,test_form_id,prod_entries,test_entries")
     .eq("id", "singleton").maybeSingle();

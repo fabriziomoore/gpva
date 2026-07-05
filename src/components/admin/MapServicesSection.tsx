@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import {
   adminListMapServices,
   adminDeleteMapService,
+  adminDataSummary,
   listTeams,
 } from "@/lib/admin.functions";
 
@@ -15,6 +16,7 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const listFn = useServerFn(adminListMapServices);
   const delFn = useServerFn(adminDeleteMapService);
+  const summaryFn = useServerFn(adminDataSummary);
   const teamsFn = useServerFn(listTeams);
 
   const today = new Date();
@@ -41,6 +43,19 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
     queryKey: ["admin-map-services", teamId, range.startISO, range.endISO],
     queryFn: () =>
       listFn({
+        data: {
+          adminPassword: adminPw,
+          teamId: teamId || undefined,
+          startISO: range.startISO,
+          endISO: range.endISO,
+        },
+      }),
+  });
+
+  const summary = useQuery({
+    queryKey: ["admin-data-summary", "map-services", teamId, range.startISO, range.endISO],
+    queryFn: () =>
+      summaryFn({
         data: {
           adminPassword: adminPw,
           teamId: teamId || undefined,
@@ -104,11 +119,31 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-3 gap-2">
+        <SummaryTile label="Equipes" loading={summary.isLoading} value={summary.data?.teams ?? 0} />
+        <SummaryTile label="Expedientes" loading={summary.isLoading} value={summary.data?.shifts ?? 0} />
+        <SummaryTile label="Serviços" loading={summary.isLoading} value={summary.data?.services ?? 0} />
+      </div>
+
       <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border p-2 text-xs font-medium">
-          {list.isLoading ? "Carregando..." : `${list.data?.length ?? 0} registro(s)`}
+        <div className="flex items-center justify-between border-b border-border bg-muted/50 p-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {list.isLoading ? (
+            <span>Carregando...</span>
+          ) : (
+            <>
+              <span>{list.data?.length ?? 0} Listados</span>
+              <span className="text-primary">{list.data?.filter(r => r.viable).length ?? 0} Viáveis</span>
+              <span className="text-destructive">{list.data?.filter(r => !r.viable).length ?? 0} Inviáveis</span>
+            </>
+          )}
         </div>
         <ul className="max-h-[480px] divide-y divide-border overflow-y-auto">
+          {list.data?.length === 0 && !list.isLoading && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-sm font-medium text-muted-foreground">Nenhuma marcação encontrada</p>
+              <p className="text-xs text-muted-foreground/60">Ajuste equipe/período; isso não significa que o banco esteja vazio.</p>
+            </div>
+          )}
           {list.data?.map((r) => (
             <li key={r.id} className="flex items-start justify-between gap-2 p-2 text-xs">
               <div className="min-w-0 flex-1">
@@ -141,6 +176,27 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
             </li>
           ))}
         </ul>
+      </div>
+    </div>
+  );
+}
+
+function SummaryTile({
+  label,
+  loading,
+  value,
+}: {
+  label: string;
+  loading: boolean;
+  value: number;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-2">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 text-lg font-semibold text-foreground">
+        {loading ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : value}
       </div>
     </div>
   );

@@ -269,6 +269,38 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       });
     }
 
+    case "adminDataSummary": {
+      const { data: teams, error: teamsErr } = await sb.from("equipes").select("id,team_name,is_test");
+      if (teamsErr) throw new Error(teamsErr.message);
+      const visibleTeamIds = (teams ?? [])
+        .filter((team: any) => team.is_test !== true && team.team_name !== "TESTANDO")
+        .map((team: any) => team.id);
+      const scopedTeamIds = args.teamId
+        ? visibleTeamIds.filter((id: string) => id === args.teamId)
+        : visibleTeamIds;
+      if (!scopedTeamIds.length) {
+        return { teams: args.teamId ? 0 : visibleTeamIds.length, shifts: 0, services: 0 };
+      }
+
+      let shiftsQuery = sb.from("expedientes").select("id", { count: "exact", head: true }).in("team_id", scopedTeamIds);
+      if (args.startISO) shiftsQuery = shiftsQuery.gte("started_at", args.startISO);
+      if (args.endISO) shiftsQuery = shiftsQuery.lt("started_at", args.endISO);
+      const { count: shifts, error: shiftsErr } = await shiftsQuery;
+      if (shiftsErr) throw new Error(shiftsErr.message);
+
+      let servicesQuery = sb.from("servicos").select("id", { count: "exact", head: true }).in("team_id", scopedTeamIds);
+      if (args.startISO) servicesQuery = servicesQuery.gte("created_at", args.startISO);
+      if (args.endISO) servicesQuery = servicesQuery.lt("created_at", args.endISO);
+      const { count: services, error: servicesErr } = await servicesQuery;
+      if (servicesErr) throw new Error(servicesErr.message);
+
+      return {
+        teams: args.teamId ? scopedTeamIds.length : visibleTeamIds.length,
+        shifts: shifts ?? 0,
+        services: services ?? 0,
+      };
+    }
+
     // ---------- Shifts ----------
     case "adminListShifts": {
       const { data, error } = await sb.from("expedientes")

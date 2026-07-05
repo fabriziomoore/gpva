@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { ADMIN_PASSWORD } from "../admin.functions";
 import type { CheckResult } from "./types";
 import type { JsonValue } from "./types";
@@ -9,12 +10,32 @@ function assertAdmin(pw: string) {
 
 type AdminInput = { adminPassword: string };
 
+type AuditHistoryRow = {
+  id: string;
+  created_at: string;
+  duration_ms: number;
+  overall_score: number;
+  counts: JsonValue;
+  report?: JsonValue;
+};
+
+type AnySupabaseClient = SupabaseClient<any>;
+
+function asUntypedClient(client: unknown): AnySupabaseClient {
+  return client as AnySupabaseClient;
+}
+
+async function getAdminClient(): Promise<AnySupabaseClient> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return asUntypedClient(supabaseAdmin);
+}
+
 // -------- DB checks --------
 export const runDbAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     // Ping / latência
@@ -143,7 +164,7 @@ export const runSecurityAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     // Verifica RLS via pg_class
@@ -180,7 +201,7 @@ export const runAccountsAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     try {
@@ -234,7 +255,7 @@ export const runConfigAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     try {
@@ -278,7 +299,7 @@ export const saveAuditReport = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput & { report: JsonValue; duration_ms: number; overall_score: number; counts: JsonValue }) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { data: row, error } = await supabaseAdmin
       .from("audit_reports")
       .insert({
@@ -290,28 +311,28 @@ export const saveAuditReport = createServerFn({ method: "POST" })
       .select("id, created_at")
       .single();
     if (error) throw new Error(error.message);
-    return row;
+    return row as unknown as Pick<AuditHistoryRow, "id" | "created_at">;
   });
 
 export const listAuditReports = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { data: rows, error } = await supabaseAdmin
       .from("audit_reports")
       .select("id, created_at, duration_ms, overall_score, counts")
       .order("created_at", { ascending: false })
       .limit(30);
     if (error) throw new Error(error.message);
-    return rows;
+    return (rows ?? []) as unknown as AuditHistoryRow[];
   });
 
 export const deleteAuditReport = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput & { id: string }) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { error } = await supabaseAdmin.from("audit_reports").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -321,7 +342,7 @@ export const getAuditReport = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput & { id: string }) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { data: row, error } = await supabaseAdmin
       .from("audit_reports")
       .select("id, created_at, duration_ms, overall_score, counts, report")
@@ -329,5 +350,5 @@ export const getAuditReport = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Relatório não encontrado");
-    return row;
+    return row as unknown as Required<AuditHistoryRow>;
   });
