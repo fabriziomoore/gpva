@@ -6,26 +6,35 @@ import {
   previousLabel,
   projectionLabel,
 } from "./analytics";
+// Logo bundlada localmente pelo Vite — garante que apareça também no APK
+// Android (o path absoluto do asset remoto não resolve em capacitor://localhost).
+import bundledLogoUrl from "@/assets/gpva-logo-bundled.jpg?url";
 import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
-const logoUrl = logoAsset.url;
+import { renderReportMapPng, MARICA_CENTER, type PdfMapPoint } from "./pdf-map";
+
+const logoCandidates: string[] = [bundledLogoUrl, logoAsset.url];
 
 let _logoDataUrl: string | null = null;
 async function loadLogoDataUrl(): Promise<string | null> {
   if (_logoDataUrl) return _logoDataUrl;
-  try {
-    const res = await fetch(logoUrl);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    _logoDataUrl = await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.onerror = () => reject(fr.error);
-      fr.readAsDataURL(blob);
-    });
-    return _logoDataUrl;
-  } catch {
-    return null;
+  for (const url of logoCandidates) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result));
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+      });
+      _logoDataUrl = dataUrl;
+      return _logoDataUrl;
+    } catch {
+      /* try next candidate */
+    }
   }
+  return null;
 }
 
 export type PeriodAgg = {
@@ -67,6 +76,7 @@ export type LeaderPdfInput = {
   company?: string;
   generated_by?: string;
   collaborators_count?: number | null;
+  map_points?: PdfMapPoint[];
 };
 
 function periodTitle(p: Period): string {
