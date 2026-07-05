@@ -35,6 +35,7 @@ import {
   adminCreateSetor,
   adminUpdateSetor,
   adminDeleteSetor,
+  adminDataSummary,
 } from "@/lib/admin.functions";
 import {
   adminGetGoogleFormSettings,
@@ -644,6 +645,7 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
 
 function RankingSection({ adminPw }: { adminPw: string }) {
   const fn = useServerFn(adminTeamsRanking);
+  const summaryFn = useServerFn(adminDataSummary);
   const teams = useTeamsList(adminPw);
   const [selected, setSelected] = useState<string | null>(null);
   const now = new Date();
@@ -653,6 +655,25 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const q = useQuery({
     queryKey: ["admin-ranking", year, month],
     queryFn: () => fn({ data: { adminPassword: adminPw, year, month } }),
+  });
+  const monthRange = useMemo(
+    () => ({
+      startISO: new Date(Date.UTC(year, month - 1, 1)).toISOString(),
+      endISO: new Date(Date.UTC(year, month, 1)).toISOString(),
+    }),
+    [year, month],
+  );
+  const summary = useQuery({
+    queryKey: ["admin-data-summary", "ranking", year, month, selected ?? "all"],
+    queryFn: () =>
+      summaryFn({
+        data: {
+          adminPassword: adminPw,
+          startISO: monthRange.startISO,
+          endISO: monthRange.endISO,
+          teamId: selected ?? undefined,
+        },
+      }),
   });
 
   if (q.isLoading) {
@@ -670,6 +691,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const brl = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const current = selected ? sorted.find((t) => t.id === selected) : null;
+  const totalServices = sorted.reduce((sum, team) => sum + team.total, 0);
 
   const monthNames = [
     "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -720,6 +742,17 @@ function RankingSection({ adminPw }: { adminPw: string }) {
       <div className="space-y-4">
         <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, leader: null }} onDeleted={() => setSelected(null)} />
         {periodSelector(true)}
+        <AdminSummaryCards
+          loading={summary.isLoading}
+          teams={summary.data?.teams ?? 1}
+          shifts={summary.data?.shifts ?? 0}
+          services={summary.data?.services ?? current.total}
+        />
+        {current.total === 0 ? (
+          <p className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+            Esta equipe não tem serviços no mês selecionado. Mude mês/ano acima para consultar outros períodos.
+          </p>
+        ) : null}
         <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
@@ -758,6 +791,17 @@ function RankingSection({ adminPw }: { adminPw: string }) {
         <span className="text-lg font-bold">{sorted.reduce((acc, t) => acc + t.viable, 0)} viáveis</span>
       </div>
       {periodSelector(false)}
+      <AdminSummaryCards
+        loading={summary.isLoading}
+        teams={summary.data?.teams ?? sorted.length}
+        shifts={summary.data?.shifts ?? 0}
+        services={summary.data?.services ?? totalServices}
+      />
+      {totalServices === 0 ? (
+        <p className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+          Nenhum serviço apareceu neste mês. Isso pode ser apenas filtro de período: altere mês/ano para ver dados restaurados de outros dias.
+        </p>
+      ) : null}
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
