@@ -62,7 +62,18 @@ export function SideMenu() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { longitude, latitude } = pos.coords;
-        const url = `${ARCGIS_RISK_URL}&center=${longitude},${latitude}&level=18&marker=${longitude};${latitude};;;;Você está aqui`;
+        // WebAppViewer aceita "extent=xmin,ymin,xmax,ymax" em lat/lon (wkid 4326).
+        // Uma janela de ~300m em torno do usuário (0.0025° ≈ 275m).
+        const d = 0.0025;
+        const xmin = longitude - d;
+        const xmax = longitude + d;
+        const ymin = latitude - d;
+        const ymax = latitude + d;
+        const marker = `${longitude},${latitude},4326,,,;;;;;Você está aqui`;
+        const url =
+          `${ARCGIS_RISK_URL}` +
+          `&extent=${xmin},${ymin},${xmax},${ymax},4326` +
+          `&marker=${encodeURIComponent(marker)}`;
         setArcgisEmbedUrl(url);
       },
       () => fallback(),
