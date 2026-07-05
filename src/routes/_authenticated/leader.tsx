@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { AppShell } from "@/components/layout/AppShell";
 import { LeaderMeta } from "@/components/layout/LeaderMeta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -372,6 +373,7 @@ function LeaderPage() {
 function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: TeamRow[] }) {
   const queryClient = useQueryClient();
   const { userId } = useAuthSession();
+  const isAdmin = useIsAdmin(userId);
   const [periodFilter, setPeriodFilter] = useState<Period>("day");
   const [viabilityFilter, setViabilityFilter] = useState<"all" | "viable" | "unviable">("all");
 
@@ -438,10 +440,7 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm">
-        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Período
-        </div>
+      <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm space-y-2">
         <div className="flex gap-1 rounded-lg bg-muted p-1">
           {periods.map(([k, l]) => (
             <button
@@ -453,9 +452,6 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
               {l}
             </button>
           ))}
-        </div>
-        <div className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Mostrar
         </div>
         <div className="flex gap-1 rounded-lg bg-muted p-1">
           {visibilities.map(([k, l, dot]) => {
@@ -479,7 +475,11 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (
-        <ServicesMap points={points} height={560} onDelete={handleDelete} />
+        <ServicesMap
+          points={points}
+          height={560}
+          onDelete={isAdmin.data ? handleDelete : undefined}
+        />
       )}
     </div>
   );
