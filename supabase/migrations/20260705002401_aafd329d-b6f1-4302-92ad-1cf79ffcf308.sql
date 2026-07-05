@@ -1,0 +1,1 @@
+CREATE POLICY "Leaders can delete servicos" ON public.servicos FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'leader'::public.app_role));

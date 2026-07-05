@@ -370,14 +370,30 @@ function LeaderPage() {
 }
 
 function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: TeamRow[] }) {
+  const queryClient = useQueryClient();
+  const { userId } = useAuthSession();
+  const [periodFilter, setPeriodFilter] = useState<"all" | Period>("all");
+  const [viabilityFilter, setViabilityFilter] = useState<"all" | "viable" | "unviable">("all");
+
   const teamName = useMemo(() => {
     const m = new Map<string, string>();
     for (const t of teams) m.set(t.id, t.team_name);
     return m;
   }, [teams]);
+
+  const filtered = useMemo(() => {
+    const range = periodFilter === "all" ? null : periodRange(periodFilter);
+    return services.filter((s) => {
+      if (s.lat == null || s.lng == null) return false;
+      if (viabilityFilter === "viable" && !s.viable) return false;
+      if (viabilityFilter === "unviable" && s.viable) return false;
+      if (range && !inRange(s.created_at, range)) return false;
+      return true;
+    });
+  }, [services, periodFilter, viabilityFilter]);
+
   const points = useMemo<MapPoint[]>(() => {
-    return services
-      .filter((s) => s.lat != null && s.lng != null)
+    return filtered
       .map((s) => ({
         id: s.id,
         lat: Number(s.lat),
@@ -389,17 +405,76 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
         sub: teamName.get(s.team_id) ?? undefined,
         when: new Date(s.created_at).toLocaleString("pt-BR"),
       }));
-  }, [services, teamName]);
+  }, [filtered, teamName]);
 
-  if (points.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        Nenhum serviço com localização registrado ainda. Ative o GPS no celular
-        para que novos registros apareçam aqui.
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("servicos").delete().eq("id", id);
+    if (error) {
+      toast.error("Não foi possível apagar", { description: error.message });
+      throw error;
+    }
+    toast.success("Registro apagado");
+    queryClient.invalidateQueries({ queryKey: ["leader-services", userId] });
+  };
+
+  const chip = (active: boolean) =>
+    `h-8 rounded-full px-3 text-xs font-medium transition ${
+      active
+        ? "bg-primary text-primary-foreground"
+        : "bg-muted text-muted-foreground hover:bg-muted/70"
+    }`;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          Período:
+        </span>
+        {([
+          ["all", "Tudo"],
+          ["day", "Dia"],
+          ["week", "Semana"],
+          ["month", "Mês"],
+          ["year", "Ano"],
+        ] as const).map(([k, l]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setPeriodFilter(k)}
+            className={chip(periodFilter === k)}
+          >
+            {l}
+          </button>
+        ))}
       </div>
-    );
-  }
-  return <ServicesMap points={points} height={560} />;
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          Mostrar:
+        </span>
+        {([
+          ["all", "Todas"],
+          ["viable", "Só viáveis"],
+          ["unviable", "Só inviáveis"],
+        ] as const).map(([k, l]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setViabilityFilter(k)}
+            className={chip(viabilityFilter === k)}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+      {points.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          Nenhum registro com localização para os filtros selecionados.
+        </div>
+      ) : (
+        <ServicesMap points={points} height={560} onDelete={handleDelete} />
+      )}
+    </div>
+  );
 }
 
 function cleanName(name: string | null | undefined) {
