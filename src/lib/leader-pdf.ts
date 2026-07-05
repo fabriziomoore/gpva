@@ -201,7 +201,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const avgPerShiftPrev = input.previous.shifts ? +(input.previous.total / input.previous.shifts).toFixed(1) : 0;
   const hasTeams = input.teams.length > 0;
   const hasMap = (input.map_points?.length ?? 0) > 0;
-  const totalPages = 3 + (hasTeams ? 1 : 0) + (hasMap ? 1 : 0);
+  const totalPages = 3 + (hasTeams ? 1 : 0) + (hasMap ? 2 : 0);
 
   // =========================================================================
   // PAGE 1 — Cabeçalho, KPIs, Projeção, Gráficos
