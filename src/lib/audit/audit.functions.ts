@@ -331,3 +331,263 @@ export const getAuditReport = createServerFn({ method: "POST" })
     if (!row) throw new Error("Relatório não encontrado");
     return row;
   });
+
+// ============================================================
+// Módulos adicionais (RLS, storage, edge, integridade, coords, auth)
+// ============================================================
+
+// -------- RLS efetivo + grants --------
+export const runRlsAudit = createServerFn({ method: "POST" })
+  .inputValidator((d: AdminInput) => d)
+  .handler(async ({ data }): Promise<CheckResult[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const results: CheckResult[] = [];
+    const { data: snap, error } = await supabaseAdmin.rpc("audit_schema_snapshot");
+    if (error) {
+      return [{ id: "sec.rls.snapshot", category: "seguranca", title: "Snapshot de RLS", severity: "error", message: error.message }];
+    }
+    const rows = (snap ?? []) as Array<{
+      table: string; rls_enabled: boolean; policy_count: number;
+      grants: Record<string, string[]>;
+    }>;
+    if (rows.length === 0) {
+      return [{ id: "sec.rls.empty", category: "seguranca", title: "Snapshot vazio", severity: "warning", message: "Nenhuma tabela pública encontrada" }];
+    }
+    for (const r of rows) {
+      if (!r.rls_enabled) {
+        results.push({
+          id: `sec.rls.${r.table}`, category: "seguranca",
+          title: `RLS em ${r.table}`, severity: "error",
+          message: "RLS DESABILITADA — dados expostos via Data API",
+          location: `public.${r.table}`,
+          suggestion: `ALTER TABLE public.${r.table} ENABLE ROW LEVEL SECURITY;`,
+        });
+      } else if (r.policy_count === 0) {
+        results.push({
+          id: `sec.rls.${r.table}.nopolicy`, category: "seguranca",
+          title: `RLS em ${r.table}`, severity: "warning",
+          message: "RLS ativa sem políticas — nenhuma leitura/escrita permitida",
+          location: `public.${r.table}`,
+        });
+      } else {
+        results.push({
+          id: `sec.rls.${r.table}`, category: "seguranca",
+          title: `RLS em ${r.table}`, severity: "info",
+          message: `${r.policy_count} política(s) ativa(s)`,
+          evidence: { policies: r.policy_count as JsonValue },
+          location: `public.${r.table}`,
+        });
+      }
+      const g = r.grants ?? {};
+      if (!g.service_role || g.service_role.length === 0) {
+        results.push({
+          id: `sec.grant.${r.table}.service`, category: "seguranca",
+          title: `Grants em ${r.table}`, severity: "warning",
+          message: "service_role sem GRANT — Edge/admin pode falhar",
+          location: `public.${r.table}`,
+          suggestion: `GRANT ALL ON public.${r.table} TO service_role;`,
+        });
+      }
+    }
+    return results;
+  });
+
+// -------- Storage --------
+export const runStorageAudit = createServerFn({ method: "POST" })
+  .inputValidator((d: AdminInput) => d)
+  .handler(async ({ data }): Promise<CheckResult[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const results: CheckResult[] = [];
+    const { data: buckets, error } = await supabaseAdmin.storage.listBuckets();
+    if (error) return [{ id: "storage.list", category: "banco", title: "Storage", severity: "error", message: error.message }];
+    if (!buckets || buckets.length === 0) {
+      results.push({
+        id: "storage.empty", category: "banco", title: "Buckets de Storage",
+        severity: "info", message: "Nenhum bucket criado (fotos são armazenadas como data URL no banco)",
+      });
+    } else {
+      for (const b of buckets) {
+        results.push({
+          id: `storage.${b.name}`, category: "banco", title: `Bucket ${b.name}`,
+          severity: b.public ? "warning" : "info",
+          message: b.public ? "Bucket PÚBLICO — revisar exposição" : "Privado",
+          evidence: { public: b.public as JsonValue },
+        });
+      }
+    }
+    return results;
+  });
+
+// -------- Edge Function health (auto-teste do admin-api) --------
+export const runEdgeFnAudit = createServerFn({ method: "POST" })
+  .inputValidator((d: AdminInput) => d)
+  .handler(async ({ data }): Promise<CheckResult[]> => {
+    assertAdmin(data.adminPassword);
+    const results: CheckResult[] = [];
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      return [{ id: "edge.env", category: "seguranca", title: "Ambiente Edge", severity: "error", message: "SUPABASE_URL/SERVICE_ROLE_KEY ausentes" }];
+    }
+    const t0 = Date.now();
+    try {
+      const res = await fetch(`${url}/functions/v1/admin-api`, {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${key}`, apikey: key },
+        body: JSON.stringify({ op: "adminListSetores", args: {}, adminPassword: data.adminPassword }),
+      });
+      const ms = Date.now() - t0;
+      const body = await res.text();
+      results.push({
+        id: "edge.admin-api", category: "seguranca", title: "Edge Function admin-api",
+        severity: res.ok ? (ms > 1500 ? "warning" : "info") : "error",
+        message: res.ok ? `HTTP ${res.status} em ${ms}ms` : `HTTP ${res.status}: ${body.slice(0, 120)}`,
+        evidence: { status: res.status, latency_ms: ms },
+      });
+    } catch (e) {
+      results.push({ id: "edge.admin-api", category: "seguranca", title: "Edge Function admin-api", severity: "error", message: (e as Error).message });
+    }
+    return results;
+  });
+
+// -------- Integridade referencial extra --------
+export const runIntegrityAudit = createServerFn({ method: "POST" })
+  .inputValidator((d: AdminInput) => d)
+  .handler(async ({ data }): Promise<CheckResult[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const results: CheckResult[] = [];
+    async function orphan(id: string, title: string, fn: () => Promise<number>, suggestion?: string) {
+      try {
+        const n = await fn();
+        results.push({
+          id, category: "banco", title,
+          severity: n === 0 ? "info" : n < 5 ? "warning" : "error",
+          message: n === 0 ? "Nenhum órfão" : `${n} registro(s) órfão(s)`,
+          evidence: { count: n },
+          suggestion: n > 0 ? suggestion : undefined,
+        });
+      } catch (e) {
+        results.push({ id, category: "banco", title, severity: "warning", message: (e as Error).message });
+      }
+    }
+    await orphan("db.orphans.vinc_service", "Vínculos de complemento apontando para serviço inexistente", async () => {
+      const { data: v } = await supabaseAdmin.from("vinculos_complementos").select("service_id");
+      const { data: s } = await supabaseAdmin.from("servicos").select("id");
+      const set = new Set((s ?? []).map((r) => r.id));
+      return (v ?? []).filter((r) => r.service_id && !set.has(r.service_id)).length;
+    }, "Rodar limpeza em vinculos_complementos.");
+    await orphan("db.orphans.vinc_complement", "Vínculos apontando para complemento inexistente", async () => {
+      const { data: v } = await supabaseAdmin.from("vinculos_complementos").select("complement_id");
+      const { data: c } = await supabaseAdmin.from("complementos_servico").select("id");
+      const set = new Set((c ?? []).map((r) => r.id));
+      return (v ?? []).filter((r) => r.complement_id && !set.has(r.complement_id)).length;
+    });
+    await orphan("db.orphans.impact_exp_shift", "Impactos de expediente apontando para expediente inexistente", async () => {
+      const { data: v } = await supabaseAdmin.from("impactos_expediente").select("shift_id");
+      const { data: e } = await supabaseAdmin.from("expedientes").select("id");
+      const set = new Set((e ?? []).map((r) => r.id));
+      return (v ?? []).filter((r) => r.shift_id && !set.has(r.shift_id)).length;
+    });
+    await orphan("db.orphans.impact_exp_impact", "Impactos de expediente apontando para impacto inexistente", async () => {
+      const { data: v } = await supabaseAdmin.from("impactos_expediente").select("impact_id");
+      const { data: i } = await supabaseAdmin.from("impactos").select("id");
+      const set = new Set((i ?? []).map((r) => r.id));
+      return (v ?? []).filter((r) => r.impact_id && !set.has(r.impact_id)).length;
+    });
+    await orphan("db.orphans.active_sessions", "Sessões ativas de equipe inexistente", async () => {
+      const { data: s } = await supabaseAdmin.from("active_sessions").select("team_id");
+      const { data: e } = await supabaseAdmin.from("equipes").select("id");
+      const set = new Set((e ?? []).map((r) => r.id));
+      return (s ?? []).filter((r) => r.team_id && !set.has(r.team_id)).length;
+    });
+    await orphan("db.orphans.equipes_setor", "Equipes com setor inexistente", async () => {
+      const { data: e } = await supabaseAdmin.from("equipes").select("setor_id");
+      const { data: s } = await supabaseAdmin.from("setores").select("id");
+      const set = new Set((s ?? []).map((r) => r.id));
+      return (e ?? []).filter((r) => r.setor_id && !set.has(r.setor_id)).length;
+    });
+    return results;
+  });
+
+// -------- Coordenadas dos serviços --------
+export const runCoordsAudit = createServerFn({ method: "POST" })
+  .inputValidator((d: AdminInput) => d)
+  .handler(async ({ data }): Promise<CheckResult[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const results: CheckResult[] = [];
+    const { data: rows, error } = await supabaseAdmin.from("servicos").select("id,lat,lng");
+    if (error) return [{ id: "coords.error", category: "banco", title: "Coordenadas", severity: "error", message: error.message }];
+    const all = rows ?? [];
+    const total = all.length;
+    const semGeo = all.filter((r) => r.lat == null || r.lng == null).length;
+    const invalid = all.filter((r) => {
+      if (r.lat == null || r.lng == null) return false;
+      const la = Number(r.lat), ln = Number(r.lng);
+      return !Number.isFinite(la) || !Number.isFinite(ln) || Math.abs(la) > 90 || Math.abs(ln) > 180;
+    }).length;
+    const zeroZero = all.filter((r) => Number(r.lat) === 0 && Number(r.lng) === 0).length;
+    const pct = total ? Math.round((semGeo / total) * 100) : 0;
+    results.push({ id: "coords.total", category: "banco", title: "Serviços registrados", severity: "info", message: `${total} serviços`, evidence: { total } });
+    results.push({
+      id: "coords.missing", category: "banco", title: "Serviços sem coordenadas",
+      severity: total > 0 && pct > 20 ? "warning" : "info",
+      message: `${semGeo} sem lat/lng (${pct}%)`,
+      evidence: { count: semGeo, pct },
+      suggestion: pct > 20 ? "Verificar permissão de localização no APK." : undefined,
+    });
+    results.push({
+      id: "coords.invalid", category: "banco", title: "Coordenadas fora da faixa válida",
+      severity: invalid === 0 ? "info" : "error",
+      message: invalid === 0 ? "OK" : `${invalid} registro(s) com lat/lng fora do range`,
+      evidence: { count: invalid },
+    });
+    results.push({
+      id: "coords.zero", category: "banco", title: "Coordenadas (0,0)",
+      severity: zeroZero === 0 ? "info" : "warning",
+      message: zeroZero === 0 ? "Nenhuma" : `${zeroZero} registro(s) no ponto nulo (0,0)`,
+      evidence: { count: zeroZero },
+    });
+    return results;
+  });
+
+// -------- Órfãos de Auth --------
+export const runAuthOrphansAudit = createServerFn({ method: "POST" })
+  .inputValidator((d: AdminInput) => d)
+  .handler(async ({ data }): Promise<CheckResult[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const results: CheckResult[] = [];
+    try {
+      const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (error) throw new Error(error.message);
+      const ids = new Set(users.users.map((u) => u.id));
+      results.push({
+        id: "auth.users.total", category: "contas", title: "Usuários auth",
+        severity: "info", message: `${users.users.length} usuário(s)`, evidence: { count: users.users.length },
+      });
+      const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id,role");
+      const rolesOrph = (roles ?? []).filter((r) => !ids.has(r.user_id));
+      results.push({
+        id: "auth.orphan.roles", category: "contas", title: "user_roles órfãos",
+        severity: rolesOrph.length === 0 ? "info" : "error",
+        message: rolesOrph.length === 0 ? "Nenhum" : `${rolesOrph.length} papéis apontando para auth.users inexistente`,
+        evidence: { count: rolesOrph.length },
+        suggestion: rolesOrph.length ? "DELETE FROM user_roles WHERE user_id NOT IN (SELECT id FROM auth.users);" : undefined,
+      });
+      const { data: teams } = await supabaseAdmin.from("equipes").select("id,team_name");
+      const teamOrph = (teams ?? []).filter((t) => !ids.has(t.id));
+      results.push({
+        id: "auth.orphan.teams", category: "contas", title: "Equipes sem usuário auth",
+        severity: teamOrph.length === 0 ? "info" : "error",
+        message: teamOrph.length === 0 ? "Nenhuma" : `${teamOrph.length} equipe(s) sem auth.users correspondente`,
+        evidence: { count: teamOrph.length },
+      });
+    } catch (e) {
+      results.push({ id: "auth.orphan", category: "contas", title: "Órfãos de auth", severity: "error", message: (e as Error).message });
+    }
+    return results;
+  });
