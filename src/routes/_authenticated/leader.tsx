@@ -576,7 +576,7 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm space-y-2">
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
+        <div className="flex flex-col gap-1 rounded-lg bg-muted p-1">
           <PeriodChip p="day" label="Dia" />
           <PeriodChip p="week" label="Semana" />
           <PeriodChip p="month" label="Mês" />
