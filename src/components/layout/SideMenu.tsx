@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, LogIn } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,8 +12,6 @@ const ARCGIS_URL =
 
 const ARCGIS_RISK_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=28bf0795832f47bf946e07822552c06d";
-
-const ARCGIS_PORTAL_LOGIN_URL = "https://arcgis.aegea.com.br/portal/";
 
 type CapacitorWindow = Window & {
   Capacitor?: {
@@ -76,10 +74,6 @@ async function openArcgisInNativeWebView(url: string): Promise<void> {
   } catch {
     window.location.assign(url);
   }
-}
-
-function openArcgisLogin(setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
-  openArcgisUrl(ARCGIS_PORTAL_LOGIN_URL, "Login ArcGIS", setTitle, setEmbedUrl);
 }
 
 const teamItems = [
