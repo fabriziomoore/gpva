@@ -22,6 +22,11 @@ export const leaderListTeams: Callable<
     is_test: boolean | null;
   }>
 > = async () => {
+  const { data: admins } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+  const adminIds = new Set((admins ?? []).map((a) => a.user_id));
   const { data, error } = await supabase
     .from("equipes")
     .select(
@@ -29,7 +34,9 @@ export const leaderListTeams: Callable<
     )
     .order("team_name");
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((r) => !(r as { is_test?: boolean }).is_test);
+  return (data ?? []).filter(
+    (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id),
+  );
 };
 
 export const leaderTeamsRanking: Callable<
@@ -45,16 +52,21 @@ export const leaderTeamsRanking: Callable<
   }>,
   { year: number; month: number; day?: number | null }
 > = async ({ data }) => {
+  const { data: admins } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+  const adminIds = new Set((admins ?? []).map((a) => a.user_id));
   const { data: teams, error: teamsErr } = await supabase
     .from("equipes")
     .select("id,team_name,is_test");
   if (teamsErr) throw new Error(teamsErr.message);
   const visibleTeams = (teams ?? []).filter(
-    (t) => !(t as { is_test?: boolean }).is_test,
+    (t) => !(t as { is_test?: boolean }).is_test && !adminIds.has(t.id),
   );
   const hiddenIds = new Set(
     (teams ?? [])
-      .filter((t) => (t as { is_test?: boolean }).is_test)
+      .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id))
       .map((t) => t.id),
   );
 
