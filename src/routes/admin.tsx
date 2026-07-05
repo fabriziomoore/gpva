@@ -322,7 +322,11 @@ function CrudSection({
                 >
                   <span className="text-sm">{r.name}</span>
                   <button
-                    onClick={() => delMut.mutate(r.id)}
+                    onClick={() => {
+                      if (confirm(`Desativar o item "${r.name}"?\n\nEle deixará de aparecer no aplicativo, mas o histórico permanece.`)) {
+                        delMut.mutate(r.id);
+                      }
+                    }}
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
                     aria-label="Remover"
                   >
