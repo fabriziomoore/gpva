@@ -501,10 +501,9 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold">Mapa de Serviços</h2>
-          <div className="inline-flex overflow-hidden rounded-lg border border-border">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">Mapa de Serviços</h2>
+        <div className="inline-flex overflow-hidden rounded-lg border border-border">
             {(["day","week","month"] as Period[]).map((p) => {
               const active = periodFilter === p;
               const label = p === "day" ? "Dia" : p === "week" ? "Semana" : "Mês";
@@ -519,9 +518,9 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
                 </button>
               );
             })}
-          </div>
         </div>
-        <div className="flex gap-2 min-w-0">
+      </div>
+      <div className="flex gap-2 min-w-0">
           {periodFilter === "day" ? (
             <select
               value={refDate.getDate()}
@@ -564,7 +563,6 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
           >
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-        </div>
       </div>
       {points.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
