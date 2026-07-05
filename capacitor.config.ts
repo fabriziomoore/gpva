@@ -11,6 +11,8 @@ const config: CapacitorConfig = {
       "arcgis.aegea.com.br",
       "*.arcgis.com",
       "*.arcgisonline.com",
+      "login.microsoftonline.com",
+      "*.microsoftonline.com",
     ],
   },
   android: {
