@@ -13,6 +13,43 @@ const ARCGIS_URL =
 const ARCGIS_RISK_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=28bf0795832f47bf946e07822552c06d";
 
+type CapacitorWindow = Window & {
+  Capacitor?: {
+    isNativePlatform?: () => boolean;
+  };
+};
+
+function isNativeRuntime(): boolean {
+  if (typeof window === "undefined") return false;
+  return (window as CapacitorWindow).Capacitor?.isNativePlatform?.() === true;
+}
+
+async function openUrlExternally(url: string): Promise<void> {
+  if (isNativeRuntime()) {
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url, presentationStyle: "fullscreen" });
+      return;
+    } catch {
+      window.location.assign(url);
+      return;
+    }
+  }
+
+  const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
+  if (!openedWindow) window.location.assign(url);
+}
+
+function openArcgisUrl(url: string, title: string, setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
+  if (isNativeRuntime()) {
+    void openUrlExternally(url);
+    return;
+  }
+
+  setTitle(title);
+  setEmbedUrl(url);
+}
+
 const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
   { to: "/productivity" as const, label: "Produtividade", icon: BarChart3, exact: false },
@@ -50,14 +87,20 @@ export function SideMenu() {
     const url = term
       ? `${ARCGIS_URL}&find=${encodeURIComponent(term)}`
       : ARCGIS_URL;
-    setArcgisTitle("Consulta ArcGIS");
-    setArcgisEmbedUrl(url);
     setOpen(false);
+    openArcgisUrl(url, "Consulta ArcGIS", setArcgisTitle, setArcgisEmbedUrl);
   }
   function openArcgisRisk() {
     setOpen(false);
     setArcgisTitle("Consulta ArcGIS Área de Risco");
-    const fallback = () => setArcgisEmbedUrl(ARCGIS_RISK_URL);
+    const fallback = () => {
+      openArcgisUrl(
+        ARCGIS_RISK_URL,
+        "Consulta ArcGIS Área de Risco",
+        setArcgisTitle,
+        setArcgisEmbedUrl,
+      );
+    };
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       fallback();
       return;
@@ -77,7 +120,12 @@ export function SideMenu() {
           `${ARCGIS_RISK_URL}` +
           `&extent=${xmin},${ymin},${xmax},${ymax},4326` +
           `&marker=${encodeURIComponent(marker)}`;
-        setArcgisEmbedUrl(url);
+        openArcgisUrl(
+          url,
+          "Consulta ArcGIS Área de Risco",
+          setArcgisTitle,
+          setArcgisEmbedUrl,
+        );
       },
       () => fallback(),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
@@ -210,7 +258,7 @@ export function SideMenu() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (arcgisEmbedUrl) window.open(arcgisEmbedUrl, "_blank", "noopener,noreferrer");
+                    if (arcgisEmbedUrl) void openUrlExternally(arcgisEmbedUrl);
                   }}
                   aria-label="Abrir no navegador"
                   className="hidden rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
@@ -220,7 +268,7 @@ export function SideMenu() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (arcgisEmbedUrl) window.open(arcgisEmbedUrl, "_blank", "noopener,noreferrer");
+                    if (arcgisEmbedUrl) void openUrlExternally(arcgisEmbedUrl);
                   }}
                   aria-label="Abrir no navegador"
                   className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted sm:hidden"
