@@ -79,7 +79,10 @@ export function SideMenu() {
           </nav>
           <button
             type="button"
-            onClick={() => setExitOpen(true)}
+            onClick={() => {
+              setOpen(false);
+              setExitOpen(true);
+            }}
             className="flex w-full items-center gap-3 border-t border-border bg-destructive px-5 py-4 text-left text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
           >
             <LogOut className="size-5" />
