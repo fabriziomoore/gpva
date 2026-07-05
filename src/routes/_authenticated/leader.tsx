@@ -42,7 +42,7 @@ import {
 } from "@/lib/analytics";
 import { buildPeriodReport } from "@/lib/report";
 import { renderLeaderPdfBlob, type PeriodAgg, type TeamBreakdown } from "@/lib/leader-pdf";
-import { downloadOrShare, slugFilename } from "@/lib/download";
+import { downloadOrShare, openSavedFile, slugFilename, type SavedFile } from "@/lib/download";
 import { FileDown } from "lucide-react";
 import { LeaderRankingSection } from "@/components/leader/RankingSection";
 import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
@@ -604,10 +604,21 @@ function PeriodView({
   }, [scopeIsAll, period, allTeams, allServices, allShifts]);
 
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [savedReport, setSavedReport] = useState<SavedFile | null>(null);
   const handleExportPdf = async () => {
     if (pdfLoading) return;
     setPdfLoading(true);
     try {
+      // Pontos de mapa: apenas do período atual e com GPS registrado.
+      const cur = periodRange(period);
+      const mapPoints = services
+        .filter((s) => inRange(s.created_at, cur))
+        .filter((s) => s.lat != null && s.lng != null)
+        .map((s) => ({
+          lat: Number(s.lat),
+          lng: Number(s.lng),
+          viable: s.viable,
+        }));
       const blob = await renderLeaderPdfBlob({
         period,
         scope_label: meta.team_name,
@@ -629,9 +640,11 @@ function PeriodView({
         collaborators_count: null,
         best_day: stats.bestDay,
         teams: teamsBreakdown,
+        map_points: mapPoints,
       });
       const filename = `relatorio-${slugFilename(meta.team_name)}-${period}.pdf`;
-      await downloadOrShare(blob, filename);
+      const saved = await downloadOrShare(blob, filename);
+      setSavedReport(saved);
       toast.success("Relatório gerado");
     } catch (e) {
       console.error(e);
@@ -734,6 +747,17 @@ function PeriodView({
             <><FileDown className="mr-2 size-4" /> Baixar relatório</>
           )}
         </Button>
+        {savedReport && !pdfLoading && (
+          <Button
+            className="mt-2 h-12 w-full text-sm font-semibold"
+            variant="outline"
+            onClick={() => {
+              void openSavedFile(savedReport);
+            }}
+          >
+            Ver relatório
+          </Button>
+        )}
       </div>
     </div>
   );
