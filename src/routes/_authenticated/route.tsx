@@ -7,8 +7,9 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    const active = await verifyActiveSession({ force: true });
-    if (!active) throw redirect({ to: "/auth" });
+    // Não bloqueia a navegação — a verificação de takeover roda em background
+    // (realtime + heartbeat cuidam de expulsar sessão antiga).
+    void verifyActiveSession();
     return { user: data.user };
   },
   component: () => <Outlet />,
