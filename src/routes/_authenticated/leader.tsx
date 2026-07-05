@@ -51,6 +51,28 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
+function rangeFor(p: Period, ref: Date): { start: Date; end: Date } {
+  const y = ref.getFullYear();
+  const m = ref.getMonth();
+  const d = ref.getDate();
+  if (p === "day") {
+    return { start: new Date(y, m, d, 0, 0, 0), end: new Date(y, m, d + 1, 0, 0, 0) };
+  }
+  if (p === "month") {
+    return { start: new Date(y, m, 1), end: new Date(y, m + 1, 1) };
+  }
+  if (p === "year") {
+    return { start: new Date(y, 0, 1), end: new Date(y + 1, 0, 1) };
+  }
+  // week: segunda a domingo contendo `ref`
+  const day = ref.getDay(); // 0=dom
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const start = new Date(y, m, d + diffToMonday, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return { start, end };
+}
+
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
   head: () => ({ meta: [{ title: "Painel do Líder — GPVA" }] }),
