@@ -187,7 +187,7 @@ function LeaderPage() {
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
-        rows.push(...((data ?? []) as SvcRow[]));
+        rows.push(...((data ?? []) as unknown as SvcRow[]));
         if (!data || data.length < PAGE) break;
         from += PAGE;
       }

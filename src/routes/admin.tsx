@@ -842,6 +842,47 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   );
 }
 
+function AdminSummaryCards({
+  loading,
+  teams,
+  shifts,
+  services,
+}: {
+  loading: boolean;
+  teams: number;
+  shifts: number;
+  services: number;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <AdminSummaryCard label="Equipes" loading={loading} value={teams} />
+      <AdminSummaryCard label="Expedientes" loading={loading} value={shifts} />
+      <AdminSummaryCard label="Serviços" loading={loading} value={services} />
+    </div>
+  );
+}
+
+function AdminSummaryCard({
+  label,
+  loading,
+  value,
+}: {
+  label: string;
+  loading: boolean;
+  value: number;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 text-xl font-bold text-foreground">
+        {loading ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : value}
+      </div>
+    </div>
+  );
+}
+
 type TeamRow = {
   id: string;
   team_name: string;

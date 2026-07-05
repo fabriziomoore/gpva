@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { newId } from "@/lib/db/local-db";
 import { pullRemote } from "@/lib/sync/engine";
 import { getLocalDB, type LocalShift } from "@/lib/db/local-db";
@@ -25,6 +26,8 @@ let claimedAt = 0;
 let lastActiveCheckAt = 0;
 let activeCheckPromise: Promise<boolean> | null = null;
 const CLAIM_GRACE_MS = 10_000;
+
+const db = supabase as SupabaseClient<any>;
 
 function localSessionId(): string | null {
   try {
@@ -118,7 +121,7 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
       return true;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("active_sessions")
       .select("session_id")
       .eq("user_id", userId)
@@ -165,7 +168,7 @@ async function claimSession(userId: string): Promise<void> {
   setLocalSessionId(sessionId);
   setLoginTs(Date.now());
   currentUserId = userId;
-  const { error } = await supabase
+  const { error } = await db
     .from("active_sessions")
     .upsert(
       { user_id: userId, session_id: sessionId, updated_at: new Date().toISOString() },
