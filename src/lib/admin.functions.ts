@@ -344,6 +344,66 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
     });
   });
 
+export type AdminDataSummary = {
+  teams: number;
+  shifts: number;
+  services: number;
+};
+
+export const adminDataSummary = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      startISO?: string;
+      endISO?: string;
+      teamId?: string;
+    }) => data,
+  )
+  .handler(async ({ data }): Promise<AdminDataSummary> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: teams, error: teamsErr } = await supabaseAdmin
+      .from("equipes")
+      .select("id,team_name,is_test");
+    if (teamsErr) throw new Error(teamsErr.message);
+
+    const visibleTeamIds = (teams ?? [])
+      .filter((team) => team.is_test !== true && team.team_name !== "TESTANDO")
+      .map((team) => team.id);
+    const scopedTeamIds = data.teamId
+      ? visibleTeamIds.filter((id) => id === data.teamId)
+      : visibleTeamIds;
+
+    if (scopedTeamIds.length === 0) {
+      return { teams: data.teamId ? 0 : visibleTeamIds.length, shifts: 0, services: 0 };
+    }
+
+    let shiftsQuery = supabaseAdmin
+      .from("expedientes")
+      .select("id", { count: "exact", head: true })
+      .in("team_id", scopedTeamIds);
+    if (data.startISO) shiftsQuery = shiftsQuery.gte("started_at", data.startISO);
+    if (data.endISO) shiftsQuery = shiftsQuery.lt("started_at", data.endISO);
+    const { count: shifts, error: shiftsErr } = await shiftsQuery;
+    if (shiftsErr) throw new Error(shiftsErr.message);
+
+    let servicesQuery = supabaseAdmin
+      .from("servicos")
+      .select("id", { count: "exact", head: true })
+      .in("team_id", scopedTeamIds);
+    if (data.startISO) servicesQuery = servicesQuery.gte("created_at", data.startISO);
+    if (data.endISO) servicesQuery = servicesQuery.lt("created_at", data.endISO);
+    const { count: services, error: servicesErr } = await servicesQuery;
+    if (servicesErr) throw new Error(servicesErr.message);
+
+    return {
+      teams: data.teamId ? scopedTeamIds.length : visibleTeamIds.length,
+      shifts: shifts ?? 0,
+      services: services ?? 0,
+    };
+  });
+
 export const adminListShifts = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; teamId: string }) => data)
   .handler(async ({ data }) => {
