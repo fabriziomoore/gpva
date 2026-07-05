@@ -47,6 +47,31 @@ import { downloadOrShare, openSavedFile, slugFilename, type SavedFile } from "@/
 import { FileDown } from "lucide-react";
 import { LeaderRankingSection } from "@/components/leader/RankingSection";
 import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+
+function rangeFor(p: Period, ref: Date): { start: Date; end: Date } {
+  const y = ref.getFullYear();
+  const m = ref.getMonth();
+  const d = ref.getDate();
+  if (p === "day") {
+    return { start: new Date(y, m, d, 0, 0, 0), end: new Date(y, m, d + 1, 0, 0, 0) };
+  }
+  if (p === "month") {
+    return { start: new Date(y, m, 1), end: new Date(y, m + 1, 1) };
+  }
+  if (p === "year") {
+    return { start: new Date(y, 0, 1), end: new Date(y + 1, 0, 1) };
+  }
+  // week: segunda a domingo contendo `ref`
+  const day = ref.getDay(); // 0=dom
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const start = new Date(y, m, d + diffToMonday, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return { start, end };
+}
 
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
@@ -376,6 +401,8 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   const isAdmin = useIsAdmin(userId);
   const [periodFilter, setPeriodFilter] = useState<Period>("day");
   const [viabilityFilter, setViabilityFilter] = useState<"all" | "viable" | "unviable">("all");
+  const [refDate, setRefDate] = useState<Date>(() => new Date());
+  const [openPop, setOpenPop] = useState<Period | null>(null);
 
   const teamName = useMemo(() => {
     const m = new Map<string, string>();
@@ -383,16 +410,18 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
     return m;
   }, [teams]);
 
+  const range = useMemo(() => rangeFor(periodFilter, refDate), [periodFilter, refDate]);
+
   const filtered = useMemo(() => {
-    const range = periodRange(periodFilter);
     return services.filter((s) => {
       if (s.lat == null || s.lng == null) return false;
       if (viabilityFilter === "viable" && !s.viable) return false;
       if (viabilityFilter === "unviable" && s.viable) return false;
-      if (!inRange(s.created_at, range)) return false;
+      const t = new Date(s.created_at).getTime();
+      if (t < range.start.getTime() || t >= range.end.getTime()) return false;
       return true;
     });
-  }, [services, periodFilter, viabilityFilter]);
+  }, [services, viabilityFilter, range]);
 
   const points = useMemo<MapPoint[]>(() => {
     return filtered
@@ -426,32 +455,132 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
         : "text-muted-foreground hover:text-foreground"
     }`;
 
-  const periods: Array<[Period, string]> = [
-    ["day", "Dia"],
-    ["week", "Semana"],
-    ["month", "Mês"],
-    ["year", "Ano"],
-  ];
   const visibilities: Array<["all" | "viable" | "unviable", string, string]> = [
     ["all", "Todas", "bg-foreground"],
     ["viable", "Viáveis", "bg-success"],
     ["unviable", "Inviáveis", "bg-destructive"],
   ];
 
+  const monthNames = [
+    "Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez",
+  ];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 8 }, (_, i) => currentYear - 6 + i);
+
+  const periodLabel = (p: Period) => {
+    if (p === "day") return refDate.toLocaleDateString("pt-BR");
+    if (p === "week") {
+      return `Sem. ${range.start.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`;
+    }
+    if (p === "month") return `${monthNames[refDate.getMonth()]}/${refDate.getFullYear()}`;
+    return String(refDate.getFullYear());
+  };
+
+  const PeriodChip = ({ p, label }: { p: Period; label: string }) => {
+    const active = periodFilter === p;
+    const btn = (
+      <button
+        type="button"
+        onClick={() => {
+          setPeriodFilter(p);
+          if (p === "week") setRefDate(new Date());
+        }}
+        className={cn(segItem(active), "flex flex-col items-center justify-center leading-tight px-1")}
+      >
+        <span>{label}</span>
+        {active && <span className="text-[10px] font-normal text-muted-foreground">{periodLabel(p)}</span>}
+      </button>
+    );
+    if (p === "week") return btn;
+    return (
+      <Popover
+        open={openPop === p && active}
+        onOpenChange={(o) => setOpenPop(o ? p : null)}
+      >
+        <PopoverTrigger asChild>{btn}</PopoverTrigger>
+        <PopoverContent align="center" className="w-auto p-2 pointer-events-auto">
+          {p === "day" && (
+            <Calendar
+              mode="single"
+              selected={refDate}
+              onSelect={(d) => {
+                if (d) {
+                  setRefDate(d);
+                  setOpenPop(null);
+                }
+              }}
+              initialFocus
+              className="p-0 pointer-events-auto"
+            />
+          )}
+          {p === "month" && (
+            <div className="w-56 space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <button
+                  type="button"
+                  className="rounded p-1 hover:bg-muted"
+                  onClick={() => setRefDate(new Date(refDate.getFullYear() - 1, refDate.getMonth(), 1))}
+                >‹</button>
+                <span className="text-sm font-semibold">{refDate.getFullYear()}</span>
+                <button
+                  type="button"
+                  className="rounded p-1 hover:bg-muted"
+                  onClick={() => setRefDate(new Date(refDate.getFullYear() + 1, refDate.getMonth(), 1))}
+                >›</button>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {monthNames.map((mn, i) => (
+                  <button
+                    key={mn}
+                    type="button"
+                    onClick={() => {
+                      setRefDate(new Date(refDate.getFullYear(), i, 1));
+                      setOpenPop(null);
+                    }}
+                    className={cn(
+                      "h-9 rounded-md text-xs font-medium hover:bg-muted",
+                      refDate.getMonth() === i && "bg-primary text-primary-foreground hover:bg-primary/90",
+                    )}
+                  >
+                    {mn}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {p === "year" && (
+            <div className="w-48 grid grid-cols-2 gap-1">
+              {years.map((y) => (
+                <button
+                  key={y}
+                  type="button"
+                  onClick={() => {
+                    setRefDate(new Date(y, refDate.getMonth(), 1));
+                    setOpenPop(null);
+                  }}
+                  className={cn(
+                    "h-9 rounded-md text-sm font-medium hover:bg-muted",
+                    refDate.getFullYear() === y && "bg-primary text-primary-foreground hover:bg-primary/90",
+                  )}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm space-y-2">
         <div className="flex gap-1 rounded-lg bg-muted p-1">
-          {periods.map(([k, l]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setPeriodFilter(k)}
-              className={segItem(periodFilter === k)}
-            >
-              {l}
-            </button>
-          ))}
+          <PeriodChip p="day" label="Dia" />
+          <PeriodChip p="week" label="Semana" />
+          <PeriodChip p="month" label="Mês" />
+          <PeriodChip p="year" label="Ano" />
         </div>
         <div className="flex gap-1 rounded-lg bg-muted p-1">
           {visibilities.map(([k, l, dot]) => {
