@@ -61,10 +61,12 @@ export function ServicesMap({
   points,
   height = 480,
   onDelete,
+  hideLegend = false,
 }: {
   points: MapPoint[];
   height?: number;
   onDelete?: (id: string) => void | Promise<void>;
+  hideLegend?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -145,17 +147,19 @@ export function ServicesMap({
   }, [spread]);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div className={hideLegend ? "" : "overflow-hidden rounded-xl border border-border"}>
       <div ref={containerRef} style={{ height }} />
-      <div className="flex items-center gap-4 border-t border-border bg-card px-3 py-2 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block size-3 rounded-full bg-success" /> Viável
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block size-3 rounded-full bg-destructive" /> Inviável
-        </span>
-        <span className="ml-auto">{points.length} registros com GPS</span>
-      </div>
+      {!hideLegend && (
+        <div className="flex items-center gap-4 border-t border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-full bg-success" /> Viável
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-full bg-destructive" /> Inviável
+          </span>
+          <span className="ml-auto">{points.length} registros com GPS</span>
+        </div>
+      )}
     </div>
   );
 }
