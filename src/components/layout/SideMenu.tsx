@@ -14,6 +14,7 @@ const ARCGIS_RISK_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=28bf0795832f47bf946e07822552c06d";
 
 const MICROSOFT_LOGIN_URL = "https://login.microsoftonline.com";
+const ARCGIS_PORTAL_LOGIN_URL = "https://arcgis.aegea.com.br/portal/";
 
 type CapacitorWindow = Window & {
   Capacitor?: {
@@ -47,12 +48,12 @@ function openArcgisUrl(url: string, title: string, setTitle: (title: string) => 
   setEmbedUrl(url);
 }
 
-// Abre login Microsoft no InAppBrowser (WebView nativo) apenas para o usuário
-// autenticar uma vez. No Android o CookieManager é compartilhado entre WebViews,
-// então os cookies de sessão ficam disponíveis para o <iframe> do ArcGIS depois.
-async function openMicrosoftLogin(): Promise<void> {
+// Abre o próprio portal ArcGIS em um WebView nativo não isolado. O portal faz o
+// redirecionamento Microsoft quando necessário, mas o cookie final que evita o
+// prompt da consulta pertence ao domínio arcgis.aegea.com.br.
+async function openArcgisLogin(): Promise<void> {
   if (!isNativeRuntime()) {
-    window.open(MICROSOFT_LOGIN_URL, "_blank", "noopener,noreferrer");
+    window.open(ARCGIS_PORTAL_LOGIN_URL, "_blank", "noopener,noreferrer");
     return;
   }
   try {
@@ -68,12 +69,18 @@ async function openMicrosoftLogin(): Promise<void> {
     };
     if (api?.openInWebView) {
       await api.openInWebView({
-        url: MICROSOFT_LOGIN_URL,
+        url: ARCGIS_PORTAL_LOGIN_URL,
         options: {
           ...DefaultWebViewOptions,
+          android: {
+            ...((DefaultWebViewOptions.android as Record<string, unknown> | undefined) ?? {}),
+            isIsolated: false,
+          },
           showToolbar: true,
           showURL: false,
+          showNavigationButtons: true,
           closeButtonText: "Concluir",
+          toolbarPosition: 0,
           clearCache: false,
           clearSessionCache: false,
         },
@@ -257,17 +264,17 @@ export function SideMenu() {
                 type="button"
                 onClick={() => {
                   setOpen(false);
-                  void openMicrosoftLogin();
+                  void openArcgisLogin();
                 }}
                 className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left transition-colors hover:bg-muted"
               >
                 <LogIn className="size-5 text-primary shrink-0" />
                 <div className="min-w-0">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Login Microsoft
+                    Login ArcGIS
                   </div>
                   <p className="text-[11px] leading-snug text-muted-foreground">
-                    Faça login uma vez para o ArcGIS não pedir de novo.
+                    Faça login uma vez no portal para a consulta não pedir de novo.
                   </p>
                 </div>
               </button>
