@@ -8,7 +8,11 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard } from "lucide-react";
+import {
+  Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
+  Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
+  Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
+} from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -66,20 +70,47 @@ type SectionId =
   | "map_services"
   | "audit";
 
-const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: "setores", label: "Setores" },
-  { id: "tipos_servico", label: "Serviços" },
-  { id: "motivos_inviabilidade", label: "Motivos de Inviabilidade" },
-  { id: "complementos_servico", label: "Complemento(s) do Serviço" },
-  { id: "impactos", label: "Impactos" },
-  { id: "variable", label: "Variável" },
-  { id: "create_team", label: "Criar Equipe" },
-  { id: "leaders", label: "Líderes" },
-  { id: "google_form", label: "Google Forms" },
-  { id: "test_account", label: "Conta de Teste" },
-  { id: "map_services", label: "Serviços no Mapa" },
-  { id: "audit", label: "Auditoria Inteligente" },
+type SectionMeta = {
+  id: SectionId;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const SECTION_INFO: Record<SectionId, SectionMeta> = {
+  setores: { id: "setores", label: "Setores", description: "Cadastro e supervisão dos setores", icon: Building2 },
+  create_team: { id: "create_team", label: "Equipes", description: "Criar, editar e remover equipes", icon: Users },
+  leaders: { id: "leaders", label: "Líderes", description: "Contas de líderes de equipe", icon: UserCog },
+  tipos_servico: { id: "tipos_servico", label: "Tipos de Serviço", description: "Catálogo dos tipos disponíveis", icon: ClipboardList },
+  motivos_inviabilidade: { id: "motivos_inviabilidade", label: "Motivos de Inviabilidade", description: "Motivos usados nas marcações inviáveis", icon: Ban },
+  complementos_servico: { id: "complementos_servico", label: "Complementos do Serviço", description: "Complementos vinculados aos serviços", icon: ListPlus },
+  impactos: { id: "impactos", label: "Impactos", description: "Impactos registrados ao fim do expediente", icon: AlertTriangle },
+  variable: { id: "variable", label: "Variável", description: "Taxa variável por equipe", icon: Percent },
+  map_services: { id: "map_services", label: "Serviços no Mapa", description: "Marcações registradas — remoção seletiva", icon: MapPin },
+  google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
+  test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
+  audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
+};
+
+type SectionGroup = {
+  id: "estrutura" | "catalogos" | "dados";
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: SectionId[];
+};
+
+const SECTION_GROUPS: SectionGroup[] = [
+  { id: "estrutura", label: "Estrutura", icon: Building2,
+    items: ["setores", "create_team", "leaders"] },
+  { id: "catalogos", label: "Catálogos", icon: ClipboardList,
+    items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
+  { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
+    items: ["variable", "map_services", "google_form", "test_account", "audit"] },
 ];
+
+function groupOf(id: SectionId): SectionGroup | undefined {
+  return SECTION_GROUPS.find((g) => g.items.includes(id));
+}
 
 function AdminPage() {
   const navigate = useNavigate();
