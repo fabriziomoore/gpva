@@ -428,7 +428,9 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
               setor={s}
               onSave={(patch) => updateMut.mutate({ setorId: s.id, ...patch })}
               onDelete={() => {
-                if (confirm(`Excluir setor "${s.nome}"?`)) deleteMut.mutate(s.id);
+                if (confirm(`⚠️ Excluir o setor "${s.nome}" PERMANENTEMENTE?\n\nSó é possível excluir setores sem equipes vinculadas. Esta ação não pode ser desfeita.`)) {
+                  deleteMut.mutate(s.id);
+                }
               }}
               saving={updateMut.isPending}
             />
