@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_sessions: {
+        Row: {
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      audit_reports: {
+        Row: {
+          counts: Json
+          created_at: string
+          duration_ms: number
+          id: string
+          overall_score: number
+          report: Json
+        }
+        Insert: {
+          counts?: Json
+          created_at?: string
+          duration_ms?: number
+          id?: string
+          overall_score?: number
+          report?: Json
+        }
+        Update: {
+          counts?: Json
+          created_at?: string
+          duration_ms?: number
+          id?: string
+          overall_score?: number
+          report?: Json
+        }
+        Relationships: []
+      }
       catalog_order: {
         Row: {
           catalog: string
@@ -76,6 +121,7 @@ export type Database = {
           collaborator2: string | null
           created_at: string
           id: string
+          is_test: boolean
           leader: string
           onboarded: boolean
           photo_url: string | null
@@ -89,6 +135,7 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id: string
+          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
@@ -102,6 +149,7 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id?: string
+          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
@@ -160,6 +208,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      google_form_settings: {
+        Row: {
+          id: string
+          mode: string
+          prod_entries: Json
+          prod_form_id: string
+          test_entries: Json
+          test_form_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          mode?: string
+          prod_entries?: Json
+          prod_form_id?: string
+          test_entries?: Json
+          test_form_id?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          mode?: string
+          prod_entries?: Json
+          prod_form_id?: string
+          test_entries?: Json
+          test_form_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       impactos: {
         Row: {
