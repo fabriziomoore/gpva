@@ -400,7 +400,7 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   const [periodFilter, setPeriodFilter] = useState<Period>("day");
   const [viabilityFilter, setViabilityFilter] = useState<"all" | "viable" | "unviable">("all");
   const [refDate, setRefDate] = useState<Date>(() => new Date());
-  const [openPop, setOpenPop] = useState<Period | null>(null);
+  // no popover — native selects
 
   const teamName = useMemo(() => {
     const m = new Map<string, string>();
@@ -465,111 +465,44 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 8 }, (_, i) => currentYear - 6 + i);
 
-  const periodLabel = (p: Period) => {
-    if (p === "day") return refDate.toLocaleDateString("pt-BR");
-    if (p === "week") {
-      return `Sem. ${range.start.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`;
+  const monthNamesFull = [
+    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  ];
+  const daysInMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0).getDate();
+  const daysArr = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  // Semanas do mês (segunda a domingo) contendo dias do mês selecionado.
+  const weeks = useMemo(() => {
+    const y = refDate.getFullYear();
+    const m = refDate.getMonth();
+    const first = new Date(y, m, 1);
+    // Segunda-feira da semana que contém o dia 1.
+    const dow = (first.getDay() + 6) % 7; // 0 = segunda
+    const start = new Date(y, m, 1 - dow);
+    const list: { start: Date; end: Date; label: string }[] = [];
+    const cur = new Date(start);
+    while (cur.getFullYear() < y || (cur.getFullYear() === y && cur.getMonth() <= m)) {
+      const s = new Date(cur);
+      const e = new Date(cur);
+      e.setDate(e.getDate() + 6);
+      // inclui semana se algum dia cai no mês
+      if (e.getMonth() >= m && s.getMonth() <= m && (e.getFullYear() === y || s.getFullYear() === y)) {
+        list.push({
+          start: s,
+          end: e,
+          label: `${s.getDate().toString().padStart(2,"0")}/${(s.getMonth()+1).toString().padStart(2,"0")} – ${e.getDate().toString().padStart(2,"0")}/${(e.getMonth()+1).toString().padStart(2,"0")}`,
+        });
+      }
+      cur.setDate(cur.getDate() + 7);
+      if (cur.getMonth() > m && cur.getFullYear() >= y) break;
     }
-    if (p === "month") return `${monthNames[refDate.getMonth()]}/${refDate.getFullYear()}`;
-    return String(refDate.getFullYear());
-  };
+    return list;
+  }, [refDate]);
+  const weekIndex = Math.max(0, weeks.findIndex((w) =>
+    refDate.getTime() >= w.start.getTime() && refDate.getTime() <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59).getTime()
+  ));
 
-  const PeriodChip = ({ p, label }: { p: Period; label: string }) => {
-    const active = periodFilter === p;
-    const btn = (
-      <button
-        type="button"
-        onClick={() => {
-          setPeriodFilter(p);
-          if (p === "week") setRefDate(new Date());
-        }}
-        className={cn(segItem(active), "flex flex-col items-center justify-center leading-tight px-1")}
-      >
-        <span>{label}</span>
-        {active && <span className="text-[10px] font-normal text-muted-foreground">{periodLabel(p)}</span>}
-      </button>
-    );
-    if (p === "week") return btn;
-    return (
-      <Popover
-        open={openPop === p && active}
-        onOpenChange={(o) => setOpenPop(o ? p : null)}
-      >
-        <PopoverTrigger asChild>{btn}</PopoverTrigger>
-        <PopoverContent side="top" align="center" sideOffset={8} className="w-auto p-2 pointer-events-auto z-50">
-          {p === "day" && (
-            <Calendar
-              mode="single"
-              selected={refDate}
-              onSelect={(d) => {
-                if (d) {
-                  setRefDate(d);
-                  setOpenPop(null);
-                }
-              }}
-              initialFocus
-              className="p-0 pointer-events-auto"
-            />
-          )}
-          {p === "month" && (
-            <div className="w-56 space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <button
-                  type="button"
-                  className="rounded p-1 hover:bg-muted"
-                  onClick={() => setRefDate(new Date(refDate.getFullYear() - 1, refDate.getMonth(), 1))}
-                >‹</button>
-                <span className="text-sm font-semibold">{refDate.getFullYear()}</span>
-                <button
-                  type="button"
-                  className="rounded p-1 hover:bg-muted"
-                  onClick={() => setRefDate(new Date(refDate.getFullYear() + 1, refDate.getMonth(), 1))}
-                >›</button>
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                {monthNames.map((mn, i) => (
-                  <button
-                    key={mn}
-                    type="button"
-                    onClick={() => {
-                      setRefDate(new Date(refDate.getFullYear(), i, 1));
-                      setOpenPop(null);
-                    }}
-                    className={cn(
-                      "h-9 rounded-md text-xs font-medium hover:bg-muted",
-                      refDate.getMonth() === i && "bg-primary text-primary-foreground hover:bg-primary/90",
-                    )}
-                  >
-                    {mn}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {p === "year" && (
-            <div className="w-48 grid grid-cols-2 gap-1">
-              {years.map((y) => (
-                <button
-                  key={y}
-                  type="button"
-                  onClick={() => {
-                    setRefDate(new Date(y, refDate.getMonth(), 1));
-                    setOpenPop(null);
-                  }}
-                  className={cn(
-                    "h-9 rounded-md text-sm font-medium hover:bg-muted",
-                    refDate.getFullYear() === y && "bg-primary text-primary-foreground hover:bg-primary/90",
-                  )}
-                >
-                  {y}
-                </button>
-              ))}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
-    );
-  };
+  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
 
   return (
     <div className="space-y-3">
