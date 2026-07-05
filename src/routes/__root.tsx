@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { startSync } from "../lib/sync/init";
 import { startSessionGuard } from "../lib/session-guard";
+import { requestBootPermissions } from "../lib/boot-permissions";
 import { THEME_BOOT_SCRIPT } from "../hooks/use-theme";
 
 function NotFoundComponent() {
@@ -136,6 +137,7 @@ function RootComponent() {
   useEffect(() => {
     void startSync();
     startSessionGuard();
+    void requestBootPermissions();
   }, []);
 
   return (
