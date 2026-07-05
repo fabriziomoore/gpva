@@ -23,12 +23,17 @@ function asUntypedClient(client: unknown): SupabaseClient {
   return client as SupabaseClient;
 }
 
+async function getAdminClient(): Promise<SupabaseClient> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return asUntypedClient(supabaseAdmin);
+}
+
 // -------- DB checks --------
 export const runDbAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     // Ping / latência
@@ -157,7 +162,7 @@ export const runSecurityAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     // Verifica RLS via pg_class
@@ -194,7 +199,7 @@ export const runAccountsAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     try {
@@ -248,7 +253,7 @@ export const runConfigAudit = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }): Promise<CheckResult[]> => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const results: CheckResult[] = [];
 
     try {
@@ -292,7 +297,7 @@ export const saveAuditReport = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput & { report: JsonValue; duration_ms: number; overall_score: number; counts: JsonValue }) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { data: row, error } = await supabaseAdmin
       .from("audit_reports")
       .insert({
@@ -311,7 +316,7 @@ export const listAuditReports = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { data: rows, error } = await supabaseAdmin
       .from("audit_reports")
       .select("id, created_at, duration_ms, overall_score, counts")
@@ -325,7 +330,7 @@ export const deleteAuditReport = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput & { id: string }) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { error } = await supabaseAdmin.from("audit_reports").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -335,7 +340,7 @@ export const getAuditReport = createServerFn({ method: "POST" })
   .inputValidator((d: AdminInput & { id: string }) => d)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getAdminClient();
     const { data: row, error } = await supabaseAdmin
       .from("audit_reports")
       .select("id, created_at, duration_ms, overall_score, counts, report")
