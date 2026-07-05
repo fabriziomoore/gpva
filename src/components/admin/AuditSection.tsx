@@ -10,6 +10,8 @@ import {
 import {
   runDbAudit, runSecurityAudit, runAccountsAudit, runConfigAudit,
   saveAuditReport, listAuditReports, deleteAuditReport, getAuditReport,
+  runRlsAudit, runStorageAudit, runEdgeFnAudit, runIntegrityAudit,
+  runCoordsAudit, runAuthOrphansAudit,
 } from "@/lib/audit/audit.functions";
 import { runClientChecks } from "@/lib/audit/client-checks";
 import { scoreFromResults, CATEGORY_LABELS, OUT_OF_SCOPE } from "@/lib/audit/types";
@@ -24,6 +26,12 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
   const secFn = useServerFn(runSecurityAudit);
   const accFn = useServerFn(runAccountsAudit);
   const cfgFn = useServerFn(runConfigAudit);
+  const rlsFn = useServerFn(runRlsAudit);
+  const storFn = useServerFn(runStorageAudit);
+  const edgeFn = useServerFn(runEdgeFnAudit);
+  const intFn = useServerFn(runIntegrityAudit);
+  const coordFn = useServerFn(runCoordsAudit);
+  const authFn = useServerFn(runAuthOrphansAudit);
   const saveFn = useServerFn(saveAuditReport);
   const listFn = useServerFn(listAuditReports);
   const delFn = useServerFn(deleteAuditReport);
@@ -33,9 +41,15 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
     { key: "cfg", label: "Verificando configurações...", run: () => cfgFn({ data: { adminPassword: adminPw } }) },
     { key: "acc", label: "Analisando contas e permissões...", run: () => accFn({ data: { adminPassword: adminPw } }) },
     { key: "sec", label: "Testando segurança...", run: () => secFn({ data: { adminPassword: adminPw } }) },
+    { key: "rls", label: "Auditando RLS e grants...", run: () => rlsFn({ data: { adminPassword: adminPw } }) },
+    { key: "storage", label: "Verificando storage...", run: () => storFn({ data: { adminPassword: adminPw } }) },
+    { key: "edge", label: "Testando Edge Function admin-api...", run: () => edgeFn({ data: { adminPassword: adminPw } }) },
+    { key: "authOrph", label: "Detectando órfãos de auth...", run: () => authFn({ data: { adminPassword: adminPw } }) },
     { key: "db", label: "Auditando banco de dados...", run: () => dbFn({ data: { adminPassword: adminPw } }) },
+    { key: "intg", label: "Verificando integridade referencial...", run: () => intFn({ data: { adminPassword: adminPw } }) },
+    { key: "coords", label: "Auditando coordenadas de serviços...", run: () => coordFn({ data: { adminPassword: adminPw } }) },
     { key: "cli", label: "Verificando runtime do cliente...", run: () => Promise.resolve(runClientChecks()).then((p) => p) },
-  ], [adminPw, cfgFn, accFn, secFn, dbFn]);
+  ], [adminPw, cfgFn, accFn, secFn, rlsFn, storFn, edgeFn, authFn, dbFn, intFn, coordFn]);
 
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0, current: "" });

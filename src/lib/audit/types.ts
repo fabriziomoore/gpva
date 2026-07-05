@@ -72,9 +72,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 export const OUT_OF_SCOPE = [
   "Análise estática de TypeScript / ESLint",
   "Tamanho de bundle e chunks",
-  "Código morto e componentes duplicados",
   "Vulnerabilidades de dependências (npm audit)",
-  "Capacitor / plugins / build APK",
-  "Análise visual de UX e acessibilidade automática",
-  "Testes de XSS / CSRF estáticos",
+  "Build APK / assinatura / permissões Android",
+  "Testes automatizados de acessibilidade e UX visual",
+  "Testes estáticos de XSS / CSRF",
 ];

@@ -567,3 +567,102 @@ async function auditConfig(sb: any) {
   } catch (e) { results.push({ id: "cfg.form", category: "config", title: "Google Forms", severity: "error", message: (e as Error).message }); }
   return results;
 }
+
+// -------- novos módulos --------
+async function auditRls(sb: any) {
+  const results: any[] = [];
+  const { data, error } = await sb.rpc("audit_schema_snapshot");
+  if (error) return [{ id: "sec.rls.snapshot", category: "seguranca", title: "Snapshot de RLS", severity: "error", message: error.message }];
+  for (const r of (data ?? []) as any[]) {
+    if (!r.rls_enabled) {
+      results.push({ id: `sec.rls.${r.table}`, category: "seguranca", title: `RLS em ${r.table}`, severity: "error", message: "RLS DESABILITADA", location: `public.${r.table}` });
+    } else if (!r.policy_count) {
+      results.push({ id: `sec.rls.${r.table}.nopolicy`, category: "seguranca", title: `RLS em ${r.table}`, severity: "warning", message: "RLS ativa sem políticas", location: `public.${r.table}` });
+    } else {
+      results.push({ id: `sec.rls.${r.table}`, category: "seguranca", title: `RLS em ${r.table}`, severity: "info", message: `${r.policy_count} política(s)`, location: `public.${r.table}` });
+    }
+    const g = r.grants ?? {};
+    if (!g.service_role || g.service_role.length === 0) {
+      results.push({ id: `sec.grant.${r.table}.service`, category: "seguranca", title: `Grants em ${r.table}`, severity: "warning", message: "service_role sem GRANT", location: `public.${r.table}` });
+    }
+  }
+  return results;
+}
+async function auditStorage(sb: any) {
+  const results: any[] = [];
+  const { data, error } = await sb.storage.listBuckets();
+  if (error) return [{ id: "storage.list", category: "banco", title: "Storage", severity: "error", message: error.message }];
+  if (!data?.length) {
+    results.push({ id: "storage.empty", category: "banco", title: "Buckets", severity: "info", message: "Nenhum bucket criado" });
+  } else {
+    for (const b of data) results.push({ id: `storage.${b.name}`, category: "banco", title: `Bucket ${b.name}`, severity: b.public ? "warning" : "info", message: b.public ? "PÚBLICO" : "Privado" });
+  }
+  return results;
+}
+async function auditEdge(sb: any, adminPassword: string) {
+  // Self-test: chama uma op leve via RPC interna (evita chamar a própria função por HTTP).
+  const t0 = Date.now();
+  const { error } = await sb.from("setores").select("id", { count: "exact", head: true });
+  const ms = Date.now() - t0;
+  const results: any[] = [{
+    id: "edge.admin-api", category: "seguranca", title: "Edge Function admin-api",
+    severity: error ? "error" : ms > 1500 ? "warning" : "info",
+    message: error ? error.message : `Alcançável — leitura em ${ms}ms`,
+    evidence: { latency_ms: ms },
+  }];
+  if (adminPassword !== ADMIN_PASSWORD) results.push({ id: "edge.auth", category: "seguranca", title: "Auth da Edge", severity: "error", message: "Senha admin inválida" });
+  return results;
+}
+async function auditIntegrity(sb: any) {
+  const results: any[] = [];
+  async function orph(id: string, title: string, table: string, col: string, refTable: string) {
+    try {
+      const { data: v } = await sb.from(table).select(col);
+      const { data: r } = await sb.from(refTable).select("id");
+      const set = new Set((r ?? []).map((x: any) => x.id));
+      const n = (v ?? []).filter((x: any) => x[col] && !set.has(x[col])).length;
+      results.push({ id, category: "banco", title, severity: n === 0 ? "info" : n < 5 ? "warning" : "error", message: n === 0 ? "Nenhum órfão" : `${n} órfão(s)`, evidence: { count: n } });
+    } catch (e) { results.push({ id, category: "banco", title, severity: "warning", message: (e as Error).message }); }
+  }
+  await orph("db.orphans.vinc_service", "Vínculos → serviço inexistente", "vinculos_complementos", "service_id", "servicos");
+  await orph("db.orphans.vinc_complement", "Vínculos → complemento inexistente", "vinculos_complementos", "complement_id", "complementos_servico");
+  await orph("db.orphans.impact_exp_shift", "Impactos exp. → expediente inexistente", "impactos_expediente", "shift_id", "expedientes");
+  await orph("db.orphans.impact_exp_impact", "Impactos exp. → impacto inexistente", "impactos_expediente", "impact_id", "impactos");
+  await orph("db.orphans.active_sessions", "Sessões ativas → usuário inexistente", "active_sessions", "user_id", "equipes");
+  await orph("db.orphans.equipes_setor", "Equipes → setor inexistente", "equipes", "setor_id", "setores");
+  return results;
+}
+async function auditCoords(sb: any) {
+  const results: any[] = [];
+  const { data, error } = await sb.from("servicos").select("id,lat,lng");
+  if (error) return [{ id: "coords.error", category: "banco", title: "Coordenadas", severity: "error", message: error.message }];
+  const rows = data ?? [];
+  const total = rows.length;
+  const semGeo = rows.filter((r: any) => r.lat == null || r.lng == null).length;
+  const invalid = rows.filter((r: any) => r.lat != null && r.lng != null && (Math.abs(Number(r.lat)) > 90 || Math.abs(Number(r.lng)) > 180)).length;
+  const zero = rows.filter((r: any) => Number(r.lat) === 0 && Number(r.lng) === 0).length;
+  const pct = total ? Math.round((semGeo / total) * 100) : 0;
+  results.push({ id: "coords.total", category: "banco", title: "Serviços registrados", severity: "info", message: `${total} serviços` });
+  results.push({ id: "coords.missing", category: "banco", title: "Sem coordenadas", severity: total && pct > 20 ? "warning" : "info", message: `${semGeo} (${pct}%)` });
+  results.push({ id: "coords.invalid", category: "banco", title: "Coord. inválidas", severity: invalid ? "error" : "info", message: invalid ? `${invalid} fora do range` : "OK" });
+  results.push({ id: "coords.zero", category: "banco", title: "Coord. (0,0)", severity: zero ? "warning" : "info", message: zero ? `${zero}` : "Nenhuma" });
+  return results;
+}
+async function auditAuthOrphans(sb: any) {
+  const results: any[] = [];
+  try {
+    const list = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (list.error) throw new Error(list.error.message);
+    const ids = new Set(list.data.users.map((u: any) => u.id));
+    results.push({ id: "auth.users.total", category: "contas", title: "Usuários auth", severity: "info", message: `${list.data.users.length}` });
+    const { data: roles } = await sb.from("user_roles").select("user_id");
+    const rOrph = (roles ?? []).filter((r: any) => !ids.has(r.user_id)).length;
+    results.push({ id: "auth.orphan.roles", category: "contas", title: "user_roles órfãos", severity: rOrph ? "error" : "info", message: rOrph ? `${rOrph}` : "Nenhum" });
+    const { data: teams } = await sb.from("equipes").select("id");
+    const tOrph = (teams ?? []).filter((t: any) => !ids.has(t.id)).length;
+    results.push({ id: "auth.orphan.teams", category: "contas", title: "Equipes sem auth", severity: tOrph ? "error" : "info", message: tOrph ? `${tOrph}` : "Nenhuma" });
+  } catch (e) {
+    results.push({ id: "auth.orphan", category: "contas", title: "Órfãos de auth", severity: "error", message: (e as Error).message });
+  }
+  return results;
+}
