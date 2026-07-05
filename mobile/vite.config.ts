@@ -29,6 +29,20 @@ export default defineConfig({
         find: /^@\/lib\/leader\.functions$/,
         replacement: resolve(srcDir, "lib/leader.functions.mobile.ts"),
       },
+      // Admin panel: server fns are aliased to thin wrappers that call the
+      // Supabase Edge Function `admin-api` (service_role).
+      {
+        find: /^@\/lib\/admin\.functions$/,
+        replacement: resolve(srcDir, "lib/admin.functions.mobile.ts"),
+      },
+      {
+        find: /^@\/lib\/google-form\.functions$/,
+        replacement: resolve(srcDir, "lib/google-form.functions.mobile.ts"),
+      },
+      {
+        find: /^@\/lib\/audit\/audit\.functions$/,
+        replacement: resolve(srcDir, "lib/audit/audit.functions.mobile.ts"),
+      },
       // Stub @tanstack/react-start on mobile: useServerFn becomes a
       // pass-through, createServerFn/createMiddleware are unused.
       {

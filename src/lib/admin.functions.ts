@@ -547,3 +547,96 @@ export const adminDeleteSetor = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+// ============= Serviços do Mapa =============
+
+export type MapServiceRow = {
+  id: string;
+  created_at: string;
+  team_id: string;
+  team_name: string;
+  lat: number | null;
+  lng: number | null;
+  viable: boolean;
+  is_negotiation: boolean;
+  service_type_name: string | null;
+  negotiated_value: number | null;
+  registration_number: string | null;
+};
+
+export const adminListMapServices = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      teamId?: string;
+      startISO?: string;
+      endISO?: string;
+      limit?: number;
+    }) => data,
+  )
+  .handler(async ({ data }): Promise<MapServiceRow[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin
+      .from("servicos")
+      .select(
+        "id,created_at,team_id,lat,lng,viable,is_negotiation,service_type_name,negotiated_value,registration_number",
+      )
+      .order("created_at", { ascending: false })
+      .limit(Math.min(Number(data.limit) || 500, 2000));
+    if (data.teamId) q = q.eq("team_id", data.teamId);
+    if (data.startISO) q = q.gte("created_at", data.startISO);
+    if (data.endISO) q = q.lt("created_at", data.endISO);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    const teamIds = Array.from(new Set((rows ?? []).map((r) => r.team_id).filter(Boolean)));
+    const teamMap = new Map<string, string>();
+    if (teamIds.length) {
+      const { data: tRows } = await supabaseAdmin
+        .from("equipes")
+        .select("id,team_name")
+        .in("id", teamIds);
+      for (const t of tRows ?? []) teamMap.set(t.id, t.team_name);
+    }
+    return (rows ?? []).map((r) => ({
+      ...r,
+      team_name: teamMap.get(r.team_id) ?? "—",
+    })) as MapServiceRow[];
+  });
+
+export const adminDeleteMapService = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; id: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("vinculos_complementos").delete().eq("service_id", data.id);
+    const { error } = await supabaseAdmin.from("servicos").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminDeleteMapServicesRange = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      teamId?: string;
+      startISO?: string;
+      endISO?: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin.from("servicos").select("id");
+    if (data.teamId) q = q.eq("team_id", data.teamId);
+    if (data.startISO) q = q.gte("created_at", data.startISO);
+    if (data.endISO) q = q.lt("created_at", data.endISO);
+    const { data: rows, error: e1 } = await q;
+    if (e1) throw new Error(e1.message);
+    const ids = (rows ?? []).map((r) => r.id);
+    if (!ids.length) return { ok: true as const, deleted: 0 };
+    await supabaseAdmin.from("vinculos_complementos").delete().in("service_id", ids);
+    const { error } = await supabaseAdmin.from("servicos").delete().in("id", ids);
+    if (error) throw new Error(error.message);
+    return { ok: true as const, deleted: ids.length };
+  });

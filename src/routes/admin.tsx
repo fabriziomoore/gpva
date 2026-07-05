@@ -43,6 +43,7 @@ import {
 } from "@/lib/google-form.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { AuditSection } from "@/components/admin/AuditSection";
+import { MapServicesSection } from "@/components/admin/MapServicesSection";
 import { formatDateBR } from "@/lib/format";
 
 export const Route = createFileRoute("/admin")({
@@ -62,6 +63,7 @@ type SectionId =
   | "setores"
   | "google_form"
   | "test_account"
+  | "map_services"
   | "audit";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
@@ -75,6 +77,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "leaders", label: "Líderes" },
   { id: "google_form", label: "Google Forms" },
   { id: "test_account", label: "Conta de Teste" },
+  { id: "map_services", label: "Serviços no Mapa" },
   { id: "audit", label: "Auditoria Inteligente" },
 ];
 
@@ -200,6 +203,8 @@ function AdminPage() {
             <GoogleFormSection adminPw={adminPw} />
           ) : section === "test_account" ? (
             <TestAccountSection adminPw={adminPw} />
+          ) : section === "map_services" ? (
+            <MapServicesSection adminPw={adminPw} />
           ) : section === "audit" ? (
             <AuditSection adminPw={adminPw} />
           ) : (
