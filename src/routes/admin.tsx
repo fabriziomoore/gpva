@@ -969,7 +969,7 @@ function TeamHeader({
         deleteMut.mutate();
       }}
       title="Excluir equipe"
-      description={`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`}
+      description={`⚠️ ATENÇÃO — Ação irreversível.\n\nExcluir a equipe "${team.team_name}" apagará PERMANENTEMENTE do banco:\n• todos os expedientes\n• todos os serviços registrados no mapa\n• impactos e complementos vinculados\n• a própria conta de acesso da equipe\n\nEssa ação NÃO pode ser desfeita.`}
     />
     </>
   );
