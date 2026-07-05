@@ -520,12 +520,12 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
             })}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 min-w-0">
           {periodFilter === "day" && (
             <select
               value={refDate.getDate()}
               onChange={(e) => setRefDate(new Date(refDate.getFullYear(), refDate.getMonth(), Number(e.target.value)))}
-              className={cn(selectCls, "w-20")}
+              className={cn(selectCls, "w-20 shrink-0")}
             >
               {daysArr.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -537,41 +537,27 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
                 const w = weeks[Number(e.target.value)];
                 if (w) setRefDate(new Date(w.start));
               }}
-              className={cn(selectCls, "flex-1")}
+              className={cn(selectCls, "min-w-0 flex-1")}
             >
               {weeks.map((w, i) => <option key={i} value={i}>Sem. {i + 1} — {w.label}</option>)}
             </select>
           )}
-          <select
-            value={refDate.getMonth()}
-            onChange={(e) => setRefDate(new Date(refDate.getFullYear(), Number(e.target.value), 1))}
-            className={cn(selectCls, "flex-1")}
-          >
-            {monthNamesFull.map((n, i) => <option key={i} value={i}>{n}</option>)}
-          </select>
+          {periodFilter !== "week" && (
+            <select
+              value={refDate.getMonth()}
+              onChange={(e) => setRefDate(new Date(refDate.getFullYear(), Number(e.target.value), 1))}
+              className={cn(selectCls, "min-w-0 flex-1")}
+            >
+              {monthNamesFull.map((n, i) => <option key={i} value={i}>{n}</option>)}
+            </select>
+          )}
           <select
             value={refDate.getFullYear()}
             onChange={(e) => setRefDate(new Date(Number(e.target.value), refDate.getMonth(), 1))}
-            className={cn(selectCls, "w-24")}
+            className={cn(selectCls, "w-24 shrink-0")}
           >
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-        </div>
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
-          {visibilities.map(([k, l, dot]) => {
-            const active = viabilityFilter === k;
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setViabilityFilter(k)}
-                className={`${segItem(active)} inline-flex items-center justify-center gap-1.5`}
-              >
-                <span className={`inline-block size-2 rounded-full ${dot}`} />
-                {l}
-              </button>
-            );
-          })}
         </div>
       </div>
       {points.length === 0 ? (
@@ -579,11 +565,30 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (
-        <ServicesMap
-          points={points}
-          height={560}
-          onDelete={isAdmin.data ? handleDelete : undefined}
-        />
+        <div className="overflow-hidden rounded-xl border border-border">
+          <ServicesMap
+            points={points}
+            height={560}
+            onDelete={isAdmin.data ? handleDelete : undefined}
+            hideLegend
+          />
+          <div className="flex gap-1 rounded-none bg-muted p-1">
+            {visibilities.map(([k, l, dot]) => {
+              const active = viabilityFilter === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setViabilityFilter(k)}
+                  className={`${segItem(active)} inline-flex items-center justify-center gap-1.5`}
+                >
+                  <span className={`inline-block size-2 rounded-full ${dot}`} />
+                  {l}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );
