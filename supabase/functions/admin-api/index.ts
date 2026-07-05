@@ -435,6 +435,12 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (!data) throw new Error("Relatório não encontrado");
       return data;
     }
+    case "auditRls": return await auditRls(sb);
+    case "auditStorage": return await auditStorage(sb);
+    case "auditEdge": return await auditEdge(sb, payload.adminPassword!);
+    case "auditIntegrity": return await auditIntegrity(sb);
+    case "auditCoords": return await auditCoords(sb);
+    case "auditAuthOrphans": return await auditAuthOrphans(sb);
 
     // ---------- Map services (marcações do mapa) ----------
     case "adminListMapServices": {
