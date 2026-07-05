@@ -44,10 +44,10 @@ export type Database = {
         Insert: {
           counts?: Json
           created_at?: string
-          duration_ms: number
+          duration_ms?: number
           id?: string
-          overall_score: number
-          report: Json
+          overall_score?: number
+          report?: Json
         }
         Update: {
           counts?: Json
@@ -222,10 +222,10 @@ export type Database = {
         Insert: {
           id?: string
           mode?: string
-          prod_entries: Json
-          prod_form_id: string
-          test_entries: Json
-          test_form_id: string
+          prod_entries?: Json
+          prod_form_id?: string
+          test_entries?: Json
+          test_form_id?: string
           updated_at?: string
         }
         Update: {
@@ -351,13 +351,9 @@ export type Database = {
       }
       servicos: {
         Row: {
-          accuracy_m: number | null
-          captured_at: string | null
           created_at: string
           id: string
           is_negotiation: boolean
-          lat: number | null
-          lng: number | null
           negotiated_value: number | null
           reason_id: string | null
           reason_name: string | null
@@ -369,13 +365,9 @@ export type Database = {
           viable: boolean
         }
         Insert: {
-          accuracy_m?: number | null
-          captured_at?: string | null
           created_at?: string
           id?: string
           is_negotiation?: boolean
-          lat?: number | null
-          lng?: number | null
           negotiated_value?: number | null
           reason_id?: string | null
           reason_name?: string | null
@@ -387,13 +379,9 @@ export type Database = {
           viable?: boolean
         }
         Update: {
-          accuracy_m?: number | null
-          captured_at?: string | null
           created_at?: string
           id?: string
           is_negotiation?: boolean
-          lat?: number | null
-          lng?: number | null
           negotiated_value?: number | null
           reason_id?: string | null
           reason_name?: string | null
