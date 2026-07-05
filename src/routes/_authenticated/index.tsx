@@ -19,6 +19,7 @@ import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Início — GPVA" }] }),
   component: HomePage,
 });
