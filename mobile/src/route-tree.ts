@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Code-based route tree for the Android (Capacitor) SPA. Reuses every
-// component defined in src/routes/** without forking — only /admin is
-// excluded because it depends on TanStack Start server functions.
+// Code-based route tree for the Android (Capacitor) SPA. Reuses cada
+// componente definido em src/routes/** sem forkar. Rotas admin usam
+// os aliases *.mobile.ts que delegam à edge function admin-api.
 
 import { Route as rootRoute } from "./root-route";
 import { Route as AuthRoute } from "@/routes/auth";

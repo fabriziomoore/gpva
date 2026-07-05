@@ -5,6 +5,14 @@ const config: CapacitorConfig = {
   appName: "GPVA",
   webDir: "mobile/dist",
   bundledWebRuntime: false,
+  server: {
+    // Permite que o WebView carregue estes domínios externos (iframe do ArcGIS).
+    allowNavigation: [
+      "arcgis.aegea.com.br",
+      "*.arcgis.com",
+      "*.arcgisonline.com",
+    ],
+  },
   android: {
     allowMixedContent: false,
   },
