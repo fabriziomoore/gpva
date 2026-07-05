@@ -43,17 +43,20 @@ export function SideMenu() {
   );
   const [arcgisQuery, setArcgisQuery] = useState("");
   const [arcgisEmbedUrl, setArcgisEmbedUrl] = useState<string | null>(null);
+  const [arcgisTitle, setArcgisTitle] = useState<string>("Consulta ArcGIS");
 
   function openArcgis() {
     const term = arcgisQuery.trim();
     const url = term
       ? `${ARCGIS_URL}&find=${encodeURIComponent(term)}`
       : ARCGIS_URL;
+    setArcgisTitle("Consulta ArcGIS");
     setArcgisEmbedUrl(url);
     setOpen(false);
   }
   function openArcgisRisk() {
     setOpen(false);
+    setArcgisTitle("Consulta ArcGIS Área de Risco");
     const fallback = () => setArcgisEmbedUrl(ARCGIS_RISK_URL);
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       fallback();
@@ -201,7 +204,7 @@ export function SideMenu() {
                   <Menu className="size-5" />
                 </button>
                 <Map className="size-4 text-primary shrink-0" />
-                <span className="truncate text-sm font-semibold">Consulta ArcGIS</span>
+                <span className="truncate text-sm font-semibold">{arcgisTitle}</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
