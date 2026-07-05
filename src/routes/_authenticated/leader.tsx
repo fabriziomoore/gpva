@@ -507,11 +507,60 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm space-y-2">
-        <div className="flex flex-col gap-1 rounded-lg bg-muted p-1">
-          <PeriodChip p="day" label="Dia" />
-          <PeriodChip p="week" label="Semana" />
-          <PeriodChip p="month" label="Mês" />
-          <PeriodChip p="year" label="Ano" />
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {(["day","week","month","year"] as Period[]).map((p) => {
+            const active = periodFilter === p;
+            const label = p === "day" ? "Dia" : p === "week" ? "Semana" : p === "month" ? "Mês" : "Ano";
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriodFilter(p)}
+                className={segItem(active)}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-2">
+          {periodFilter === "day" && (
+            <select
+              value={refDate.getDate()}
+              onChange={(e) => setRefDate(new Date(refDate.getFullYear(), refDate.getMonth(), Number(e.target.value)))}
+              className={cn(selectCls, "w-20")}
+            >
+              {daysArr.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          )}
+          {periodFilter === "week" && (
+            <select
+              value={weekIndex}
+              onChange={(e) => {
+                const w = weeks[Number(e.target.value)];
+                if (w) setRefDate(new Date(w.start));
+              }}
+              className={cn(selectCls, "flex-1")}
+            >
+              {weeks.map((w, i) => <option key={i} value={i}>Sem. {i + 1} — {w.label}</option>)}
+            </select>
+          )}
+          {(periodFilter === "day" || periodFilter === "week" || periodFilter === "month") && (
+            <select
+              value={refDate.getMonth()}
+              onChange={(e) => setRefDate(new Date(refDate.getFullYear(), Number(e.target.value), 1))}
+              className={cn(selectCls, "flex-1")}
+            >
+              {monthNamesFull.map((n, i) => <option key={i} value={i}>{n}</option>)}
+            </select>
+          )}
+          <select
+            value={refDate.getFullYear()}
+            onChange={(e) => setRefDate(new Date(Number(e.target.value), refDate.getMonth(), 1))}
+            className={cn(selectCls, "w-24")}
+          >
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
         <div className="flex gap-1 rounded-lg bg-muted p-1">
           {visibilities.map(([k, l, dot]) => {
