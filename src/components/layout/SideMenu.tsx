@@ -65,7 +65,7 @@ async function openArcgisInNativeWebView(url: string): Promise<void> {
         showToolbar: true,
         showURL: false,
         showNavigationButtons: false,
-        closeButtonText: "Fechar",
+        closeButtonText: "‹ Voltar ao app",
         toolbarPosition: ToolbarPosition.TOP,
         clearCache: false,
         clearSessionCache: false,
