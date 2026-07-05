@@ -580,7 +580,7 @@ export const adminListMapServices = createServerFn({ method: "POST" })
     let q = supabaseAdmin
       .from("servicos")
       .select(
-        "id,created_at,team_id,latitude,longitude,viable,is_negotiation,service_type_name,negotiated_value,registration_number",
+        "id,created_at,team_id,lat,lng,viable,is_negotiation,service_type_name,negotiated_value,registration_number",
       )
       .order("created_at", { ascending: false })
       .limit(Math.min(Number(data.limit) || 500, 2000));

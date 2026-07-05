@@ -423,7 +423,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
     case "adminListMapServices": {
       // args: { teamId?: string, startISO?: string, endISO?: string, limit?: number }
       let q = sb.from("servicos")
-        .select("id,created_at,team_id,latitude,longitude,viable,is_negotiation,service_type_name,negotiated_value,registration_number")
+        .select("id,created_at,team_id,lat,lng,viable,is_negotiation,service_type_name,negotiated_value,registration_number")
         .order("created_at", { ascending: false })
         .limit(Math.min(Number(args.limit) || 500, 2000));
       if (args.teamId) q = q.eq("team_id", args.teamId);

@@ -59,7 +59,7 @@ export const adminBootstrap = call<{ ok: true; login: string }>("adminBootstrap"
 
 export type MapServiceRow = {
   id: string; created_at: string; team_id: string; team_name: string;
-  latitude: number | null; longitude: number | null;
+  lat: number | null; lng: number | null;
   viable: boolean; is_negotiation: boolean;
   service_type_name: string | null; negotiated_value: number | null;
   registration_number: string | null;
