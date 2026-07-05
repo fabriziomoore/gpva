@@ -522,7 +522,7 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
           </div>
         </div>
         <div className="flex gap-2 min-w-0">
-          {periodFilter === "day" && (
+          {periodFilter === "day" ? (
             <select
               value={refDate.getDate()}
               onChange={(e) => setRefDate(new Date(refDate.getFullYear(), refDate.getMonth(), Number(e.target.value)))}
@@ -530,28 +530,33 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
             >
               {daysArr.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
-          )}
-          {periodFilter === "week" && (
+          ) : periodFilter === "week" ? (
             <select
               value={weekIndex}
               onChange={(e) => {
                 const w = weeks[Number(e.target.value)];
                 if (w) setRefDate(new Date(w.start));
               }}
-              className={cn(selectCls, "min-w-0 flex-1")}
+              className={cn(selectCls, "w-20 shrink-0")}
             >
-              {weeks.map((w, i) => <option key={i} value={i}>Sem. {i + 1} — {w.label}</option>)}
+              {weeks.map((_, i) => <option key={i} value={i}>Sem. {i + 1}</option>)}
             </select>
-          )}
-          {periodFilter !== "week" && (
+          ) : (
             <select
-              value={refDate.getMonth()}
-              onChange={(e) => setRefDate(new Date(refDate.getFullYear(), Number(e.target.value), 1))}
-              className={cn(selectCls, "min-w-0 flex-1")}
+              disabled
+              value=""
+              className={cn(selectCls, "w-20 shrink-0 text-muted-foreground")}
             >
-              {monthNamesFull.map((n, i) => <option key={i} value={i}>{n}</option>)}
+              <option value="">—</option>
             </select>
           )}
+          <select
+            value={refDate.getMonth()}
+            onChange={(e) => setRefDate(new Date(refDate.getFullYear(), Number(e.target.value), 1))}
+            className={cn(selectCls, "min-w-0 flex-1")}
+          >
+            {monthNamesFull.map((n, i) => <option key={i} value={i}>{n}</option>)}
+          </select>
           <select
             value={refDate.getFullYear()}
             onChange={(e) => setRefDate(new Date(Number(e.target.value), refDate.getMonth(), 1))}
