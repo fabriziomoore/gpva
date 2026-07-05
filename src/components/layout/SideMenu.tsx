@@ -64,7 +64,7 @@ export function SideMenu() {
         const { longitude, latitude } = pos.coords;
         // WebAppViewer aceita "extent=xmin,ymin,xmax,ymax" em lat/lon (wkid 4326).
         // Uma janela de ~300m em torno do usuário (0.0025° ≈ 275m).
-        const d = 0.0025;
+        const d = 0.015;
         const xmin = longitude - d;
         const xmax = longitude + d;
         const ymin = latitude - d;
