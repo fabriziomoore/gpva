@@ -11,6 +11,7 @@ import {
   adminDeleteMapServicesRange,
   listTeams,
 } from "@/lib/admin.functions";
+import { confirmDelete } from "@/components/ui/confirm-dialog";
 
 export function MapServicesSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
@@ -128,7 +129,11 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
           onClick={() => {
             const n = list.data?.length ?? 0;
             if (!n) return;
-            if (confirm(`Excluir TODOS os ${n} registros do filtro atual? Esta ação é irreversível.`)) {
+            if (await confirmDelete({
+              title: "Excluir todos os registros?",
+              description: `Você está prestes a excluir ${n} registro(s) do filtro atual. Esta ação é IRREVERSÍVEL.`,
+              confirmText: `Excluir ${n}`,
+            })) {
               delRangeMut.mutate();
             }
           }}
@@ -161,8 +166,10 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
               </div>
               <button
                 className="rounded p-1 text-muted-foreground hover:text-destructive"
-                onClick={() => {
-                  if (confirm("Excluir este registro?")) delMut.mutate(r.id);
+                onClick={async () => {
+                  if (await confirmDelete({ description: "Este registro do mapa será excluído permanentemente." })) {
+                    delMut.mutate(r.id);
+                  }
                 }}
                 aria-label="Excluir"
               >
