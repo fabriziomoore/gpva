@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
