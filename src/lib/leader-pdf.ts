@@ -11,6 +11,7 @@ import {
 import bundledLogoUrl from "@/assets/gpva-logo-bundled.jpg?url";
 import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
 import { renderReportMapPng, MARICA_CENTER, type PdfMapPoint } from "./pdf-map";
+import { reverseGeocode, type ReverseGeoInfo } from "./reverse-geocode";
 
 const logoCandidates: string[] = [bundledLogoUrl, logoAsset.url];
 
@@ -545,7 +546,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const geoPageNumber = hasTeams ? 5 : 4;
     pageTitle(pdf, "ANÁLISE GEOGRÁFICA — LEITURA DO MAPA", input.scope_label, periodStr);
 
-    const geo = buildGeoAnalysis(input.map_points ?? [], MARICA_CENTER);
+    const geo = await buildGeoAnalysis(input.map_points ?? [], MARICA_CENTER);
 
     const blocksGeo = [
       { title: "Distribuição geral", body: geo.overall },
