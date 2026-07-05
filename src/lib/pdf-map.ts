@@ -1,0 +1,147 @@
+// Renderer de mapa (OSM tiles) para embutir no PDF.
+// Centralizado em Maricá/RJ por padrão, plota pontos verdes (viáveis) e
+// vermelhos (inviáveis). Retorna dataURL (image/jpeg) pronto para
+// pdf.addImage(). Falha silenciosamente (retorna null) sem quebrar o PDF.
+
+export type PdfMapPoint = { lat: number; lng: number; viable: boolean };
+
+// Maricá — praça central aproximada.
+export const MARICA_CENTER = { lat: -22.9192, lng: -42.8186 };
+
+const TILE = 256;
+const OSM_TEMPLATE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+function lngToPx(lng: number, z: number): number {
+  return ((lng + 180) / 360) * TILE * Math.pow(2, z);
+}
+function latToPx(lat: number, z: number): number {
+  const rad = (lat * Math.PI) / 180;
+  const s = Math.sin(rad);
+  return (
+    (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * Math.pow(2, z)
+  );
+}
+
+async function loadTile(url: string): Promise<HTMLImageElement | null> {
+  try {
+    const res = await fetch(url, {
+      // Sem credenciais e sem cabeçalho customizado para não estourar CORS.
+      mode: "cors",
+      credentials: "omit",
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    });
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function renderReportMapPng(opts: {
+  width: number;
+  height: number;
+  center?: { lat: number; lng: number };
+  zoom?: number;
+  points?: PdfMapPoint[];
+}): Promise<string | null> {
+  if (typeof document === "undefined") return null;
+  const W = Math.round(opts.width);
+  const H = Math.round(opts.height);
+  const center = opts.center ?? MARICA_CENTER;
+  const zoom = opts.zoom ?? 12;
+  const points = opts.points ?? [];
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  // Fundo neutro caso algum tile falhe.
+  ctx.fillStyle = "#e8ecef";
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = lngToPx(center.lng, zoom);
+  const cy = latToPx(center.lat, zoom);
+  const topLeftPxX = cx - W / 2;
+  const topLeftPxY = cy - H / 2;
+
+  const xMin = Math.floor(topLeftPxX / TILE);
+  const yMin = Math.floor(topLeftPxY / TILE);
+  const xMax = Math.floor((topLeftPxX + W) / TILE);
+  const yMax = Math.floor((topLeftPxY + H) / TILE);
+  const nMax = Math.pow(2, zoom);
+
+  const jobs: Promise<{ img: HTMLImageElement | null; x: number; y: number }>[] = [];
+  for (let x = xMin; x <= xMax; x++) {
+    for (let y = yMin; y <= yMax; y++) {
+      const tx = ((x % nMax) + nMax) % nMax;
+      const ty = y;
+      if (ty < 0 || ty >= nMax) continue;
+      const url = OSM_TEMPLATE.replace("{z}", String(zoom))
+        .replace("{x}", String(tx))
+        .replace("{y}", String(ty));
+      jobs.push(loadTile(url).then((img) => ({ img, x, y })));
+    }
+  }
+  const tiles = await Promise.all(jobs);
+  let anyLoaded = false;
+  for (const t of tiles) {
+    if (!t.img) continue;
+    anyLoaded = true;
+    const dx = t.x * TILE - topLeftPxX;
+    const dy = t.y * TILE - topLeftPxY;
+    ctx.drawImage(t.img, dx, dy);
+  }
+  if (!anyLoaded) return null;
+
+  // Pontos.
+  for (const p of points) {
+    const px = lngToPx(p.lng, zoom) - topLeftPxX;
+    const py = latToPx(p.lat, zoom) - topLeftPxY;
+    if (px < -10 || py < -10 || px > W + 10 || py > H + 10) continue;
+    ctx.beginPath();
+    ctx.arc(px, py, 6, 0, Math.PI * 2);
+    ctx.fillStyle = p.viable ? "#16a34a" : "#dc2626";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+  }
+
+  // Selo do centro (Maricá).
+  ctx.beginPath();
+  ctx.arc(W / 2, H / 2, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "#1e3a8a";
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Créditos OSM (obrigatório).
+  ctx.font = "10px sans-serif";
+  const label = "© OpenStreetMap";
+  const pad = 4;
+  const tw = ctx.measureText(label).width;
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillRect(W - tw - pad * 2 - 2, H - 16, tw + pad * 2, 14);
+  ctx.fillStyle = "#333";
+  ctx.fillText(label, W - tw - pad - 2, H - 6);
+
+  try {
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return null;
+  }
+}
