@@ -53,8 +53,21 @@ export function SideMenu() {
     setOpen(false);
   }
   function openArcgisRisk() {
-    setArcgisEmbedUrl(ARCGIS_RISK_URL);
     setOpen(false);
+    const fallback = () => setArcgisEmbedUrl(ARCGIS_RISK_URL);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      fallback();
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { longitude, latitude } = pos.coords;
+        const url = `${ARCGIS_RISK_URL}&center=${longitude},${latitude}&level=18&marker=${longitude};${latitude};;;;Você está aqui`;
+        setArcgisEmbedUrl(url);
+      },
+      () => fallback(),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+    );
   }
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
