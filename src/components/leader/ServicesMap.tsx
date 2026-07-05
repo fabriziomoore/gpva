@@ -123,7 +123,8 @@ export function ServicesMap({
         if (!el) return;
         el.onclick = async () => {
           if (!onDeleteRef.current) return;
-          if (!window.confirm("Apagar este registro definitivamente?")) return;
+          const { confirmDelete } = await import("@/components/ui/confirm-dialog");
+          if (!(await confirmDelete({ title: "Apagar registro?", description: "Este serviço será removido definitivamente do mapa. Esta ação não poderá ser desfeita." }))) return;
           el.disabled = true;
           el.textContent = "Apagando…";
           try {

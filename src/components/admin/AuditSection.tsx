@@ -263,7 +263,12 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
                   </button>
                   <button
                     className="rounded-md p-2 text-muted-foreground hover:text-destructive"
-                    onClick={() => { if (confirm("Excluir esta auditoria?")) delMut.mutate(h.id); }}
+                    onClick={async () => {
+                      const { confirmDelete } = await import("@/components/ui/confirm-dialog");
+                      if (await confirmDelete({ title: "Excluir auditoria?", description: "Este registro de auditoria será removido permanentemente." })) {
+                        delMut.mutate(h.id);
+                      }
+                    }}
                     aria-label="Excluir"
                   >
                     <Trash2 className="size-4" />
