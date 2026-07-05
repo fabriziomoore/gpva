@@ -476,21 +476,24 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm space-y-2">
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
-          {(["day","month"] as Period[]).map((p) => {
-            const active = periodFilter === p;
-            const label = p === "day" ? "Dia" : "Mês";
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPeriodFilter(p)}
-                className={segItem(active)}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold">Mapa de Serviços</h2>
+          <div className="inline-flex overflow-hidden rounded-lg border border-border">
+            {(["day","month"] as Period[]).map((p) => {
+              const active = periodFilter === p;
+              const label = p === "day" ? "Dia" : "Mês";
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriodFilter(p)}
+                  className={`px-3 py-1 text-xs font-semibold ${active ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex gap-2">
           {periodFilter === "day" && (
