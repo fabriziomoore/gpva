@@ -106,6 +106,7 @@ type TeamRow = {
 
 const ALL = "__all__";
 const PAGE = 1000;
+const ADMIN_TEAM_LOGIN = "adm";
 
 function LeaderPage() {
   const navigate = useNavigate();
@@ -149,6 +150,9 @@ function LeaderPage() {
     queryKey: ["leader-teams", userId],
     enabled: !!userId && isLeader.data === true,
     queryFn: async () => {
+      const { data: adminIdsData, error: adminIdsError } = await supabase.rpc("admin_user_ids");
+      if (adminIdsError) throw adminIdsError;
+      const adminIds = new Set((adminIdsData ?? []) as string[]);
       const { data, error } = await supabase
         .from("equipes")
         .select("id,team_name,leader,supervisor,variable_rate,setor_id,is_test,setores(nome,supervisor_nome)")
@@ -160,7 +164,7 @@ function LeaderPage() {
         setores: { nome: string; supervisor_nome: string } | null;
       };
       return ((data ?? []) as unknown as Row[])
-        .filter((r) => !r.is_test)
+        .filter((r) => !r.is_test && !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN)
         .map<TeamRow>((r) => ({
         id: r.id,
         team_name: r.team_name,

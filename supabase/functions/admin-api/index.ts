@@ -41,6 +41,10 @@ function slugify(s: string): string {
   return slug;
 }
 
+function isReservedAdminTeam(team: { id: string; team_name: string }, adminIds: Set<string>): boolean {
+  return adminIds.has(team.id) || String(team.team_name || "").trim().toLowerCase() === ADMIN_LOGIN;
+}
+
 function stripDiacritics(s: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 }
@@ -133,7 +137,9 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
         .order("team_name");
       if (error) throw new Error(error.message);
-      return (data ?? []).filter((r: any) => !r.is_test);
+      const { data: adminRoles } = await sb.from("user_roles").select("user_id").eq("role", "admin");
+      const adminIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
+      return (data ?? []).filter((r: any) => !r.is_test && !isReservedAdminTeam(r, adminIds));
     }
     case "adminUpdateRate": {
       const { error } = await sb.from("equipes").update({ variable_rate: args.rate }).eq("id", args.teamId);
@@ -234,9 +240,11 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
     case "adminTeamsRanking": {
       const { data: teams, error: teamsErr } = await sb.from("equipes").select("id,team_name,is_test");
       if (teamsErr) throw new Error(teamsErr.message);
+      const { data: adminRoles } = await sb.from("user_roles").select("user_id").eq("role", "admin");
+      const adminIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
       const isTest = (t: any) => t.is_test === true || t.team_name === "TESTANDO";
-      const visible = (teams ?? []).filter((t: any) => !isTest(t));
-      const hidden = new Set((teams ?? []).filter(isTest).map((t: any) => t.id));
+      const visible = (teams ?? []).filter((t: any) => !isTest(t) && !isReservedAdminTeam(t, adminIds));
+      const hidden = new Set((teams ?? []).filter((t: any) => isTest(t) || isReservedAdminTeam(t, adminIds)).map((t: any) => t.id));
       const start = new Date(Date.UTC(args.year, args.month - 1, 1)).toISOString();
       const end = new Date(Date.UTC(args.year, args.month, 1)).toISOString();
       const all: any[] = [];

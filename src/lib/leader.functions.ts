@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const ADMIN_TEAM_LOGIN = "adm";
+
 async function assertLeader(context: {
   supabase: import("@supabase/supabase-js").SupabaseClient;
   userId: string;
@@ -27,7 +29,7 @@ export const leaderListTeams = createServerFn({ method: "POST" })
       .order("team_name");
     if (error) throw new Error(error.message);
     return (data ?? []).filter(
-      (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id),
+      (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
     );
   });
 
@@ -43,11 +45,11 @@ export const leaderTeamsRanking = createServerFn({ method: "POST" })
       .select("id,team_name,is_test");
     if (teamsErr) throw new Error(teamsErr.message);
     const visibleTeams = (teams ?? []).filter(
-      (t) => !(t as { is_test?: boolean }).is_test && !adminIds.has(t.id),
+      (t) => !(t as { is_test?: boolean }).is_test && !adminIds.has(t.id) && t.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
     );
     const hiddenIds = new Set(
       (teams ?? [])
-        .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id))
+        .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id) || t.team_name.trim().toLowerCase() === ADMIN_TEAM_LOGIN)
         .map((t) => t.id),
     );
 

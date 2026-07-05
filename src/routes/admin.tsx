@@ -321,6 +321,7 @@ function useTeamsList(adminPw: string) {
   return useQuery({
     queryKey: ["admin-teams"],
     queryFn: () => list({ data: { adminPassword: adminPw } }),
+    select: (teams) => teams.filter((team) => team.team_name.trim().toLowerCase() !== "adm"),
   });
 }
 
@@ -756,9 +757,11 @@ function RankingSection({ adminPw }: { adminPw: string }) {
     return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
   }
 
-  const sorted = [...(q.data ?? [])].sort(
+  const sorted = [...(q.data ?? [])]
+    .filter((team) => team.team_name.trim().toLowerCase() !== "adm")
+    .sort(
     (a, b) => b.viable + b.negotiations - (a.viable + a.negotiations),
-  );
+    );
   const max = Math.max(1, ...sorted.map((t) => t.viable));
   const topNegId = sorted.reduce<{ id: string | null; v: number }>(
     (acc, t) => (t.negotiationValue > acc.v ? { id: t.id, v: t.negotiationValue } : acc),
