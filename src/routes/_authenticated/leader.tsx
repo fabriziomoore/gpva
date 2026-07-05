@@ -471,6 +471,31 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   ];
   const daysInMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0).getDate();
   const daysArr = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const weeks = useMemo(() => {
+    const y = refDate.getFullYear();
+    const m = refDate.getMonth();
+    const first = new Date(y, m, 1);
+    const dow = (first.getDay() + 6) % 7; // 0 = seg
+    const start = new Date(y, m, 1 - dow);
+    const list: { start: Date; end: Date; label: string }[] = [];
+    const cur = new Date(start);
+    for (let i = 0; i < 6; i++) {
+      const s = new Date(cur);
+      const e = new Date(cur);
+      e.setDate(e.getDate() + 6);
+      if (s.getMonth() === m || e.getMonth() === m) {
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        list.push({
+          start: s,
+          end: e,
+          label: `${pad(s.getDate())}/${pad(s.getMonth()+1)} – ${pad(e.getDate())}/${pad(e.getMonth()+1)}`,
+        });
+      }
+      cur.setDate(cur.getDate() + 7);
+    }
+    return list;
+  }, [refDate]);
+  const weekIndex = Math.max(0, weeks.findIndex((w) => refDate >= w.start && refDate <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59)));
   const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
 
   return (
@@ -479,9 +504,9 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold">Mapa de Serviços</h2>
           <div className="inline-flex overflow-hidden rounded-lg border border-border">
-            {(["day","month"] as Period[]).map((p) => {
+            {(["day","week","month"] as Period[]).map((p) => {
               const active = periodFilter === p;
-              const label = p === "day" ? "Dia" : "Mês";
+              const label = p === "day" ? "Dia" : p === "week" ? "Semana" : "Mês";
               return (
                 <button
                   key={p}
@@ -503,6 +528,18 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
               className={cn(selectCls, "w-20")}
             >
               {daysArr.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          )}
+          {periodFilter === "week" && (
+            <select
+              value={weekIndex}
+              onChange={(e) => {
+                const w = weeks[Number(e.target.value)];
+                if (w) setRefDate(new Date(w.start));
+              }}
+              className={cn(selectCls, "flex-1")}
+            >
+              {weeks.map((w, i) => <option key={i} value={i}>Sem. {i + 1} — {w.label}</option>)}
             </select>
           )}
           <select
