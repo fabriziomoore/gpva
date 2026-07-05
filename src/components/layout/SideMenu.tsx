@@ -13,7 +13,6 @@ const ARCGIS_URL =
 const ARCGIS_RISK_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=28bf0795832f47bf946e07822552c06d";
 
-const MICROSOFT_LOGIN_URL = "https://login.microsoftonline.com";
 const ARCGIS_PORTAL_LOGIN_URL = "https://arcgis.aegea.com.br/portal/";
 
 type CapacitorWindow = Window & {
@@ -48,47 +47,8 @@ function openArcgisUrl(url: string, title: string, setTitle: (title: string) => 
   setEmbedUrl(url);
 }
 
-// Abre o próprio portal ArcGIS em um WebView nativo não isolado. O portal faz o
-// redirecionamento Microsoft quando necessário, mas o cookie final que evita o
-// prompt da consulta pertence ao domínio arcgis.aegea.com.br.
-async function openArcgisLogin(): Promise<void> {
-  if (!isNativeRuntime()) {
-    window.open(ARCGIS_PORTAL_LOGIN_URL, "_blank", "noopener,noreferrer");
-    return;
-  }
-  try {
-    const mod = await import("@capacitor/inappbrowser");
-    const InAppBrowser =
-      (mod as { InAppBrowser?: unknown }).InAppBrowser ??
-      (mod as { default?: unknown }).default;
-    const DefaultWebViewOptions =
-      ((mod as unknown as { DefaultWebViewOptions?: Record<string, unknown> })
-        .DefaultWebViewOptions) ?? {};
-    const api = InAppBrowser as {
-      openInWebView?: (opts: { url: string; options?: Record<string, unknown> }) => Promise<void>;
-    };
-    if (api?.openInWebView) {
-      await api.openInWebView({
-        url: ARCGIS_PORTAL_LOGIN_URL,
-        options: {
-          ...DefaultWebViewOptions,
-          android: {
-            ...((DefaultWebViewOptions.android as Record<string, unknown> | undefined) ?? {}),
-            isIsolated: false,
-          },
-          showToolbar: true,
-          showURL: false,
-          showNavigationButtons: true,
-          closeButtonText: "Concluir",
-          toolbarPosition: 0,
-          clearCache: false,
-          clearSessionCache: false,
-        },
-      });
-    }
-  } catch {
-    window.location.assign(MICROSOFT_LOGIN_URL);
-  }
+function openArcgisLogin(setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
+  openArcgisUrl(ARCGIS_PORTAL_LOGIN_URL, "Login ArcGIS", setTitle, setEmbedUrl);
 }
 
 const teamItems = [
@@ -264,7 +224,7 @@ export function SideMenu() {
                 type="button"
                 onClick={() => {
                   setOpen(false);
-                  void openArcgisLogin();
+                  openArcgisLogin(setArcgisTitle, setArcgisEmbedUrl);
                 }}
                 className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left transition-colors hover:bg-muted"
               >
@@ -274,7 +234,7 @@ export function SideMenu() {
                     Login ArcGIS
                   </div>
                   <p className="text-[11px] leading-snug text-muted-foreground">
-                    Faça login uma vez no portal para a consulta não pedir de novo.
+                    Entre no mesmo WebView usado pela consulta.
                   </p>
                 </div>
               </button>
