@@ -8,7 +8,11 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard } from "lucide-react";
+import {
+  Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
+  Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
+  Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
+} from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -66,20 +70,47 @@ type SectionId =
   | "map_services"
   | "audit";
 
-const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: "setores", label: "Setores" },
-  { id: "tipos_servico", label: "Serviços" },
-  { id: "motivos_inviabilidade", label: "Motivos de Inviabilidade" },
-  { id: "complementos_servico", label: "Complemento(s) do Serviço" },
-  { id: "impactos", label: "Impactos" },
-  { id: "variable", label: "Variável" },
-  { id: "create_team", label: "Criar Equipe" },
-  { id: "leaders", label: "Líderes" },
-  { id: "google_form", label: "Google Forms" },
-  { id: "test_account", label: "Conta de Teste" },
-  { id: "map_services", label: "Serviços no Mapa" },
-  { id: "audit", label: "Auditoria Inteligente" },
+type SectionMeta = {
+  id: SectionId;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const SECTION_INFO: Record<SectionId, SectionMeta> = {
+  setores: { id: "setores", label: "Setores", description: "Cadastro e supervisão dos setores", icon: Building2 },
+  create_team: { id: "create_team", label: "Equipes", description: "Criar, editar e remover equipes", icon: Users },
+  leaders: { id: "leaders", label: "Líderes", description: "Contas de líderes de equipe", icon: UserCog },
+  tipos_servico: { id: "tipos_servico", label: "Tipos de Serviço", description: "Catálogo dos tipos disponíveis", icon: ClipboardList },
+  motivos_inviabilidade: { id: "motivos_inviabilidade", label: "Motivos de Inviabilidade", description: "Motivos usados nas marcações inviáveis", icon: Ban },
+  complementos_servico: { id: "complementos_servico", label: "Complementos do Serviço", description: "Complementos vinculados aos serviços", icon: ListPlus },
+  impactos: { id: "impactos", label: "Impactos", description: "Impactos registrados ao fim do expediente", icon: AlertTriangle },
+  variable: { id: "variable", label: "Variável", description: "Taxa variável por equipe", icon: Percent },
+  map_services: { id: "map_services", label: "Serviços no Mapa", description: "Marcações registradas — remoção seletiva", icon: MapPin },
+  google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
+  test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
+  audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
+};
+
+type SectionGroup = {
+  id: "estrutura" | "catalogos" | "dados";
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: SectionId[];
+};
+
+const SECTION_GROUPS: SectionGroup[] = [
+  { id: "estrutura", label: "Estrutura", icon: Building2,
+    items: ["setores", "create_team", "leaders"] },
+  { id: "catalogos", label: "Catálogos", icon: ClipboardList,
+    items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
+  { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
+    items: ["variable", "map_services", "google_form", "test_account", "audit"] },
 ];
+
+function groupOf(id: SectionId): SectionGroup | undefined {
+  return SECTION_GROUPS.find((g) => g.items.includes(id));
+}
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -134,16 +165,42 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur pt-[calc(env(safe-area-inset-top)+0.75rem)]">
-        <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+        <div className="flex min-w-0 items-center gap-2">
           <button
             onClick={() => setMenuOpen(true)}
-            className="-ml-1 inline-flex size-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
+            className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
             aria-label="Abrir menu"
           >
             <Menu className="size-6" />
           </button>
-          <h1 className="text-sm font-semibold uppercase tracking-wider">Administração</h1>
+          <nav className="min-w-0 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wider">
+            <button
+              type="button"
+              onClick={() => setView("menu")}
+              className={view === "menu" ? "text-foreground" : "text-muted-foreground hover:text-foreground truncate"}
+            >
+              Administração
+            </button>
+            {view === "ranking" && (
+              <>
+                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate text-foreground normal-case tracking-normal">Painel</span>
+              </>
+            )}
+            {view === "section" && (
+              <>
+                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="hidden sm:inline text-muted-foreground normal-case tracking-normal">
+                  {groupOf(section)?.label}
+                </span>
+                <ChevronRight className="hidden sm:inline size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate text-foreground normal-case tracking-normal">
+                  {SECTION_INFO[section].label}
+                </span>
+              </>
+            )}
+          </nav>
         </div>
         <ThemeToggle />
       </header>
@@ -161,28 +218,64 @@ function AdminPage() {
       />
 
       {view === "menu" ? (
-        <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-10">
-          <Button
+        <main className="mx-auto max-w-5xl px-4 py-6 space-y-5">
+          <button
+            type="button"
             onClick={() => setView("ranking")}
-            className="mb-6 h-10 w-full"
+            className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-card to-card p-5 text-left shadow-md transition-all hover:border-primary hover:shadow-xl"
           >
-            Painel
-          </Button>
-          <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setSection(s.id);
-                  setView("section");
-                }}
-                className="group flex aspect-[4/3] flex-col items-center justify-center rounded-2xl border border-border bg-card p-4 text-center shadow-md transition-all hover:-translate-y-1 hover:border-primary hover:shadow-xl"
-              >
-                <span className="text-sm font-semibold text-foreground group-hover:text-primary">
-                  {s.label}
-                </span>
-              </button>
-            ))}
+            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+              <LayoutDashboard className="size-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visão geral</div>
+              <div className="text-lg font-semibold text-foreground">Painel</div>
+              <div className="text-xs text-muted-foreground">Ranking geral das equipes</div>
+            </div>
+            <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+          </button>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {SECTION_GROUPS.map((group) => {
+              const GIcon = group.icon;
+              return (
+                <section
+                  key={group.id}
+                  className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+                >
+                  <div className="mb-3 flex items-center gap-2">
+                    <GIcon className="size-4 text-primary" />
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {group.label}
+                    </h2>
+                  </div>
+                  <ul className="space-y-1">
+                    {group.items.map((id) => {
+                      const info = SECTION_INFO[id];
+                      const Icon = info.icon;
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            onClick={() => { setSection(id); setView("section"); }}
+                            className="group flex w-full items-start gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
+                          >
+                            <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
+                              <Icon className="size-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium text-foreground">{info.label}</div>
+                              <div className="truncate text-xs text-muted-foreground">{info.description}</div>
+                            </div>
+                            <ChevronRight className="mt-1.5 size-4 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              );
+            })}
           </div>
         </main>
       ) : view === "ranking" ? (
@@ -191,6 +284,7 @@ function AdminPage() {
         </main>
       ) : (
         <main className="mx-auto max-w-2xl px-4 py-6">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
           ) : section === "variable" ? (
@@ -211,9 +305,10 @@ function AdminPage() {
             <CrudSection
               adminPw={adminPw}
               table={section as "tipos_servico" | "motivos_inviabilidade" | "complementos_servico" | "impactos"}
-              label={SECTIONS.find((s) => s.id === section)!.label}
+              label={SECTION_INFO[section].label}
             />
           )}
+          </div>
         </main>
       )}
     </div>
@@ -1425,22 +1520,31 @@ function AdminSideMenu({
                   <span>Painel</span>
                 </button>
               </li>
-              <li className="pt-2 pb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Seções
-              </li>
-              {SECTIONS.map((s) => {
-                const active = currentView === "section" && currentSection === s.id;
-                return (
-                  <li key={s.id}>
-                    <button
-                      onClick={() => onSelectSection(s.id)}
-                      className={itemCls + " " + (active ? activeCls : "")}
-                    >
-                      <span>{s.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
+              {SECTION_GROUPS.map((group) => (
+                <li key={group.id} className="pt-3">
+                  <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {group.label}
+                  </div>
+                  <ul className="space-y-1">
+                    {group.items.map((id) => {
+                      const info = SECTION_INFO[id];
+                      const Icon = info.icon;
+                      const active = currentView === "section" && currentSection === id;
+                      return (
+                        <li key={id}>
+                          <button
+                            onClick={() => onSelectSection(id)}
+                            className={itemCls + " " + (active ? activeCls : "")}
+                          >
+                            <Icon className="size-4 shrink-0" />
+                            <span className="truncate">{info.label}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))}
             </ul>
           </nav>
           <button
