@@ -1229,7 +1229,9 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
                 </div>
                 <button
                   onClick={() => {
-                    if (confirm("Excluir este líder?")) delMut.mutate(l.id);
+                    if (confirm("⚠️ Excluir este líder PERMANENTEMENTE?\n\nA conta de acesso será removida do sistema e não poderá ser recuperada.")) {
+                      delMut.mutate(l.id);
+                    }
                   }}
                   className="rounded-md p-2 text-muted-foreground hover:text-destructive"
                   aria-label="Excluir líder"
