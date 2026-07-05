@@ -753,6 +753,10 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold">Ranking de Equipes</h2>
+      <div className="flex items-center justify-between rounded-lg bg-primary/10 px-4 py-2 text-primary">
+        <span className="text-sm font-medium">Total do Período</span>
+        <span className="text-lg font-bold">{sorted.reduce((acc, t) => acc + t.viable, 0)} viáveis</span>
+      </div>
       {periodSelector(false)}
       <div className="space-y-3">
         {sorted.map((t) => {
@@ -1027,8 +1031,14 @@ function TeamDayReports({
   const filtered = (q.data ?? []).filter((r) => {
     const t = new Date(r.started_at).getTime();
     return t >= dayStart && t < dayEnd;
-  });
-
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
+        <span className="text-xs font-medium text-muted-foreground">{filtered.length} registro(s)</span>
+      </div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <p className="text-sm text-muted-foreground">Nenhum relatório encontrado para este dia.</p>
+          <p className="text-xs text-muted-foreground/60">Selecione outra data acima.</p>
+        </div>
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
