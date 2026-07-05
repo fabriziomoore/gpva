@@ -201,7 +201,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const avgPerShiftPrev = input.previous.shifts ? +(input.previous.total / input.previous.shifts).toFixed(1) : 0;
   const hasTeams = input.teams.length > 0;
   const hasMap = (input.map_points?.length ?? 0) > 0;
-  const totalPages = 3 + (hasTeams ? 1 : 0) + (hasMap ? 1 : 0);
+  const totalPages = 3 + (hasTeams ? 1 : 0) + (hasMap ? 2 : 0);
 
   // =========================================================================
   // PAGE 1 — Cabeçalho, KPIs, Projeção, Gráficos
@@ -535,6 +535,48 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     text(`Inviáveis: ${invPts}`, M + 38, PH - M - 4);
     text(`Total plotado: ${totalPts}`, M + 70, PH - M - 4);
     footer(mapPageNumber, totalPages);
+  }
+
+  // =========================================================================
+  // PAGE ANÁLISE GEOGRÁFICA (só quando há mapa) — leitura real dos pontos
+  // =========================================================================
+  if (hasMap) {
+    pdf.addPage("a4", "landscape");
+    const geoPageNumber = hasTeams ? 5 : 4;
+    pageTitle(pdf, "ANÁLISE GEOGRÁFICA — LEITURA DO MAPA", input.scope_label, periodStr);
+
+    const geo = buildGeoAnalysis(input.map_points ?? [], MARICA_CENTER);
+
+    const blocksGeo = [
+      { title: "Distribuição geral", body: geo.overall },
+      { title: "Centro operacional (centróide)", body: geo.centroid },
+      { title: "Dispersão / raio de atuação", body: geo.dispersion },
+      { title: "Concentração por quadrante", body: geo.quadrants },
+      { title: "Zona crítica (maior inviabilidade)", body: geo.critical },
+      { title: "Zona mais produtiva", body: geo.best },
+      { title: "Deslocamento estimado em campo", body: geo.route },
+      { title: "Recomendações territoriais", body: geo.recommendations, accent: true as const },
+    ];
+    const gColW = (CW - 6) / 2;
+    const gRowH = 33;
+    blocksGeo.forEach((b, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = M + col * (gColW + 6);
+      const y = M + 20 + row * (gRowH + 3);
+      const accent = "accent" in b && b.accent;
+      setFill(accent ? C.primaryDark : C.white);
+      setStroke(C.border);
+      pdf.roundedRect(x, y, gColW, gRowH, 2, 2, "FD");
+      font(8, "bold");
+      setText(accent ? C.white : C.primaryDark);
+      text(b.title.toUpperCase(), x + 4, y + 5);
+      font(8, "normal");
+      setText(accent ? C.white : C.ink);
+      const lines = pdf.splitTextToSize(b.body, gColW - 8) as string[];
+      lines.slice(0, 6).forEach((l, li) => pdf.text(l, x + 4, y + 10.5 + li * 3.6));
+    });
+    footer(geoPageNumber, totalPages);
   }
 
   // =========================================================================
@@ -875,4 +917,176 @@ function buildAnalysis(
   const recommendations = recs.slice(0, 5).map((r, i) => `${i + 1}. ${r}`).join("  ");
 
   return { overall, evolution, services, reasons, negotiations, productivity, bestDay, recommendations };
+}
+
+// =============================================================================
+// Análise geográfica real a partir dos pontos plotados no mapa
+// =============================================================================
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s1 = Math.sin(dLat / 2);
+  const s2 = Math.sin(dLng / 2);
+  const h = s1 * s1 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * s2 * s2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function buildGeoAnalysis(
+  points: PdfMapPoint[],
+  center: { lat: number; lng: number },
+) {
+  const pts = points.filter(
+    (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !(p.lat === 0 && p.lng === 0),
+  );
+  const total = pts.length;
+  if (total === 0) {
+    const empty = "Nenhuma coordenada válida foi registrada no período — não foi possível extrair leitura territorial. Reforce o registro de GPS em campo.";
+    return {
+      overall: empty,
+      centroid: empty,
+      dispersion: empty,
+      quadrants: empty,
+      critical: empty,
+      best: empty,
+      route: empty,
+      recommendations: "1. Habilitar/validar GPS no aparelho antes do expediente.  2. Conferir permissões de localização do app.  3. Reforçar o registro de coordenadas em cada serviço.",
+    };
+  }
+
+  const viable = pts.filter((p) => p.viable);
+  const unviable = pts.filter((p) => !p.viable);
+  const pctV = Math.round((viable.length / total) * 100);
+
+  // Centróide (média das coordenadas de todos os pontos plotados)
+  const cLat = pts.reduce((a, p) => a + p.lat, 0) / total;
+  const cLng = pts.reduce((a, p) => a + p.lng, 0) / total;
+  const centroid = { lat: cLat, lng: cLng };
+  const distToRef = haversineKm(centroid, center);
+  const bearingRef = (() => {
+    const dLat = cLat - center.lat;
+    const dLng = cLng - center.lng;
+    const ns = dLat >= 0 ? "norte" : "sul";
+    const ew = dLng >= 0 ? "leste" : "oeste";
+    if (Math.abs(dLat) < 0.005 && Math.abs(dLng) < 0.005) return "praticamente sobre o centro";
+    return `a ${distToRef.toFixed(1)} km ${ns}-${ew} do centro de Maricá`;
+  })();
+
+  // Dispersão: distância média ao centróide + máxima
+  const dists = pts.map((p) => haversineKm(p, centroid));
+  const avgD = dists.reduce((a, b) => a + b, 0) / total;
+  const maxD = Math.max(...dists);
+  // Ponto mais distante
+  const farIdx = dists.indexOf(maxD);
+  const far = pts[farIdx];
+
+  // Quadrantes relativos ao centro de Maricá (NE, NO, SE, SO)
+  type Q = "NE" | "NO" | "SE" | "SO";
+  const qLabel: Record<Q, string> = { NE: "Nordeste", NO: "Noroeste", SE: "Sudeste", SO: "Sudoeste" };
+  const buckets: Record<Q, { total: number; viable: number }> = {
+    NE: { total: 0, viable: 0 }, NO: { total: 0, viable: 0 },
+    SE: { total: 0, viable: 0 }, SO: { total: 0, viable: 0 },
+  };
+  for (const p of pts) {
+    const north = p.lat >= center.lat;
+    const east = p.lng >= center.lng;
+    const q: Q = north ? (east ? "NE" : "NO") : (east ? "SE" : "SO");
+    buckets[q].total += 1;
+    if (p.viable) buckets[q].viable += 1;
+  }
+  const qEntries = (Object.keys(buckets) as Q[])
+    .map((k) => ({
+      q: k,
+      label: qLabel[k],
+      total: buckets[k].total,
+      viable: buckets[k].viable,
+      unviable: buckets[k].total - buckets[k].viable,
+      pctV: buckets[k].total ? Math.round((buckets[k].viable / buckets[k].total) * 100) : 0,
+      pctI: buckets[k].total ? Math.round(((buckets[k].total - buckets[k].viable) / buckets[k].total) * 100) : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
+  const covered = qEntries.filter((q) => q.total > 0).length;
+  const empty = qEntries.filter((q) => q.total === 0).map((q) => q.label);
+
+  // Zona crítica (maior % de inviabilidade com pelo menos 3 pontos)
+  const critical = [...qEntries]
+    .filter((q) => q.total >= 3)
+    .sort((a, b) => b.pctI - a.pctI || b.unviable - a.unviable)[0];
+  // Zona mais produtiva (maior nº de viáveis)
+  const best = [...qEntries].sort((a, b) => b.viable - a.viable || b.pctV - a.pctV)[0];
+
+  // Deslocamento estimado — nearest-neighbor a partir do centróide (aprox. rota)
+  const routeKm = (() => {
+    if (pts.length < 2) return 0;
+    const remaining = pts.map((p, i) => ({ p, i }));
+    let cur: { lat: number; lng: number } = centroid;
+    let sum = 0;
+    while (remaining.length > 0) {
+      let bestIdx = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        const d = haversineKm(cur, remaining[i].p);
+        if (d < bestD) { bestD = d; bestIdx = i; }
+      }
+      sum += bestD;
+      cur = remaining[bestIdx].p;
+      remaining.splice(bestIdx, 1);
+    }
+    return sum;
+  })();
+
+  const overall =
+    `Foram plotados ${total} pontos com coordenadas válidas (${viable.length} viáveis / ${unviable.length} inviáveis, ${pctV}% de viabilidade territorial). ` +
+    `A cobertura alcançou ${covered} de 4 quadrantes${empty.length ? ` (sem atendimento em ${empty.join(", ")})` : ""}.`;
+
+  const centroidTxt =
+    `O centro de gravidade das operações está em ${cLat.toFixed(4)}, ${cLng.toFixed(4)}, ${bearingRef}. ` +
+    `Esse ponto representa a média geográfica dos serviços registrados e serve de referência para dimensionar bases de apoio.`;
+
+  const dispersionTxt =
+    `A distância média dos serviços ao centróide é de ${avgD.toFixed(1)} km, com pico de ${maxD.toFixed(1)} km ` +
+    `(ponto mais distante em ${far.lat.toFixed(4)}, ${far.lng.toFixed(4)}). ` +
+    (avgD < 2
+      ? "Atuação bastante concentrada — otimize rotas curtas e reduza deslocamentos."
+      : avgD < 5
+        ? "Atuação de raio médio — coerente com um trecho urbano contínuo."
+        : "Atuação bastante dispersa — avalie o custo de deslocamento e a divisão por sub-regiões.");
+
+  const quadrantsTxt = qEntries
+    .filter((q) => q.total > 0)
+    .map((q) => `${q.label}: ${q.total} pts (${q.pctV}% viáveis)`)
+    .join(" · ") || "Sem distribuição por quadrante disponível.";
+
+  const criticalTxt = critical
+    ? `A região ${critical.label} apresenta a maior taxa de inviabilidade: ${critical.pctI}% dos ${critical.total} pontos plotados (${critical.unviable} inviáveis). Recomenda-se investigar causas locais — infraestrutura, acesso ou perfil dos serviços.`
+    : "Não há quadrante com amostra suficiente (≥3 pontos) para diagnosticar zona crítica.";
+
+  const bestTxt = best && best.viable > 0
+    ? `A região ${best.label} concentra o maior volume viável: ${best.viable} serviços concluídos (${best.pctV}% de viabilidade em ${best.total} pontos). Boas práticas dessa área devem ser replicadas.`
+    : "Ainda não há viáveis suficientes para eleger uma zona destaque.";
+
+  const routeTxt = routeKm > 0
+    ? `O deslocamento estimado em campo, considerando a sequência mais próxima entre os ${total} pontos, é de aproximadamente ${routeKm.toFixed(1)} km — média de ${(routeKm / total).toFixed(2)} km por serviço. Use como referência para roteirização e planejamento logístico.`
+    : "Volume insuficiente de pontos para estimar deslocamento.";
+
+  const recs: string[] = [];
+  if (empty.length > 0) recs.push(`Cobrir quadrante(s) sem atendimento: ${empty.join(", ")}.`);
+  if (critical) recs.push(`Priorizar diagnóstico em ${critical.label} (inviabilidade ${critical.pctI}%).`);
+  if (best && best.viable > 0) recs.push(`Replicar boas práticas de ${best.label} nas demais regiões.`);
+  if (avgD >= 5) recs.push("Dividir o roteiro por sub-região para reduzir tempo de deslocamento.");
+  if (avgD < 2 && total >= 10) recs.push("Ampliar o raio de atuação para desconcentrar demanda.");
+  if (recs.length === 0) recs.push("Padrão territorial equilibrado — manter a distribuição atual.");
+  const recommendations = recs.slice(0, 5).map((r, i) => `${i + 1}. ${r}`).join("  ");
+
+  return {
+    overall,
+    centroid: centroidTxt,
+    dispersion: dispersionTxt,
+    quadrants: quadrantsTxt,
+    critical: criticalTxt,
+    best: bestTxt,
+    route: routeTxt,
+    recommendations,
+  };
 }
