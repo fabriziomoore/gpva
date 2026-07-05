@@ -121,11 +121,11 @@ export type Database = {
           collaborator2: string | null
           created_at: string
           id: string
-          is_test: boolean | null
+          is_test: boolean
           leader: string
           onboarded: boolean
           photo_url: string | null
-          setor_id: string | null
+          setor_id: string
           supervisor: string
           team_name: string
           variable_rate: number
@@ -135,11 +135,11 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id: string
-          is_test?: boolean | null
+          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
-          setor_id?: string | null
+          setor_id: string
           supervisor?: string
           team_name: string
           variable_rate?: number
@@ -149,16 +149,24 @@ export type Database = {
           collaborator2?: string | null
           created_at?: string
           id?: string
-          is_test?: boolean | null
+          is_test?: boolean
           leader?: string
           onboarded?: boolean
           photo_url?: string | null
-          setor_id?: string | null
+          setor_id?: string
           supervisor?: string
           team_name?: string
           variable_rate?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "equipes_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expedientes: {
         Row: {
@@ -343,13 +351,9 @@ export type Database = {
       }
       servicos: {
         Row: {
-          accuracy_m: number | null
-          captured_at: string | null
           created_at: string
           id: string
           is_negotiation: boolean
-          lat: number | null
-          lng: number | null
           negotiated_value: number | null
           reason_id: string | null
           reason_name: string | null
@@ -361,13 +365,9 @@ export type Database = {
           viable: boolean
         }
         Insert: {
-          accuracy_m?: number | null
-          captured_at?: string | null
           created_at?: string
           id?: string
           is_negotiation?: boolean
-          lat?: number | null
-          lng?: number | null
           negotiated_value?: number | null
           reason_id?: string | null
           reason_name?: string | null
@@ -379,13 +379,9 @@ export type Database = {
           viable?: boolean
         }
         Update: {
-          accuracy_m?: number | null
-          captured_at?: string | null
           created_at?: string
           id?: string
           is_negotiation?: boolean
-          lat?: number | null
-          lng?: number | null
           negotiated_value?: number | null
           reason_id?: string | null
           reason_name?: string | null
@@ -433,6 +429,7 @@ export type Database = {
           id: string
           nome: string
           supervisor_nome: string
+          supervisor_user_id: string | null
           updated_at: string
         }
         Insert: {
@@ -440,6 +437,7 @@ export type Database = {
           id?: string
           nome: string
           supervisor_nome?: string
+          supervisor_user_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -447,6 +445,7 @@ export type Database = {
           id?: string
           nome?: string
           supervisor_nome?: string
+          supervisor_user_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -562,7 +561,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "leader" | "user"
+      app_role: "leader" | "admin" | "supervisor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -690,7 +689,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "leader", "user"],
+      app_role: ["leader", "admin", "supervisor"],
     },
   },
 } as const
