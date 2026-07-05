@@ -6,7 +6,6 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { toast } from "sonner";
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
