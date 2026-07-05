@@ -1062,7 +1062,7 @@ function TeamDayReports({
                     )}
                     <button
                       onClick={() => {
-                        if (window.confirm("Excluir este relatório e todos os serviços/impactos vinculados?")) {
+                        if (window.confirm("⚠️ Excluir este expediente PERMANENTEMENTE?\n\nSerão apagados do banco:\n• o relatório do expediente\n• todos os serviços registrados nele\n• impactos e complementos vinculados\n\nEsta ação não pode ser desfeita.")) {
                           delMut.mutate(r.id);
                         }
                       }}
