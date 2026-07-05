@@ -146,6 +146,14 @@ export function SideMenu() {
             <Dialog.Title className="sr-only">Consulta ArcGIS Aegea</Dialog.Title>
             <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-2">
               <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  aria-label="Abrir menu"
+                  onClick={() => setOpen(true)}
+                  className="-ml-1 inline-flex size-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
+                >
+                  <Menu className="size-5" />
+                </button>
                 <Map className="size-4 text-primary shrink-0" />
                 <span className="truncate text-sm font-semibold">Consulta ArcGIS</span>
               </div>
