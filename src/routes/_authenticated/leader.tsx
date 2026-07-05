@@ -372,7 +372,7 @@ function LeaderPage() {
 function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: TeamRow[] }) {
   const queryClient = useQueryClient();
   const { userId } = useAuthSession();
-  const [periodFilter, setPeriodFilter] = useState<"all" | Period>("all");
+  const [periodFilter, setPeriodFilter] = useState<Period>("day");
   const [viabilityFilter, setViabilityFilter] = useState<"all" | "viable" | "unviable">("all");
 
   const teamName = useMemo(() => {
@@ -382,12 +382,12 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   }, [teams]);
 
   const filtered = useMemo(() => {
-    const range = periodFilter === "all" ? null : periodRange(periodFilter);
+    const range = periodRange(periodFilter);
     return services.filter((s) => {
       if (s.lat == null || s.lng == null) return false;
       if (viabilityFilter === "viable" && !s.viable) return false;
       if (viabilityFilter === "unviable" && s.viable) return false;
-      if (range && !inRange(s.created_at, range)) return false;
+      if (!inRange(s.created_at, range)) return false;
       return true;
     });
   }, [services, periodFilter, viabilityFilter]);
@@ -417,54 +417,62 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
     queryClient.invalidateQueries({ queryKey: ["leader-services", userId] });
   };
 
-  const chip = (active: boolean) =>
-    `h-8 rounded-full px-3 text-xs font-medium transition ${
+  const segItem = (active: boolean) =>
+    `flex-1 h-9 rounded-md text-xs font-semibold tracking-wide transition ${
       active
-        ? "bg-primary text-primary-foreground"
-        : "bg-muted text-muted-foreground hover:bg-muted/70"
+        ? "bg-background text-foreground shadow-sm"
+        : "text-muted-foreground hover:text-foreground"
     }`;
+
+  const periods: Array<[Period, string]> = [
+    ["day", "Dia"],
+    ["week", "Semana"],
+    ["month", "Mês"],
+    ["year", "Ano"],
+  ];
+  const visibilities: Array<["all" | "viable" | "unviable", string, string]> = [
+    ["all", "Todas", "bg-foreground"],
+    ["viable", "Viáveis", "bg-success"],
+    ["unviable", "Inviáveis", "bg-destructive"],
+  ];
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          Período:
-        </span>
-        {([
-          ["all", "Tudo"],
-          ["day", "Dia"],
-          ["week", "Semana"],
-          ["month", "Mês"],
-          ["year", "Ano"],
-        ] as const).map(([k, l]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setPeriodFilter(k)}
-            className={chip(periodFilter === k)}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          Mostrar:
-        </span>
-        {([
-          ["all", "Todas"],
-          ["viable", "Só viáveis"],
-          ["unviable", "Só inviáveis"],
-        ] as const).map(([k, l]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setViabilityFilter(k)}
-            className={chip(viabilityFilter === k)}
-          >
-            {l}
-          </button>
-        ))}
+      <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm">
+        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Período
+        </div>
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {periods.map(([k, l]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setPeriodFilter(k)}
+              className={segItem(periodFilter === k)}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Mostrar
+        </div>
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {visibilities.map(([k, l, dot]) => {
+            const active = viabilityFilter === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setViabilityFilter(k)}
+                className={`${segItem(active)} inline-flex items-center justify-center gap-1.5`}
+              >
+                <span className={`inline-block size-2 rounded-full ${dot}`} />
+                {l}
+              </button>
+            );
+          })}
+        </div>
       </div>
       {points.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
