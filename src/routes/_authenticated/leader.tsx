@@ -46,6 +46,7 @@ import { downloadOrShare, openSavedFile, slugFilename, type SavedFile } from "@/
 import { FileDown } from "lucide-react";
 import { LeaderRankingSection } from "@/components/leader/RankingSection";
 import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
+import { periodRange, inRange } from "@/lib/analytics";
 
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
