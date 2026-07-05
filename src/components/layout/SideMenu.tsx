@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, LogIn } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,8 @@ const ARCGIS_URL =
 
 const ARCGIS_RISK_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=28bf0795832f47bf946e07822552c06d";
+
+const MICROSOFT_LOGIN_URL = "https://login.microsoftonline.com";
 
 type CapacitorWindow = Window & {
   Capacitor?: {
@@ -42,41 +44,44 @@ async function openUrlExternally(url: string): Promise<void> {
 
 function openArcgisUrl(url: string, title: string, setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
   setTitle(title);
-  if (isNativeRuntime()) {
-    // No app nativo, usa InAppBrowser (WebView interno com cookies persistentes).
-    // O <iframe> não funciona para login Microsoft (X-Frame-Options: DENY).
-    void (async () => {
-      try {
-        const mod = await import("@capacitor/inappbrowser");
-        const InAppBrowser = (mod as { InAppBrowser?: unknown }).InAppBrowser ?? (mod as { default?: unknown }).default;
-        const DefaultWebViewOptions =
-          ((mod as unknown as { DefaultWebViewOptions?: Record<string, unknown> })
-            .DefaultWebViewOptions) ?? {};
-        const api = InAppBrowser as {
-          openInWebView?: (opts: { url: string; options?: Record<string, unknown> }) => Promise<void>;
-        };
-        if (api?.openInWebView) {
-          await api.openInWebView({
-            url,
-            options: {
-              ...DefaultWebViewOptions,
-              showToolbar: true,
-              showURL: false,
-              closeButtonText: "Fechar",
-              clearCache: false,
-              clearSessionCache: false,
-            },
-          });
-          return;
-        }
-        setEmbedUrl(url);
-      } catch {
-        setEmbedUrl(url);
-      }
-    })();
+  setEmbedUrl(url);
+}
+
+// Abre login Microsoft no InAppBrowser (WebView nativo) apenas para o usuário
+// autenticar uma vez. No Android o CookieManager é compartilhado entre WebViews,
+// então os cookies de sessão ficam disponíveis para o <iframe> do ArcGIS depois.
+async function openMicrosoftLogin(): Promise<void> {
+  if (!isNativeRuntime()) {
+    window.open(MICROSOFT_LOGIN_URL, "_blank", "noopener,noreferrer");
     return;
   }
-  setEmbedUrl(url);
+  try {
+    const mod = await import("@capacitor/inappbrowser");
+    const InAppBrowser =
+      (mod as { InAppBrowser?: unknown }).InAppBrowser ??
+      (mod as { default?: unknown }).default;
+    const DefaultWebViewOptions =
+      ((mod as unknown as { DefaultWebViewOptions?: Record<string, unknown> })
+        .DefaultWebViewOptions) ?? {};
+    const api = InAppBrowser as {
+      openInWebView?: (opts: { url: string; options?: Record<string, unknown> }) => Promise<void>;
+    };
+    if (api?.openInWebView) {
+      await api.openInWebView({
+        url: MICROSOFT_LOGIN_URL,
+        options: {
+          ...DefaultWebViewOptions,
+          showToolbar: true,
+          showURL: false,
+          closeButtonText: "Concluir",
+          clearCache: false,
+          clearSessionCache: false,
+        },
+      });
+    }
+  } catch {
+    window.location.assign(MICROSOFT_LOGIN_URL);
+  }
 }
 
 const teamItems = [
