@@ -49,7 +49,9 @@ function openArcgisUrl(url: string, title: string, setTitle: (title: string) => 
       try {
         const mod = await import("@capacitor/inappbrowser");
         const InAppBrowser = (mod as { InAppBrowser?: unknown }).InAppBrowser ?? (mod as { default?: unknown }).default;
-        const DefaultWebViewOptions = (mod as { DefaultWebViewOptions?: Record<string, unknown> }).DefaultWebViewOptions ?? {};
+        const DefaultWebViewOptions =
+          ((mod as unknown as { DefaultWebViewOptions?: Record<string, unknown> })
+            .DefaultWebViewOptions) ?? {};
         const api = InAppBrowser as {
           openInWebView?: (opts: { url: string; options?: Record<string, unknown> }) => Promise<void>;
         };
