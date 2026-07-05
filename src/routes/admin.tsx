@@ -1031,21 +1031,20 @@ function TeamDayReports({
   const filtered = (q.data ?? []).filter((r) => {
     const t = new Date(r.started_at).getTime();
     return t >= dayStart && t < dayEnd;
+  });
+  return (
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
         <span className="text-xs font-medium text-muted-foreground">{filtered.length} registro(s)</span>
       </div>
+      {q.isLoading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <p className="text-sm text-muted-foreground">Nenhum relatório encontrado para este dia.</p>
           <p className="text-xs text-muted-foreground/60">Selecione outra data acima.</p>
         </div>
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
-      {q.isLoading ? (
-        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-      ) : filtered.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nenhum relatório neste dia.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((r) => {
