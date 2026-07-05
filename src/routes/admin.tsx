@@ -1520,22 +1520,31 @@ function AdminSideMenu({
                   <span>Painel</span>
                 </button>
               </li>
-              <li className="pt-2 pb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Seções
-              </li>
-              {SECTIONS.map((s) => {
-                const active = currentView === "section" && currentSection === s.id;
-                return (
-                  <li key={s.id}>
-                    <button
-                      onClick={() => onSelectSection(s.id)}
-                      className={itemCls + " " + (active ? activeCls : "")}
-                    >
-                      <span>{s.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
+              {SECTION_GROUPS.map((group) => (
+                <li key={group.id} className="pt-3">
+                  <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {group.label}
+                  </div>
+                  <ul className="space-y-1">
+                    {group.items.map((id) => {
+                      const info = SECTION_INFO[id];
+                      const Icon = info.icon;
+                      const active = currentView === "section" && currentSection === id;
+                      return (
+                        <li key={id}>
+                          <button
+                            onClick={() => onSelectSection(id)}
+                            className={itemCls + " " + (active ? activeCls : "")}
+                          >
+                            <Icon className="size-4 shrink-0" />
+                            <span className="truncate">{info.label}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))}
             </ul>
           </nav>
           <button
