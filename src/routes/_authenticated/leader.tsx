@@ -47,8 +47,6 @@ import { downloadOrShare, openSavedFile, slugFilename, type SavedFile } from "@/
 import { FileDown } from "lucide-react";
 import { LeaderRankingSection } from "@/components/leader/RankingSection";
 import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
 function rangeFor(p: Period, ref: Date): { start: Date; end: Date } {
