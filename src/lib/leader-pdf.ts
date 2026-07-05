@@ -538,6 +538,48 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   }
 
   // =========================================================================
+  // PAGE ANÁLISE GEOGRÁFICA (só quando há mapa) — leitura real dos pontos
+  // =========================================================================
+  if (hasMap) {
+    pdf.addPage("a4", "landscape");
+    const geoPageNumber = hasTeams ? 5 : 4;
+    pageTitle(pdf, "ANÁLISE GEOGRÁFICA — LEITURA DO MAPA", input.scope_label, periodStr);
+
+    const geo = buildGeoAnalysis(input.map_points ?? [], MARICA_CENTER);
+
+    const blocksGeo = [
+      { title: "Distribuição geral", body: geo.overall },
+      { title: "Centro operacional (centróide)", body: geo.centroid },
+      { title: "Dispersão / raio de atuação", body: geo.dispersion },
+      { title: "Concentração por quadrante", body: geo.quadrants },
+      { title: "Zona crítica (maior inviabilidade)", body: geo.critical },
+      { title: "Zona mais produtiva", body: geo.best },
+      { title: "Deslocamento estimado em campo", body: geo.route },
+      { title: "Recomendações territoriais", body: geo.recommendations, accent: true as const },
+    ];
+    const gColW = (CW - 6) / 2;
+    const gRowH = 33;
+    blocksGeo.forEach((b, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = M + col * (gColW + 6);
+      const y = M + 20 + row * (gRowH + 3);
+      const accent = "accent" in b && b.accent;
+      setFill(accent ? C.primaryDark : C.white);
+      setStroke(C.border);
+      pdf.roundedRect(x, y, gColW, gRowH, 2, 2, "FD");
+      font(8, "bold");
+      setText(accent ? C.white : C.primaryDark);
+      text(b.title.toUpperCase(), x + 4, y + 5);
+      font(8, "normal");
+      setText(accent ? C.white : C.ink);
+      const lines = pdf.splitTextToSize(b.body, gColW - 8) as string[];
+      lines.slice(0, 6).forEach((l, li) => pdf.text(l, x + 4, y + 10.5 + li * 3.6));
+    });
+    footer(geoPageNumber, totalPages);
+  }
+
+  // =========================================================================
   // PAGE FINAL — Resumo Executivo
   // =========================================================================
   pdf.addPage("a4", "landscape");
