@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,9 @@ import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
+
+const ARCGIS_RISK_URL =
+  "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=28bf0795832f47bf946e07822552c06d";
 
 const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
@@ -47,6 +50,10 @@ export function SideMenu() {
       ? `${ARCGIS_URL}&find=${encodeURIComponent(term)}`
       : ARCGIS_URL;
     setArcgisEmbedUrl(url);
+    setOpen(false);
+  }
+  function openArcgisRisk() {
+    setArcgisEmbedUrl(ARCGIS_RISK_URL);
     setOpen(false);
   }
   return (
@@ -121,6 +128,21 @@ export function SideMenu() {
                 </button>
               </form>
             </div>
+            <button
+              type="button"
+              onClick={openArcgisRisk}
+              className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left transition-colors hover:bg-muted"
+            >
+              <AlertTriangle className="size-5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Área de Risco
+                </div>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Abrir mapa de áreas de risco no app.
+                </p>
+              </div>
+            </button>
           </nav>
           <button
             type="button"
