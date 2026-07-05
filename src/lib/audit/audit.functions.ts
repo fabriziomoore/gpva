@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { ADMIN_PASSWORD } from "../admin.functions";
 import type { CheckResult } from "./types";
 import type { JsonValue } from "./types";
@@ -8,6 +9,19 @@ function assertAdmin(pw: string) {
 }
 
 type AdminInput = { adminPassword: string };
+
+type AuditHistoryRow = {
+  id: string;
+  created_at: string;
+  duration_ms: number;
+  overall_score: number;
+  counts: JsonValue;
+  report?: JsonValue;
+};
+
+function asUntypedClient(client: unknown): SupabaseClient {
+  return client as SupabaseClient;
+}
 
 // -------- DB checks --------
 export const runDbAudit = createServerFn({ method: "POST" })

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const ADMIN_PASSWORD = "137889";
 export const ADMIN_LOGIN = "adm";
@@ -11,6 +12,10 @@ function assertAdmin(pw: string) {
 }
 
 type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
+
+function asUntypedClient(client: unknown): SupabaseClient {
+  return client as SupabaseClient;
+}
 
 export const listTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
