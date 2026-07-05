@@ -748,9 +748,76 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const [year, setYear] = useState<number>(now.getFullYear());
   const [month, setMonth] = useState<number>(now.getMonth() + 1);
   const [day, setDay] = useState<number>(now.getDate());
+  const [mode, setMode] = useState<"day" | "week" | "month">("day");
+
+  const weeks = useMemo(() => {
+    const y = year;
+    const m = month - 1;
+    const first = new Date(y, m, 1);
+    const dow = (first.getDay() + 6) % 7;
+    const start = new Date(y, m, 1 - dow);
+    const list: { start: Date; end: Date; label: string }[] = [];
+    const cur = new Date(start);
+    for (let i = 0; i < 6; i++) {
+      const s = new Date(cur);
+      const e = new Date(cur);
+      e.setDate(e.getDate() + 6);
+      if (s.getMonth() === m || e.getMonth() === m) {
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        list.push({
+          start: s,
+          end: e,
+          label: `${pad(s.getDate())}/${pad(s.getMonth() + 1)} – ${pad(e.getDate())}/${pad(e.getMonth() + 1)}`,
+        });
+      }
+      cur.setDate(cur.getDate() + 7);
+    }
+    return list;
+  }, [year, month]);
+  const [weekIdx, setWeekIdx] = useState<number>(0);
+  useEffect(() => {
+    const idx = weeks.findIndex(
+      (w) => now >= w.start && now <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59),
+    );
+    setWeekIdx(idx >= 0 ? idx : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeks]);
+
+  const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
+  const weekRange = useMemo(() => {
+    if (mode !== "week") return null;
+    const w = weeks[weekIdx];
+    if (!w) return null;
+    const startISO = new Date(
+      Date.UTC(w.start.getFullYear(), w.start.getMonth(), w.start.getDate()) + TZ_OFFSET_MS,
+    ).toISOString();
+    const endISO = new Date(
+      Date.UTC(w.end.getFullYear(), w.end.getMonth(), w.end.getDate() + 1) + TZ_OFFSET_MS,
+    ).toISOString();
+    return { startISO, endISO };
+  }, [mode, weeks, weekIdx]);
+
+  const dayParam = mode === "day" ? day : null;
   const q = useQuery({
-    queryKey: ["admin-ranking", year, month],
-    queryFn: () => fn({ data: { adminPassword: adminPw, year, month } }),
+    queryKey: [
+      "admin-ranking",
+      year,
+      month,
+      dayParam,
+      mode,
+      weekRange?.startISO ?? null,
+    ],
+    queryFn: () =>
+      fn({
+        data: {
+          adminPassword: adminPw,
+          year,
+          month,
+          day: dayParam,
+          startISO: weekRange?.startISO ?? null,
+          endISO: weekRange?.endISO ?? null,
+        },
+      }),
   });
 
   if (q.isLoading) {
@@ -780,23 +847,42 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const periodSelector = (withDay: boolean) => (
-    <div className="flex gap-2">
-      {withDay && (
+  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
+  const periodSelector = (variant: "day" | "week" | "month") => (
+    <div className="flex gap-2 min-w-0">
+      {variant === "day" ? (
         <select
           value={day}
           onChange={(e) => setDay(Number(e.target.value))}
-          className="h-10 w-20 rounded-lg border border-border bg-card px-3 text-sm"
+          className={`${selectCls} w-20 shrink-0`}
         >
           {days.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
+      ) : variant === "week" ? (
+        <select
+          value={weekIdx}
+          onChange={(e) => setWeekIdx(Number(e.target.value))}
+          className={`${selectCls} w-20 shrink-0`}
+        >
+          {weeks.map((_, i) => (
+            <option key={i} value={i}>Sem. {i + 1}</option>
+          ))}
+        </select>
+      ) : (
+        <select
+          disabled
+          value=""
+          className={`${selectCls} w-20 shrink-0 text-muted-foreground`}
+        >
+          <option value="">—</option>
+        </select>
       )}
       <select
         value={month}
         onChange={(e) => setMonth(Number(e.target.value))}
-        className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
+        className={`${selectCls} min-w-0 flex-1`}
       >
         {monthNames.map((n, i) => (
           <option key={i} value={i + 1}>{n}</option>
@@ -805,7 +891,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
       <select
         value={year}
         onChange={(e) => setYear(Number(e.target.value))}
-        className="h-10 w-28 rounded-lg border border-border bg-card px-3 text-sm"
+        className={`${selectCls} w-24 shrink-0`}
       >
         {years.map((y) => (
           <option key={y} value={y}>{y}</option>
@@ -819,7 +905,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
     return (
       <div className="space-y-4">
         <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, leader: null }} onDeleted={() => setSelected(null)} />
-        {periodSelector(true)}
+        {periodSelector("day")}
         <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
@@ -852,8 +938,21 @@ function RankingSection({ adminPw }: { adminPw: string }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-semibold">Ranking de Equipes</h2>
-      {periodSelector(false)}
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">Ranking de Equipes</h2>
+        <div className="inline-flex overflow-hidden rounded-lg border border-border">
+          {(["day", "week", "month"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`px-3 py-1 text-xs font-semibold ${mode === m ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+            >
+              {m === "day" ? "Dia" : m === "week" ? "Semana" : "Mês"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {periodSelector(mode)}
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
