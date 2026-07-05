@@ -74,7 +74,12 @@ function SettingsPage() {
 
   async function resetTestData() {
     if (!isTestAccount || !userId) return;
-    if (!window.confirm("Apagar TODOS os dados desta conta de teste? Esta ação não pode ser desfeita.")) return;
+    const { confirmDelete } = await import("@/components/ui/confirm-dialog");
+    if (!(await confirmDelete({
+      title: "Apagar dados da conta de teste?",
+      description: "TODOS os expedientes, serviços, impactos e vínculos desta conta serão apagados. Esta ação não pode ser desfeita.",
+      confirmText: "Apagar tudo",
+    }))) return;
     setResetting(true);
     try {
       const tables = ["vinculos_complementos", "impactos_expediente", "servicos", "expedientes"] as const;
