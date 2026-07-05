@@ -49,26 +49,24 @@ function openArcgisUrl(url: string, title: string, setTitle: (title: string) => 
       try {
         const mod = await import("@capacitor/inappbrowser");
         const InAppBrowser = (mod as { InAppBrowser?: unknown }).InAppBrowser ?? (mod as { default?: unknown }).default;
+        const DefaultWebViewOptions =
+          ((mod as unknown as { DefaultWebViewOptions?: Record<string, unknown> })
+            .DefaultWebViewOptions) ?? {};
         const api = InAppBrowser as {
           openInWebView?: (opts: { url: string; options?: Record<string, unknown> }) => Promise<void>;
-          open?: (opts: { url: string }) => Promise<void>;
         };
         if (api?.openInWebView) {
           await api.openInWebView({
             url,
             options: {
+              ...DefaultWebViewOptions,
               showToolbar: true,
               showURL: false,
               closeButtonText: "Fechar",
-              toolbarPosition: "TOP",
               clearCache: false,
               clearSessionCache: false,
             },
           });
-          return;
-        }
-        if (api?.open) {
-          await api.open({ url });
           return;
         }
         setEmbedUrl(url);
