@@ -150,45 +150,51 @@ export function LeaderRankingSection() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
   const periodSelector = (variant: "day" | "week" | "month") => (
-    <div className="flex gap-2">
-      {variant === "day" && (
+    <div className="flex gap-2 min-w-0">
+      {variant === "day" ? (
         <select
           value={day}
           onChange={(e) => setDay(Number(e.target.value))}
-          className="h-10 w-20 rounded-lg border border-border bg-card px-3 text-sm"
+          className={`${selectCls} w-20 shrink-0`}
         >
           {days.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
-      )}
-      {variant === "week" && (
+      ) : variant === "week" ? (
         <select
           value={weekIdx}
           onChange={(e) => setWeekIdx(Number(e.target.value))}
-          className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
+          className={`${selectCls} w-20 shrink-0`}
         >
-          {weeks.map((w, i) => (
-            <option key={i} value={i}>Sem. {i + 1} — {w.label}</option>
+          {weeks.map((_, i) => (
+            <option key={i} value={i}>Sem. {i + 1}</option>
           ))}
         </select>
-      )}
-      {variant !== "week" && (
+      ) : (
         <select
-          value={month}
-          onChange={(e) => setMonth(Number(e.target.value))}
-          className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
+          disabled
+          value=""
+          className={`${selectCls} w-20 shrink-0 text-muted-foreground`}
         >
-          {monthNames.map((n, i) => (
-            <option key={i} value={i + 1}>{n}</option>
-          ))}
+          <option value="">—</option>
         </select>
       )}
       <select
+        value={month}
+        onChange={(e) => setMonth(Number(e.target.value))}
+        className={`${selectCls} min-w-0 flex-1`}
+      >
+        {monthNames.map((n, i) => (
+          <option key={i} value={i + 1}>{n}</option>
+        ))}
+      </select>
+      <select
         value={year}
         onChange={(e) => setYear(Number(e.target.value))}
-        className="h-10 w-28 rounded-lg border border-border bg-card px-3 text-sm"
+        className={`${selectCls} w-24 shrink-0`}
       >
         {years.map((y) => (
           <option key={y} value={y}>{y}</option>
