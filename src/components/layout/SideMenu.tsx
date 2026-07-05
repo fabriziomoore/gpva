@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
@@ -193,32 +193,43 @@ export function SideMenu() {
           <Dialog.Overlay className="fixed inset-0 z-[9998] bg-background/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <Dialog.Content className="fixed inset-0 z-[9999] flex h-full w-full flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
             <Dialog.Title className="sr-only">Consulta ArcGIS Aegea</Dialog.Title>
-            <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-2">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-card px-3 py-2 sm:px-4">
+              <div className="flex min-w-0 items-center gap-2">
                 <button
                   type="button"
                   aria-label="Abrir menu"
                   onClick={() => setOpen(true)}
-                  className="-ml-1 inline-flex size-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
+                  className="-ml-1 inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
                 >
                   <Menu className="size-5" />
                 </button>
-                <Map className="size-4 text-primary shrink-0" />
-                <span className="truncate text-sm font-semibold">{arcgisTitle}</span>
+                <Map className="size-4 shrink-0 text-primary" />
+                <span className="min-w-0 truncate text-sm font-semibold">{arcgisTitle}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     if (arcgisEmbedUrl) window.open(arcgisEmbedUrl, "_blank", "noopener,noreferrer");
                   }}
-                  className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                  aria-label="Abrir no navegador"
+                  className="hidden rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
                 >
                   Abrir no navegador
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (arcgisEmbedUrl) window.open(arcgisEmbedUrl, "_blank", "noopener,noreferrer");
+                  }}
+                  aria-label="Abrir no navegador"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted sm:hidden"
+                >
+                  <ExternalLink className="size-4" />
+                </button>
                 <Dialog.Close
                   aria-label="Fechar"
-                  className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
                 >
                   <X className="size-5" />
                 </Dialog.Close>
