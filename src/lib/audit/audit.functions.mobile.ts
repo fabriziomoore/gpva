@@ -17,3 +17,11 @@ export const saveAuditReport = call<{ id: string; created_at: string }>("auditSa
 export const listAuditReports = call<Array<{ id: string; created_at: string; duration_ms: number; overall_score: number; counts: JsonValue }>>("auditList");
 export const deleteAuditReport = call<{ ok: true }>("auditDelete");
 export const getAuditReport = call<{ id: string; created_at: string; duration_ms: number; overall_score: number; counts: JsonValue; report: JsonValue }>("auditGet");
+
+// Novos módulos
+export const runRlsAudit = call<CheckResult[]>("auditRls");
+export const runStorageAudit = call<CheckResult[]>("auditStorage");
+export const runEdgeFnAudit = call<CheckResult[]>("auditEdge");
+export const runIntegrityAudit = call<CheckResult[]>("auditIntegrity");
+export const runCoordsAudit = call<CheckResult[]>("auditCoords");
+export const runAuthOrphansAudit = call<CheckResult[]>("auditAuthOrphans");

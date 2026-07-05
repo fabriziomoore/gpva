@@ -89,5 +89,53 @@ export async function runClientChecks(): Promise<CheckResult[]> {
     });
   }
 
+  // Fila offline (IndexedDB / Dexie)
+  try {
+    const { getLocalDB } = await import("@/lib/db/local-db");
+    const db = getLocalDB();
+    const [outbox, svcPending, shiftsPending, svcErr, shiftsErr] = await Promise.all([
+      db.outbox.count(),
+      db.services.where("sync_state").anyOf(["pending", "error"]).count(),
+      db.shifts.where("sync_state").anyOf(["pending", "error"]).count(),
+      db.services.where("sync_state").equals("error").count(),
+      db.shifts.where("sync_state").equals("error").count(),
+    ]);
+    const pending = outbox + svcPending + shiftsPending;
+    results.push({
+      id: "cli.sync.pending", category: "cliente",
+      title: "Fila offline de sincronização",
+      severity: pending === 0 ? "info" : pending < 20 ? "warning" : "error",
+      message: pending === 0
+        ? "Vazia"
+        : `${pending} pendentes (outbox ${outbox}, serviços ${svcPending}, expedientes ${shiftsPending})`,
+      evidence: { outbox, services_pending: svcPending, shifts_pending: shiftsPending },
+      suggestion: pending > 0 ? "Conectar à internet e reabrir o app para forçar sync." : undefined,
+    });
+    if (svcErr + shiftsErr > 0) {
+      results.push({
+        id: "cli.sync.errors", category: "cliente",
+        title: "Registros com erro de sync",
+        severity: "error",
+        message: `${svcErr + shiftsErr} registros com sync_state=error`,
+        evidence: { services: svcErr, shifts: shiftsErr },
+      });
+    }
+    // Outbox antiga (>24h)
+    const outboxRows = await db.outbox.limit(500).toArray();
+    const now = Date.now();
+    const stuck = outboxRows.filter((r) => now - new Date(r.created_at).getTime() > 24 * 60 * 60 * 1000).length;
+    if (stuck > 0) {
+      results.push({
+        id: "cli.sync.stuck", category: "cliente",
+        title: "Outbox travada",
+        severity: "warning",
+        message: `${stuck} itens há mais de 24h na fila`,
+        evidence: { count: stuck },
+      });
+    }
+  } catch (e) {
+    results.push({ id: "cli.sync", category: "cliente", title: "Fila offline", severity: "warning", message: (e as Error).message });
+  }
+
   return results;
 }

@@ -565,6 +565,7 @@ export type Database = {
     }
     Functions: {
       admin_user_ids: { Args: never; Returns: string[] }
+      audit_schema_snapshot: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
