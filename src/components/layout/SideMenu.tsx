@@ -42,34 +42,29 @@ async function openUrlExternally(url: string): Promise<void> {
 
 function openArcgisUrl(url: string, title: string, setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
   if (isNativeRuntime()) {
-    void openArcgisInNativeWebView(url);
+    void openArcgisInNativeWebView(url, title);
     return;
   }
   setTitle(title);
   setEmbedUrl(url);
 }
 
-async function openArcgisInNativeWebView(url: string): Promise<void> {
+async function openArcgisInNativeWebView(url: string, title: string): Promise<void> {
   try {
-    const mod = await import("@capacitor/inappbrowser");
-    const { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } = mod;
-
-    await InAppBrowser.openInWebView({
+    const { InAppBrowser, ToolBarType, BackgroundColor } = await import("@capgo/inappbrowser");
+    await InAppBrowser.openWebView({
       url,
-      options: {
-        ...DefaultWebViewOptions,
-        android: {
-          ...DefaultWebViewOptions.android,
-          isIsolated: false,
-        },
-        showToolbar: true,
-        showURL: false,
-        showNavigationButtons: false,
-        closeButtonText: "‹ Voltar ao app",
-        toolbarPosition: ToolbarPosition.TOP,
-        clearCache: false,
-        clearSessionCache: false,
-      },
+      title,
+      toolbarType: ToolBarType.COMPACT,
+      toolbarColor: "#1a2338",
+      toolbarTextColor: "#ffffff",
+      backgroundColor: BackgroundColor.WHITE,
+      visibleTitle: true,
+      showArrow: false,
+      showReloadButton: false,
+      activeNativeNavigationForWebview: true,
+      isPresentAfterPageLoad: false,
+      isAnimated: true,
     });
   } catch {
     window.location.assign(url);
