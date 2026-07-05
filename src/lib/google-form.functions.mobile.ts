@@ -17,6 +17,49 @@ export function parseGoogleFormId(input: string): string {
   return m ? m[1] : s;
 }
 
+function stripDiacritics(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+}
+
+// Espelha src/lib/google-form.functions.ts#extractEntriesFromForm — só usa
+// fetch/JSON.parse, então roda igual no WebView do Capacitor.
+export async function extractEntriesFromForm(formId: string): Promise<FormEntries> {
+  const url = `https://docs.google.com/forms/d/e/${formId}/viewform`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Não foi possível abrir o formulário (${res.status}).`);
+  const html = await res.text();
+  const m = html.match(/FB_PUBLIC_LOAD_DATA_ = (.*?);<\/script>/s);
+  if (!m) throw new Error("Formato do formulário não reconhecido.");
+  const data = JSON.parse(m[1]);
+  const fields: unknown[] = data?.[1]?.[1] ?? [];
+  const map = new Map<string, string>();
+  for (const raw of fields) {
+    const f = raw as [unknown, string, ...unknown[]];
+    const label = typeof f[1] === "string" ? stripDiacritics(f[1]) : "";
+    const entryArr = (f as unknown as [unknown, unknown, unknown, unknown, [unknown, ...unknown[]][]])[4];
+    if (!label || !Array.isArray(entryArr) || !entryArr[0]) continue;
+    const id = entryArr[0][0];
+    if (typeof id === "number") map.set(label, `entry.${id}`);
+  }
+  const need = (labels: string[], key: string): string => {
+    for (const l of labels) {
+      const v = map.get(stripDiacritics(l));
+      if (v) return v;
+    }
+    throw new Error(`Campo "${key}" não encontrado no formulário.`);
+  };
+  return {
+    data: need(["DATA"], "DATA"),
+    lider: need(["LIDER", "LÍDER"], "LIDER"),
+    setor: need(["SETOR"], "SETOR"),
+    matricula: need(["MATRICULA", "MATRÍCULA"], "MATRICULA"),
+    pagamento: need(["FORMA DE PAGAMENTO"], "FORMA DE PAGAMENTO"),
+    valorAVista: need(["VALOR A VISTA", "VALOR Á VISTA"], "VALOR À VISTA"),
+    valorTotalParcelado: need(["VALOR TOTAL PARCELADO"], "VALOR TOTAL PARCELADO"),
+    qtdParcelas: map.get(stripDiacritics("QUANTIDADE DE PARCELAS")),
+  };
+}
+
 export const getGoogleFormSettings = async (): Promise<FormSettingsRow | null> => {
   const { data, error } = await supabase
     .from("google_form_settings")
