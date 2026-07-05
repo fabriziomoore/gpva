@@ -418,7 +418,11 @@ function CrudSection({
                 >
                   <span className="text-sm">{r.name}</span>
                   <button
-                    onClick={() => delMut.mutate(r.id)}
+                    onClick={async () => {
+                      if (await confirmDelete({ description: `Excluir "${r.name}"? Esta ação não poderá ser desfeita.` })) {
+                        delMut.mutate(r.id);
+                      }
+                    }}
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
                     aria-label="Remover"
                   >
@@ -520,7 +524,10 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
               setor={s}
               onSave={(patch) => updateMut.mutate({ setorId: s.id, ...patch })}
               onDelete={() => {
-                if (confirm(`Excluir setor "${s.nome}"?`)) deleteMut.mutate(s.id);
+                void confirmDelete({
+                  title: "Excluir setor?",
+                  description: `O setor "${s.nome}" será removido. Esta ação não poderá ser desfeita.`,
+                }).then((ok) => { if (ok) deleteMut.mutate(s.id); });
               }}
               saving={updateMut.isPending}
             />
@@ -1154,9 +1161,10 @@ function TeamDayReports({
                     )}
                     <button
                       onClick={() => {
-                        if (window.confirm("Excluir este relatório e todos os serviços/impactos vinculados?")) {
-                          delMut.mutate(r.id);
-                        }
+                        void confirmDelete({
+                          title: "Excluir relatório?",
+                          description: "Todos os serviços e impactos vinculados serão apagados. Esta ação não poderá ser desfeita.",
+                        }).then((ok) => { if (ok) delMut.mutate(r.id); });
                       }}
                       className="rounded p-2 text-muted-foreground hover:text-destructive"
                       aria-label="Excluir"
@@ -1321,7 +1329,10 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
                 </div>
                 <button
                   onClick={() => {
-                    if (confirm("Excluir este líder?")) delMut.mutate(l.id);
+                    void confirmDelete({
+                      title: "Excluir líder?",
+                      description: "O líder será removido do sistema. Esta ação não poderá ser desfeita.",
+                    }).then((ok) => { if (ok) delMut.mutate(l.id); });
                   }}
                   className="rounded-md p-2 text-muted-foreground hover:text-destructive"
                   aria-label="Excluir líder"
