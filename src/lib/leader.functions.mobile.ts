@@ -22,11 +22,8 @@ export const leaderListTeams: Callable<
     is_test: boolean | null;
   }>
 > = async () => {
-  const { data: admins } = await supabase
-    .from("user_roles")
-    .select("user_id")
-    .eq("role", "admin");
-  const adminIds = new Set((admins ?? []).map((a) => a.user_id));
+  const { data: admins } = await supabase.rpc("admin_user_ids");
+  const adminIds = new Set(((admins ?? []) as string[]));
   const { data, error } = await supabase
     .from("equipes")
     .select(
@@ -52,11 +49,8 @@ export const leaderTeamsRanking: Callable<
   }>,
   { year: number; month: number; day?: number | null }
 > = async ({ data }) => {
-  const { data: admins } = await supabase
-    .from("user_roles")
-    .select("user_id")
-    .eq("role", "admin");
-  const adminIds = new Set((admins ?? []).map((a) => a.user_id));
+  const { data: admins } = await supabase.rpc("admin_user_ids");
+  const adminIds = new Set(((admins ?? []) as string[]));
   const { data: teams, error: teamsErr } = await supabase
     .from("equipes")
     .select("id,team_name,is_test");
