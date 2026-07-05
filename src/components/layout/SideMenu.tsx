@@ -41,11 +41,6 @@ async function openUrlExternally(url: string): Promise<void> {
 }
 
 function openArcgisUrl(url: string, title: string, setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
-  if (isNativeRuntime()) {
-    void openUrlExternally(url);
-    return;
-  }
-
   setTitle(title);
   setEmbedUrl(url);
 }
