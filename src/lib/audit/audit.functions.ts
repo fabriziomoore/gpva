@@ -498,10 +498,10 @@ export const runIntegrityAudit = createServerFn({ method: "POST" })
       return (v ?? []).filter((r) => r.impact_id && !set.has(r.impact_id)).length;
     });
     await orphan("db.orphans.active_sessions", "Sessões ativas de equipe inexistente", async () => {
-      const { data: s } = await supabaseAdmin.from("active_sessions").select("team_id");
+      const { data: s } = await supabaseAdmin.from("active_sessions").select("user_id");
       const { data: e } = await supabaseAdmin.from("equipes").select("id");
       const set = new Set((e ?? []).map((r) => r.id));
-      return (s ?? []).filter((r) => r.team_id && !set.has(r.team_id)).length;
+      return (s ?? []).filter((r) => r.user_id && !set.has(r.user_id)).length;
     });
     await orphan("db.orphans.equipes_setor", "Equipes com setor inexistente", async () => {
       const { data: e } = await supabaseAdmin.from("equipes").select("setor_id");
