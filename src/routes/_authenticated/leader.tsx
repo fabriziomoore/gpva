@@ -471,46 +471,15 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
   ];
   const daysInMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0).getDate();
   const daysArr = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  // Semanas do mês (segunda a domingo) contendo dias do mês selecionado.
-  const weeks = useMemo(() => {
-    const y = refDate.getFullYear();
-    const m = refDate.getMonth();
-    const first = new Date(y, m, 1);
-    // Segunda-feira da semana que contém o dia 1.
-    const dow = (first.getDay() + 6) % 7; // 0 = segunda
-    const start = new Date(y, m, 1 - dow);
-    const list: { start: Date; end: Date; label: string }[] = [];
-    const cur = new Date(start);
-    while (cur.getFullYear() < y || (cur.getFullYear() === y && cur.getMonth() <= m)) {
-      const s = new Date(cur);
-      const e = new Date(cur);
-      e.setDate(e.getDate() + 6);
-      // inclui semana se algum dia cai no mês
-      if (e.getMonth() >= m && s.getMonth() <= m && (e.getFullYear() === y || s.getFullYear() === y)) {
-        list.push({
-          start: s,
-          end: e,
-          label: `${s.getDate().toString().padStart(2,"0")}/${(s.getMonth()+1).toString().padStart(2,"0")} – ${e.getDate().toString().padStart(2,"0")}/${(e.getMonth()+1).toString().padStart(2,"0")}`,
-        });
-      }
-      cur.setDate(cur.getDate() + 7);
-      if (cur.getMonth() > m && cur.getFullYear() >= y) break;
-    }
-    return list;
-  }, [refDate]);
-  const weekIndex = Math.max(0, weeks.findIndex((w) =>
-    refDate.getTime() >= w.start.getTime() && refDate.getTime() <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59).getTime()
-  ));
-
   const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
 
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur-sm space-y-2">
         <div className="flex gap-1 rounded-lg bg-muted p-1">
-          {(["day","week","month","year"] as Period[]).map((p) => {
+          {(["day","month"] as Period[]).map((p) => {
             const active = periodFilter === p;
-            const label = p === "day" ? "Dia" : p === "week" ? "Semana" : p === "month" ? "Mês" : "Ano";
+            const label = p === "day" ? "Dia" : "Mês";
             return (
               <button
                 key={p}
@@ -533,27 +502,13 @@ function LeaderMapSection({ services, teams }: { services: SvcRow[]; teams: Team
               {daysArr.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           )}
-          {periodFilter === "week" && (
-            <select
-              value={weekIndex}
-              onChange={(e) => {
-                const w = weeks[Number(e.target.value)];
-                if (w) setRefDate(new Date(w.start));
-              }}
-              className={cn(selectCls, "flex-1")}
-            >
-              {weeks.map((w, i) => <option key={i} value={i}>Sem. {i + 1} — {w.label}</option>)}
-            </select>
-          )}
-          {(periodFilter === "day" || periodFilter === "week" || periodFilter === "month") && (
-            <select
-              value={refDate.getMonth()}
-              onChange={(e) => setRefDate(new Date(refDate.getFullYear(), Number(e.target.value), 1))}
-              className={cn(selectCls, "flex-1")}
-            >
-              {monthNamesFull.map((n, i) => <option key={i} value={i}>{n}</option>)}
-            </select>
-          )}
+          <select
+            value={refDate.getMonth()}
+            onChange={(e) => setRefDate(new Date(refDate.getFullYear(), Number(e.target.value), 1))}
+            className={cn(selectCls, "flex-1")}
+          >
+            {monthNamesFull.map((n, i) => <option key={i} value={i}>{n}</option>)}
+          </select>
           <select
             value={refDate.getFullYear()}
             onChange={(e) => setRefDate(new Date(Number(e.target.value), refDate.getMonth(), 1))}
