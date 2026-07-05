@@ -322,7 +322,11 @@ function CrudSection({
                 >
                   <span className="text-sm">{r.name}</span>
                   <button
-                    onClick={() => delMut.mutate(r.id)}
+                    onClick={() => {
+                      if (confirm(`Desativar o item "${r.name}"?\n\nEle deixará de aparecer no aplicativo, mas o histórico permanece.`)) {
+                        delMut.mutate(r.id);
+                      }
+                    }}
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
                     aria-label="Remover"
                   >
@@ -424,7 +428,9 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
               setor={s}
               onSave={(patch) => updateMut.mutate({ setorId: s.id, ...patch })}
               onDelete={() => {
-                if (confirm(`Excluir setor "${s.nome}"?`)) deleteMut.mutate(s.id);
+                if (confirm(`⚠️ Excluir o setor "${s.nome}" PERMANENTEMENTE?\n\nSó é possível excluir setores sem equipes vinculadas. Esta ação não pode ser desfeita.`)) {
+                  deleteMut.mutate(s.id);
+                }
               }}
               saving={updateMut.isPending}
             />
@@ -965,7 +971,7 @@ function TeamHeader({
         deleteMut.mutate();
       }}
       title="Excluir equipe"
-      description={`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`}
+      description={`⚠️ ATENÇÃO — Ação irreversível.\n\nExcluir a equipe "${team.team_name}" apagará PERMANENTEMENTE do banco:\n• todos os expedientes\n• todos os serviços registrados no mapa\n• impactos e complementos vinculados\n• a própria conta de acesso da equipe\n\nEssa ação NÃO pode ser desfeita.`}
     />
     </>
   );
@@ -1058,7 +1064,7 @@ function TeamDayReports({
                     )}
                     <button
                       onClick={() => {
-                        if (window.confirm("Excluir este relatório e todos os serviços/impactos vinculados?")) {
+                        if (window.confirm("⚠️ Excluir este expediente PERMANENTEMENTE?\n\nSerão apagados do banco:\n• o relatório do expediente\n• todos os serviços registrados nele\n• impactos e complementos vinculados\n\nEsta ação não pode ser desfeita.")) {
                           delMut.mutate(r.id);
                         }
                       }}
@@ -1225,7 +1231,9 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
                 </div>
                 <button
                   onClick={() => {
-                    if (confirm("Excluir este líder?")) delMut.mutate(l.id);
+                    if (confirm("⚠️ Excluir este líder PERMANENTEMENTE?\n\nA conta de acesso será removida do sistema e não poderá ser recuperada.")) {
+                      delMut.mutate(l.id);
+                    }
                   }}
                   className="rounded-md p-2 text-muted-foreground hover:text-destructive"
                   aria-label="Excluir líder"
@@ -1629,8 +1637,8 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-xl">
             <Dialog.Title className="text-base font-semibold">Excluir conta de teste?</Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-              Todos os dados vinculados a esta conta serão removidos.
+            <Dialog.Description className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+              {"⚠️ Ação irreversível.\n\nSerão apagados PERMANENTEMENTE do banco: expedientes, serviços no mapa, impactos, complementos e a própria conta. Não é possível desfazer."}
             </Dialog.Description>
             <div className="mt-4 flex gap-2">
               <Button

@@ -626,17 +626,8 @@ export const adminDeleteMapServicesRange = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let q = supabaseAdmin.from("servicos").select("id");
-    if (data.teamId) q = q.eq("team_id", data.teamId);
-    if (data.startISO) q = q.gte("created_at", data.startISO);
-    if (data.endISO) q = q.lt("created_at", data.endISO);
-    const { data: rows, error: e1 } = await q;
-    if (e1) throw new Error(e1.message);
-    const ids = (rows ?? []).map((r) => r.id);
-    if (!ids.length) return { ok: true as const, deleted: 0 };
-    await supabaseAdmin.from("vinculos_complementos").delete().in("service_id", ids);
-    const { error } = await supabaseAdmin.from("servicos").delete().in("id", ids);
-    if (error) throw new Error(error.message);
-    return { ok: true as const, deleted: ids.length };
+    // Exclusão em massa desabilitada por segurança. Use adminDeleteMapService
+    // para remover marcações individualmente.
+    void data;
+    throw new Error("Exclusão em massa desabilitada. Remova as marcações uma a uma.");
   });

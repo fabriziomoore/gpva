@@ -448,19 +448,10 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       return { ok: true };
     }
     case "adminDeleteMapServicesRange": {
-      // args: { teamId?, startISO?, endISO? }  → deleta todos que casam
-      let q = sb.from("servicos").select("id");
-      if (args.teamId) q = q.eq("team_id", args.teamId);
-      if (args.startISO) q = q.gte("created_at", args.startISO);
-      if (args.endISO) q = q.lt("created_at", args.endISO);
-      const { data: rows, error: e1 } = await q;
-      if (e1) throw new Error(e1.message);
-      const ids = (rows ?? []).map((r: any) => r.id);
-      if (!ids.length) return { ok: true, deleted: 0 };
-      await sb.from("vinculos_complementos").delete().in("service_id", ids);
-      const { error } = await sb.from("servicos").delete().in("id", ids);
-      if (error) throw new Error(error.message);
-      return { ok: true, deleted: ids.length };
+      // Desabilitado por segurança: exclusão em massa foi removida para
+      // impedir apagamento acidental de todo o histórico. Exclusões
+      // ocorrem apenas registro a registro via adminDeleteMapService.
+      throw new Error("Exclusão em massa desabilitada. Remova as marcações uma a uma.");
     }
 
     default: throw new Error(`Operação desconhecida: ${op}`);
