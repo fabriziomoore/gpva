@@ -43,6 +43,10 @@ async function openUrlExternally(url: string): Promise<void> {
 }
 
 function openArcgisUrl(url: string, title: string, setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
+  if (isNativeRuntime()) {
+    void openArcgisInNativeWebView(url);
+    return;
+  }
   setTitle(title);
   setEmbedUrl(url);
 }
@@ -50,7 +54,7 @@ function openArcgisUrl(url: string, title: string, setTitle: (title: string) => 
 async function openArcgisInNativeWebView(url: string): Promise<void> {
   try {
     const mod = await import("@capacitor/inappbrowser");
-    const { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } = mod;
+    const { InAppBrowser, DefaultWebViewOptions } = mod;
 
     await InAppBrowser.openInWebView({
       url,
@@ -60,11 +64,9 @@ async function openArcgisInNativeWebView(url: string): Promise<void> {
           ...DefaultWebViewOptions.android,
           isIsolated: false,
         },
-        showToolbar: true,
+        showToolbar: false,
         showURL: false,
-        showNavigationButtons: true,
-        closeButtonText: "Fechar",
-        toolbarPosition: ToolbarPosition.TOP,
+        showNavigationButtons: false,
         clearCache: false,
         clearSessionCache: false,
       },
