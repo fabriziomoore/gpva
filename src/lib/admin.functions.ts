@@ -22,7 +22,15 @@ export const listTeams = createServerFn({ method: "POST" })
       .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
       .order("team_name");
     if (error) throw new Error(error.message);
-    return (rows ?? []).filter((r) => !(r as { is_test?: boolean }).is_test);
+    // Exclui contas administrativas (usuários com role admin) da lista de equipes.
+    const { data: adminRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    const adminIds = new Set((adminRoles ?? []).map((r) => r.user_id));
+    return (rows ?? []).filter(
+      (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id),
+    );
   });
 
 export const adminListRows = createServerFn({ method: "POST" })
