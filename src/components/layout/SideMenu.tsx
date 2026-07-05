@@ -6,7 +6,6 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { toast } from "sonner";
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
@@ -40,21 +39,14 @@ export function SideMenu() {
     [isLeader.data],
   );
   const [arcgisQuery, setArcgisQuery] = useState("");
+  const [arcgisEmbedUrl, setArcgisEmbedUrl] = useState<string | null>(null);
 
-  async function openArcgis() {
+  function openArcgis() {
     const term = arcgisQuery.trim();
     const url = term
       ? `${ARCGIS_URL}&find=${encodeURIComponent(term)}`
       : ARCGIS_URL;
-    if (term) {
-      try {
-        await navigator.clipboard?.writeText(term);
-      } catch {
-        // ignore clipboard errors
-      }
-      toast.success("Buscando no mapa — termo também copiado");
-    }
-    window.open(url, "_blank", "noopener,noreferrer");
+    setArcgisEmbedUrl(url);
     setOpen(false);
   }
   return (
@@ -144,6 +136,49 @@ export function SideMenu() {
         </Dialog.Content>
       </Dialog.Portal>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
+      <Dialog.Root
+        open={arcgisEmbedUrl !== null}
+        onOpenChange={(v) => !v && setArcgisEmbedUrl(null)}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[9998] bg-background/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed inset-0 z-[9999] flex h-full w-full flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+            <Dialog.Title className="sr-only">Consulta ArcGIS Aegea</Dialog.Title>
+            <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Map className="size-4 text-primary shrink-0" />
+                <span className="truncate text-sm font-semibold">Consulta ArcGIS</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (arcgisEmbedUrl) window.open(arcgisEmbedUrl, "_blank", "noopener,noreferrer");
+                  }}
+                  className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  Abrir no navegador
+                </button>
+                <Dialog.Close
+                  aria-label="Fechar"
+                  className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
+                >
+                  <X className="size-5" />
+                </Dialog.Close>
+              </div>
+            </div>
+            {arcgisEmbedUrl && (
+              <iframe
+                key={arcgisEmbedUrl}
+                src={arcgisEmbedUrl}
+                title="ArcGIS Aegea"
+                className="flex-1 w-full border-0"
+                allow="geolocation; fullscreen"
+              />
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </Dialog.Root>
   );
 }
