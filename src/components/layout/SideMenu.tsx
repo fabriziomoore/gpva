@@ -104,8 +104,7 @@ export function SideMenu() {
                 <span>Consulta ArcGIS Aegea</span>
               </div>
               <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                Digite matrícula, endereço ou coordenada. O termo é copiado
-                para colar na busca do mapa.
+                Digite matrícula ou número do HD para realizar a busca no mapa.
               </p>
               <form
                 onSubmit={(e) => {
