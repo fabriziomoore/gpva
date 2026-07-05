@@ -42,6 +42,42 @@ async function openUrlExternally(url: string): Promise<void> {
 
 function openArcgisUrl(url: string, title: string, setTitle: (title: string) => void, setEmbedUrl: (url: string) => void) {
   setTitle(title);
+  if (isNativeRuntime()) {
+    // No app nativo, usa InAppBrowser (WebView interno com cookies persistentes).
+    // O <iframe> não funciona para login Microsoft (X-Frame-Options: DENY).
+    void (async () => {
+      try {
+        const mod = await import("@capacitor/inappbrowser");
+        const InAppBrowser = (mod as { InAppBrowser?: unknown }).InAppBrowser ?? (mod as { default?: unknown }).default;
+        const api = InAppBrowser as {
+          openInWebView?: (opts: { url: string; options?: Record<string, unknown> }) => Promise<void>;
+          open?: (opts: { url: string }) => Promise<void>;
+        };
+        if (api?.openInWebView) {
+          await api.openInWebView({
+            url,
+            options: {
+              showToolbar: true,
+              showURL: false,
+              closeButtonText: "Fechar",
+              toolbarPosition: "TOP",
+              clearCache: false,
+              clearSessionCache: false,
+            },
+          });
+          return;
+        }
+        if (api?.open) {
+          await api.open({ url });
+          return;
+        }
+        setEmbedUrl(url);
+      } catch {
+        setEmbedUrl(url);
+      }
+    })();
+    return;
+  }
   setEmbedUrl(url);
 }
 
