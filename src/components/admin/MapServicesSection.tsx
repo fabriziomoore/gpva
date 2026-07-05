@@ -105,10 +105,24 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
       </div>
 
       <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border p-2 text-xs font-medium">
-          {list.isLoading ? "Carregando..." : `${list.data?.length ?? 0} registro(s)`}
+        <div className="flex items-center justify-between border-b border-border bg-muted/50 p-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {list.isLoading ? (
+            <span>Carregando...</span>
+          ) : (
+            <>
+              <span>{list.data?.length ?? 0} Total</span>
+              <span className="text-green-600 dark:text-green-400">{list.data?.filter(r => r.viable).length ?? 0} Viáveis</span>
+              <span className="text-red-600 dark:text-red-400">{list.data?.filter(r => !r.viable).length ?? 0} Inviáveis</span>
+            </>
+          )}
         </div>
         <ul className="max-h-[480px] divide-y divide-border overflow-y-auto">
+          {list.data?.length === 0 && !list.isLoading && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-sm font-medium text-muted-foreground">Nenhuma marcação encontrada</p>
+              <p className="text-xs text-muted-foreground/60">Ajuste os filtros de equipe ou data acima.</p>
+            </div>
+          )}
           {list.data?.map((r) => (
             <li key={r.id} className="flex items-start justify-between gap-2 p-2 text-xs">
               <div className="min-w-0 flex-1">
