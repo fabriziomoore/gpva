@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import {
   adminListMapServices,
   adminDeleteMapService,
-  adminDataSummary,
+  adminDeleteMapServicesRange,
   listTeams,
 } from "@/lib/admin.functions";
 
@@ -16,7 +16,7 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const listFn = useServerFn(adminListMapServices);
   const delFn = useServerFn(adminDeleteMapService);
-  const summaryFn = useServerFn(adminDataSummary);
+  const delRangeFn = useServerFn(adminDeleteMapServicesRange);
   const teamsFn = useServerFn(listTeams);
 
   const today = new Date();
@@ -52,10 +52,18 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
       }),
   });
 
-  const summary = useQuery({
-    queryKey: ["admin-data-summary", "map-services", teamId, range.startISO, range.endISO],
-    queryFn: () =>
-      summaryFn({
+  const delMut = useMutation({
+    mutationFn: (id: string) => delFn({ data: { adminPassword: adminPw, id } }),
+    onSuccess: () => {
+      toast.success("Registro excluído");
+      qc.invalidateQueries({ queryKey: ["admin-map-services"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const delRangeMut = useMutation({
+    mutationFn: () =>
+      delRangeFn({
         data: {
           adminPassword: adminPw,
           teamId: teamId || undefined,
@@ -63,12 +71,8 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
           endISO: range.endISO,
         },
       }),
-  });
-
-  const delMut = useMutation({
-    mutationFn: (id: string) => delFn({ data: { adminPassword: adminPw, id } }),
-    onSuccess: () => {
-      toast.success("Registro excluído");
+    onSuccess: (r) => {
+      toast.success(`${r.deleted} registro(s) excluído(s)`);
       qc.invalidateQueries({ queryKey: ["admin-map-services"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -79,7 +83,7 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
       <div>
         <h2 className="text-base font-semibold">Serviços no Mapa</h2>
         <p className="text-xs text-muted-foreground">
-          Lista todas as marcações (viáveis e inviáveis) do período. A exclusão remove apenas a marcação selecionada e é permanente.
+          Lista todas as marcações (viáveis e inviáveis) do período. Exclusão é permanente.
         </p>
       </div>
 
@@ -117,33 +121,32 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
             />
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        <SummaryTile label="Equipes" loading={summary.isLoading} value={summary.data?.teams ?? 0} />
-        <SummaryTile label="Expedientes" loading={summary.isLoading} value={summary.data?.shifts ?? 0} />
-        <SummaryTile label="Serviços" loading={summary.isLoading} value={summary.data?.services ?? 0} />
+        <Button
+          variant="outline"
+          className="h-10 w-full text-destructive hover:text-destructive"
+          disabled={delRangeMut.isPending || !list.data?.length}
+          onClick={() => {
+            const n = list.data?.length ?? 0;
+            if (!n) return;
+            if (confirm(`Excluir TODOS os ${n} registros do filtro atual? Esta ação é irreversível.`)) {
+              delRangeMut.mutate();
+            }
+          }}
+        >
+          {delRangeMut.isPending ? (
+            <Loader2 className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Trash2 className="mr-2 size-4" />
+          )}
+          Excluir todos do período
+        </Button>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border bg-muted/50 p-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          {list.isLoading ? (
-            <span>Carregando...</span>
-          ) : (
-            <>
-              <span>{list.data?.length ?? 0} Listados</span>
-              <span className="text-primary">{list.data?.filter(r => r.viable).length ?? 0} Viáveis</span>
-              <span className="text-destructive">{list.data?.filter(r => !r.viable).length ?? 0} Inviáveis</span>
-            </>
-          )}
+        <div className="border-b border-border p-2 text-xs font-medium">
+          {list.isLoading ? "Carregando..." : `${list.data?.length ?? 0} registro(s)`}
         </div>
         <ul className="max-h-[480px] divide-y divide-border overflow-y-auto">
-          {list.data?.length === 0 && !list.isLoading && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm font-medium text-muted-foreground">Nenhuma marcação encontrada</p>
-              <p className="text-xs text-muted-foreground/60">Ajuste equipe/período; isso não significa que o banco esteja vazio.</p>
-            </div>
-          )}
           {list.data?.map((r) => (
             <li key={r.id} className="flex items-start justify-between gap-2 p-2 text-xs">
               <div className="min-w-0 flex-1">
@@ -158,45 +161,16 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
               </div>
               <button
                 className="rounded p-1 text-muted-foreground hover:text-destructive"
-                disabled={delMut.isPending}
                 onClick={() => {
-                  const when = new Date(r.created_at).toLocaleString("pt-BR");
-                  const label = r.service_type_name || (r.viable ? "Viável" : "Inviável");
-                  const msg = `Excluir APENAS esta marcação?\n\nEquipe: ${r.team_name}\nTipo: ${label}\nData: ${when}\n\nEsta ação remove somente este registro e é irreversível.`;
-                  if (confirm(msg)) delMut.mutate(r.id);
+                  if (confirm("Excluir este registro?")) delMut.mutate(r.id);
                 }}
                 aria-label="Excluir"
               >
-                {delMut.isPending && delMut.variables === r.id ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="size-4" />
-                )}
+                <Trash2 className="size-4" />
               </button>
             </li>
           ))}
         </ul>
-      </div>
-    </div>
-  );
-}
-
-function SummaryTile({
-  label,
-  loading,
-  value,
-}: {
-  label: string;
-  loading: boolean;
-  value: number;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-2">
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-1 text-lg font-semibold text-foreground">
-        {loading ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : value}
       </div>
     </div>
   );

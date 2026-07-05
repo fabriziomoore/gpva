@@ -154,19 +154,13 @@ function LeaderPage() {
         .select("id,team_name,leader,supervisor,variable_rate,setor_id,is_test,setores(nome,supervisor_nome)")
         .order("team_name");
       if (error) throw error;
-      // Ids de usuários com papel admin — não são "equipes" reais.
-      const { data: adminRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "admin");
-      const adminIds = new Set((adminRoles ?? []).map((r) => r.user_id));
       type Row = {
         id: string; team_name: string; leader: string; supervisor: string; variable_rate: number;
         setor_id: string | null; is_test: boolean | null;
         setores: { nome: string; supervisor_nome: string } | null;
       };
       return ((data ?? []) as unknown as Row[])
-        .filter((r) => !r.is_test && !adminIds.has(r.id))
+        .filter((r) => !r.is_test)
         .map<TeamRow>((r) => ({
         id: r.id,
         team_name: r.team_name,
@@ -193,7 +187,7 @@ function LeaderPage() {
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
-        rows.push(...((data ?? []) as unknown as SvcRow[]));
+        rows.push(...((data ?? []) as SvcRow[]));
         if (!data || data.length < PAGE) break;
         from += PAGE;
       }

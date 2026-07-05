@@ -1,13 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { ADMIN_PASSWORD } from "./admin.functions";
 
 function assertAdmin(pw: string) {
   if (pw !== ADMIN_PASSWORD) throw new Error("Senha de administrador inválida.");
-}
-
-function asUntypedClient(client: unknown): SupabaseClient<any> {
-  return client as SupabaseClient<any>;
 }
 
 export type FormEntries = {
@@ -83,7 +78,7 @@ export async function extractEntriesFromForm(formId: string): Promise<FormEntrie
 
 export const getGoogleFormSettings = createServerFn({ method: "GET" }).handler(async () => {
   const { createClient } = await import("@supabase/supabase-js");
-  const sb = createClient<any>(
+  const sb = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_PUBLISHABLE_KEY!,
     { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
@@ -102,8 +97,7 @@ export const adminGetGoogleFormSettings = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const adminClient = asUntypedClient(supabaseAdmin);
-    const { data: row, error } = await adminClient
+    const { data: row, error } = await supabaseAdmin
       .from("google_form_settings")
       .select("mode,prod_form_id,test_form_id,prod_entries,test_entries,updated_at")
       .eq("id", "singleton")
@@ -117,8 +111,7 @@ export const adminSetGoogleFormMode = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const adminClient = asUntypedClient(supabaseAdmin);
-    const { error } = await adminClient
+    const { error } = await supabaseAdmin
       .from("google_form_settings")
       .update({ mode: data.mode, updated_at: new Date().toISOString() })
       .eq("id", "singleton");
@@ -133,12 +126,11 @@ export const adminUpdateGoogleForm = createServerFn({ method: "POST" })
     const formId = parseGoogleFormId(data.formIdOrUrl);
     const entries = await extractEntriesFromForm(formId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const adminClient = asUntypedClient(supabaseAdmin);
     const patch =
       data.target === "prod"
         ? { prod_form_id: formId, prod_entries: entries }
         : { test_form_id: formId, test_entries: entries };
-    const { error } = await adminClient
+    const { error } = await supabaseAdmin
       .from("google_form_settings")
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq("id", "singleton");

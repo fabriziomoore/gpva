@@ -39,9 +39,6 @@ export const adminTeamsRanking = call<Array<{
   negotiations: number; negotiationValue: number; byType: Record<string, number>;
 }>>("adminTeamsRanking");
 
-export type AdminDataSummary = { teams: number; shifts: number; services: number };
-export const adminDataSummary = call<AdminDataSummary>("adminDataSummary");
-
 export const adminListShifts = call<Array<{
   id: string; started_at: string; ended_at: string | null; status: string; report_text: string | null;
 }>>("adminListShifts");

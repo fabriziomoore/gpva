@@ -4,9 +4,6 @@
 // role policies still enforce authorization.
 
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-const db = supabase as SupabaseClient<any>;
 
 type Callable<T, I = void> = I extends void
   ? (arg?: undefined) => Promise<T>
@@ -25,7 +22,7 @@ export const leaderListTeams: Callable<
     is_test: boolean | null;
   }>
 > = async () => {
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from("equipes")
     .select(
       "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test",
@@ -48,7 +45,7 @@ export const leaderTeamsRanking: Callable<
   }>,
   { year: number; month: number; day?: number | null }
 > = async ({ data }) => {
-  const { data: teams, error: teamsErr } = await db
+  const { data: teams, error: teamsErr } = await supabase
     .from("equipes")
     .select("id,team_name,is_test");
   if (teamsErr) throw new Error(teamsErr.message);
@@ -79,7 +76,7 @@ export const leaderTeamsRanking: Callable<
   const pageSize = 1000;
   let from = 0;
   while (true) {
-    const { data: rows, error } = await db
+    const { data: rows, error } = await supabase
       .from("servicos")
       .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
       .gte("created_at", start)
@@ -130,7 +127,7 @@ export const leaderListShifts: Callable<
   }>,
   { teamId: string }
 > = async ({ data }) => {
-  const { data: rows, error } = await db
+  const { data: rows, error } = await supabase
     .from("expedientes")
     .select("id,started_at,ended_at,status,report_text")
     .eq("team_id", data.teamId)

@@ -35,7 +35,6 @@ import {
   adminCreateSetor,
   adminUpdateSetor,
   adminDeleteSetor,
-  adminDataSummary,
 } from "@/lib/admin.functions";
 import {
   adminGetGoogleFormSettings,
@@ -323,11 +322,7 @@ function CrudSection({
                 >
                   <span className="text-sm">{r.name}</span>
                   <button
-                    onClick={() => {
-                      if (confirm(`Desativar o item "${r.name}"?\n\nEle deixará de aparecer no aplicativo, mas o histórico permanece.`)) {
-                        delMut.mutate(r.id);
-                      }
-                    }}
+                    onClick={() => delMut.mutate(r.id)}
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
                     aria-label="Remover"
                   >
@@ -429,9 +424,7 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
               setor={s}
               onSave={(patch) => updateMut.mutate({ setorId: s.id, ...patch })}
               onDelete={() => {
-                if (confirm(`⚠️ Excluir o setor "${s.nome}" PERMANENTEMENTE?\n\nSó é possível excluir setores sem equipes vinculadas. Esta ação não pode ser desfeita.`)) {
-                  deleteMut.mutate(s.id);
-                }
+                if (confirm(`Excluir setor "${s.nome}"?`)) deleteMut.mutate(s.id);
               }}
               saving={updateMut.isPending}
             />
@@ -645,7 +638,6 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
 
 function RankingSection({ adminPw }: { adminPw: string }) {
   const fn = useServerFn(adminTeamsRanking);
-  const summaryFn = useServerFn(adminDataSummary);
   const teams = useTeamsList(adminPw);
   const [selected, setSelected] = useState<string | null>(null);
   const now = new Date();
@@ -655,25 +647,6 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const q = useQuery({
     queryKey: ["admin-ranking", year, month],
     queryFn: () => fn({ data: { adminPassword: adminPw, year, month } }),
-  });
-  const monthRange = useMemo(
-    () => ({
-      startISO: new Date(Date.UTC(year, month - 1, 1)).toISOString(),
-      endISO: new Date(Date.UTC(year, month, 1)).toISOString(),
-    }),
-    [year, month],
-  );
-  const summary = useQuery({
-    queryKey: ["admin-data-summary", "ranking", year, month, selected ?? "all"],
-    queryFn: () =>
-      summaryFn({
-        data: {
-          adminPassword: adminPw,
-          startISO: monthRange.startISO,
-          endISO: monthRange.endISO,
-          teamId: selected ?? undefined,
-        },
-      }),
   });
 
   if (q.isLoading) {
@@ -691,7 +664,6 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const brl = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const current = selected ? sorted.find((t) => t.id === selected) : null;
-  const totalServices = sorted.reduce((sum, team) => sum + team.total, 0);
 
   const monthNames = [
     "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -742,17 +714,6 @@ function RankingSection({ adminPw }: { adminPw: string }) {
       <div className="space-y-4">
         <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, leader: null }} onDeleted={() => setSelected(null)} />
         {periodSelector(true)}
-        <AdminSummaryCards
-          loading={summary.isLoading}
-          teams={summary.data?.teams ?? 1}
-          shifts={summary.data?.shifts ?? 0}
-          services={summary.data?.services ?? current.total}
-        />
-        {current.total === 0 ? (
-          <p className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
-            Esta equipe não tem serviços no mês selecionado. Mude mês/ano acima para consultar outros períodos.
-          </p>
-        ) : null}
         <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
@@ -786,22 +747,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold">Ranking de Equipes</h2>
-      <div className="flex items-center justify-between rounded-lg bg-primary/10 px-4 py-2 text-primary">
-        <span className="text-sm font-medium">Total do Período</span>
-        <span className="text-lg font-bold">{sorted.reduce((acc, t) => acc + t.viable, 0)} viáveis</span>
-      </div>
       {periodSelector(false)}
-      <AdminSummaryCards
-        loading={summary.isLoading}
-        teams={summary.data?.teams ?? sorted.length}
-        shifts={summary.data?.shifts ?? 0}
-        services={summary.data?.services ?? totalServices}
-      />
-      {totalServices === 0 ? (
-        <p className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
-          Nenhum serviço apareceu neste mês. Isso pode ser apenas filtro de período: altere mês/ano para ver dados restaurados de outros dias.
-        </p>
-      ) : null}
       <div className="space-y-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
@@ -812,7 +758,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
               onClick={() => setSelected(t.id)}
               className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
                 isTopNeg
-                  ? "border-0 ring-2 ring-primary"
+                  ? "border-0 ring-2 ring-blue-500"
                   : "border border-border hover:border-primary"
               }`}
             >
@@ -837,47 +783,6 @@ function RankingSection({ adminPw }: { adminPw: string }) {
         {sorted.length === 0 && (
           <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
         )}
-      </div>
-    </div>
-  );
-}
-
-function AdminSummaryCards({
-  loading,
-  teams,
-  shifts,
-  services,
-}: {
-  loading: boolean;
-  teams: number;
-  shifts: number;
-  services: number;
-}) {
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      <AdminSummaryCard label="Equipes" loading={loading} value={teams} />
-      <AdminSummaryCard label="Expedientes" loading={loading} value={shifts} />
-      <AdminSummaryCard label="Serviços" loading={loading} value={services} />
-    </div>
-  );
-}
-
-function AdminSummaryCard({
-  label,
-  loading,
-  value,
-}: {
-  label: string;
-  loading: boolean;
-  value: number;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-1 text-xl font-bold text-foreground">
-        {loading ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : value}
       </div>
     </div>
   );
@@ -1060,7 +965,7 @@ function TeamHeader({
         deleteMut.mutate();
       }}
       title="Excluir equipe"
-      description={`⚠️ ATENÇÃO — Ação irreversível.\n\nExcluir a equipe "${team.team_name}" apagará PERMANENTEMENTE do banco:\n• todos os expedientes\n• todos os serviços registrados no mapa\n• impactos e complementos vinculados\n• a própria conta de acesso da equipe\n\nEssa ação NÃO pode ser desfeita.`}
+      description={`Excluir equipe "${team.team_name}"? Todos os dados dela serão apagados.`}
     />
     </>
   );
@@ -1117,19 +1022,14 @@ function TeamDayReports({
     const t = new Date(r.started_at).getTime();
     return t >= dayStart && t < dayEnd;
   });
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
-        <span className="text-xs font-medium text-muted-foreground">{filtered.length} registro(s)</span>
-      </div>
+      <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
       {q.isLoading ? (
         <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <p className="text-sm text-muted-foreground">Nenhum relatório encontrado para este dia.</p>
-          <p className="text-xs text-muted-foreground/60">Selecione outra data acima.</p>
-        </div>
+        <p className="text-xs text-muted-foreground">Nenhum relatório neste dia.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((r) => {
@@ -1158,7 +1058,7 @@ function TeamDayReports({
                     )}
                     <button
                       onClick={() => {
-                        if (window.confirm("⚠️ Excluir este expediente PERMANENTEMENTE?\n\nSerão apagados do banco:\n• o relatório do expediente\n• todos os serviços registrados nele\n• impactos e complementos vinculados\n\nEsta ação não pode ser desfeita.")) {
+                        if (window.confirm("Excluir este relatório e todos os serviços/impactos vinculados?")) {
                           delMut.mutate(r.id);
                         }
                       }}
@@ -1325,9 +1225,7 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
                 </div>
                 <button
                   onClick={() => {
-                    if (confirm("⚠️ Excluir este líder PERMANENTEMENTE?\n\nA conta de acesso será removida do sistema e não poderá ser recuperada.")) {
-                      delMut.mutate(l.id);
-                    }
+                    if (confirm("Excluir este líder?")) delMut.mutate(l.id);
                   }}
                   className="rounded-md p-2 text-muted-foreground hover:text-destructive"
                   aria-label="Excluir líder"
@@ -1502,7 +1400,7 @@ function AdminSideMenu({
             </span>
             <Dialog.Close
               aria-label="Fechar menu"
-                className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
             >
               <X className="size-5" />
             </Dialog.Close>
@@ -1692,7 +1590,7 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{t.team_name}</p>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <p className="text-[10px] uppercase tracking-wider text-orange-500">
                         Conta de teste
                       </p>
                     </div>
@@ -1731,8 +1629,8 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-xl">
             <Dialog.Title className="text-base font-semibold">Excluir conta de teste?</Dialog.Title>
-            <Dialog.Description className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
-              {"⚠️ Ação irreversível.\n\nSerão apagados PERMANENTEMENTE do banco: expedientes, serviços no mapa, impactos, complementos e a própria conta. Não é possível desfazer."}
+            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+              Todos os dados vinculados a esta conta serão removidos.
             </Dialog.Description>
             <div className="mt-4 flex gap-2">
               <Button

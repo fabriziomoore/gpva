@@ -1,18 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-type AnySupabaseClient = SupabaseClient<any>;
-
-function asUntypedClient(client: unknown): AnySupabaseClient {
-  return client as AnySupabaseClient;
-}
 
 async function assertLeader(context: {
   supabase: import("@supabase/supabase-js").SupabaseClient;
   userId: string;
 }) {
-  const { data, error } = await asUntypedClient(context.supabase).rpc("has_role", {
+  const { data, error } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: "leader",
   });
@@ -24,7 +17,7 @@ export const leaderListTeams = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertLeader(context);
-    const { data, error } = await asUntypedClient(context.supabase)
+    const { data, error } = await context.supabase
       .from("equipes")
       .select(
         "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test",
@@ -39,7 +32,7 @@ export const leaderTeamsRanking = createServerFn({ method: "POST" })
   .inputValidator((data: { year: number; month: number; day?: number | null }) => data)
   .handler(async ({ data, context }) => {
     await assertLeader(context);
-    const { data: teams, error: teamsErr } = await asUntypedClient(context.supabase)
+    const { data: teams, error: teamsErr } = await context.supabase
       .from("equipes")
       .select("id,team_name,is_test");
     if (teamsErr) throw new Error(teamsErr.message);
@@ -71,7 +64,7 @@ export const leaderTeamsRanking = createServerFn({ method: "POST" })
     const pageSize = 1000;
     let from = 0;
     while (true) {
-      const { data: rows, error } = await asUntypedClient(context.supabase)
+      const { data: rows, error } = await context.supabase
         .from("servicos")
         .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
         .gte("created_at", start)
@@ -117,7 +110,7 @@ export const leaderListShifts = createServerFn({ method: "POST" })
   .inputValidator((data: { teamId: string }) => data)
   .handler(async ({ data, context }) => {
     await assertLeader(context);
-    const { data: rows, error } = await asUntypedClient(context.supabase)
+    const { data: rows, error } = await context.supabase
       .from("expedientes")
       .select("id,started_at,ended_at,status,report_text")
       .eq("team_id", data.teamId)

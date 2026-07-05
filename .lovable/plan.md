@@ -1,31 +1,77 @@
-## Situação
 
-O banco atual (após o restore anterior) contém serviços da RIOCERLT-017 até **02/07/2026** (29 registros). O dia **03/07/2026 está com 0 registros** — o snapshot restaurado foi anterior ao seu trabalho do dia 3.
+## Objetivo
 
-Não é possível "gerar" esses dados a partir do código: eles precisam vir de um snapshot de backup que inclua o dia 3.
+Transformar a aba **Produtividade** (hoje mostra apenas o período atual) em um verdadeiro **Painel do Líder**, focado em responder as perguntas que ele leva para a reunião com supervisores/coordenadores:
 
-## Plano de recuperação
+- Como estamos hoje?
+- Estamos melhor ou pior que o período anterior?
+- Se mantivermos o ritmo, onde chegamos?
+- Quais serviços puxam a produtividade? Onde perdemos (inviáveis)?
+- O que compartilhar rapidamente no grupo do WhatsApp?
 
-### 1. Novo Point-in-Time Recovery (PITR) — feito por você no painel
-No **Backend → Advanced settings → Backups → Point-in-time recovery**, escolher um horário **posterior ao seu trabalho do dia 03/07/2026** e **anterior à exclusão em massa** que causou a perda.
+Tudo agrupado, sem precisar caçar mensagem antiga no WhatsApp.
 
-- Se você lembra aproximadamente quando registrou os últimos serviços do dia 3 e quando ocorreu a exclusão, escolha um timestamp entre esses dois momentos.
-- Se não lembrar, tente um horário no fim do dia 03/07 ou início do dia 04/07 (horário de Brasília / UTC-3).
+## O que muda na experiência
 
-### 2. Cuidado importante
-Um novo PITR **substitui** o estado atual do banco. Isso significa que qualquer coisa criada/alterada **após** o timestamp escolhido será perdida. Por isso, antes de você acionar o PITR, eu exporto um CSV do que existe hoje (serviços, expedientes, equipes, complementos) e guardo em `/mnt/documents/`, para reimportarmos manualmente o que faltar depois.
+### 1. Cabeçalho "Resumo do período"
+No topo de cada aba (Dia / Semana / Mês / Ano):
+- **Total de serviços** com variação vs período anterior (ex.: `128  ▲ +14% vs semana passada`).
+- **Taxa de viabilidade** (%) com variação.
+- **Total negociado (R$)** com variação.
+- **Variável estimada (R$)** — reforça o que já existe hoje na aba Variável.
+- **Média por expediente** (serviços/dia trabalhado) — a métrica que o líder mais usa.
 
-### 3. Após o PITR
-- Eu confirmo por consulta se o dia 03/07 voltou.
-- Se voltou parcialmente, comparo com o CSV exportado e reinsiro (via migration) apenas o que ficou faltando dos dias 01, 02 e 03.
-- Reaplico as migrations recentes que estruturam colunas/tabelas que possam ter sido perdidas novamente (setores, user_roles, GPS, etc.).
+Cada card mostra: valor atual · seta de tendência (▲ ▼ ▬) · % vs período anterior equivalente (semana anterior, mês anterior, etc.).
 
-### 4. Se o PITR não cobrir o dia 3
-Depende da retenção do plano: se o dia 3 está fora da janela de retenção de PITR, os dados **não são recuperáveis**. Nesse caso, a única opção é reinserir manualmente com base em anotações/print/APK offline se você tiver.
+### 2. Comparativo lado a lado
+Card **"Atual vs Anterior"** com barras duplas (período atual x período anterior) para: Total, Viáveis, Inviáveis, Negociações, R$ negociado. Um olhar responde "melhoramos?".
 
-## Próximo passo pedido a você
+### 3. Projeção (previsão de ritmo)
+Card **"Se mantivermos o ritmo"**:
+- Semana: projeção até domingo baseada em (média diária corrente × dias restantes).
+- Mês: projeção até o último dia útil.
+- Ano: projeção até 31/12.
+Cada um mostra: projetado, meta anterior (o total do período passado), e diferença — assim o líder já leva "vamos fechar o mês com ~X, +Y% que o mês passado" pronto.
 
-Antes de eu executar qualquer coisa, me confirme:
+### 4. Ranking e destaques (o "roteiro" da apresentação)
+- **Top 5 tipos de serviço** executados (viáveis).
+- **Top 5 motivos de inviabilidade** — mostra onde a operação perde tempo/serviço.
+- **Impactos mais recorrentes** no período (agrega os impactos dos expedientes fechados).
+- **Melhor dia do período** (dia com mais viáveis).
+- **Complementos mais usados** — reforça o padrão de execução.
 
-1. Você quer que eu **exporte um snapshot CSV do estado atual** (segurança antes do PITR)?
-2. Consegue estimar **o horário do último serviço registrado no dia 03/07** e **o horário da exclusão em massa**? Isso me ajuda a te sugerir o timestamp exato do PITR.
+### 5. Histórico enriquecido
+A lista de expedientes anteriores hoje só mostra data e link para o relatório. Passa a mostrar em cada linha: total, viáveis, inviáveis, R$ negociado. Assim o líder localiza rapidamente o dia que quer citar.
+
+### 6. Exportar resumo pronto para o WhatsApp / apresentação
+Dois botões no topo da tela:
+- **Copiar resumo do período** → gera um texto formatado (mesmo padrão dos relatórios de expediente já existentes) com todos os KPIs, comparativo e destaques do período selecionado. Cola direto no grupo.
+- **Exportar PDF** → mesma tela em formato retrato, pronto para anexar em e-mail/apresentação.
+
+Reaproveita o helper `src/lib/report.ts` (já usado em `shift_.$id.report.tsx`) estendido com uma função `buildPeriodReport`.
+
+## Detalhes técnicos
+
+Tudo é **frontend / camada de apresentação** — sem mudanças de schema, sem novas tabelas, sem nova policy. Apenas agregações em cima das queries que já existem (`servicos`, `expedientes`, `impactos_expediente`, `complementos_servico`).
+
+- Nova rota mantém `src/routes/_authenticated/productivity.tsx` (não cria rota nova, apenas evolui a existente).
+- Introduzir helpers puros em `src/lib/analytics.ts`:
+  - `bucketByPeriod(rows, period)` — reaproveitável.
+  - `compareWithPrevious(rows, period)` → `{ current, previous, deltaPct }`.
+  - `projectPace(rows, period)` → projeção linear pelo ritmo diário corrente.
+- Nova função `buildPeriodReport(...)` em `src/lib/report.ts` (mesmo estilo BRL/pad2 já usado).
+- Consultas adicionais no `productivity.tsx`:
+  - `expedientes` (fechados) — já existe; expandir `select` para incluir contagens agregadas via joins/`count` quando possível, ou calcular no cliente a partir de `servicos.shift_id`.
+  - `motivos` — usar `reason_name` já denormalizado em `servicos` (não precisa join).
+  - `impactos_expediente` filtrado pelos ids dos expedientes do período — nova `useQuery`.
+  - `complementos_servico` idem — nova `useQuery`.
+- Gráfico "Atual vs Anterior": `BarChart` com duas séries (`recharts` já instalado).
+- Sem novas dependências.
+
+## Fora de escopo (fica para depois, se você quiser)
+
+- Metas configuráveis por equipe (hoje comparamos com o período anterior; meta manual pode entrar num próximo passo).
+- Ranking entre equipes / visão do supervisor consolidando várias equipes (exigiria mudança de policy — hoje cada equipe só vê a si mesma).
+- Notificações automáticas para o grupo do WhatsApp (integração externa).
+
+Confirma que posso seguir com esse escopo?

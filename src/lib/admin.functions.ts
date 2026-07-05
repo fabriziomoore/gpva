@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const ADMIN_PASSWORD = "137889";
 export const ADMIN_LOGIN = "adm";
@@ -13,22 +12,11 @@ function assertAdmin(pw: string) {
 
 type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
 
-type AnySupabaseClient = SupabaseClient<any>;
-
-function asUntypedClient(client: unknown): AnySupabaseClient {
-  return client as AnySupabaseClient;
-}
-
-async function getAdminClient(): Promise<AnySupabaseClient> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return asUntypedClient(supabaseAdmin);
-}
-
 export const listTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
       .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
@@ -41,7 +29,7 @@ export const adminListRows = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; table: CrudTable }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from(data.table)
       .select("id,name")
@@ -57,7 +45,7 @@ export const adminAddRow = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from(data.table)
       .insert({ team_id: null, name: data.name.trim() });
@@ -72,7 +60,7 @@ export const adminBootstrap = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Se já existir, apenas garante o papel.
     const list = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -102,7 +90,7 @@ export const adminDeleteRow = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; table: CrudTable; id: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from(data.table)
       .update({ active: false })
@@ -115,7 +103,7 @@ export const adminUpdateRate = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; teamId: string; rate: number }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("equipes")
       .update({ variable_rate: data.rate })
@@ -139,7 +127,7 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
     const leaderName = data.leaderName.trim();
     if (!leaderName) throw new Error("Informe o nome do líder.");
     const email = `${slug}@gpva.local`;
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: data.password,
@@ -164,7 +152,7 @@ export const adminListTestTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
       .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
@@ -186,7 +174,7 @@ export const adminCreateTestTeam = createServerFn({ method: "POST" })
     if (!slug) throw new Error("Nome de equipe inválido.");
     if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
     const email = `${slug}@gpva.local`;
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: data.password,
@@ -218,7 +206,7 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: {
       team_name?: string;
       collaborator1?: string | null;
@@ -261,7 +249,7 @@ export const adminDeleteTeam = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; teamId: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Delete team-owned data first (no CASCADE guaranteed).
     const tables = [
       "vinculos_complementos",
@@ -288,7 +276,7 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; year: number; month: number }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: teams, error: teamsErr } = await supabaseAdmin
       .from("equipes")
       .select("id,team_name,is_test");
@@ -356,71 +344,11 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
     });
   });
 
-export type AdminDataSummary = {
-  teams: number;
-  shifts: number;
-  services: number;
-};
-
-export const adminDataSummary = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      adminPassword: string;
-      startISO?: string;
-      endISO?: string;
-      teamId?: string;
-    }) => data,
-  )
-  .handler(async ({ data }): Promise<AdminDataSummary> => {
-    assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
-
-    const { data: teams, error: teamsErr } = await supabaseAdmin
-      .from("equipes")
-      .select("id,team_name,is_test");
-    if (teamsErr) throw new Error(teamsErr.message);
-
-    const visibleTeamIds = (teams ?? [])
-      .filter((team) => team.is_test !== true && team.team_name !== "TESTANDO")
-      .map((team) => team.id);
-    const scopedTeamIds = data.teamId
-      ? visibleTeamIds.filter((id) => id === data.teamId)
-      : visibleTeamIds;
-
-    if (scopedTeamIds.length === 0) {
-      return { teams: data.teamId ? 0 : visibleTeamIds.length, shifts: 0, services: 0 };
-    }
-
-    let shiftsQuery = supabaseAdmin
-      .from("expedientes")
-      .select("id", { count: "exact", head: true })
-      .in("team_id", scopedTeamIds);
-    if (data.startISO) shiftsQuery = shiftsQuery.gte("started_at", data.startISO);
-    if (data.endISO) shiftsQuery = shiftsQuery.lt("started_at", data.endISO);
-    const { count: shifts, error: shiftsErr } = await shiftsQuery;
-    if (shiftsErr) throw new Error(shiftsErr.message);
-
-    let servicesQuery = supabaseAdmin
-      .from("servicos")
-      .select("id", { count: "exact", head: true })
-      .in("team_id", scopedTeamIds);
-    if (data.startISO) servicesQuery = servicesQuery.gte("created_at", data.startISO);
-    if (data.endISO) servicesQuery = servicesQuery.lt("created_at", data.endISO);
-    const { count: services, error: servicesErr } = await servicesQuery;
-    if (servicesErr) throw new Error(servicesErr.message);
-
-    return {
-      teams: data.teamId ? scopedTeamIds.length : visibleTeamIds.length,
-      shifts: shifts ?? 0,
-      services: services ?? 0,
-    };
-  });
-
 export const adminListShifts = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; teamId: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("expedientes")
       .select("id,started_at,ended_at,status,report_text")
@@ -435,7 +363,7 @@ export const adminDeleteShift = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; shiftId: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Cascade manually: vinculos -> servicos -> impactos_expediente -> expediente
     const { error: eVinc } = await supabaseAdmin
       .from("vinculos_complementos").delete().eq("shift_id", data.shiftId);
@@ -456,7 +384,7 @@ export const adminUpdateShiftReport = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; shiftId: string; reportText: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("expedientes")
       .update({ report_text: data.reportText })
@@ -485,7 +413,7 @@ export const adminCreateLeader = createServerFn({ method: "POST" })
     if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
     const slug = sanitizeLogin(data.login);
     const email = `${slug}@gpva.local`;
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: data.password,
@@ -506,7 +434,7 @@ export const adminListLeaders = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: roles, error } = await supabaseAdmin
       .from("user_roles")
       .select("user_id,created_at")
@@ -538,7 +466,7 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; leaderId: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.leaderId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -556,13 +484,13 @@ export const adminListSetores = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }): Promise<SetorRow[]> => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("setores")
       .select("id,nome,supervisor_nome")
       .order("nome");
     if (error) throw new Error(error.message);
-    return (rows ?? []) as unknown as SetorRow[];
+    return (rows ?? []) as SetorRow[];
   });
 
 export const adminCreateSetor = createServerFn({ method: "POST" })
@@ -571,7 +499,7 @@ export const adminCreateSetor = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const nome = data.nome.trim();
     if (!nome) throw new Error("Nome do setor obrigatório.");
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("setores")
       .insert({ nome, supervisor_nome: data.supervisorNome.trim() });
@@ -583,7 +511,7 @@ export const adminUpdateSetor = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; setorId: string; nome?: string; supervisorNome?: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const patch: { nome?: string; supervisor_nome?: string } = {};
     if (data.nome !== undefined) {
       const nome = data.nome.trim();
@@ -604,7 +532,7 @@ export const adminDeleteSetor = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; setorId: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Bloqueia se ainda existirem equipes vinculadas
     const { count, error: countErr } = await supabaseAdmin
       .from("equipes")
@@ -648,7 +576,7 @@ export const adminListMapServices = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<MapServiceRow[]> => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("servicos")
       .select(
@@ -680,7 +608,7 @@ export const adminDeleteMapService = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; id: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    const supabaseAdmin = await getAdminClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("vinculos_complementos").delete().eq("service_id", data.id);
     const { error } = await supabaseAdmin.from("servicos").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -698,8 +626,17 @@ export const adminDeleteMapServicesRange = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
-    // Exclusão em massa desabilitada por segurança. Use adminDeleteMapService
-    // para remover marcações individualmente.
-    void data;
-    throw new Error("Exclusão em massa desabilitada. Remova as marcações uma a uma.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin.from("servicos").select("id");
+    if (data.teamId) q = q.eq("team_id", data.teamId);
+    if (data.startISO) q = q.gte("created_at", data.startISO);
+    if (data.endISO) q = q.lt("created_at", data.endISO);
+    const { data: rows, error: e1 } = await q;
+    if (e1) throw new Error(e1.message);
+    const ids = (rows ?? []).map((r) => r.id);
+    if (!ids.length) return { ok: true as const, deleted: 0 };
+    await supabaseAdmin.from("vinculos_complementos").delete().in("service_id", ids);
+    const { error } = await supabaseAdmin.from("servicos").delete().in("id", ids);
+    if (error) throw new Error(error.message);
+    return { ok: true as const, deleted: ids.length };
   });
