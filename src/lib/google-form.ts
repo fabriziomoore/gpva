@@ -2,7 +2,7 @@
 // A configuração (form ativo + IDs de entry.*) vem do banco via server fn
 // `getGoogleFormSettings` e o admin pode trocar em Administração → Google Forms.
 
-import { getGoogleFormSettings, type FormEntries } from "./google-form.functions";
+import { getGoogleFormSettings, type FormEntries } from "@/lib/google-form.functions";
 
 type EntryIds = FormEntries;
 
