@@ -1,46 +1,31 @@
-O backend está respondendo normalmente e a base não está totalmente zerada.
+## Situação
 
-Contagem atual encontrada:
-- equipes: 6
-- expedientes: 7
-- serviços: 79
-- tipos de serviço: 12
-- complementos: 10
-- motivos de inviabilidade: 20
-- impactos: 7
+O banco atual (após o restore anterior) contém serviços da RIOCERLT-017 até **02/07/2026** (29 registros). O dia **03/07/2026 está com 0 registros** — o snapshot restaurado foi anterior ao seu trabalho do dia 3.
 
-Para a equipe RIOCERLT-017, os serviços de julho aparecem novamente no banco:
-- 01/07/2026: 12 serviços
-- 02/07/2026: 29 serviços
-- 03/07/2026: 0 serviços encontrados
+Não é possível "gerar" esses dados a partir do código: eles precisam vir de um snapshot de backup que inclua o dia 3.
 
-Isso indica que a restauração trouxe parte dos dados de volta, mas os painéis podem estar parecendo vazios por filtro, cache local do APK, mês selecionado, sessão/equipe atual ou consulta do painel.
+## Plano de recuperação
 
-Plano proposto:
+### 1. Novo Point-in-Time Recovery (PITR) — feito por você no painel
+No **Backend → Advanced settings → Backups → Point-in-time recovery**, escolher um horário **posterior ao seu trabalho do dia 03/07/2026** e **anterior à exclusão em massa** que causou a perda.
 
-1. Conferir exatamente quais painéis estão vazios
-- Admin Ranking
-- Serviços no mapa
-- Produtividade
-- Painel de líder
-- Relatórios de expediente
+- Se você lembra aproximadamente quando registrou os últimos serviços do dia 3 e quando ocorreu a exclusão, escolha um timestamp entre esses dois momentos.
+- Se não lembrar, tente um horário no fim do dia 03/07 ou início do dia 04/07 (horário de Brasília / UTC-3).
 
-2. Validar filtros e período padrão
-- Verificar se o app Android está abrindo em julho/2026 ou em outro período.
-- Conferir se o filtro de equipe inclui RIOCERLT-017.
-- Garantir que dados restaurados apareçam mesmo após reload/sync.
+### 2. Cuidado importante
+Um novo PITR **substitui** o estado atual do banco. Isso significa que qualquer coisa criada/alterada **após** o timestamp escolhido será perdida. Por isso, antes de você acionar o PITR, eu exporto um CSV do que existe hoje (serviços, expedientes, equipes, complementos) e guardo em `/mnt/documents/`, para reimportarmos manualmente o que faltar depois.
 
-3. Corrigir o Admin para deixar a situação transparente
-- Adicionar contadores visíveis no Admin: total de equipes, expedientes e serviços do período selecionado.
-- Exibir mensagem clara quando não houver dados no filtro atual, diferenciando “sem dados no período” de “banco vazio”.
-- Melhorar a seção “Serviços no mapa” para mostrar total encontrado antes da lista.
+### 3. Após o PITR
+- Eu confirmo por consulta se o dia 03/07 voltou.
+- Se voltou parcialmente, comparo com o CSV exportado e reinsiro (via migration) apenas o que ficou faltando dos dias 01, 02 e 03.
+- Reaplico as migrations recentes que estruturam colunas/tabelas que possam ter sido perdidas novamente (setores, user_roles, GPS, etc.).
 
-4. Reforçar proteção contra perda de dados
-- Manter exclusão em massa desativada.
-- Toda ação destrutiva continuará exigindo aviso explícito.
-- Próxima melhoria recomendada: implementar lixeira/soft delete para serviços e marcações do mapa, para permitir restauração dentro do app sem depender de backup.
+### 4. Se o PITR não cobrir o dia 3
+Depende da retenção do plano: se o dia 3 está fora da janela de retenção de PITR, os dados **não são recuperáveis**. Nesse caso, a única opção é reinserir manualmente com base em anotações/print/APK offline se você tiver.
 
-5. Verificação final
-- Testar no Admin usando RIOCERLT-017 e período 01/07/2026 a 02/07/2026.
-- Confirmar que os 41 serviços aparecem nos painéis relevantes.
-- Se algum painel ainda ficar vazio, corrigir a consulta específica dele.
+## Próximo passo pedido a você
+
+Antes de eu executar qualquer coisa, me confirme:
+
+1. Você quer que eu **exporte um snapshot CSV do estado atual** (segurança antes do PITR)?
+2. Consegue estimar **o horário do último serviço registrado no dia 03/07** e **o horário da exclusão em massa**? Isso me ajuda a te sugerir o timestamp exato do PITR.
