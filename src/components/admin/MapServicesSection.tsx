@@ -132,8 +132,8 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
           ) : (
             <>
               <span>{list.data?.length ?? 0} Listados</span>
-              <span className="text-green-600 dark:text-green-400">{list.data?.filter(r => r.viable).length ?? 0} Viáveis</span>
-              <span className="text-red-600 dark:text-red-400">{list.data?.filter(r => !r.viable).length ?? 0} Inviáveis</span>
+              <span className="text-primary">{list.data?.filter(r => r.viable).length ?? 0} Viáveis</span>
+              <span className="text-destructive">{list.data?.filter(r => !r.viable).length ?? 0} Inviáveis</span>
             </>
           )}
         </div>

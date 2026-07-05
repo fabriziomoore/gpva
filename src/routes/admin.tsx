@@ -812,7 +812,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
               onClick={() => setSelected(t.id)}
               className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
                 isTopNeg
-                  ? "border-0 ring-2 ring-blue-500"
+                  ? "border-0 ring-2 ring-primary"
                   : "border border-border hover:border-primary"
               }`}
             >
@@ -1502,7 +1502,7 @@ function AdminSideMenu({
             </span>
             <Dialog.Close
               aria-label="Fechar menu"
-              className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
+                className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <X className="size-5" />
             </Dialog.Close>
@@ -1692,7 +1692,7 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{t.team_name}</p>
-                      <p className="text-[10px] uppercase tracking-wider text-orange-500">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                         Conta de teste
                       </p>
                     </div>
