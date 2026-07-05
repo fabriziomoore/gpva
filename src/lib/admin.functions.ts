@@ -4,6 +4,12 @@ export const ADMIN_PASSWORD = "137889";
 export const ADMIN_LOGIN = "adm";
 export const ADMIN_EMAIL = `${ADMIN_LOGIN}@gpva.local`;
 
+type TeamIdentity = { id: string; team_name: string; is_test?: boolean | null };
+
+function isReservedAdminTeam(team: TeamIdentity, adminIds: ReadonlySet<string>): boolean {
+  return adminIds.has(team.id) || team.team_name.trim().toLowerCase() === ADMIN_LOGIN;
+}
+
 function assertAdmin(pw: string) {
   if (pw !== ADMIN_PASSWORD) {
     throw new Error("Senha de administrador inválida.");
@@ -28,9 +34,7 @@ export const listTeams = createServerFn({ method: "POST" })
       .select("user_id")
       .eq("role", "admin");
     const adminIds = new Set((adminRoles ?? []).map((r) => r.user_id));
-    return (rows ?? []).filter(
-      (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id),
-    );
+    return (rows ?? []).filter((r) => !r.is_test && !isReservedAdminTeam(r, adminIds));
   });
 
 export const adminListRows = createServerFn({ method: "POST" })
@@ -289,11 +293,16 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       .from("equipes")
       .select("id,team_name,is_test");
     if (teamsErr) throw new Error(teamsErr.message);
-    const isTest = (t: { team_name: string; is_test?: boolean | null }) =>
+    const { data: adminRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    const adminIds = new Set((adminRoles ?? []).map((r) => r.user_id));
+    const isTest = (t: TeamIdentity) =>
       t.is_test === true || t.team_name === "TESTANDO";
-    const visibleTeams = (teams ?? []).filter((t) => !isTest(t));
+    const visibleTeams = (teams ?? []).filter((t) => !isTest(t) && !isReservedAdminTeam(t, adminIds));
     const hiddenIds = new Set(
-      (teams ?? []).filter((t) => isTest(t)).map((t) => t.id),
+      (teams ?? []).filter((t) => isTest(t) || isReservedAdminTeam(t, adminIds)).map((t) => t.id),
     );
 
     // Compute month range [start, nextMonthStart) in UTC ISO
