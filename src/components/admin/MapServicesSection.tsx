@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import {
   adminListMapServices,
   adminDeleteMapService,
-  adminDeleteMapServicesRange,
   listTeams,
 } from "@/lib/admin.functions";
 
@@ -16,7 +15,6 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const listFn = useServerFn(adminListMapServices);
   const delFn = useServerFn(adminDeleteMapService);
-  const delRangeFn = useServerFn(adminDeleteMapServicesRange);
   const teamsFn = useServerFn(listTeams);
 
   const today = new Date();
@@ -61,29 +59,12 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const delRangeMut = useMutation({
-    mutationFn: () =>
-      delRangeFn({
-        data: {
-          adminPassword: adminPw,
-          teamId: teamId || undefined,
-          startISO: range.startISO,
-          endISO: range.endISO,
-        },
-      }),
-    onSuccess: (r) => {
-      toast.success(`${r.deleted} registro(s) excluído(s)`);
-      qc.invalidateQueries({ queryKey: ["admin-map-services"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-semibold">Serviços no Mapa</h2>
         <p className="text-xs text-muted-foreground">
-          Lista todas as marcações (viáveis e inviáveis) do período. Exclusão é permanente.
+          Lista todas as marcações (viáveis e inviáveis) do período. A exclusão remove apenas a marcação selecionada e é permanente.
         </p>
       </div>
 
@@ -121,25 +102,6 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
             />
           </div>
         </div>
-        <Button
-          variant="outline"
-          className="h-10 w-full text-destructive hover:text-destructive"
-          disabled={delRangeMut.isPending || !list.data?.length}
-          onClick={() => {
-            const n = list.data?.length ?? 0;
-            if (!n) return;
-            if (confirm(`Excluir TODOS os ${n} registros do filtro atual? Esta ação é irreversível.`)) {
-              delRangeMut.mutate();
-            }
-          }}
-        >
-          {delRangeMut.isPending ? (
-            <Loader2 className="mr-2 size-4 animate-spin" />
-          ) : (
-            <Trash2 className="mr-2 size-4" />
-          )}
-          Excluir todos do período
-        </Button>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
@@ -161,12 +123,20 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
               </div>
               <button
                 className="rounded p-1 text-muted-foreground hover:text-destructive"
+                disabled={delMut.isPending}
                 onClick={() => {
-                  if (confirm("Excluir este registro?")) delMut.mutate(r.id);
+                  const when = new Date(r.created_at).toLocaleString("pt-BR");
+                  const label = r.service_type_name || (r.viable ? "Viável" : "Inviável");
+                  const msg = `Excluir APENAS esta marcação?\n\nEquipe: ${r.team_name}\nTipo: ${label}\nData: ${when}\n\nEsta ação remove somente este registro e é irreversível.`;
+                  if (confirm(msg)) delMut.mutate(r.id);
                 }}
                 aria-label="Excluir"
               >
-                <Trash2 className="size-4" />
+                {delMut.isPending && delMut.variables === r.id ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
               </button>
             </li>
           ))}
