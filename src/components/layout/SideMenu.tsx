@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
+import { toast } from "sonner";
+
+const ARCGIS_URL =
+  "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
 
 const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
@@ -35,6 +39,21 @@ export function SideMenu() {
     () => (isLeader.data === true ? leaderItems : teamItems),
     [isLeader.data],
   );
+  const [arcgisQuery, setArcgisQuery] = useState("");
+
+  async function openArcgis() {
+    const term = arcgisQuery.trim();
+    if (term) {
+      try {
+        await navigator.clipboard?.writeText(term);
+        toast.success("Termo copiado — cole na busca do mapa");
+      } catch {
+        // ignore clipboard errors
+      }
+    }
+    window.open(ARCGIS_URL, "_blank", "noopener,noreferrer");
+    setOpen(false);
+  }
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
@@ -76,6 +95,38 @@ export function SideMenu() {
                 </li>
               ))}
             </ul>
+            <div className="mt-4 rounded-xl border border-border bg-muted/40 p-3">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Map className="size-4" />
+                <span>Consulta ArcGIS Aegea</span>
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                Digite matrícula, endereço ou coordenada. O termo é copiado
+                para colar na busca do mapa.
+              </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void openArcgis();
+                }}
+                className="mt-2 flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={arcgisQuery}
+                  onChange={(e) => setArcgisQuery(e.target.value)}
+                  placeholder="Buscar..."
+                  className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button
+                  type="submit"
+                  aria-label="Abrir mapa"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Search className="size-4" />
+                </button>
+              </form>
+            </div>
           </nav>
           <button
             type="button"
