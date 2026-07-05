@@ -245,8 +245,17 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const isTest = (t: any) => t.is_test === true || t.team_name === "TESTANDO";
       const visible = (teams ?? []).filter((t: any) => !isTest(t) && !isReservedAdminTeam(t, adminIds));
       const hidden = new Set((teams ?? []).filter((t: any) => isTest(t) || isReservedAdminTeam(t, adminIds)).map((t: any) => t.id));
-      const start = new Date(Date.UTC(args.year, args.month - 1, 1)).toISOString();
-      const end = new Date(Date.UTC(args.year, args.month, 1)).toISOString();
+      const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
+      let start: string, end: string;
+      if (args.startISO && args.endISO) {
+        start = args.startISO; end = args.endISO;
+      } else if (typeof args.day === "number" && args.day > 0) {
+        start = new Date(Date.UTC(args.year, args.month - 1, args.day) + TZ_OFFSET_MS).toISOString();
+        end = new Date(Date.UTC(args.year, args.month - 1, args.day + 1) + TZ_OFFSET_MS).toISOString();
+      } else {
+        start = new Date(Date.UTC(args.year, args.month - 1, 1)).toISOString();
+        end = new Date(Date.UTC(args.year, args.month, 1)).toISOString();
+      }
       const all: any[] = [];
       const pageSize = 1000; let from = 0;
       while (true) {
