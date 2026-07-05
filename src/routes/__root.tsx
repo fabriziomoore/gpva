@@ -15,6 +15,7 @@ import { startSync } from "../lib/sync/init";
 import { startSessionGuard } from "../lib/session-guard";
 import { requestBootPermissions } from "../lib/boot-permissions";
 import { THEME_BOOT_SCRIPT } from "../hooks/use-theme";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 
 function NotFoundComponent() {
   return (
@@ -144,6 +145,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <ConfirmDialogHost />
     </QueryClientProvider>
   );
 }
