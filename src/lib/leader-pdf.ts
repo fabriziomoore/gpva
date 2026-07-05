@@ -493,7 +493,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   if (hasMap) {
     pdf.addPage("a4", "landscape");
     mapPageNumber = hasTeams ? 4 : 3;
-    pageTitle(pdf, "MAPA DE ATUAÇÃO — MARICÁ/RJ", input.scope_label, periodStr);
+    pageTitle(pdf, "MAPA DE ATUAÇÃO — CORTE E RELIGA MARICÁ/RJ", input.scope_label, periodStr);
 
     const mapY = M + 18;
     const mapH = PH - mapY - 20;
