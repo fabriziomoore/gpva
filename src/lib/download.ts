@@ -1,16 +1,24 @@
 import { Capacitor } from "@capacitor/core";
 
-export async function downloadOrShare(blob: Blob, filename: string): Promise<void> {
+export type SavedFile = {
+  filename: string;
+  // Web: object URL do blob (abrível com window.open em nova aba).
+  // Native: URI file:// do arquivo salvo em Documents.
+  openUrl: string | null;
+  native: boolean;
+};
+
+export async function downloadOrShare(blob: Blob, filename: string): Promise<SavedFile> {
   if (Capacitor.isNativePlatform()) {
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
     const base64 = await blobToBase64(blob);
-    await Filesystem.writeFile({
+    const written = await Filesystem.writeFile({
       path: filename,
       data: base64,
       directory: Directory.Documents,
       recursive: true,
     });
-    return;
+    return { filename, openUrl: written.uri ?? null, native: true };
   }
 
   const url = URL.createObjectURL(blob);
@@ -25,8 +33,6 @@ export async function downloadOrShare(blob: Blob, filename: string): Promise<voi
   a.href = url;
   a.download = filename;
   a.type = blob.type || "application/pdf";
-  // Se o navegador ignorar o atributo download, a URL blob abre no iframe
-  // oculto, não na tela principal do app.
   a.target = frameName;
   a.style.display = "none";
   document.body.appendChild(a);
@@ -36,6 +42,28 @@ export async function downloadOrShare(blob: Blob, filename: string): Promise<voi
     URL.revokeObjectURL(url);
     frame.remove();
   }, 30_000);
+  return { filename, openUrl: url, native: false };
+}
+
+// Abre / mostra ao usuário o arquivo salvo.
+// - Native: usa o share sheet do Android para "Abrir com" o PDF.
+// - Web: abre em nova aba.
+export async function openSavedFile(saved: SavedFile): Promise<void> {
+  if (saved.native) {
+    if (!saved.openUrl) return;
+    const { Share } = await import("@capacitor/share");
+    try {
+      await Share.share({
+        title: saved.filename,
+        url: saved.openUrl,
+        dialogTitle: "Abrir relatório",
+      });
+    } catch {
+      /* usuário cancelou */
+    }
+    return;
+  }
+  if (saved.openUrl) window.open(saved.openUrl, "_blank", "noopener");
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
