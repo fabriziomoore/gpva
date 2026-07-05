@@ -95,8 +95,8 @@ export async function runClientChecks(): Promise<CheckResult[]> {
     const db = getLocalDB();
     const [outbox, svcPending, shiftsPending, svcErr, shiftsErr] = await Promise.all([
       db.outbox.count(),
-      db.services.where("sync_state").anyOf("pending", "error").count(),
-      db.shifts.where("sync_state").anyOf("pending", "error").count(),
+      db.services.where("sync_state").anyOf(["pending", "error"]).count(),
+      db.shifts.where("sync_state").anyOf(["pending", "error"]).count(),
       db.services.where("sync_state").equals("error").count(),
       db.shifts.where("sync_state").equals("error").count(),
     ]);
