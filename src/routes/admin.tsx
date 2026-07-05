@@ -49,6 +49,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
 import { formatDateBR } from "@/lib/format";
+import { confirmDelete } from "@/components/ui/confirm-dialog";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
