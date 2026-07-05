@@ -9,8 +9,8 @@ const LOGIN_TS_KEY = "gpva.loginAt";
 const SESSION_ID_KEY = "gpva.sessionId";
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
 const EXPIRY_CHECK_MS = 5 * 60 * 1000; // 5 min
-const HEARTBEAT_MS = 5 * 1000; // 5 s
-const ACTIVE_CHECK_THROTTLE_MS = 750;
+const HEARTBEAT_MS = 60 * 1000; // 60 s — realtime cobre takeover instantâneo
+const ACTIVE_CHECK_THROTTLE_MS = 10 * 1000; // 10 s
 
 let started = false;
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
@@ -327,12 +327,11 @@ export function startSessionGuard(): void {
   });
 
   expiryTimer = setInterval(checkExpiration, EXPIRY_CHECK_MS);
+  // Rede de segurança periódica caso o realtime caia. Fica em background,
+  // com throttle, e não duplica o heartbeat por-usuário.
   globalSessionProbeTimer = setInterval(() => {
     checkExpiration();
-    // Rede de segurança para qualquer rota/tela: mesmo se o realtime não
-    // reconectar ou o app iniciar em uma tela interna, a sessão ativa é
-    // validada periodicamente e expulsa quando outro dispositivo assumir.
-    void verifyActiveSession({ force: true });
+    void verifyActiveSession();
   }, HEARTBEAT_MS);
   void globalSessionProbeTimer;
 
