@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
 import { cn } from "@/lib/utils";
 import type { Period } from "@/lib/analytics";
@@ -51,6 +52,7 @@ export function LeaderMapSection() {
   const queryClient = useQueryClient();
   const { userId } = useAuthSession();
   const isAdmin = useIsAdmin(userId);
+  const isMobile = useIsMobile();
 
   const [teamScope, setTeamScope] = useState<string>(ALL);
   const [periodFilter, setPeriodFilter] = useState<Period>("day");
@@ -314,7 +316,7 @@ export function LeaderMapSection() {
           <div className="-mx-4 overflow-hidden border-y border-border">
             <ServicesMap
               points={points}
-              height={560}
+              height={isMobile ? 340 : 560}
               onDelete={isAdmin.data ? handleDelete : undefined}
               hideLegend
             />
