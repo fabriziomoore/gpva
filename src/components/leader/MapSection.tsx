@@ -224,7 +224,7 @@ export function LeaderMapSection() {
   const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pb-24">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Mapa de Serviços</h2>
         <div className="inline-flex overflow-hidden rounded-lg border border-border">
