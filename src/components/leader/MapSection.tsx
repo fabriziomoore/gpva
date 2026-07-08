@@ -171,19 +171,6 @@ export function LeaderMapSection() {
     queryClient.invalidateQueries({ queryKey: ["leader-services", userId] });
   };
 
-  const segItem = (active: boolean) =>
-    `flex-1 h-9 rounded-md px-2 text-xs font-semibold tracking-wide transition ${
-      active
-        ? "bg-background text-foreground shadow-sm"
-        : "text-muted-foreground hover:text-foreground"
-    }`;
-
-  const visibilities: Array<["all" | "viable" | "unviable", string, string, number]> = [
-    ["all", "Todas", "bg-foreground", counts.all],
-    ["viable", "Viáveis", "bg-success", counts.viable],
-    ["unviable", "Inviáveis", "bg-destructive", counts.unviable],
-  ];
-
   const monthNamesFull = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
@@ -227,7 +214,16 @@ export function LeaderMapSection() {
   return (
     <div className="space-y-3 pb-24">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Mapa de Serviços</h2>
+        <select
+          value={viabilityFilter}
+          onChange={(e) => setViabilityFilter(e.target.value as "all" | "viable" | "unviable")}
+          className={cn(selectCls, "min-w-0 flex-1 font-semibold")}
+          aria-label="Filtro de viabilidade"
+        >
+          <option value="all">Mapa de Serviços ({counts.all})</option>
+          <option value="viable">Viáveis ({counts.viable})</option>
+          <option value="unviable">Inviáveis ({counts.unviable})</option>
+        </select>
         <div className="inline-flex overflow-hidden rounded-lg border border-border">
           {(["day", "week", "month"] as Period[]).map((p) => {
             const active = periodFilter === p;
@@ -311,34 +307,13 @@ export function LeaderMapSection() {
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (
-        <div className="relative -mx-4 overflow-hidden border-y border-border">
+        <div className="-mx-4 overflow-hidden border-y border-border">
           <ServicesMap
             points={points}
             height={560}
             onDelete={isAdmin.data ? handleDelete : undefined}
             hideLegend
           />
-          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-[1000] flex gap-1 rounded-lg border border-border bg-card/95 p-1 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80">
-            {visibilities.map(([k, l, dot, n]) => {
-              const active = viabilityFilter === k;
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setViabilityFilter(k)}
-                  className={`${segItem(active)} pointer-events-auto inline-flex items-center justify-between gap-2`}
-                >
-                  <span className="inline-flex items-center gap-1.5 min-w-0 truncate">
-                    <span className={`inline-block size-2 shrink-0 rounded-full ${dot}`} />
-                    {l}
-                  </span>
-                  <span className={`tabular-nums text-[11px] font-bold ${active ? "text-foreground" : "text-muted-foreground"}`}>
-                    {n}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </div>
       )}
     </div>
