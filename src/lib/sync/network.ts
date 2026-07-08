@@ -40,6 +40,10 @@ export async function initNetwork(): Promise<void> {
         lastStatus = { connected: s.connected };
         emit(lastStatus);
       });
+      // Redundância: eventos online/offline do WebView também disparam
+      // instantaneamente quando o SO detecta a mudança de rede.
+      window.addEventListener("online", () => emit((lastStatus = { connected: true })));
+      window.addEventListener("offline", () => emit((lastStatus = { connected: false })));
       return;
     }
   }

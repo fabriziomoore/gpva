@@ -94,11 +94,6 @@ export function SideMenu() {
   async function confirmSignOut() {
     setExitOpen(false);
     setOpen(false);
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      /* ignore — segue para tela de auth mesmo assim */
-    }
     // Limpa qualquer trava residual deixada pelos overlays do Radix
     // (Dialog + AlertDialog fechando em cascata podem deixar
     // pointer-events:none no body em alguns navegadores mobile).
@@ -106,6 +101,13 @@ export function SideMenu() {
       document.body.style.pointerEvents = "";
       document.body.removeAttribute("data-scroll-locked");
     }
+    // Dispara signOut em segundo plano — sem internet a chamada pode
+    // travar por vários segundos e congelaria a tela junto com o mapa
+    // Leaflet ainda montado. Navegamos imediatamente; o reload duro
+    // que acontece em /auth encerra qualquer sessão local presa.
+    void supabase.auth.signOut().catch(() => {
+      /* ignore — segue para tela de auth mesmo assim */
+    });
     // Reload duro garante desmontagem do Leaflet e libera overlays presos.
     if (typeof window !== "undefined") {
       window.location.assign("/auth");
