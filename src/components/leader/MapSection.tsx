@@ -318,7 +318,7 @@ export function LeaderMapSection() {
             onDelete={isAdmin.data ? handleDelete : undefined}
             hideLegend
           />
-          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex gap-1 rounded-lg border border-border bg-card/95 p-1 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-[1000] flex gap-1 rounded-lg border border-border bg-card/95 p-1 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80">
             {visibilities.map(([k, l, dot, n]) => {
               const active = viabilityFilter === k;
               return (
