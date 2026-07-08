@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
 import { cn } from "@/lib/utils";
 import type { Period } from "@/lib/analytics";
