@@ -59,6 +59,28 @@ function getLoginTs(): number | null {
   }
 }
 
+function isOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+async function getAuthUserIdOfflineSafe(): Promise<string | null> {
+  try {
+    if (!isOffline()) {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data.user?.id) return data.user.id;
+    }
+  } catch {
+    /* rede indisponível — usa sessão local abaixo */
+  }
+
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
   if (signingOut) return;
   signingOut = true;
@@ -109,8 +131,7 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
     const mine = localSessionId();
     let userId = currentUserId;
     if (!userId) {
-      const { data } = await supabase.auth.getUser();
-      userId = data.user?.id ?? null;
+      userId = await getAuthUserIdOfflineSafe();
     }
     if (!userId) return false;
     if (!mine) {
@@ -140,6 +161,10 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
 
 async function attachSessionForUser(userId: string, opts: { claim: boolean }): Promise<void> {
   if (opts.claim || !localSessionId()) {
+    if (isOffline() && !opts.claim) {
+      currentUserId = userId;
+      return;
+    }
     await claimSession(userId);
     return;
   }
@@ -165,6 +190,7 @@ async function claimSession(userId: string): Promise<void> {
   setLocalSessionId(sessionId);
   setLoginTs(Date.now());
   currentUserId = userId;
+  if (isOffline()) return;
   const { error } = await supabase
     .from("active_sessions")
     .upsert(
@@ -179,9 +205,8 @@ async function claimSession(userId: string): Promise<void> {
 
 export async function claimCurrentSession(): Promise<void> {
   if (typeof window === "undefined") return;
-  const { data, error } = await supabase.auth.getUser();
-  const userId = data.user?.id;
-  if (error || !userId) return;
+  const userId = await getAuthUserIdOfflineSafe();
+  if (!userId) return;
   await claimSession(userId);
 }
 
@@ -295,12 +320,12 @@ export function startSessionGuard(): void {
 
   // Bootstrap para sessão já ativa (refresh de página).
   void (async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
+    const userId = await getAuthUserIdOfflineSafe();
+    if (userId) {
       if (!getLoginTs()) setLoginTs(Date.now());
       // Sessão já existente ao abrir/recarregar o app: religamos os watchers
       // globais em qualquer tela, sem depender da tela inicial montar.
-      await attachSessionForUser(data.user.id, { claim: false });
+      await attachSessionForUser(userId, { claim: false });
       checkExpiration();
     }
   })();

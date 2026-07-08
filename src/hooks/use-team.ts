@@ -21,6 +21,8 @@ export function useTeam(userId: string | null) {
   return useQuery({
     queryKey: ["team", userId],
     enabled: !!userId,
+    networkMode: "always",
+    retry: false,
     queryFn: async (): Promise<Team | null> => {
       try {
         const { data, error } = await supabase
