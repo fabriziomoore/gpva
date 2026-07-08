@@ -26,7 +26,7 @@ async function probeReachability(): Promise<boolean> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
   try {
-    const res = await fetch(`${base}/auth/v1/health`, {
+    const res = await fetch(`${base}/auth/v1/health?_=${Date.now()}`, {
       method: "GET",
       cache: "no-store",
       signal: ctrl.signal,
