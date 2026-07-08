@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 const ROLE_CACHE_PREFIX = "gpva.userRoles.";
 const ROLE_QUERY_TIMEOUT_MS = 2_500;
 
+type RoleRow = { role: string };
+type RoleResponse = { data: RoleRow[] | null; error: { message: string } | null };
+
 function isOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
@@ -35,7 +38,7 @@ function writeCachedRoles(userId: string, roles: string[]): void {
   }
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -61,11 +64,11 @@ export function useUserRoles(userId: string | null) {
       const cached = readCachedRoles(userId);
       if (!userId || isOffline()) return cached ?? [];
       try {
-        const { data, error } = await withTimeout(
+        const { data, error } = await withTimeout<RoleResponse>(
           supabase
             .from("user_roles")
             .select("role")
-            .eq("user_id", userId),
+            .eq("user_id", userId) as unknown as PromiseLike<RoleResponse>,
           ROLE_QUERY_TIMEOUT_MS,
         );
         if (error) throw error;
