@@ -16,6 +16,8 @@ import { startSessionGuard } from "../lib/session-guard";
 import { requestBootPermissions } from "../lib/boot-permissions";
 import { THEME_BOOT_SCRIPT } from "../hooks/use-theme";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { SyncBadge } from "@/components/sync-badge";
+import { registerPWA } from "../lib/pwa/register";
 
 function NotFoundComponent() {
   return (
@@ -139,6 +141,7 @@ function RootComponent() {
     void startSync();
     startSessionGuard();
     void requestBootPermissions();
+    registerPWA();
   }, []);
 
   return (
@@ -146,6 +149,7 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <ConfirmDialogHost />
+      <SyncBadge />
     </QueryClientProvider>
   );
 }
