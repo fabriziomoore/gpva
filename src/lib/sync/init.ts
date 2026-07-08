@@ -11,9 +11,13 @@ let probeTimer: ReturnType<typeof setTimeout> | null = null;
 // Adaptive cadence: light polling online, exponential backoff offline.
 // Real network events (@capacitor/network, visibilitychange) drive the
 // instantaneous transitions; polling is just the safety net.
-const ONLINE_INTERVAL_MS = 30_000; // 30 s when online
-const OFFLINE_BACKOFF_MS = [2_000, 5_000, 10_000, 30_000] as const;
-const PROBE_TIMEOUT_MS = 3_000;
+// Detecção quase instantânea: pesquisa a cada 3 s quando online e
+// backoff curto quando offline. Eventos nativos (@capacitor/network,
+// online/offline, visibilitychange) continuam disparando transições
+// imediatas; o polling é apenas rede de segurança.
+const ONLINE_INTERVAL_MS = 3_000;
+const OFFLINE_BACKOFF_MS = [1_500, 3_000, 5_000, 10_000] as const;
+const PROBE_TIMEOUT_MS = 2_000;
 let offlineStep = 0;
 
 async function probeReachability(): Promise<boolean> {
