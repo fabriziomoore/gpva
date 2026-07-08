@@ -161,6 +161,10 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
 
 async function attachSessionForUser(userId: string, opts: { claim: boolean }): Promise<void> {
   if (opts.claim || !localSessionId()) {
+    if (isOffline() && !opts.claim) {
+      currentUserId = userId;
+      return;
+    }
     await claimSession(userId);
     return;
   }
@@ -186,6 +190,7 @@ async function claimSession(userId: string): Promise<void> {
   setLocalSessionId(sessionId);
   setLoginTs(Date.now());
   currentUserId = userId;
+  if (isOffline()) return;
   const { error } = await supabase
     .from("active_sessions")
     .upsert(
