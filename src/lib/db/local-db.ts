@@ -83,6 +83,15 @@ export interface KvRow {
   value: unknown;
 }
 
+export interface GeocodeCacheRow {
+  key: string; // "lat,lng" rounded (~500 m)
+  bairro: string | null;
+  road: string | null;
+  city: string | null;
+  label: string;
+  cached_at: string;
+}
+
 class GpvaDB extends Dexie {
   shifts!: Table<LocalShift, string>;
   services!: Table<LocalService, string>;
@@ -90,6 +99,7 @@ class GpvaDB extends Dexie {
   shift_impacts!: Table<LocalShiftImpact, string>;
   outbox!: Table<OutboxRow, number>;
   kv!: Table<KvRow, string>;
+  geocode_cache!: Table<GeocodeCacheRow, string>;
 
   constructor() {
     super("gpva");
@@ -108,6 +118,10 @@ class GpvaDB extends Dexie {
     // v3: add geo fields to services (no new index required — plain columns).
     this.version(3).stores({
       services: "id, shift_id, team_id, sync_state, created_at",
+    });
+    // v4: persistent reverse-geocode cache (offline).
+    this.version(4).stores({
+      geocode_cache: "key, cached_at",
     });
   }
 }
