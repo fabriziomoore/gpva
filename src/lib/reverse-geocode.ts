@@ -1,7 +1,9 @@
 // Reverse-geocoding leve via Nominatim/OSM.
 // - Sem chave, CORS habilitado, funciona no browser e no Capacitor.
-// - Cache em memória por célula (~500 m) para não repetir chamadas.
+// - Cache em memória + IndexedDB (offline-first) por célula (~500 m).
 // - Respeita a política de uso pública (1 req/s, User-Agent identificado).
+
+import { getLocalDB, type GeocodeCacheRow } from "./db/local-db";
 
 export type ReverseGeoInfo = {
   bairro: string | null;
@@ -26,6 +28,43 @@ async function throttle() {
   lastCall = Date.now();
 }
 
+function isOnline(): boolean {
+  return typeof navigator === "undefined" ? true : navigator.onLine !== false;
+}
+
+async function readPersistentCache(k: string): Promise<ReverseGeoInfo | null | undefined> {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const row = await getLocalDB().geocode_cache.get(k);
+    if (!row) return undefined;
+    return { bairro: row.bairro, road: row.road, city: row.city, label: row.label };
+  } catch {
+    return undefined;
+  }
+}
+
+async function writePersistentCache(k: string, info: ReverseGeoInfo): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const row: GeocodeCacheRow = {
+      key: k,
+      bairro: info.bairro,
+      road: info.road,
+      city: info.city,
+      label: info.label,
+      cached_at: new Date().toISOString(),
+    };
+    await getLocalDB().geocode_cache.put(row);
+  } catch {
+    /* ignore */
+  }
+}
+
+function coordsFallback(lat: number, lng: number): ReverseGeoInfo {
+  const label = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  return { bairro: null, road: null, city: null, label };
+}
+
 export async function reverseGeocode(
   lat: number,
   lng: number,
@@ -33,13 +72,28 @@ export async function reverseGeocode(
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const k = keyFor(lat, lng);
   if (CACHE.has(k)) return CACHE.get(k) ?? null;
+  const persisted = await readPersistentCache(k);
+  if (persisted) {
+    CACHE.set(k, persisted);
+    return persisted;
+  }
+  if (!isOnline()) {
+    // Offline sem cache: devolve coordenadas cruas para não travar PDF/UI.
+    const fb = coordsFallback(lat, lng);
+    CACHE.set(k, fb);
+    return fb;
+  }
   try {
     await throttle();
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=17&addressdetails=1&accept-language=pt-BR`;
     const res = await fetch(url, {
       headers: { "Accept": "application/json" },
     });
-    if (!res.ok) { CACHE.set(k, null); return null; }
+    if (!res.ok) {
+      const fb = coordsFallback(lat, lng);
+      CACHE.set(k, fb);
+      return fb;
+    }
     const data = await res.json();
     const a = data?.address ?? {};
     const bairro: string | null = a.suburb || a.neighbourhood || a.city_district || a.village || null;
@@ -51,10 +105,12 @@ export async function reverseGeocode(
     const label = parts.length ? parts.join(" · ") : (city ?? "");
     const info: ReverseGeoInfo = { bairro, road, city, label };
     CACHE.set(k, info);
+    void writePersistentCache(k, info);
     return info;
   } catch {
-    CACHE.set(k, null);
-    return null;
+    const fb = coordsFallback(lat, lng);
+    CACHE.set(k, fb);
+    return fb;
   }
 }
 
