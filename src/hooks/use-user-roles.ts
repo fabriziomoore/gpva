@@ -58,6 +58,7 @@ export function useUserRoles(userId: string | null) {
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
     retry: false,
+    networkMode: "always",
     refetchOnWindowFocus: false,
     initialData: () => readCachedRoles(userId),
     queryFn: async () => {
