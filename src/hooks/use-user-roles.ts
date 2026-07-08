@@ -78,7 +78,7 @@ export function useUserRoles(userId: string | null) {
         return roles;
       } catch (error) {
         if (cached) return cached;
-        throw error;
+        return [];
       }
     },
   });
