@@ -45,8 +45,6 @@ import { buildPeriodReport } from "@/lib/report";
 import { renderLeaderPdfBlob, type PeriodAgg, type TeamBreakdown } from "@/lib/leader-pdf";
 import { downloadOrShare, openSavedFile, slugFilename, type SavedFile } from "@/lib/download";
 import { FileDown } from "lucide-react";
-import { LeaderRankingSection } from "@/components/leader/RankingSection";
-import { ServicesMap, type MapPoint } from "@/components/leader/ServicesMap";
 import { cn } from "@/lib/utils";
 
 function rangeFor(p: Period, ref: Date): { start: Date; end: Date } {
@@ -326,13 +324,6 @@ function LeaderPage() {
 
   return (
     <AppShell title="Painel do Líder" right={<LeaderMeta />}>
-      <Tabs defaultValue="overview" className="mb-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="ranking">Ranking & Perfis</TabsTrigger>
-          <TabsTrigger value="map">Mapa</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview" className="mt-4">
       <div className="mb-4">
         <label htmlFor="leader-team-scope" className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Equipe
@@ -382,14 +373,6 @@ function LeaderPage() {
           ))}
         </Tabs>
       )}
-        </TabsContent>
-        <TabsContent value="ranking" className="mt-4">
-          <LeaderRankingSection />
-        </TabsContent>
-        <TabsContent value="map" className="mt-4">
-          <LeaderMapSection services={filteredSvc} teams={filteredTeams} />
-        </TabsContent>
-      </Tabs>
     </AppShell>
   );
 }

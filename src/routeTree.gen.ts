@@ -18,6 +18,8 @@ import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedLeaderRankingRouteImport } from './routes/_authenticated/leader-ranking'
+import { Route as AuthenticatedLeaderMapRouteImport } from './routes/_authenticated/leader-map'
 import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
 import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
 import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift_.$id.report'
@@ -67,6 +69,17 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeaderRankingRoute =
+  AuthenticatedLeaderRankingRouteImport.update({
+    id: '/leader-ranking',
+    path: '/leader-ranking',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedLeaderMapRoute = AuthenticatedLeaderMapRouteImport.update({
+  id: '/leader-map',
+  path: '/leader-map',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLeaderConfigRoute =
   AuthenticatedLeaderConfigRouteImport.update({
     id: '/leader-config',
@@ -91,6 +104,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/leader': typeof AuthenticatedLeaderRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
+  '/leader-map': typeof AuthenticatedLeaderMapRoute
+  '/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -103,6 +118,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/leader': typeof AuthenticatedLeaderRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
+  '/leader-map': typeof AuthenticatedLeaderMapRoute
+  '/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -118,6 +135,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/leader': typeof AuthenticatedLeaderRoute
   '/_authenticated/leader-config': typeof AuthenticatedLeaderConfigRoute
+  '/_authenticated/leader-map': typeof AuthenticatedLeaderMapRoute
+  '/_authenticated/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -134,6 +153,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/leader'
     | '/leader-config'
+    | '/leader-map'
+    | '/leader-ranking'
     | '/onboarding'
     | '/productivity'
     | '/settings'
@@ -146,6 +167,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/leader'
     | '/leader-config'
+    | '/leader-map'
+    | '/leader-ranking'
     | '/onboarding'
     | '/productivity'
     | '/settings'
@@ -160,6 +183,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/leader'
     | '/_authenticated/leader-config'
+    | '/_authenticated/leader-map'
+    | '/_authenticated/leader-ranking'
     | '/_authenticated/onboarding'
     | '/_authenticated/productivity'
     | '/_authenticated/settings'
@@ -240,6 +265,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leader-ranking': {
+      id: '/_authenticated/leader-ranking'
+      path: '/leader-ranking'
+      fullPath: '/leader-ranking'
+      preLoaderRoute: typeof AuthenticatedLeaderRankingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leader-map': {
+      id: '/_authenticated/leader-map'
+      path: '/leader-map'
+      fullPath: '/leader-map'
+      preLoaderRoute: typeof AuthenticatedLeaderMapRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leader-config': {
       id: '/_authenticated/leader-config'
       path: '/leader-config'
@@ -267,6 +306,8 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeaderRoute: typeof AuthenticatedLeaderRoute
   AuthenticatedLeaderConfigRoute: typeof AuthenticatedLeaderConfigRoute
+  AuthenticatedLeaderMapRoute: typeof AuthenticatedLeaderMapRoute
+  AuthenticatedLeaderRankingRoute: typeof AuthenticatedLeaderRankingRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -279,6 +320,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLeaderRoute: AuthenticatedLeaderRoute,
   AuthenticatedLeaderConfigRoute: AuthenticatedLeaderConfigRoute,
+  AuthenticatedLeaderMapRoute: AuthenticatedLeaderMapRoute,
+  AuthenticatedLeaderRankingRoute: AuthenticatedLeaderRankingRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
