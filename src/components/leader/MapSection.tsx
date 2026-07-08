@@ -311,16 +311,14 @@ export function LeaderMapSection() {
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="-mx-4 overflow-hidden border-y border-border">
-            <ServicesMap
-              points={points}
-              height={isMobile ? 340 : 560}
-              onDelete={isAdmin.data ? handleDelete : undefined}
-              hideLegend
-            />
-          </div>
-          <div className="flex gap-1 rounded-lg border border-border bg-muted p-1">
+        <div className="relative -mx-4 overflow-hidden border-y border-border">
+          <ServicesMap
+            points={points}
+            height={560}
+            onDelete={isAdmin.data ? handleDelete : undefined}
+            hideLegend
+          />
+          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex gap-1 rounded-lg border border-border bg-card/95 p-1 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80">
             {visibilities.map(([k, l, dot, n]) => {
               const active = viabilityFilter === k;
               return (
@@ -328,7 +326,7 @@ export function LeaderMapSection() {
                   key={k}
                   type="button"
                   onClick={() => setViabilityFilter(k)}
-                  className={`${segItem(active)} inline-flex items-center justify-between gap-2`}
+                  className={`${segItem(active)} pointer-events-auto inline-flex items-center justify-between gap-2`}
                 >
                   <span className="inline-flex items-center gap-1.5 min-w-0 truncate">
                     <span className={`inline-block size-2 shrink-0 rounded-full ${dot}`} />
