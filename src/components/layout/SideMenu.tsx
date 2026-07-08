@@ -94,8 +94,24 @@ export function SideMenu() {
   async function confirmSignOut() {
     setExitOpen(false);
     setOpen(false);
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* ignore — segue para tela de auth mesmo assim */
+    }
+    // Limpa qualquer trava residual deixada pelos overlays do Radix
+    // (Dialog + AlertDialog fechando em cascata podem deixar
+    // pointer-events:none no body em alguns navegadores mobile).
+    if (typeof document !== "undefined") {
+      document.body.style.pointerEvents = "";
+      document.body.removeAttribute("data-scroll-locked");
+    }
+    // Reload duro garante desmontagem do Leaflet e libera overlays presos.
+    if (typeof window !== "undefined") {
+      window.location.assign("/auth");
+    } else {
+      navigate({ to: "/auth" });
+    }
   }
   const items = useMemo(
     () => (isLeader.data === true ? leaderItems : teamItems),
