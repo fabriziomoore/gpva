@@ -316,7 +316,7 @@ export function LeaderMapSection() {
           <div className="-mx-4 overflow-hidden border-y border-border">
             <ServicesMap
               points={points}
-              height={560}
+              height={isMobile ? 340 : 560}
               onDelete={isAdmin.data ? handleDelete : undefined}
               hideLegend
             />
