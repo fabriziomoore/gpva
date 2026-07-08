@@ -123,18 +123,30 @@ export function LeaderMapSection() {
 
   const allowedTeamIds = useMemo(() => new Set(teams.map((t) => t.id)), [teams]);
 
-  const filtered = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     return services.filter((s) => {
       if (s.lat == null || s.lng == null) return false;
       if (!allowedTeamIds.has(s.team_id)) return false;
       if (teamScope !== ALL && s.team_id !== teamScope) return false;
-      if (viabilityFilter === "viable" && !s.viable) return false;
-      if (viabilityFilter === "unviable" && s.viable) return false;
       const t = new Date(s.created_at).getTime();
       if (t < range.start.getTime() || t >= range.end.getTime()) return false;
       return true;
     });
-  }, [services, allowedTeamIds, teamScope, viabilityFilter, range]);
+  }, [services, allowedTeamIds, teamScope, range]);
+
+  const filtered = useMemo(() => {
+    if (viabilityFilter === "all") return baseFiltered;
+    return baseFiltered.filter((s) =>
+      viabilityFilter === "viable" ? s.viable : !s.viable,
+    );
+  }, [baseFiltered, viabilityFilter]);
+
+  const counts = useMemo(() => {
+    let viable = 0;
+    let unviable = 0;
+    for (const s of baseFiltered) (s.viable ? viable++ : unviable++);
+    return { all: baseFiltered.length, viable, unviable };
+  }, [baseFiltered]);
 
   const points = useMemo<MapPoint[]>(() => {
     return filtered.map((s) => ({
@@ -159,16 +171,16 @@ export function LeaderMapSection() {
   };
 
   const segItem = (active: boolean) =>
-    `flex-1 h-9 rounded-md text-xs font-semibold tracking-wide transition ${
+    `flex-1 h-9 rounded-md px-2 text-xs font-semibold tracking-wide transition ${
       active
         ? "bg-background text-foreground shadow-sm"
         : "text-muted-foreground hover:text-foreground"
     }`;
 
-  const visibilities: Array<["all" | "viable" | "unviable", string, string]> = [
-    ["all", "Todas", "bg-foreground"],
-    ["viable", "Viáveis", "bg-success"],
-    ["unviable", "Inviáveis", "bg-destructive"],
+  const visibilities: Array<["all" | "viable" | "unviable", string, string, number]> = [
+    ["all", "Todas", "bg-foreground", counts.all],
+    ["viable", "Viáveis", "bg-success", counts.viable],
+    ["unviable", "Inviáveis", "bg-destructive", counts.unviable],
   ];
 
   const monthNamesFull = [
@@ -298,25 +310,32 @@ export function LeaderMapSection() {
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <ServicesMap
-            points={points}
-            height={560}
-            onDelete={isAdmin.data ? handleDelete : undefined}
-            hideLegend
-          />
-          <div className="flex gap-1 rounded-none bg-muted p-1">
-            {visibilities.map(([k, l, dot]) => {
+        <div className="space-y-3">
+          <div className="-mx-4 overflow-hidden border-y border-border">
+            <ServicesMap
+              points={points}
+              height={560}
+              onDelete={isAdmin.data ? handleDelete : undefined}
+              hideLegend
+            />
+          </div>
+          <div className="flex gap-1 rounded-lg border border-border bg-muted p-1">
+            {visibilities.map(([k, l, dot, n]) => {
               const active = viabilityFilter === k;
               return (
                 <button
                   key={k}
                   type="button"
                   onClick={() => setViabilityFilter(k)}
-                  className={`${segItem(active)} inline-flex items-center justify-center gap-1.5`}
+                  className={`${segItem(active)} inline-flex items-center justify-between gap-2`}
                 >
-                  <span className={`inline-block size-2 rounded-full ${dot}`} />
-                  {l}
+                  <span className="inline-flex items-center gap-1.5 min-w-0 truncate">
+                    <span className={`inline-block size-2 shrink-0 rounded-full ${dot}`} />
+                    {l}
+                  </span>
+                  <span className={`tabular-nums text-[11px] font-bold ${active ? "text-foreground" : "text-muted-foreground"}`}>
+                    {n}
+                  </span>
                 </button>
               );
             })}
