@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,6 +80,8 @@ const teamItems = [
 
 const leaderItems = [
   { to: "/leader" as const, label: "Painel do Líder", icon: BarChart3, exact: true },
+  { to: "/leader-map" as const, label: "Mapa", icon: Map, exact: true },
+  { to: "/leader-ranking" as const, label: "Ranking & Perfis", icon: Trophy, exact: true },
   { to: "/leader-config" as const, label: "Configuração", icon: Settings, exact: false },
 ];
 
