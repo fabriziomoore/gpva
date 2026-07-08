@@ -52,7 +52,6 @@ export function LeaderMapSection() {
   const queryClient = useQueryClient();
   const { userId } = useAuthSession();
   const isAdmin = useIsAdmin(userId);
-  const isMobile = useIsMobile();
 
   const [teamScope, setTeamScope] = useState<string>(ALL);
   const [periodFilter, setPeriodFilter] = useState<Period>("day");
