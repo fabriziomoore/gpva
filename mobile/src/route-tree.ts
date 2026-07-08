@@ -15,6 +15,8 @@ import { Route as VariableRoute } from "@/routes/_authenticated/variable";
 import { Route as ShiftReportRoute } from "@/routes/_authenticated/shift_.$id.report";
 import { Route as LeaderRoute } from "@/routes/_authenticated/leader";
 import { Route as LeaderConfigRoute } from "@/routes/_authenticated/leader-config";
+import { Route as LeaderMapRoute } from "@/routes/_authenticated/leader-map";
+import { Route as LeaderRankingRoute } from "@/routes/_authenticated/leader-ranking";
 import { Route as AdminRoute } from "@/routes/admin";
 
 // Rebind parents. The original `createFileRoute("/path")` calls produce
@@ -90,6 +92,18 @@ const leaderConfig = (LeaderConfigRoute as any).update({
   getParentRoute: () => authenticated,
 });
 
+const leaderMap = (LeaderMapRoute as any).update({
+  id: "/leader-map",
+  path: "/leader-map",
+  getParentRoute: () => authenticated,
+});
+
+const leaderRanking = (LeaderRankingRoute as any).update({
+  id: "/leader-ranking",
+  path: "/leader-ranking",
+  getParentRoute: () => authenticated,
+});
+
 const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   IndexRoute: index,
   OnboardingRoute: onboarding,
@@ -100,6 +114,8 @@ const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   ShiftReportRoute: shiftReport,
   LeaderRoute: leader,
   LeaderConfigRoute: leaderConfig,
+  LeaderMapRoute: leaderMap,
+  LeaderRankingRoute: leaderRanking,
 });
 
 export const routeTree = (rootRoute as any)._addFileChildren({
