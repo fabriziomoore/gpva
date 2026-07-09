@@ -274,13 +274,21 @@ function ServiceRow({
       <div className="flex items-center gap-1.5">
         <StatusBadge
           ok={isSynced}
-          label={isSynced ? "Sincronizado" : "Não sincronizado"}
+          message={
+            isSynced
+              ? "Registro sincronizado com o servidor."
+              : "Aguardando sincronização. Será enviado assim que houver conexão."
+          }
         >
           <span className="text-[10px] font-bold leading-none">S</span>
         </StatusBadge>
         <StatusBadge
           ok={hasLocation}
-          label={hasLocation ? "Localização registrada" : "Sem localização"}
+          message={
+            hasLocation
+              ? "Localização registrada com sucesso."
+              : "Sem localização. O GPS estava indisponível ou foi negado."
+          }
         >
           <MapPin className="size-3" strokeWidth={2.5} />
         </StatusBadge>
@@ -297,24 +305,30 @@ function ServiceRow({
 
 function StatusBadge({
   ok,
-  label,
+  message,
   children,
 }: {
   ok: boolean;
-  label: string;
+  message: string;
   children: React.ReactNode;
 }) {
   return (
-    <span
-      role="img"
-      aria-label={label}
-      title={label}
-      className={
-        "inline-flex size-5 items-center justify-center rounded-[5px] text-primary-foreground " +
-        (ok ? "bg-primary" : "bg-destructive")
-      }
-    >
-      {children}
-    </span>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={message}
+          className={
+            "inline-flex size-5 items-center justify-center rounded-[5px] text-white transition-transform active:scale-95 " +
+            (ok ? "bg-blue-600" : "bg-red-600")
+          }
+        >
+          {children}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="center" className="w-56 p-2 text-xs">
+        {message}
+      </PopoverContent>
+    </Popover>
   );
 }
