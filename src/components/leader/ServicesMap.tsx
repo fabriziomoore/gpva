@@ -87,9 +87,11 @@ export function ServicesMap({
   const layerRef = useRef<L.LayerGroup | null>(null);
   const onDeleteRef = useRef(onDelete);
   const [containerKey, setContainerKey] = useState(() => `leader-map-${++globalMapInstanceId}`);
+  const [disposedForSignOut, setDisposedForSignOut] = useState(false);
   onDeleteRef.current = onDelete;
 
   useEffect(() => {
+    if (disposedForSignOut) return;
     const container = containerRef.current;
     if (!container || mapRef.current) return;
     resetLeafletContainer(container);
@@ -121,10 +123,11 @@ export function ServicesMap({
       mapRef.current = null;
       layerRef.current = null;
     };
-  }, []);
+  }, [disposedForSignOut]);
 
   useEffect(() => {
     const disposeMap = () => {
+      setDisposedForSignOut(true);
       const map = mapRef.current;
       if (!map) return;
       try {
@@ -197,7 +200,11 @@ export function ServicesMap({
 
   return (
     <div className={hideLegend ? "relative z-0" : "relative z-0 overflow-hidden rounded-xl border border-border"}>
-      <div key={containerKey} ref={containerRef} className="relative z-0" style={{ height }} />
+      {disposedForSignOut ? (
+        <div className="relative z-0 bg-background" style={{ height }} />
+      ) : (
+        <div key={containerKey} ref={containerRef} className="relative z-0" style={{ height }} />
+      )}
       {!hideLegend && (
         <div className="flex items-center gap-4 border-t border-border bg-card px-3 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
