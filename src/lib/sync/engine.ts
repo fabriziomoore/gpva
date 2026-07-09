@@ -40,9 +40,18 @@ export async function drainOutbox(): Promise<void> {
   }
   running = true;
   const store = useSyncStore.getState();
-  store.setPhase("syncing");
   try {
     const db = getLocalDB();
+    const pendingCount = await db.outbox.count();
+    useSyncStore.getState().setPending(pendingCount);
+    if (pendingCount === 0) {
+      // Nada para enviar — não pisca "sincronizando" à toa.
+      if (useSyncStore.getState().phase !== "idle") {
+        useSyncStore.getState().markSynced();
+      }
+      return;
+    }
+    store.setPhase("syncing");
     store.setLastError(null);
     // Process in deterministic order so FKs resolve: shifts → services → links → impacts.
     const order: OutboxRow["table"][] = [
