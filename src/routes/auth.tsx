@@ -20,6 +20,9 @@ import gpvaLogo from "@/assets/gpva-logo-wide.webp";
 export const Route = createFileRoute("/auth")({
   ssr: false,
   beforeLoad: async () => {
+    if (typeof window !== "undefined" && window.sessionStorage.getItem("gpva.forceSignedOut") === "1") {
+      return;
+    }
     const { data } = await supabase.auth.getSession();
     if (data.session) throw redirect({ to: "/" });
   },
@@ -65,6 +68,7 @@ function AuthPage() {
     setLoading(true);
     try {
       await signInTeam(team, password);
+      sessionStorage.removeItem("gpva.forceSignedOut");
       if (remember) {
         await saveRemembered(team, password);
       } else {
