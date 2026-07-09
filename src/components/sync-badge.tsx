@@ -58,7 +58,7 @@ export function SyncBadge() {
       aria-live="polite"
       className={cn(
         "pointer-events-none fixed inset-x-0 bottom-0 z-50",
-        "flex items-center justify-center border-t border-white/70 bg-red-600",
+        "flex items-center justify-center bg-red-600",
         "px-4 pt-1.5 text-xs font-semibold text-white",
         "pb-[calc(env(safe-area-inset-bottom)+6px)]",
       )}
