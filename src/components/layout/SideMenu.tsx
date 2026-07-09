@@ -101,13 +101,31 @@ export function SideMenu() {
       document.body.style.pointerEvents = "";
       document.body.removeAttribute("data-scroll-locked");
     }
-    // Dispara signOut em segundo plano — sem internet a chamada pode
-    // travar por vários segundos e congelaria a tela junto com o mapa
-    // Leaflet ainda montado. Navegamos imediatamente; o reload duro
-    // que acontece em /auth encerra qualquer sessão local presa.
-    void supabase.auth.signOut().catch(() => {
-      /* ignore — segue para tela de auth mesmo assim */
-    });
+    // Encerra a sessão com timeout curto: sem rede o signOut remoto pode
+    // pendurar, mas precisamos garantir que a sessão local seja apagada
+    // ANTES de navegar. Caso contrário /auth vê a sessão viva e devolve
+    // o usuário para o app (bug do mapa do líder que ficava travado).
+    try {
+      await Promise.race([
+        supabase.auth.signOut({ scope: "local" }),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
+    } catch {
+      /* ignore */
+    }
+    // Garante limpeza mesmo se o SDK falhou silenciosamente offline.
+    if (typeof window !== "undefined") {
+      try {
+        const keys: string[] = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const k = window.localStorage.key(i);
+          if (k && (k.startsWith("sb-") || k.includes("supabase.auth"))) keys.push(k);
+        }
+        keys.forEach((k) => window.localStorage.removeItem(k));
+      } catch {
+        /* ignore */
+      }
+    }
     // Reload duro garante desmontagem do Leaflet e libera overlays presos.
     if (typeof window !== "undefined") {
       window.location.assign("/auth");
