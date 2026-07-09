@@ -15,7 +15,10 @@ export function BottomNav() {
   const isLeader = useIsLeader(userId);
   if (isLeader.data === true) return null;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]">
+    <nav
+      className="fixed inset-x-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)] transition-[bottom] duration-150"
+      style={{ bottom: "var(--sync-banner-h, 0px)" }}
+    >
       <ul className="mx-auto flex max-w-md items-stretch justify-around">
         {items.map(({ to, label, icon: Icon, exact }) => (
           <li key={to} className="flex-1">

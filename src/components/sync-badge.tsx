@@ -3,9 +3,10 @@ import { useSyncStore } from "@/lib/sync/store";
 import { cn } from "@/lib/utils";
 
 /**
- * Indicador discreto de estado offline / fila pendente.
- * Só aparece quando há algo relevante para mostrar
- * (offline, sincronizando, erro, ou pendências).
+ * Faixa inferior de largura total exibida quando o app está offline, com
+ * pendências ou sincronizando. Reserva espaço via a CSS var
+ * `--sync-banner-h` para que botões flutuantes (ex.: Finalizar / + Serviço)
+ * subam automaticamente enquanto ela estiver visível.
  */
 export function SyncBadge() {
   const online = useSyncStore((s) => s.online);
@@ -14,14 +15,32 @@ export function SyncBadge() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
 
   const showOffline = !online;
-  const showSyncing = online && phase === "syncing";
-  const showError = online && phase === "error";
-  const showPending = online && phase !== "syncing" && pending > 0;
+  const showSyncing = mounted && online && phase === "syncing";
+  const showError = mounted && online && phase === "error";
+  const showPending = mounted && online && phase !== "syncing" && pending > 0;
+  const visible = mounted && (showOffline || showSyncing || showError || showPending);
 
-  if (!showOffline && !showSyncing && !showError && !showPending) return null;
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (visible) {
+      root.style.setProperty("--sync-banner-h", "calc(env(safe-area-inset-bottom) + 32px)");
+    } else {
+      root.style.setProperty("--sync-banner-h", "0px");
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== "undefined") {
+        document.documentElement.style.setProperty("--sync-banner-h", "0px");
+      }
+    };
+  }, []);
+
+  if (!visible) return null;
 
   const label = showOffline
     ? pending > 0
@@ -33,20 +52,15 @@ export function SyncBadge() {
         ? `Erro ao sincronizar${pending > 0 ? ` · ${pending}` : ""}`
         : `${pending} pendente${pending > 1 ? "s" : ""}`;
 
-  const tone = showOffline
-    ? "bg-muted text-muted-foreground border-border"
-    : showError
-      ? "bg-destructive/10 text-destructive border-destructive/30"
-      : "bg-primary/10 text-primary border-primary/30";
-
   return (
     <div
       role="status"
       aria-live="polite"
       className={cn(
-        "pointer-events-none fixed bottom-3 left-1/2 z-50 -translate-x-1/2",
-        "rounded-full border px-3 py-1 text-xs font-medium shadow-sm backdrop-blur",
-        tone,
+        "pointer-events-none fixed inset-x-0 bottom-0 z-50",
+        "flex items-center justify-center border-t border-white/70 bg-red-600",
+        "px-4 pt-1.5 text-xs font-semibold text-white",
+        "pb-[calc(env(safe-area-inset-bottom)+6px)]",
       )}
     >
       {label}

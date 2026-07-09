@@ -68,7 +68,7 @@ export function SyncIndicator() {
           <span
             aria-hidden
             className={cn(
-              "absolute inset-0 transition-opacity duration-500 will-change-[opacity]",
+              "absolute inset-0 transition-opacity duration-100 will-change-[opacity]",
               state === "idle" ? "opacity-40" : "opacity-90",
             )}
             style={{ backgroundImage: gradient }}
