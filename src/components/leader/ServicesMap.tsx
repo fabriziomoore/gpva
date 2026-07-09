@@ -164,8 +164,8 @@ export function ServicesMap({
   }, [spread]);
 
   return (
-    <div className={hideLegend ? "" : "overflow-hidden rounded-xl border border-border"}>
-      <div ref={containerRef} style={{ height }} />
+    <div className={hideLegend ? "relative z-0" : "relative z-0 overflow-hidden rounded-xl border border-border"}>
+      <div ref={containerRef} className="relative z-0" style={{ height }} />
       {!hideLegend && (
         <div className="flex items-center gap-4 border-t border-border bg-card px-3 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
