@@ -87,7 +87,7 @@ function LeaderConfigPage() {
   }
 
   return (
-    <AppShell title="Configuração" right={<LeaderMeta />}>
+    <AppShell title="Configuração" right={<LeaderMeta />} showSync={false}>
       <div className="space-y-8">
         <section className="space-y-4">
           <div className="flex items-center justify-between">
