@@ -8,7 +8,7 @@ import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDateBR } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
@@ -17,6 +17,7 @@ import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
+import { signOutApp } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
@@ -29,6 +30,7 @@ function HomePage() {
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const isAdmin = useIsAdmin(userId);
+  const queryClient = useQueryClient();
   const { data: team, isLoading } = useTeam(userId);
   const [starting, setStarting] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
@@ -57,8 +59,8 @@ function HomePage() {
 
   async function confirmExit() {
     setExitOpen(false);
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    await signOutApp(queryClient);
+    await navigate({ to: "/auth", replace: true });
   }
 
   // Onboarding is handled by admin at team creation; no auto-redirect.

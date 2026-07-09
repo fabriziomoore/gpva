@@ -93,6 +93,22 @@ export function ServicesMap({
     };
   }, []);
 
+  useEffect(() => {
+    const disposeMap = () => {
+      const map = mapRef.current;
+      if (!map) return;
+      try {
+        map.remove();
+      } catch {
+        /* ignore */
+      }
+      mapRef.current = null;
+      layerRef.current = null;
+    };
+    window.addEventListener("gpva:user-signout", disposeMap);
+    return () => window.removeEventListener("gpva:user-signout", disposeMap);
+  }, []);
+
   const spread = useMemo(() => spreadOverlaps(points), [points]);
 
   useEffect(() => {

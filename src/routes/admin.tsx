@@ -50,6 +50,7 @@ import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
 import { formatDateBR } from "@/lib/format";
 import { confirmDelete } from "@/components/ui/confirm-dialog";
+import { signOutApp } from "@/lib/auth";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -122,6 +123,7 @@ function AdminPage() {
   const [view, setView] = useState<"menu" | "section" | "ranking">("menu");
   const [exitOpen, setExitOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (typeof window === "undefined" || !isAdmin.data) return;
@@ -141,8 +143,8 @@ function AdminPage() {
   async function confirmExit() {
     setExitOpen(false);
     sessionStorage.removeItem("gpva-admin-pw");
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    await signOutApp(queryClient);
+    await navigate({ to: "/auth", replace: true });
   }
 
   // Marca a sessão de admin (compat com server fns) enquanto o papel for válido.
