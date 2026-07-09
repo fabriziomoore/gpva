@@ -56,8 +56,9 @@ async function runProbe(): Promise<void> {
   if (probing) return;
   probing = true;
   try {
-    const navOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
-    if (!navOnline) {
+    const browserOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    const deviceOnline = getNetworkStatus().connected && browserOnline;
+    if (!deviceOnline) {
       useSyncStore.getState().setOnline(false);
       offlineStep = 0;
       return;
