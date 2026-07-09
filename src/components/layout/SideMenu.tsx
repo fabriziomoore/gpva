@@ -133,6 +133,7 @@ export function SideMenu() {
         }
         keys.forEach((k) => window.localStorage.removeItem(k));
         window.sessionStorage.removeItem("gpva-admin-pw");
+        window.sessionStorage.setItem("gpva.forceSignedOut", "1");
       } catch {
         /* ignore */
       }
