@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * Web/Android/iOS.
  */
 export function SyncIndicator() {
-  const { online, phase, pending, lastSyncAt } = useSyncStore();
+  const { online, phase, pending, lastSyncAt, lastError } = useSyncStore();
   const [justCompleted, setJustCompleted] = useState(false);
   const [manualRunning, setManualRunning] = useState(false);
   const prevPhase = useRef(phase);
@@ -125,6 +125,12 @@ export function SyncIndicator() {
           <dd className="text-foreground">Ativo</dd>
           <dt>Banco em nuvem</dt>
           <dd className="text-foreground">{online ? "Conectado" : "Aguardando rede"}</dd>
+          {lastError && (
+            <>
+              <dt>Último erro</dt>
+              <dd className="break-words text-destructive">{lastError}</dd>
+            </>
+          )}
         </dl>
         <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
           A sincronização ocorre automaticamente em segundo plano.

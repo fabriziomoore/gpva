@@ -7,9 +7,11 @@ interface SyncState {
   phase: SyncPhase;
   pending: number;
   lastSyncAt: number | null;
+  lastError: string | null;
   setOnline: (v: boolean) => void;
   setPhase: (p: SyncPhase) => void;
   setPending: (n: number) => void;
+  setLastError: (message: string | null) => void;
   markSynced: () => void;
 }
 
@@ -18,8 +20,10 @@ export const useSyncStore = create<SyncState>((set) => ({
   phase: "idle",
   pending: 0,
   lastSyncAt: null,
+  lastError: null,
   setOnline: (online) => set({ online }),
   setPhase: (phase) => set({ phase }),
   setPending: (pending) => set({ pending }),
-  markSynced: () => set({ phase: "idle", pending: 0, lastSyncAt: Date.now() }),
+  setLastError: (lastError) => set({ lastError }),
+  markSynced: () => set({ phase: "idle", pending: 0, lastSyncAt: Date.now(), lastError: null }),
 }));

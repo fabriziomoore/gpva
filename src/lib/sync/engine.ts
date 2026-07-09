@@ -15,6 +15,7 @@ let scheduled = false;
 export async function refreshPendingCount(): Promise<void> {
   try {
     const db = getLocalDB();
+    store.setLastError(null);
     const n = await db.outbox.count();
     useSyncStore.getState().setPending(n);
   } catch {
@@ -71,7 +72,9 @@ export async function drainOutbox(): Promise<void> {
     }
     useSyncStore.getState().markSynced();
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.warn("[sync] drain failed", err);
+    useSyncStore.getState().setLastError(message);
     useSyncStore.getState().setPhase("error");
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       useSyncStore.getState().setOnline(false);
