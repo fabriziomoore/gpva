@@ -13,7 +13,10 @@ export function AppShell({
   showBack?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-background pb-6">
+    <div
+      className="min-h-screen bg-background"
+      style={{ paddingBottom: "calc(1.5rem + var(--sync-banner-h, 0px))" }}
+    >
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-md items-center gap-2 px-4 py-3">
           <SideMenu />
