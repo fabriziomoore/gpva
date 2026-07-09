@@ -6,11 +6,13 @@ export function AppShell({
   title,
   children,
   right,
+  showSync = true,
 }: {
   title?: ReactNode;
   children: ReactNode;
   right?: ReactNode;
   showBack?: boolean;
+  showSync?: boolean;
 }) {
   return (
     <div
@@ -23,7 +25,7 @@ export function AppShell({
           <h1 className="min-w-0 flex-1 overflow-hidden text-sm font-semibold tracking-tight sm:text-base">{title ?? "GPVA"}</h1>
           {right}
         </div>
-        <SyncIndicator />
+        {showSync ? <SyncIndicator /> : <div className="h-[2px] w-full bg-border/60" />}
       </header>
       <main className="mx-auto max-w-md px-4 py-4">{children}</main>
     </div>
