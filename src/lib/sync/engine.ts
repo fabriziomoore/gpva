@@ -123,9 +123,18 @@ async function pushRow(row: OutboxRow): Promise<void> {
       if (error) throw error;
       return;
     }
+    await ensureParentsBeforePush(row);
     const { error } = await supabase
       .from(table)
       .upsert(row.payload as never, { onConflict: "id" });
+    if (isMissingParentError(error)) {
+      await ensureParentsBeforePush(row, { force: true });
+      const retry = await supabase
+        .from(table)
+        .upsert(row.payload as never, { onConflict: "id" });
+      if (retry.error) throw retry.error;
+      return;
+    }
     if (error) throw error;
   } else if (row.op === "update") {
     const { error } = await supabase
@@ -137,6 +146,130 @@ async function pushRow(row: OutboxRow): Promise<void> {
     const { error } = await supabase.from(table).delete().eq("id", row.row_id);
     if (error) throw error;
   }
+}
+
+async function ensureParentsBeforePush(
+  row: OutboxRow,
+  opts: { force?: boolean } = {},
+): Promise<void> {
+  if (row.table === "servicos") {
+    const shiftId = asString(row.payload.shift_id);
+    const teamId = asString(row.payload.team_id);
+    const createdAt = asString(row.payload.captured_at) ?? asString(row.payload.created_at);
+    if (shiftId && teamId) await ensureShiftExists(shiftId, teamId, createdAt, opts.force);
+    return;
+  }
+
+  if (row.table === "impactos_expediente") {
+    const shiftId = asString(row.payload.shift_id);
+    const teamId = asString(row.payload.team_id);
+    if (shiftId && teamId) await ensureShiftExists(shiftId, teamId, null, opts.force);
+    return;
+  }
+
+  if (row.table === "vinculos_complementos") {
+    const serviceId = asString(row.payload.service_id);
+    if (serviceId) await ensureServiceExists(serviceId, opts.force);
+  }
+}
+
+async function ensureShiftExists(
+  shiftId: string,
+  teamId: string,
+  fallbackStartedAt: string | null,
+  force = false,
+): Promise<void> {
+  if (!force) {
+    const existing = await supabase
+      .from("expedientes")
+      .select("id")
+      .eq("id", shiftId)
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    if (existing.data) return;
+  }
+
+  const db = getLocalDB();
+  const local = await db.shifts.get(shiftId);
+  const payload = local
+    ? {
+        id: local.id,
+        team_id: local.team_id,
+        started_at: local.started_at,
+        ended_at: local.ended_at ?? null,
+        status: local.status,
+        report_text: local.report_text ?? null,
+        variable_rate_snapshot: local.variable_rate_snapshot ?? null,
+      }
+    : {
+        id: shiftId,
+        team_id: teamId,
+        started_at: fallbackStartedAt ?? new Date().toISOString(),
+        ended_at: null,
+        status: "open" as const,
+        report_text: null,
+        variable_rate_snapshot: null,
+      };
+
+  const { error } = await supabase.from("expedientes").upsert(payload as never, {
+    onConflict: "id",
+  });
+  if (error) throw error;
+  if (local) await db.shifts.put({ ...local, sync_state: "synced" });
+}
+
+async function ensureServiceExists(serviceId: string, force = false): Promise<void> {
+  if (!force) {
+    const existing = await supabase
+      .from("servicos")
+      .select("id")
+      .eq("id", serviceId)
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    if (existing.data) return;
+  }
+
+  const db = getLocalDB();
+  const local = await db.services.get(serviceId);
+  if (!local) return;
+  await ensureShiftExists(local.shift_id, local.team_id, local.captured_at ?? local.created_at, force);
+  const { error } = await supabase.from("servicos").upsert(
+    {
+      id: local.id,
+      team_id: local.team_id,
+      shift_id: local.shift_id,
+      service_type_id: local.service_type_id ?? null,
+      service_type_name: local.service_type_name,
+      is_negotiation: local.is_negotiation,
+      viable: local.viable,
+      reason_id: local.reason_id ?? null,
+      reason_name: local.reason_name ?? null,
+      registration_number: local.registration_number ?? null,
+      negotiated_value: local.negotiated_value ?? null,
+      lat: local.lat ?? null,
+      lng: local.lng ?? null,
+      accuracy_m: local.accuracy_m ?? null,
+      captured_at: local.captured_at ?? null,
+      created_at: local.created_at,
+    } as never,
+    { onConflict: "id" },
+  );
+  if (error) throw error;
+  await db.services.put({ ...local, sync_state: "synced" });
+}
+
+function isMissingParentError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { code?: unknown; message?: unknown; details?: unknown };
+  return (
+    e.code === "23503" ||
+    String(e.message ?? "").includes("violates foreign key constraint") ||
+    String(e.details ?? "").includes("is not present")
+  );
+}
+
+function asString(v: unknown): string | null {
+  return typeof v === "string" && v.trim().length > 0 ? v : null;
 }
 
 async function markSynced(table: OutboxRow["table"], id: string): Promise<void> {
