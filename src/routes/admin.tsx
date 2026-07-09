@@ -50,7 +50,7 @@ import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
 import { formatDateBR } from "@/lib/format";
 import { confirmDelete } from "@/components/ui/confirm-dialog";
-import { signOutApp } from "@/lib/auth";
+import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -143,8 +143,9 @@ function AdminPage() {
   async function confirmExit() {
     setExitOpen(false);
     sessionStorage.removeItem("gpva-admin-pw");
-    await signOutApp(queryClient);
+    prepareLocalSignOut();
     await navigate({ to: "/auth", replace: true });
+    void signOutApp(queryClient);
   }
 
   // Marca a sessão de admin (compat com server fns) enquanto o papel for válido.
