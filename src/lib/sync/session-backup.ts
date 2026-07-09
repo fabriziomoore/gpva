@@ -5,6 +5,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const KEY = "gpva.supabase.session.v1";
+const FORCE_SIGNED_OUT_KEY = "gpva.forceSignedOut";
+
+function hasForcedSignOut(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(FORCE_SIGNED_OUT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function isNative(): boolean {
   if (typeof window === "undefined") return false;
@@ -35,6 +45,7 @@ export async function backupSession(): Promise<void> {
 
 export async function restoreSession(): Promise<void> {
   if (!isNative()) return;
+  if (hasForcedSignOut()) return;
   // Only restore when no local session is present (e.g. WebView storage wiped).
   const { data } = await supabase.auth.getSession();
   if (data.session) return;
