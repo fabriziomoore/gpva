@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
@@ -22,6 +22,7 @@ type CapacitorWindow = Window & {
 };
 
 const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
+const SIGNOUT_EVENT = "gpva:user-signout";
 
 function isNativeRuntime(): boolean {
   if (typeof window === "undefined") return false;
@@ -95,10 +96,38 @@ export function SideMenu() {
   const [open, setOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
+
+  function clearBrowserAuthStorage() {
+    if (typeof window === "undefined") return;
+    try {
+      const keys: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (
+          k &&
+          AUTH_STORAGE_PATTERNS.some((pattern) =>
+            pattern.endsWith("-") ? k.startsWith(pattern) : k.includes(pattern),
+          )
+        ) {
+          keys.push(k);
+        }
+      }
+      keys.forEach((k) => window.localStorage.removeItem(k));
+      window.sessionStorage.removeItem("gpva-admin-pw");
+      window.sessionStorage.setItem("gpva.forceSignedOut", "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function confirmSignOut() {
     setExitOpen(false);
     setOpen(false);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(SIGNOUT_EVENT));
+    }
     // Limpa qualquer trava residual deixada pelos overlays do Radix
     // (Dialog + AlertDialog fechando em cascata podem deixar
     // pointer-events:none no body em alguns navegadores mobile).
@@ -113,47 +142,19 @@ export function SideMenu() {
     try {
       await queryClient.cancelQueries();
       queryClient.clear();
-      await Promise.race([
-        supabase.auth.signOut({ scope: "local" }),
-        new Promise((resolve) => setTimeout(resolve, 1500)),
-      ]);
+      await supabase.removeAllChannels();
+      await supabase.auth.signOut({ scope: "local" });
     } catch {
       /* ignore */
     }
     // Garante limpeza mesmo se o SDK falhou silenciosamente offline.
-    if (typeof window !== "undefined") {
-      try {
-        const keys: string[] = [];
-        for (let i = 0; i < window.localStorage.length; i++) {
-          const k = window.localStorage.key(i);
-          if (
-            k &&
-            AUTH_STORAGE_PATTERNS.some((pattern) =>
-              pattern.endsWith("-") ? k.startsWith(pattern) : k.includes(pattern),
-            )
-          ) {
-            keys.push(k);
-          }
-        }
-        keys.forEach((k) => window.localStorage.removeItem(k));
-        window.sessionStorage.removeItem("gpva-admin-pw");
-        window.sessionStorage.setItem("gpva.forceSignedOut", "1");
-      } catch {
-        /* ignore */
-      }
-    }
+    clearBrowserAuthStorage();
     await clearSessionBackup().catch(() => undefined);
 
-    // No Android/Capacitor a rota é memory-history; trocar window.location para
-    // /auth pode deixar o Leaflet montado como única tela. Navegar pelo router
-    // desmonta o mapa e troca a tela de forma confiável.
-    if (isNativeRuntime()) {
-      navigate({ to: "/auth", replace: true });
-    } else if (typeof window !== "undefined") {
-      window.location.assign("/auth");
-    } else {
-      navigate({ to: "/auth", replace: true });
-    }
+    // Usa sempre o router. No Android/Capacitor, window.location.assign pode
+    // trocar a URL sem desmontar o Leaflet, deixando apenas o mapa travado.
+    await router.invalidate().catch(() => undefined);
+    await navigate({ to: "/auth", replace: true });
   }
   const items = useMemo(
     () => (isLeader.data === true ? leaderItems : teamItems),
