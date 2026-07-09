@@ -4,7 +4,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2 } from "lucide-react";
+import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin } from "lucide-react";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -202,6 +202,8 @@ function ServiceRow({
   complementsByService: Map<string, string[]>;
 }) {
   const formsStatus = useFormsStatus(s.id);
+  const isSynced = s.sync_state === "synced";
+  const hasLocation = s.lat != null && s.lng != null;
   return (
     <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-3">
@@ -269,12 +271,50 @@ function ServiceRow({
           </p>
         </div>
       </div>
-      <span className="text-xs font-medium tabular-nums text-muted-foreground">
-        {new Date(s.created_at).toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </span>
+      <div className="flex items-center gap-1.5">
+        <StatusBadge
+          ok={isSynced}
+          label={isSynced ? "Sincronizado" : "Não sincronizado"}
+        >
+          <span className="text-[10px] font-bold leading-none">S</span>
+        </StatusBadge>
+        <StatusBadge
+          ok={hasLocation}
+          label={hasLocation ? "Localização registrada" : "Sem localização"}
+        >
+          <MapPin className="size-3" strokeWidth={2.5} />
+        </StatusBadge>
+        <span className="ml-1 text-xs font-medium tabular-nums text-muted-foreground">
+          {new Date(s.created_at).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      </div>
     </div>
+  );
+}
+
+function StatusBadge({
+  ok,
+  label,
+  children,
+}: {
+  ok: boolean;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className={
+        "inline-flex size-5 items-center justify-center rounded-[5px] text-primary-foreground " +
+        (ok ? "bg-primary" : "bg-destructive")
+      }
+    >
+      {children}
+    </span>
   );
 }
