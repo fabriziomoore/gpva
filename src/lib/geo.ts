@@ -53,9 +53,9 @@ async function tryCapacitorFix(timeoutMs: number): Promise<GeoFix | null> {
     if (!Capacitor.isNativePlatform()) return null;
     const { Geolocation } = await import("@capacitor/geolocation");
     const perm = await Geolocation.checkPermissions();
-    if (perm.location !== "granted") {
-      const req = await Geolocation.requestPermissions({ permissions: ["location"] });
-      if (req.location !== "granted") return null;
+    if (perm.location !== "granted" && perm.coarseLocation !== "granted") {
+      const req = await Geolocation.requestPermissions({ permissions: ["location", "coarseLocation"] });
+      if (req.location !== "granted" && req.coarseLocation !== "granted") return null;
     }
     const pos = await Geolocation.getCurrentPosition({
       enableHighAccuracy: true,

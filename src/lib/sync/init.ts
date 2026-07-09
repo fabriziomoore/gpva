@@ -7,17 +7,21 @@ import { getLocalDB } from "@/lib/db/local-db";
 let started = false;
 let probing = false;
 let probeTimer: ReturnType<typeof setTimeout> | null = null;
+let syncRetryTimer: ReturnType<typeof setInterval> | null = null;
 
 // Adaptive cadence: light polling online, exponential backoff offline.
 // Real network events (@capacitor/network, visibilitychange) drive the
 // instantaneous transitions; polling is just the safety net.
-// Detecção quase instantânea: pesquisa a cada 3 s quando online e
-// backoff curto quando offline. Eventos nativos (@capacitor/network,
-// online/offline, visibilitychange) continuam disparando transições
-// imediatas; o polling é apenas rede de segurança.
+// Detecção quase instantânea: o estado visual online/offline vem dos eventos
+// nativos (@capacitor/network + online/offline). O probe abaixo NÃO derruba o
+// app para offline quando falha: em Android/Capacitor um endpoint de saúde pode
+// falhar por CORS/DNS/captive network mesmo com internet suficiente para a API.
+// Se usarmos essa falha como verdade, a outbox para de tentar enviar e a linha
+// fica vermelha como padrão. O envio real é quem confirma se a nuvem aceitou.
 const ONLINE_INTERVAL_MS = 3_000;
 const OFFLINE_BACKOFF_MS = [1_500, 3_000, 5_000, 10_000] as const;
 const PROBE_TIMEOUT_MS = 2_000;
+const SYNC_RETRY_MS = 15_000;
 let offlineStep = 0;
 
 async function probeReachability(): Promise<boolean> {
@@ -53,19 +57,24 @@ async function runProbe(): Promise<void> {
   probing = true;
   try {
     const navOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
-    const reachable = navOnline ? await probeReachability() : false;
+    if (!navOnline) {
+      useSyncStore.getState().setOnline(false);
+      offlineStep = 0;
+      return;
+    }
+
+    const reachable = await probeReachability();
     const prev = useSyncStore.getState().online;
-    if (prev !== reachable) {
-      useSyncStore.getState().setOnline(reachable);
-      if (reachable) {
-        offlineStep = 0;
-        scheduleSync();
-        void pullRemote();
-      } else {
-        offlineStep = 0; // start backoff fresh on each fall
-      }
-    } else if (!reachable) {
+    if (reachable) {
+      if (!prev) useSyncStore.getState().setOnline(true);
+      offlineStep = 0;
+      scheduleSync();
+      void pullRemote();
+    } else {
       offlineStep = Math.min(offlineStep + 1, OFFLINE_BACKOFF_MS.length - 1);
+      // Mantém o estado online quando o SO/WebView diz que há rede. A tentativa
+      // periódica de drainOutbox registrará erro real se a API estiver fora.
+      if (!prev) useSyncStore.getState().setOnline(true);
     }
   } finally {
     probing = false;
@@ -112,6 +121,9 @@ export async function startSync(): Promise<void> {
       offlineStep = 0;
       scheduleNextProbe();
     } else {
+      useSyncStore.getState().setOnline(true);
+      scheduleSync();
+      void pullRemote();
       void runProbe();
     }
   });
@@ -121,6 +133,15 @@ export async function startSync(): Promise<void> {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") void runProbe();
     });
+  }
+
+  // Rede de segurança: enquanto o SO informa online, continue tentando escoar
+  // a outbox. Assim um único erro temporário não deixa o dia inteiro preso no
+  // relatório local/offline.
+  if (!syncRetryTimer) {
+    syncRetryTimer = setInterval(() => {
+      if (useSyncStore.getState().online) void drainOutbox();
+    }, SYNC_RETRY_MS);
   }
 
   // Initial drain + adaptive reachability probe loop.

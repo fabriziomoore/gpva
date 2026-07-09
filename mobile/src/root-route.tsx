@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { startSync } from "@/lib/sync/init";
 import { startSessionGuard } from "@/lib/session-guard";
 import { Toaster } from "@/components/ui/sonner";
+import { requestBootPermissions } from "@/lib/boot-permissions";
 
 function NotFoundComponent() {
   return (
@@ -41,6 +42,7 @@ function RootComponent(): ReactNode {
   useEffect(() => {
     void startSync();
     startSessionGuard();
+    void requestBootPermissions();
     const onForceAuth = (event: Event) => {
       event.preventDefault();
       void router.navigate({ to: "/auth", replace: true });

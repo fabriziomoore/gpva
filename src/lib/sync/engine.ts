@@ -34,7 +34,7 @@ export function scheduleSync(): void {
 export async function drainOutbox(): Promise<void> {
   if (running) return;
   if (typeof window === "undefined") return;
-  if (!useSyncStore.getState().online) {
+  if (!useSyncStore.getState().online && typeof navigator !== "undefined" && navigator.onLine === false) {
     await refreshPendingCount();
     return;
   }
@@ -73,6 +73,9 @@ export async function drainOutbox(): Promise<void> {
   } catch (err) {
     console.warn("[sync] drain failed", err);
     useSyncStore.getState().setPhase("error");
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      useSyncStore.getState().setOnline(false);
+    }
   } finally {
     running = false;
     await refreshPendingCount();
@@ -190,6 +193,10 @@ export async function pullRemote(): Promise<void> {
         reason_name: r.reason_name,
         registration_number: r.registration_number,
         negotiated_value: r.negotiated_value,
+        lat: r.lat ?? null,
+        lng: r.lng ?? null,
+        accuracy_m: r.accuracy_m ?? null,
+        captured_at: r.captured_at ?? null,
         created_at: r.created_at,
         updated_at: r.created_at,
         sync_state: "synced",
