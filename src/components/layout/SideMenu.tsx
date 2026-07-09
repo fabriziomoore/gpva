@@ -5,9 +5,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
-import { supabase } from "@/integrations/supabase/client";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { clearSessionBackup } from "@/lib/sync/session-backup";
+import { signOutApp } from "@/lib/auth";
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
@@ -20,10 +19,6 @@ type CapacitorWindow = Window & {
     isNativePlatform?: () => boolean;
   };
 };
-
-const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
-const SIGNOUT_EVENT = "gpva:user-signout";
-const SIGNOUT_TIMEOUT_MS = 1200;
 
 function isNativeRuntime(): boolean {
   if (typeof window === "undefined") return false;
@@ -99,35 +94,9 @@ export function SideMenu() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  function clearBrowserAuthStorage() {
-    if (typeof window === "undefined") return;
-    try {
-      const keys: string[] = [];
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const k = window.localStorage.key(i);
-        if (
-          k &&
-          AUTH_STORAGE_PATTERNS.some((pattern) =>
-            pattern.endsWith("-") ? k.startsWith(pattern) : k.includes(pattern),
-          )
-        ) {
-          keys.push(k);
-        }
-      }
-      keys.forEach((k) => window.localStorage.removeItem(k));
-      window.sessionStorage.removeItem("gpva-admin-pw");
-      window.sessionStorage.setItem("gpva.forceSignedOut", "1");
-    } catch {
-      /* ignore */
-    }
-  }
-
   async function confirmSignOut() {
     setExitOpen(false);
     setOpen(false);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent(SIGNOUT_EVENT));
-    }
     // Limpa qualquer trava residual deixada pelos overlays do Radix
     // (Dialog + AlertDialog fechando em cascata podem deixar
     // pointer-events:none no body em alguns navegadores mobile).
@@ -135,26 +104,7 @@ export function SideMenu() {
       document.body.style.pointerEvents = "";
       document.body.removeAttribute("data-scroll-locked");
     }
-    // Encerra a sessão com timeout curto: sem rede o signOut remoto pode
-    // pendurar, mas precisamos garantir que a sessão local seja apagada
-    // ANTES de navegar. Caso contrário /auth vê a sessão viva e devolve
-    // o usuário para o app (bug do mapa do líder que ficava travado).
-    try {
-      await queryClient.cancelQueries();
-      queryClient.clear();
-      await Promise.race([
-        (async () => {
-          await supabase.removeAllChannels();
-          await supabase.auth.signOut({ scope: "local" });
-        })(),
-        new Promise((resolve) => setTimeout(resolve, SIGNOUT_TIMEOUT_MS)),
-      ]);
-    } catch {
-      /* ignore */
-    }
-    // Garante limpeza mesmo se o SDK falhou silenciosamente offline.
-    clearBrowserAuthStorage();
-    await clearSessionBackup().catch(() => undefined);
+    await signOutApp(queryClient);
 
     // Usa sempre o router. No Android/Capacitor, window.location.assign pode
     // trocar a URL sem desmontar o Leaflet, deixando apenas o mapa travado.
