@@ -53,7 +53,7 @@ function scheduleNextProbe(): void {
 }
 
 async function runProbe(): Promise<void> {
-  if (probing) return;
+  if (probing) return Promise.resolve();
   probing = true;
   try {
     const browserOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
@@ -154,7 +154,7 @@ export async function startSync(): Promise<void> {
  * the outbox. Resolves when both steps complete (or fail).
  */
 export async function manualSync(): Promise<void> {
-  await runProbe();
+  if (!probing) await runProbe();
   if (useSyncStore.getState().online) {
     await drainOutbox();
   }
