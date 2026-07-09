@@ -237,7 +237,7 @@ function LeaderPage() {
 
   if (isLeader.isLoading || isLeader.data === undefined) {
     return (
-      <AppShell title="Painel do Líder" showBack={false}>
+      <AppShell title="Painel do Líder" showBack={false} showSync={false}>
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -323,7 +323,7 @@ function LeaderPage() {
   const filteredComps = filterByScope(complements.data ?? []);
 
   return (
-    <AppShell title="Painel do Líder" right={<LeaderMeta />}>
+    <AppShell title="Painel do Líder" right={<LeaderMeta />} showSync={false}>
       <div className="mb-4">
         <label htmlFor="leader-team-scope" className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Equipe

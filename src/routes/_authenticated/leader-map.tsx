@@ -24,7 +24,7 @@ function LeaderMapPage() {
 
   if (isLeader.isLoading || isLeader.data === undefined) {
     return (
-      <AppShell title="Mapa" showBack={false}>
+      <AppShell title="Mapa" showBack={false} showSync={false}>
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -34,7 +34,7 @@ function LeaderMapPage() {
   if (isLeader.data === false) return null;
 
   return (
-    <AppShell title="Mapa" right={<LeaderMeta />}>
+    <AppShell title="Mapa" right={<LeaderMeta />} showSync={false}>
       <LeaderMapSection />
     </AppShell>
   );
