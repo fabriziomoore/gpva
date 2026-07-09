@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy } from "lucide-react";
@@ -94,6 +95,7 @@ export function SideMenu() {
   const [open, setOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   async function confirmSignOut() {
     setExitOpen(false);
     setOpen(false);
@@ -109,6 +111,8 @@ export function SideMenu() {
     // ANTES de navegar. Caso contrário /auth vê a sessão viva e devolve
     // o usuário para o app (bug do mapa do líder que ficava travado).
     try {
+      await queryClient.cancelQueries();
+      queryClient.clear();
       await Promise.race([
         supabase.auth.signOut({ scope: "local" }),
         new Promise((resolve) => setTimeout(resolve, 1500)),
