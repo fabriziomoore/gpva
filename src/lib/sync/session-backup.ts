@@ -55,6 +55,13 @@ export async function restoreSession(): Promise<void> {
   }
 }
 
+export async function clearSessionBackup(): Promise<void> {
+  if (!isNative()) return;
+  const p = await prefs();
+  if (!p) return;
+  await p.remove({ key: KEY });
+}
+
 export function installSessionMirror(): void {
   if (!isNative()) return;
   supabase.auth.onAuthStateChange(() => {
