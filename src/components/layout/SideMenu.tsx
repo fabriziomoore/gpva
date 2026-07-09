@@ -94,6 +94,11 @@ export function SideMenu() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  function requestSignOut() {
+    setOpen(false);
+    window.setTimeout(() => setExitOpen(true), 80);
+  }
+
   async function confirmSignOut() {
     setExitOpen(false);
     setOpen(false);
@@ -257,10 +262,7 @@ export function SideMenu() {
           </nav>
           <button
             type="button"
-            onClick={() => {
-              setOpen(false);
-              setExitOpen(true);
-            }}
+            onClick={requestSignOut}
             className="flex w-full items-center gap-3 border-t border-border bg-destructive px-5 py-4 text-left text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
           >
             <LogOut className="size-5" />
