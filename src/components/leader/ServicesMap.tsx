@@ -129,11 +129,12 @@ export function ServicesMap({
     const disposeMap = () => {
       setDisposedForSignOut(true);
       const map = mapRef.current;
-      if (!map) return;
-      try {
-        map.remove();
-      } catch {
-        /* ignore */
+      if (map) {
+        try {
+          map.remove();
+        } catch {
+          /* ignore */
+        }
       }
       resetLeafletContainer(containerRef.current);
       mapRef.current = null;
