@@ -36,10 +36,15 @@ export async function signUpTeam(teamName: string, password: string) {
   return data;
 }
 
-export async function signOut() {
+export function prepareLocalSignOut(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(SIGNOUT_EVENT));
   }
+  clearBrowserAuthStorage();
+}
+
+export async function signOut() {
+  prepareLocalSignOut();
 
   try {
     await Promise.race([
@@ -53,13 +58,13 @@ export async function signOut() {
     /* ignore: logout must still clear local auth state offline */
   }
 
-  clearBrowserAuthStorage();
   await clearSessionBackup().catch(() => undefined);
 }
 
 export async function signOutApp(queryClient?: QueryClient): Promise<void> {
+  prepareLocalSignOut();
   try {
-    await queryClient?.cancelQueries();
+    void queryClient?.cancelQueries();
     queryClient?.clear();
   } catch {
     /* ignore */

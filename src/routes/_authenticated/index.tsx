@@ -17,7 +17,7 @@ import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { signOutApp } from "@/lib/auth";
+import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
@@ -59,8 +59,9 @@ function HomePage() {
 
   async function confirmExit() {
     setExitOpen(false);
-    await signOutApp(queryClient);
+    prepareLocalSignOut();
     await navigate({ to: "/auth", replace: true });
+    void signOutApp(queryClient);
   }
 
   // Onboarding is handled by admin at team creation; no auto-redirect.

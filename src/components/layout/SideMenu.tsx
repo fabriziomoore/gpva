@@ -6,7 +6,7 @@ import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertT
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { signOutApp } from "@/lib/auth";
+import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
@@ -109,11 +109,12 @@ export function SideMenu() {
       document.body.style.pointerEvents = "";
       document.body.removeAttribute("data-scroll-locked");
     }
-    await signOutApp(queryClient);
+    prepareLocalSignOut();
 
     // Usa sempre o router. No Android/Capacitor, window.location.assign pode
     // trocar a URL sem desmontar o Leaflet, deixando apenas o mapa travado.
     await navigate({ to: "/auth", replace: true });
+    void signOutApp(queryClient);
   }
   const items = useMemo(
     () => (isLeader.data === true ? leaderItems : teamItems),
