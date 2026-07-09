@@ -15,7 +15,6 @@ let scheduled = false;
 export async function refreshPendingCount(): Promise<void> {
   try {
     const db = getLocalDB();
-    store.setLastError(null);
     const n = await db.outbox.count();
     useSyncStore.getState().setPending(n);
   } catch {
@@ -44,6 +43,7 @@ export async function drainOutbox(): Promise<void> {
   store.setPhase("syncing");
   try {
     const db = getLocalDB();
+    store.setLastError(null);
     // Process in deterministic order so FKs resolve: shifts → services → links → impacts.
     const order: OutboxRow["table"][] = [
       "expedientes",
