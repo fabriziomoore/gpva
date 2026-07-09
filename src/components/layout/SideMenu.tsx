@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
@@ -97,7 +97,6 @@ export function SideMenu() {
   const [open, setOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const navigate = useNavigate();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   function clearBrowserAuthStorage() {
@@ -159,7 +158,6 @@ export function SideMenu() {
 
     // Usa sempre o router. No Android/Capacitor, window.location.assign pode
     // trocar a URL sem desmontar o Leaflet, deixando apenas o mapa travado.
-    await router.invalidate().catch(() => undefined);
     await navigate({ to: "/auth", replace: true });
   }
   const items = useMemo(
