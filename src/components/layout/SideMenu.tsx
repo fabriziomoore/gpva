@@ -6,6 +6,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { supabase } from "@/integrations/supabase/client";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
+import { clearSessionBackup } from "@/lib/sync/session-backup";
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
@@ -18,6 +19,8 @@ type CapacitorWindow = Window & {
     isNativePlatform?: () => boolean;
   };
 };
+
+const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
 
 function isNativeRuntime(): boolean {
   if (typeof window === "undefined") return false;
@@ -119,18 +122,32 @@ export function SideMenu() {
         const keys: string[] = [];
         for (let i = 0; i < window.localStorage.length; i++) {
           const k = window.localStorage.key(i);
-          if (k && (k.startsWith("sb-") || k.includes("supabase.auth"))) keys.push(k);
+          if (
+            k &&
+            AUTH_STORAGE_PATTERNS.some((pattern) =>
+              pattern.endsWith("-") ? k.startsWith(pattern) : k.includes(pattern),
+            )
+          ) {
+            keys.push(k);
+          }
         }
         keys.forEach((k) => window.localStorage.removeItem(k));
+        window.sessionStorage.removeItem("gpva-admin-pw");
       } catch {
         /* ignore */
       }
     }
-    // Reload duro garante desmontagem do Leaflet e libera overlays presos.
-    if (typeof window !== "undefined") {
+    await clearSessionBackup().catch(() => undefined);
+
+    // No Android/Capacitor a rota é memory-history; trocar window.location para
+    // /auth pode deixar o Leaflet montado como única tela. Navegar pelo router
+    // desmonta o mapa e troca a tela de forma confiável.
+    if (isNativeRuntime()) {
+      navigate({ to: "/auth", replace: true });
+    } else if (typeof window !== "undefined") {
       window.location.assign("/auth");
     } else {
-      navigate({ to: "/auth" });
+      navigate({ to: "/auth", replace: true });
     }
   }
   const items = useMemo(
