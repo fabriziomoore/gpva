@@ -6,13 +6,15 @@ const config: CapacitorConfig = {
   webDir: "mobile/dist",
   bundledWebRuntime: false,
   server: {
-    // Permite que o WebView carregue estes domínios externos (iframe do ArcGIS).
+    // Permite que o WebView carregue os domínios externos usados pelo app
+    // nativo: ArcGIS/consulta, OAuth e backend em nuvem.
     allowNavigation: [
       "arcgis.aegea.com.br",
       "*.arcgis.com",
       "*.arcgisonline.com",
       "login.microsoftonline.com",
       "*.microsoftonline.com",
+      "*.supabase.co",
     ],
   },
   android: {

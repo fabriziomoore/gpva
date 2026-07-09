@@ -20,7 +20,7 @@ let syncRetryTimer: ReturnType<typeof setInterval> | null = null;
 // fica vermelha como padrão. O envio real é quem confirma se a nuvem aceitou.
 const ONLINE_INTERVAL_MS = 3_000;
 const OFFLINE_BACKOFF_MS = [1_500, 3_000, 5_000, 10_000] as const;
-const PROBE_TIMEOUT_MS = 2_000;
+const PROBE_TIMEOUT_MS = 5_000;
 const SYNC_RETRY_MS = 15_000;
 let offlineStep = 0;
 
