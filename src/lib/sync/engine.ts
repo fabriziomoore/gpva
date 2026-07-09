@@ -61,9 +61,10 @@ export async function drainOutbox(): Promise<void> {
           if (row.id != null) await db.outbox.delete(row.id);
           await markSynced(table, row.row_id);
         } catch (err) {
+          const message = toSyncErrorMessage(err);
           await db.outbox.update(row.id!, {
             tries: row.tries + 1,
-            last_error: err instanceof Error ? err.message : String(err),
+            last_error: message,
           });
           // Stop on first failure for this table to preserve order
           throw err;
@@ -72,7 +73,7 @@ export async function drainOutbox(): Promise<void> {
     }
     useSyncStore.getState().markSynced();
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toSyncErrorMessage(err);
     console.warn("[sync] drain failed", err);
     useSyncStore.getState().setLastError(message);
     useSyncStore.getState().setPhase("error");
@@ -83,6 +84,33 @@ export async function drainOutbox(): Promise<void> {
     running = false;
     await refreshPendingCount();
   }
+}
+
+function toSyncErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) return err.message;
+  if (typeof err === "string" && err.trim()) return err;
+  if (err && typeof err === "object") {
+    const e = err as {
+      message?: unknown;
+      code?: unknown;
+      details?: unknown;
+      hint?: unknown;
+      status?: unknown;
+      statusText?: unknown;
+    };
+    const parts = [e.message, e.code, e.details, e.hint, e.status, e.statusText]
+      .filter((v): v is string | number =>
+        (typeof v === "string" && v.trim().length > 0) || typeof v === "number",
+      )
+      .map(String);
+    if (parts.length) return parts.join(" · ");
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return "Erro desconhecido ao sincronizar";
+    }
+  }
+  return "Erro desconhecido ao sincronizar";
 }
 
 async function pushRow(row: OutboxRow): Promise<void> {
