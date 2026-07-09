@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -23,6 +23,20 @@ function coloredIcon(color: string) {
 
 const GREEN = coloredIcon("#16a34a");
 const RED = coloredIcon("#dc2626");
+
+type LeafletContainer = HTMLDivElement & {
+  _leaflet_id?: number | null;
+};
+
+let globalMapInstanceId = 0;
+
+function resetLeafletContainer(container: HTMLDivElement | null): void {
+  if (!container) return;
+  const leafletContainer = container as LeafletContainer;
+  leafletContainer._leaflet_id = null;
+  container.replaceChildren();
+  container.className = "relative z-0";
+}
 
 // Desloca pontos com coordenadas quase idênticas em um pequeno círculo,
 // para que sobreposições não escondam registros (ex.: 1 viável + 1 inviável
@@ -72,38 +86,60 @@ export function ServicesMap({
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const onDeleteRef = useRef(onDelete);
+  const [containerKey, setContainerKey] = useState(() => `leader-map-${++globalMapInstanceId}`);
+  const [disposedForSignOut, setDisposedForSignOut] = useState(false);
   onDeleteRef.current = onDelete;
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { zoomControl: true }).setView(
-      [-22.9192, -42.8186], // Maricá/RJ
-      12,
-    );
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-      maxZoom: 19,
-    }).addTo(map);
-    layerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
+    if (disposedForSignOut) return;
+    const container = containerRef.current;
+    if (!container || mapRef.current) return;
+    resetLeafletContainer(container);
+    try {
+      const map = L.map(container, { zoomControl: true }).setView(
+        [-22.9192, -42.8186], // Maricá/RJ
+        12,
+      );
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap",
+        maxZoom: 19,
+      }).addTo(map);
+      layerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+    } catch (error) {
+      resetLeafletContainer(container);
+      throw error;
+    }
     return () => {
-      map.remove();
+      const currentMap = mapRef.current;
+      if (currentMap) {
+        try {
+          currentMap.remove();
+        } catch {
+          /* ignore */
+        }
+      }
+      resetLeafletContainer(container);
       mapRef.current = null;
       layerRef.current = null;
     };
-  }, []);
+  }, [disposedForSignOut]);
 
   useEffect(() => {
     const disposeMap = () => {
+      setDisposedForSignOut(true);
       const map = mapRef.current;
-      if (!map) return;
-      try {
-        map.remove();
-      } catch {
-        /* ignore */
+      if (map) {
+        try {
+          map.remove();
+        } catch {
+          /* ignore */
+        }
       }
+      resetLeafletContainer(containerRef.current);
       mapRef.current = null;
       layerRef.current = null;
+      setContainerKey(`leader-map-${++globalMapInstanceId}`);
     };
     window.addEventListener("gpva:user-signout", disposeMap);
     return () => window.removeEventListener("gpva:user-signout", disposeMap);
@@ -165,7 +201,11 @@ export function ServicesMap({
 
   return (
     <div className={hideLegend ? "relative z-0" : "relative z-0 overflow-hidden rounded-xl border border-border"}>
-      <div ref={containerRef} className="relative z-0" style={{ height }} />
+      {disposedForSignOut ? (
+        <div className="relative z-0 bg-background" style={{ height }} />
+      ) : (
+        <div key={containerKey} ref={containerRef} className="relative z-0" style={{ height }} />
+      )}
       {!hideLegend && (
         <div className="flex items-center gap-4 border-t border-border bg-card px-3 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
