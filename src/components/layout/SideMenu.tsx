@@ -23,6 +23,7 @@ type CapacitorWindow = Window & {
 
 const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
 const SIGNOUT_EVENT = "gpva:user-signout";
+const SIGNOUT_TIMEOUT_MS = 1200;
 
 function isNativeRuntime(): boolean {
   if (typeof window === "undefined") return false;
@@ -142,8 +143,13 @@ export function SideMenu() {
     try {
       await queryClient.cancelQueries();
       queryClient.clear();
-      await supabase.removeAllChannels();
-      await supabase.auth.signOut({ scope: "local" });
+      await Promise.race([
+        (async () => {
+          await supabase.removeAllChannels();
+          await supabase.auth.signOut({ scope: "local" });
+        })(),
+        new Promise((resolve) => setTimeout(resolve, SIGNOUT_TIMEOUT_MS)),
+      ]);
     } catch {
       /* ignore */
     }
