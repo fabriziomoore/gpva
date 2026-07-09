@@ -20,17 +20,22 @@ async function loadCapacitor() {
   }
 }
 
-function isNative(): boolean {
+async function isNative(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
-  return !!w.Capacitor?.isNativePlatform?.();
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    return Capacitor.isNativePlatform();
+  } catch {
+    const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
+    return !!w.Capacitor?.isNativePlatform?.();
+  }
 }
 
 export async function initNetwork(): Promise<void> {
   if (initialized || typeof window === "undefined") return;
   initialized = true;
 
-  if (isNative()) {
+  if (await isNative()) {
     const Network = await loadCapacitor();
     if (Network) {
       const status = await Network.getStatus();
