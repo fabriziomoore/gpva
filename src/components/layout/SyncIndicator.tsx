@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSyncStore } from "@/lib/sync/store";
+import { manualSync } from "@/lib/sync/init";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 export function SyncIndicator() {
   const { online, phase, pending, lastSyncAt } = useSyncStore();
   const [justCompleted, setJustCompleted] = useState(false);
+  const [manualRunning, setManualRunning] = useState(false);
   const prevPhase = useRef(phase);
 
   // Detect syncing → idle transition and play a single confirmation pass.
@@ -127,6 +129,17 @@ export function SyncIndicator() {
         <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
           A sincronização ocorre automaticamente em segundo plano.
         </p>
+        <button
+          type="button"
+          disabled={manualRunning || (!online && typeof navigator !== "undefined" && navigator.onLine === false)}
+          onClick={() => {
+            setManualRunning(true);
+            void manualSync().finally(() => setManualRunning(false));
+          }}
+          className="mt-3 h-9 w-full rounded-lg bg-primary text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {manualRunning ? "Enviando…" : "Enviar agora"}
+        </button>
       </PopoverContent>
     </Popover>
   );
