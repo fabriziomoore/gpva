@@ -120,18 +120,54 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
   const active = await getActiveForm();
   const params = buildParams(input, active.entries);
 
-  // No app nativo (Capacitor Android/iOS) `window.open` abre o navegador
-  // externo em about:blank, e como o document fica em outro processo o form
-  // POST injetado não é executado — o usuário vê uma tela preta sem URL.
-  // Solução: abrir a viewform já preenchida via `?entry.*=...` em um
-  // in-app browser; o usuário toca em "Enviar" e vê a tela de confirmação
-  // para o print manual.
+  // No app nativo (Capacitor Android/iOS) o `window.open` cai no navegador
+  // externo em about:blank e o POST injetado não roda (tela preta sem URL).
+  // Solução: abrir dentro de um WebView do próprio app apontando para a
+  // rota pública `/api/public/forms-submit` hospedada no gpva.lovable.app.
+  // Essa página auto-envia o POST e o Google renderiza a tela "Sua
+  // resposta foi registrada" já dentro do in-app browser — o usuário só
+  // vê uma toolbar do app e a confirmação, sem etapa manual.
   try {
     const { Capacitor } = await import("@capacitor/core");
     if (Capacitor.isNativePlatform()) {
-      const url = `https://docs.google.com/forms/d/e/${active.formId}/viewform?usp=pp_url&${params.toString()}`;
-      const { Browser } = await import("@capacitor/browser");
-      await Browser.open({ url, presentationStyle: "fullscreen" });
+      const proxyParams = new URLSearchParams(params);
+      proxyParams.set("formId", active.formId);
+      const url = `https://gpva.lovable.app/api/public/forms-submit?${proxyParams.toString()}`;
+      const {
+        InAppBrowser,
+        ToolbarPosition,
+        AndroidAnimation,
+        iOSAnimation,
+        iOSViewStyle,
+      } = await import("@capacitor/inappbrowser");
+      await InAppBrowser.openInWebView({
+        url,
+        options: {
+          showURL: false,
+          showToolbar: true,
+          clearCache: true,
+          clearSessionCache: true,
+          mediaPlaybackRequiresUserAction: true,
+          closeButtonText: "Fechar",
+          toolbarPosition: ToolbarPosition.TOP,
+          showNavigationButtons: false,
+          leftToRight: false,
+          android: {
+            allowZoom: false,
+            hardwareBack: true,
+            pauseMedia: true,
+          },
+          iOS: {
+            allowOverScroll: false,
+            enableViewportScale: false,
+            allowInLineMediaPlayback: false,
+            surpressIncrementalRendering: false,
+            viewStyle: iOSViewStyle.FULL_SCREEN,
+            animationEffect: iOSAnimation.COVER_VERTICAL,
+            allowsBackForwardNavigationGestures: false,
+          },
+        },
+      });
       return true;
     }
   } catch {
