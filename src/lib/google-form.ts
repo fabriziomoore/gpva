@@ -120,23 +120,17 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
   const active = await getActiveForm();
   const params = buildParams(input, active.entries);
 
-  // No app nativo (Capacitor Android/iOS) o `window.open` cai no navegador
-  // externo em about:blank e o POST injetado não roda (tela preta sem URL).
-  // Solução: abrir dentro de um WebView do próprio app apontando para a
-  // rota pública `/api/public/forms-submit` hospedada no gpva.lovable.app.
-  // Essa página auto-envia o POST e o Google renderiza a tela "Sua
-  // resposta foi registrada" já dentro do in-app browser — o usuário só
-  // vê uma toolbar do app e a confirmação, sem etapa manual.
+  // No app nativo abrimos a viewform pré-preenchida dentro de um WebView
+  // do próprio app (@capacitor/inappbrowser) com toolbar customizada. O
+  // usuário confere os dados e toca em "Enviar" — a tela "Sua resposta
+  // foi registrada" aparece dentro do mesmo WebView, sem sair do app.
   try {
     const { Capacitor } = await import("@capacitor/core");
     if (Capacitor.isNativePlatform()) {
-      const proxyParams = new URLSearchParams(params);
-      proxyParams.set("formId", active.formId);
-      const url = `https://gpva.lovable.app/api/public/forms-submit?${proxyParams.toString()}`;
+      const url = `https://docs.google.com/forms/d/e/${active.formId}/viewform?usp=pp_url&${params.toString()}`;
       const {
         InAppBrowser,
         ToolbarPosition,
-        AndroidAnimation,
         iOSAnimation,
         iOSViewStyle,
       } = await import("@capacitor/inappbrowser");
@@ -145,21 +139,21 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
         options: {
           showURL: false,
           showToolbar: true,
-          clearCache: true,
-          clearSessionCache: true,
+          clearCache: false,
+          clearSessionCache: false,
           mediaPlaybackRequiresUserAction: true,
           closeButtonText: "Fechar",
           toolbarPosition: ToolbarPosition.TOP,
           showNavigationButtons: false,
           leftToRight: false,
           android: {
-            allowZoom: false,
+            allowZoom: true,
             hardwareBack: true,
             pauseMedia: true,
           },
           iOS: {
             allowOverScroll: false,
-            enableViewportScale: false,
+            enableViewportScale: true,
             allowInLineMediaPlayback: false,
             surpressIncrementalRendering: false,
             viewStyle: iOSViewStyle.FULL_SCREEN,
