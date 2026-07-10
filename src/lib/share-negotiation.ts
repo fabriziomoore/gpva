@@ -163,6 +163,35 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
     /* alguns navegadores exigem gesto do usuário */
   }
 
+  // No app nativo (Capacitor), o WebView não implementa o compartilhamento
+  // de arquivos via `navigator.share({files})` — o fallback acabava enviando
+  // só texto/URL e o WhatsApp mostrava a prévia azul do "Google Formulários"
+  // em vez da imagem gerada. Salvamos o PNG em cache e usamos o plugin
+  // `@capacitor/share`, que abre o seletor nativo com o arquivo anexado.
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (Capacitor.isNativePlatform()) {
+      const { Filesystem, Directory } = await import("@capacitor/filesystem");
+      const { Share } = await import("@capacitor/share");
+      const base64 = await blobToBase64(blob);
+      const fileName = `negociacao-${input.matricula}-${Date.now()}.png`;
+      const written = await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Cache,
+      });
+      await Share.share({
+        title: "Descritivo negociação",
+        files: [written.uri],
+        dialogTitle: "Compartilhar descritivo",
+      });
+      return true;
+    }
+  } catch (err) {
+    console.warn("[shareNegotiation] native share failed", err);
+    return false;
+  }
+
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare && nav.canShare({ files: [file] })) {
     try {
@@ -183,4 +212,17 @@ export async function shareNegotiation(input: NegotiationSubmission): Promise<bo
   window.open(`https://wa.me/?text=${encodeURIComponent(caption)}`, "_blank");
 
   return true;
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(r.error ?? new Error("Falha ao ler blob"));
+    r.onload = () => {
+      const s = String(r.result ?? "");
+      const i = s.indexOf(",");
+      resolve(i >= 0 ? s.slice(i + 1) : s);
+    };
+    r.readAsDataURL(blob);
+  });
 }
