@@ -119,6 +119,25 @@ function buildParams(input: NegotiationSubmission, ENTRIES: EntryIds): URLSearch
 export async function submitNegotiationToGoogleForm(input: NegotiationSubmission): Promise<boolean> {
   const active = await getActiveForm();
   const params = buildParams(input, active.entries);
+
+  // No app nativo (Capacitor Android/iOS) `window.open` abre o navegador
+  // externo em about:blank, e como o document fica em outro processo o form
+  // POST injetado não é executado — o usuário vê uma tela preta sem URL.
+  // Solução: abrir a viewform já preenchida via `?entry.*=...` em um
+  // in-app browser; o usuário toca em "Enviar" e vê a tela de confirmação
+  // para o print manual.
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (Capacitor.isNativePlatform()) {
+      const url = `https://docs.google.com/forms/d/e/${active.formId}/viewform?usp=pp_url&${params.toString()}`;
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url, presentationStyle: "fullscreen" });
+      return true;
+    }
+  } catch {
+    /* fallback para o fluxo web abaixo */
+  }
+
   const win = window.open("about:blank", "_blank");
   if (!win) return false;
 
