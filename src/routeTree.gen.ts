@@ -22,7 +22,6 @@ import { Route as AuthenticatedLeaderRankingRouteImport } from './routes/_authen
 import { Route as AuthenticatedLeaderMapRouteImport } from './routes/_authenticated/leader-map'
 import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
 import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
-import { Route as ApiPublicFormsSubmitRouteImport } from './routes/api/public/forms-submit'
 import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift_.$id.report'
 
 const AuthRoute = AuthRouteImport.update({
@@ -92,11 +91,6 @@ const AuthenticatedLeaderRoute = AuthenticatedLeaderRouteImport.update({
   path: '/leader',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicFormsSubmitRoute = ApiPublicFormsSubmitRouteImport.update({
-  id: '/api/public/forms-submit',
-  path: '/api/public/forms-submit',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedShiftIdReportRoute =
   AuthenticatedShiftIdReportRouteImport.update({
     id: '/shift_/$id/report',
@@ -117,7 +111,6 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
-  '/api/public/forms-submit': typeof ApiPublicFormsSubmitRoute
   '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRoutesByTo {
@@ -133,7 +126,6 @@ export interface FileRoutesByTo {
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
   '/': typeof AuthenticatedIndexRoute
-  '/api/public/forms-submit': typeof ApiPublicFormsSubmitRoute
   '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRoutesById {
@@ -151,7 +143,6 @@ export interface FileRoutesById {
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/variable': typeof AuthenticatedVariableRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/api/public/forms-submit': typeof ApiPublicFormsSubmitRoute
   '/_authenticated/shift_/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRouteTypes {
@@ -169,7 +160,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shift'
     | '/variable'
-    | '/api/public/forms-submit'
     | '/shift/$id/report'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -185,7 +175,6 @@ export interface FileRouteTypes {
     | '/shift'
     | '/variable'
     | '/'
-    | '/api/public/forms-submit'
     | '/shift/$id/report'
   id:
     | '__root__'
@@ -202,7 +191,6 @@ export interface FileRouteTypes {
     | '/_authenticated/shift'
     | '/_authenticated/variable'
     | '/_authenticated/'
-    | '/api/public/forms-submit'
     | '/_authenticated/shift_/$id/report'
   fileRoutesById: FileRoutesById
 }
@@ -210,7 +198,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
-  ApiPublicFormsSubmitRoute: typeof ApiPublicFormsSubmitRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -306,13 +293,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeaderRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/forms-submit': {
-      id: '/api/public/forms-submit'
-      path: '/api/public/forms-submit'
-      fullPath: '/api/public/forms-submit'
-      preLoaderRoute: typeof ApiPublicFormsSubmitRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/shift_/$id/report': {
       id: '/_authenticated/shift_/$id/report'
       path: '/shift/$id/report'
@@ -358,7 +338,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
-  ApiPublicFormsSubmitRoute: ApiPublicFormsSubmitRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
