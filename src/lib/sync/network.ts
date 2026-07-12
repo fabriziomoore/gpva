@@ -48,24 +48,43 @@ let pingPromise: Promise<boolean> | null = null;
 
 async function loadCapacitor() {
   try {
-    // Dynamic import so the package is only resolved when present (it is, but
-    // this keeps SSR safe).
+    // Prefer the already-registered global (Capacitor injects plugins on
+    // native at boot). Avoids relying on async chunk resolution under
+    // file:// which can hang silently on some Android WebView builds.
+    const w = window as unknown as {
+      Capacitor?: { Plugins?: { Network?: CapacitorNetworkApi } };
+    };
+    const fromGlobal = w.Capacitor?.Plugins?.Network;
+    if (fromGlobal) {
+      netLog("loadCapacitor", "from-global", { has: true });
+      return fromGlobal;
+    }
     const mod = await import("@capacitor/network");
-    return mod.Network as CapacitorNetworkApi;
-  } catch {
+    netLog("loadCapacitor", "from-dynamic-import", { has: !!mod?.Network });
+    return (mod.Network as CapacitorNetworkApi) ?? null;
+  } catch (err) {
+    netLog("loadCapacitor", "error", String(err));
     return null;
   }
 }
 
-async function isNative(): Promise<boolean> {
+function isNative(): boolean {
   if (typeof window === "undefined") return false;
-  try {
-    const { Capacitor } = await import("@capacitor/core");
-    return Capacitor.isNativePlatform();
-  } catch {
-    const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
-    return !!w.Capacitor?.isNativePlatform?.();
-  }
+  // Synchronous detection via the Capacitor global (present on native at
+  // boot; absent on the web). Avoids awaiting a dynamic import that can
+  // hang under file:// on Android.
+  const w = window as unknown as {
+    Capacitor?: {
+      isNativePlatform?: () => boolean;
+      getPlatform?: () => string;
+      platform?: string;
+    };
+  };
+  const cap = w.Capacitor;
+  if (!cap) return false;
+  if (typeof cap.isNativePlatform === "function") return !!cap.isNativePlatform();
+  const platform = cap.getPlatform?.() ?? cap.platform;
+  return platform === "android" || platform === "ios";
 }
 
 export async function initNetwork(): Promise<void> {
@@ -78,12 +97,12 @@ export async function initNetwork(): Promise<void> {
   netLog("initNetwork", "start");
 
   // 1) Descobre estado inicial do dispositivo (Capacitor ou navegador).
-  const native = await isNative();
+  const native = isNative();
   netLog("initNetwork", "isNative", { native });
+  useNetDiag.getState().setIsNative(native);
   if (native) {
     capacitorNetwork = await loadCapacitor();
     netLog("initNetwork", "loadCapacitor", { loaded: !!capacitorNetwork });
-    useNetDiag.getState().setIsNative(true);
     useNetDiag.getState().setPluginLoaded(!!capacitorNetwork);
     if (capacitorNetwork) {
       try {
@@ -122,7 +141,6 @@ export async function initNetwork(): Promise<void> {
     }
   } else {
     netLog("initNetwork", "not native, navigator only", { onLine: navigator?.onLine });
-    useNetDiag.getState().setIsNative(false);
     useNetDiag.getState().setPluginLoaded(false);
     setDeviceOnline(navigator?.onLine ?? true);
   }
