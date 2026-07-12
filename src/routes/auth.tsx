@@ -12,8 +12,7 @@ import {
   offlineErrorMessage,
   type OfflineLoginReason,
 } from "@/lib/offline-auth";
-import { readStoredAuthSession } from "@/lib/sync/session-backup";
-import { restoreSession } from "@/lib/sync/session-backup";
+import { readStoredAuthSession, restoreSession } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.webp";
