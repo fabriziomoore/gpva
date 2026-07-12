@@ -13,6 +13,7 @@
 
 import { useSyncStore } from "./store";
 import { netLog, useNetDiag } from "./diagnostics";
+import { Network as CapNetwork } from "@capacitor/network";
 
 export type NetworkStatus = {
   /** @deprecated use deviceOnline; mantido por compat. */
@@ -59,9 +60,8 @@ async function loadCapacitor() {
       netLog("loadCapacitor", "from-global", { has: true });
       return fromGlobal;
     }
-    const mod = await import("@capacitor/network");
-    netLog("loadCapacitor", "from-dynamic-import", { has: !!mod?.Network });
-    return (mod.Network as CapacitorNetworkApi) ?? null;
+    netLog("loadCapacitor", "from-static-import", { has: !!CapNetwork });
+    return (CapNetwork as unknown as CapacitorNetworkApi) ?? null;
   } catch (err) {
     netLog("loadCapacitor", "error", String(err));
     return null;

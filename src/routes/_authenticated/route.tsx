@@ -5,7 +5,6 @@ import { readStoredAuthSession } from "@/lib/sync/session-backup";
 import { hasValidOfflineUnlock } from "@/lib/offline-auth";
 
 const AUTH_ROUTE_TIMEOUT_MS = 800;
-const OFFLINE_UNLOCK_TIMEOUT_MS = 1_500;
 
 function bootLog(step: string, extra?: unknown): void {
   try {
@@ -19,17 +18,6 @@ function withAuthRouteTimeout<T>(promise: PromiseLike<T>): Promise<T | null> {
   return Promise.race([
     promise,
     new Promise<null>((resolve) => window.setTimeout(() => resolve(null), AUTH_ROUTE_TIMEOUT_MS)),
-  ]);
-}
-
-function withOfflineUnlockTimeout(promise: PromiseLike<boolean>): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(promise);
-  return Promise.race<boolean>([
-    Promise.resolve(promise),
-    new Promise<boolean>((resolve) => window.setTimeout(() => {
-      bootLog("hasValidOfflineUnlock TIMEOUT — assuming false");
-      resolve(false);
-    }, OFFLINE_UNLOCK_TIMEOUT_MS)),
   ]);
 }
 
@@ -50,7 +38,7 @@ export const Route = createFileRoute("/_authenticated")({
     //    Supabase — a revalidação online ocorre em background quando a
     //    Internet retornar.
     bootLog("beforeLoad:hasValidOfflineUnlock:awaiting");
-    const offlineOk = await withOfflineUnlockTimeout(hasValidOfflineUnlock());
+    const offlineOk = await hasValidOfflineUnlock();
     bootLog("beforeLoad:hasValidOfflineUnlock:resolved", { offlineOk });
     if (offlineOk) {
       void verifyActiveSession();
