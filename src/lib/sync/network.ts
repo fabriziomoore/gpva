@@ -1,6 +1,8 @@
 // Thin wrapper around @capacitor/network with a browser fallback so the same
 // API works in the Vite preview and in the native Capacitor WebView.
 
+import { useSyncStore } from "./store";
+
 export type NetworkStatus = { connected: boolean };
 
 type Listener = (status: NetworkStatus) => void;
@@ -142,15 +144,30 @@ export function onNetworkChange(fn: Listener): () => void {
 
 function emit(s: NetworkStatus) {
   lastStatus = s;
+  applyStatusToSyncStore(s.connected);
   listeners.forEach((l) => l(s));
 }
 
 function emitIfChanged(s: NetworkStatus): void {
-  if (s.connected === lastStatus.connected) {
+  const storeOnline = useSyncStore.getState().online;
+  const shouldNotify = s.connected !== lastStatus.connected || s.connected !== storeOnline;
+  if (!shouldNotify) {
     lastStatus = s;
+    applyStatusToSyncStore(s.connected);
     return;
   }
   emit(s);
+}
+
+function applyStatusToSyncStore(connected: boolean): void {
+  const store = useSyncStore.getState();
+  store.setOnline(connected);
+  if (connected) {
+    store.setLastError(null);
+    if (store.phase === "error") store.setPhase("idle");
+    return;
+  }
+  if (store.phase === "syncing") store.setPhase("idle");
 }
 
 async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
