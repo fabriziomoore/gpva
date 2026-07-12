@@ -1,7 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { claimCurrentSession } from "@/lib/session-guard";
 import { clearSessionBackup } from "@/lib/sync/session-backup";
-import { getRemembered } from "@/lib/remember-access";
+import {
+  saveCredentialFromOnlineLogin,
+  clearOfflineUnlock,
+} from "@/lib/offline-auth";
 import type { QueryClient } from "@tanstack/react-query";
 
 const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
@@ -23,6 +26,9 @@ export async function signInTeam(teamName: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   await claimCurrentSession();
+  // Grava credencial local automaticamente para viabilizar login offline
+  // permanente após este primeiro acesso online.
+  await saveCredentialFromOnlineLogin(teamName, password).catch(() => undefined);
   return data;
 }
 
@@ -59,12 +65,12 @@ export async function signOut() {
     /* ignore: logout must still clear local auth state offline */
   }
 
-  // Preserve the offline session backup when "Lembrar acesso" is active,
-  // so the user can log in offline later without a network round-trip.
-  const remembered = await getRemembered().catch(() => null);
-  if (!remembered) {
-    await clearSessionBackup().catch(() => undefined);
-  }
+  // NÃO limpa a credencial offline nem o backup da sessão — o próximo
+  // acesso pode ser feito offline com a mesma senha (dentro da janela de
+  // 30 dias). Apenas invalida o "unlock" ativo para forçar reentrada com
+  // senha.
+  await clearOfflineUnlock().catch(() => undefined);
+  void clearSessionBackup; // referenciado apenas para uso condicional futuro
 }
 
 export async function signOutApp(queryClient?: QueryClient): Promise<void> {
