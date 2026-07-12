@@ -33,7 +33,9 @@ export async function startSync(): Promise<void> {
   if (started || typeof window === "undefined") return;
   started = true;
 
+  console.log("[BOOT][sync] 3.1 initNetwork:start");
   await initNetwork();
+  console.log("[BOOT][sync] 3.1 initNetwork:done");
 
   // Assina o store: é o único caminho de reação a conectividade.
   let prev = {
@@ -74,9 +76,15 @@ export async function startSync(): Promise<void> {
     /* ignore */
   }
 
+  console.log("[BOOT][sync] 3.2 restoreSession:start");
   await restoreSession();
+  console.log("[BOOT][sync] 3.2 restoreSession:done");
+  console.log("[BOOT][sync] 3.3 installSessionMirror:start");
   installSessionMirror();
+  console.log("[BOOT][sync] 3.3 installSessionMirror:done");
+  console.log("[BOOT][sync] 3.4 refreshPendingCount:start");
   await refreshPendingCount();
+  console.log("[BOOT][sync] 3.4 refreshPendingCount:done");
 
   // Foreground returns are the moment the user actually cares — refresh now.
   if (typeof document !== "undefined") {

@@ -140,10 +140,34 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    void startSync();
-    startSessionGuard();
-    void requestBootPermissions();
-    registerPWA();
+    console.log("[BOOT] 1. App iniciado — RootComponent mounted");
+    void (async () => {
+      try {
+        console.log("[BOOT] 2. requestBootPermissions:start (Capacitor)");
+        await requestBootPermissions();
+        console.log("[BOOT] 2. requestBootPermissions:done");
+      } catch (e) { console.warn("[BOOT] 2. requestBootPermissions:error", e); }
+
+      try {
+        console.log("[BOOT] 3. startSync:start (NetworkService + Sync + OfflineAuth)");
+        await startSync();
+        console.log("[BOOT] 3. startSync:done");
+      } catch (e) { console.warn("[BOOT] 3. startSync:error", e); }
+
+      try {
+        console.log("[BOOT] 4. startSessionGuard:start (Supabase session)");
+        startSessionGuard();
+        console.log("[BOOT] 4. startSessionGuard:done");
+      } catch (e) { console.warn("[BOOT] 4. startSessionGuard:error", e); }
+
+      try {
+        console.log("[BOOT] 5. registerPWA:start");
+        registerPWA();
+        console.log("[BOOT] 5. registerPWA:done");
+      } catch (e) { console.warn("[BOOT] 5. registerPWA:error", e); }
+
+      console.log("[BOOT] 6. Bootstrap sequence complete — router should be free");
+    })();
   }, []);
 
   return (
