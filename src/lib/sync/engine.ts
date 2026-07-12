@@ -100,7 +100,7 @@ export async function drainOutbox(): Promise<void> {
 }
 
 function isReachabilityError(err: unknown): boolean {
-  if (err instanceof DOMException && err.name === "AbortError") return true;
+  if (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError") return true;
   const message = toSyncErrorMessage(err).toLowerCase();
   return (
     message.includes("failed to fetch") ||
