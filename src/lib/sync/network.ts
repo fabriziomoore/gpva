@@ -131,16 +131,3 @@ async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
 
   return { connected: true };
 }
-  try {
-    const res = await fetch(`${base}/auth/v1/health?_=${Date.now()}`, {
-      method: "GET",
-      cache: "no-store",
-      signal: ctrl.signal,
-    });
-    return res.ok || res.status === 401 || res.status === 404;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(t);
-  }
-}
