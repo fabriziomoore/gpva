@@ -41,71 +41,23 @@ export type OfflineLoginResult =
 
 // ---- Storage (Capacitor Preferences apenas) --------------------------------
 
-type PreferencesLike = {
-  get(o: { key: string }): Promise<{ value: string | null }>;
-  set(o: { key: string; value: string }): Promise<void>;
-  remove(o: { key: string }): Promise<void>;
-};
-
-let prefsPromise: Promise<PreferencesLike | null> | null = null;
-
-const PREFS_OP_TIMEOUT_MS = 1_500;
-
-function bootLog(step: string, extra?: unknown): void {
-  try {
-    // eslint-disable-next-line no-console
-    console.log(`[BOOT][offline-auth] ${step}`, extra ?? "");
-  } catch { /* ignore */ }
-}
-
-function withPrefsTimeout<T>(op: string, promise: PromiseLike<T>): Promise<T | null> {
-  if (typeof window === "undefined") return Promise.resolve(promise);
-  return Promise.race<T | null>([
-    Promise.resolve(promise),
-    new Promise<null>((resolve) => window.setTimeout(() => {
-      bootLog(`prefs.${op} TIMEOUT`);
-      resolve(null);
-    }, PREFS_OP_TIMEOUT_MS)),
-  ]);
-}
-
-function loadPreferences(): Promise<PreferencesLike | null> {
-  if (prefsPromise) return prefsPromise;
-  prefsPromise = (async () => {
-    bootLog("loadPreferences:start");
-    try {
-      const mod = await import("@capacitor/preferences");
-      bootLog("loadPreferences:imported", { has: !!mod?.Preferences });
-      return (mod.Preferences ?? null) as PreferencesLike | null;
-    } catch (err) {
-      bootLog("loadPreferences:error", String(err));
-      return null;
-    }
-  })();
-  return prefsPromise;
-}
+import { Preferences } from "@capacitor/preferences";
 
 async function prefsGet(key: string): Promise<string | null> {
-  const p = await withPrefsTimeout("loadPreferences", loadPreferences());
-  if (!p) return null;
   try {
-    const result = await withPrefsTimeout(`get:${key}`, p.get({ key }));
-    return result?.value ?? null;
+    const { value } = await Preferences.get({ key });
+    return value ?? null;
   } catch {
     return null;
   }
 }
 
 async function prefsSet(key: string, value: string): Promise<void> {
-  const p = await withPrefsTimeout("loadPreferences", loadPreferences());
-  if (!p) return;
-  try { await withPrefsTimeout(`set:${key}`, p.set({ key, value })); } catch { /* ignore */ }
+  try { await Preferences.set({ key, value }); } catch { /* ignore */ }
 }
 
 async function prefsRemove(key: string): Promise<void> {
-  const p = await withPrefsTimeout("loadPreferences", loadPreferences());
-  if (!p) return;
-  try { await withPrefsTimeout(`remove:${key}`, p.remove({ key })); } catch { /* ignore */ }
+  try { await Preferences.remove({ key }); } catch { /* ignore */ }
 }
 
 // ---- Crypto helpers --------------------------------------------------------
