@@ -11,8 +11,14 @@ let syncRetryTimer: ReturnType<typeof setInterval> | null = null;
 const SYNC_RETRY_MS = 15_000;
 
 function applyNetworkStatus(connected: boolean): void {
-  useSyncStore.getState().setOnline(connected);
-  if (!connected) return;
+  const store = useSyncStore.getState();
+  store.setOnline(connected);
+  if (!connected) {
+    if (store.phase === "syncing") store.setPhase("idle");
+    return;
+  }
+  store.setLastError(null);
+  if (store.phase === "error") store.setPhase("idle");
   scheduleSync();
   void pullRemote();
   void warmCatalogs();

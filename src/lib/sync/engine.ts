@@ -8,6 +8,7 @@ import {
   type LocalShiftImpact,
 } from "@/lib/db/local-db";
 import { useSyncStore } from "./store";
+import { reportDatabaseReachable, reportDatabaseUnreachable } from "./network";
 
 let running = false;
 let scheduled = false;
@@ -34,7 +35,7 @@ export function scheduleSync(): void {
 export async function drainOutbox(): Promise<void> {
   if (running) return;
   if (typeof window === "undefined") return;
-  if (!useSyncStore.getState().online && typeof navigator !== "undefined" && navigator.onLine === false) {
+  if (!useSyncStore.getState().online) {
     await refreshPendingCount();
     return;
   }
@@ -67,6 +68,7 @@ export async function drainOutbox(): Promise<void> {
       for (const row of rows) {
         try {
           await pushRow(row);
+          markDatabaseReachable();
           if (row.id != null) await db.outbox.delete(row.id);
           await markSynced(table, row.row_id);
         } catch (err) {
@@ -80,19 +82,41 @@ export async function drainOutbox(): Promise<void> {
         }
       }
     }
+    markDatabaseReachable();
     useSyncStore.getState().markSynced();
   } catch (err) {
     const message = toSyncErrorMessage(err);
     console.warn("[sync] drain failed", err);
     useSyncStore.getState().setLastError(message);
     useSyncStore.getState().setPhase("error");
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    if (isReachabilityError(err) || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      reportDatabaseUnreachable();
       useSyncStore.getState().setOnline(false);
     }
   } finally {
     running = false;
     await refreshPendingCount();
   }
+}
+
+function markDatabaseReachable(): void {
+  const store = useSyncStore.getState();
+  store.setOnline(true);
+  store.setLastError(null);
+  reportDatabaseReachable();
+}
+
+function isReachabilityError(err: unknown): boolean {
+  if (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError") return true;
+  const message = toSyncErrorMessage(err).toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("network error") ||
+    message.includes("load failed") ||
+    message.includes("the internet connection appears to be offline") ||
+    message.includes("consulta excedeu o tempo limite")
+  );
 }
 
 function toSyncErrorMessage(err: unknown): string {
