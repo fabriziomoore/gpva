@@ -94,16 +94,16 @@ export async function backupSession(): Promise<void> {
   }
 }
 
-export async function restoreSession(opts: { force?: boolean } = {}): Promise<void> {
-  if (!isNative()) return;
-  if (!opts.force && hasForcedSignOut()) return;
+export async function restoreSession(opts: { force?: boolean } = {}): Promise<boolean> {
+  if (!isNative()) return false;
+  if (!opts.force && hasForcedSignOut()) return false;
   // Only restore when no local session is present (e.g. WebView storage wiped).
   const current = await withTimeout(supabase.auth.getSession());
-  if (current?.data.session) return;
+  if (current?.data.session) return true;
   const p = await prefs();
-  if (!p) return;
+  if (!p) return false;
   const { value } = await p.get({ key: KEY });
-  if (!value) return;
+  if (!value) return false;
   try {
     const s = JSON.parse(value) as StoredSession;
     if (s.access_token && s.refresh_token) {
@@ -113,15 +113,17 @@ export async function restoreSession(opts: { force?: boolean } = {}): Promise<vo
           refresh_token: s.refresh_token,
         }),
       );
-      if (!restored?.data.session) writeSessionDirectly(s);
+      if (restored?.data.session) return true;
+      return writeSessionDirectly(s);
     }
   } catch {
     try {
-      writeSessionDirectly(JSON.parse(value) as StoredSession);
+      return writeSessionDirectly(JSON.parse(value) as StoredSession);
     } catch {
       /* corrupt cache — ignore */
     }
   }
+  return false;
 }
 
 export async function clearSessionBackup(): Promise<void> {
