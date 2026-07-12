@@ -1617,7 +1617,7 @@ function AdminSideMenu({
               <X className="size-5" />
             </Dialog.Close>
           </div>
-          <nav className="min-h-0 flex-1 overflow-y-auto px-2">
+          <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ul className="space-y-1">
               <li>
                 <button

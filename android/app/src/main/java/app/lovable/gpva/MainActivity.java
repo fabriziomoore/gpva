@@ -3,6 +3,7 @@ package app.lovable.gpva;
 import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.WebSettings;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -15,9 +16,14 @@ public class MainActivity extends BridgeActivity {
         cookieManager.setAcceptCookie(true);
 
         if (getBridge() != null && getBridge().getWebView() != null) {
-            cookieManager.setAcceptThirdPartyCookies(getBridge().getWebView(), true);
-            getBridge().getWebView().getSettings().setDomStorageEnabled(true);
-            getBridge().getWebView().getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+            WebView webView = getBridge().getWebView();
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+            webView.getSettings().setDomStorageEnabled(true);
+            webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+            webView.setVerticalScrollBarEnabled(false);
+            webView.setHorizontalScrollBarEnabled(false);
+            webView.setScrollbarFadingEnabled(false);
+            webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
         }
     }
 }

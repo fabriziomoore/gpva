@@ -194,9 +194,17 @@ body,
 * {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
+  scrollbar-gutter: auto !important;
+}
+html,
+body,
+#root {
+  overflow-x: hidden !important;
+  overscroll-behavior: none !important;
 }
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
+#root::-webkit-scrollbar,
 *::-webkit-scrollbar,
 *::-webkit-scrollbar-thumb,
 *::-webkit-scrollbar-track,
