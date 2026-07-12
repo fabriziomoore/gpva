@@ -34,7 +34,7 @@ function LeaderMapPage() {
   if (isLeader.data === false) return null;
 
   return (
-    <AppShell title="Mapa" right={<LeaderMeta />} showSync={false}>
+    <AppShell title="Mapa" right={<LeaderMeta />} showSync={false} wide>
       <LeaderMapSection />
     </AppShell>
   );

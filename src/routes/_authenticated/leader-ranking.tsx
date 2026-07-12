@@ -34,7 +34,7 @@ function LeaderRankingPage() {
   if (isLeader.data === false) return null;
 
   return (
-    <AppShell title="Ranking & Perfis" right={<LeaderMeta />} showSync={false}>
+    <AppShell title="Ranking & Perfis" right={<LeaderMeta />} showSync={false} wide>
       <LeaderRankingSection />
     </AppShell>
   );

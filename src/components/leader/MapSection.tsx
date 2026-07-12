@@ -250,7 +250,7 @@ export function LeaderMapSection() {
           id="leader-map-team"
           value={teamScope}
           onChange={(e) => setTeamScope(e.target.value)}
-          className={cn(selectCls, "mt-1 h-11 w-full")}
+          className={cn(selectCls, "mt-1 h-11 w-full md:max-w-md")}
         >
           <option value={ALL}>Todas as equipes ({teams.length})</option>
           {teams.map((t) => (
@@ -307,10 +307,10 @@ export function LeaderMapSection() {
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (
-        <div className="-mx-4 overflow-hidden border-y border-border">
+        <div className="-mx-4 overflow-hidden border-y border-border md:-mx-6 lg:-mx-8">
           <ServicesMap
             points={points}
-            height={560}
+            height={720}
             onDelete={isAdmin.data ? handleDelete : undefined}
             hideLegend
           />
