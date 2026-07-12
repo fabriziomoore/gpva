@@ -18,8 +18,10 @@ type CapacitorNetworkApi = {
   ) => Promise<{ remove: () => Promise<void> }>;
 };
 
-const STATUS_POLL_INTERVAL_MS = 500;
+const DB_PING_INTERVAL_MS = 1_000;
+const DB_PING_TIMEOUT_MS = 900;
 let capacitorNetwork: CapacitorNetworkApi | null = null;
+let refreshRunning = false;
 
 async function loadCapacitor() {
   try {
@@ -50,9 +52,13 @@ export async function initNetwork(): Promise<void> {
   const startContinuousMonitor = () => {
     if (monitorTimer) return;
     const wake = () => void refreshNetworkStatus();
-    monitorTimer = setInterval(wake, STATUS_POLL_INTERVAL_MS);
+    const markOfflineThenProbe = () => {
+      emitIfChanged({ connected: false });
+      wake();
+    };
+    monitorTimer = setInterval(wake, DB_PING_INTERVAL_MS);
     window.addEventListener("online", wake);
-    window.addEventListener("offline", wake);
+    window.addEventListener("offline", markOfflineThenProbe);
     window.addEventListener("focus", wake);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") wake();
@@ -63,34 +69,45 @@ export async function initNetwork(): Promise<void> {
   if (await isNative()) {
     capacitorNetwork = await loadCapacitor();
     if (capacitorNetwork) {
-      const status = await capacitorNetwork.getStatus();
-      lastStatus = normalizeStatus(status.connected);
-      emit(lastStatus);
+      const status = await refreshNetworkStatus();
+      emit(status);
       await capacitorNetwork.addListener("networkStatusChange", (s) => {
-        emitIfChanged(normalizeStatus(s.connected));
+        if (!s.connected) emitIfChanged({ connected: false });
+        void refreshNetworkStatus();
       });
       // Redundância: eventos online/offline do WebView também disparam
       // instantaneamente quando o SO detecta a mudança de rede.
       window.addEventListener("online", () => void refreshNetworkStatus());
-      window.addEventListener("offline", () => void refreshNetworkStatus());
+      window.addEventListener("offline", () => {
+        emitIfChanged({ connected: false });
+        void refreshNetworkStatus();
+      });
       startContinuousMonitor();
       return;
     }
   }
 
   // Web fallback
-  lastStatus = normalizeStatus();
-  emit(lastStatus);
-  window.addEventListener("online", () => emitIfChanged({ connected: true }));
-  window.addEventListener("offline", () => emitIfChanged({ connected: false }));
+  await refreshNetworkStatus();
+  window.addEventListener("online", () => void refreshNetworkStatus());
+  window.addEventListener("offline", () => {
+    emitIfChanged({ connected: false });
+    void refreshNetworkStatus();
+  });
   startContinuousMonitor();
 }
 
 export async function refreshNetworkStatus(): Promise<NetworkStatus> {
   if (typeof window === "undefined") return lastStatus;
+  if (refreshRunning) return lastStatus;
+  refreshRunning = true;
+  try {
   const status = await readDeviceNetworkStatus();
   emitIfChanged(status);
   return status;
+  } finally {
+    refreshRunning = false;
+  }
 }
 
 export function getNetworkStatus(): NetworkStatus {
@@ -115,21 +132,58 @@ function emitIfChanged(s: NetworkStatus): void {
   emit(s);
 }
 
-function normalizeStatus(nativeConnected?: boolean): NetworkStatus {
-  const webConnected = typeof navigator === "undefined" ? true : navigator.onLine !== false;
-  if (nativeConnected === undefined) return { connected: webConnected };
-  return { connected: nativeConnected || webConnected };
+async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
+  const databaseReachable = await pingDatabase();
+  return { connected: databaseReachable };
 }
 
-async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
-  if (capacitorNetwork) {
-    try {
-      const status = await capacitorNetwork.getStatus();
-      return normalizeStatus(status.connected);
-    } catch {
-      // Fall back to the WebView signal below.
-    }
-  }
+async function pingDatabase(): Promise<boolean> {
+  const config = getBackendConfig();
+  if (!config || typeof fetch === "undefined") return true;
 
-  return normalizeStatus();
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), DB_PING_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${config.url}/rest/v1/setores?select=id&limit=1`, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: buildPingHeaders(config.key),
+    });
+
+    // Permission/auth responses still prove the database endpoint answered.
+    // Network failures, timeouts and backend 5xx responses put the app offline.
+    return response.status < 500;
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function buildPingHeaders(key: string): HeadersInit {
+  const headers: Record<string, string> = { apikey: key };
+  if (!isOpaquePublishableKey(key)) headers.Authorization = `Bearer ${key}`;
+  return headers;
+}
+
+function isOpaquePublishableKey(value: string): boolean {
+  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+}
+
+function getBackendConfig(): { url: string; key: string } | null {
+  const env = import.meta.env as Record<string, string | undefined>;
+  const nodeEnv = typeof process === "undefined" ? {} : process.env;
+  const rawUrl = env.VITE_SUPABASE_URL ?? nodeEnv.SUPABASE_URL;
+  const key =
+    env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    env.VITE_SUPABASE_ANON_KEY ??
+    nodeEnv.SUPABASE_PUBLISHABLE_KEY ??
+    nodeEnv.SUPABASE_ANON_KEY;
+
+  if (!rawUrl || !key) return null;
+  return { url: rawUrl.replace(/\/$/, ""), key };
+}
+
 }
