@@ -191,7 +191,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const footer = (pageNumber: number, totalPages: number) => {
     setStroke(C.border); hline(M, PH - 9, PW - M, PH - 9, 0.2);
     font(7, "normal"); setText(C.soft);
-    text(`${company} · Painel do Líder`, M, PH - 5);
+    text(`${company} · Painel`, M, PH - 5);
     text(formatDateBR(now), PW / 2, PH - 5, { align: "center" });
     text(`Página ${pageNumber} de ${totalPages}`, PW - M, PH - 5, { align: "right" });
   };
