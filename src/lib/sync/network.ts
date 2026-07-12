@@ -19,7 +19,7 @@ type CapacitorNetworkApi = {
 };
 
 const DB_PING_INTERVAL_MS = 1_000;
-const DB_PING_TIMEOUT_MS = 900;
+const DB_PING_TIMEOUT_MS = 1_000;
 let capacitorNetwork: CapacitorNetworkApi | null = null;
 let refreshRunning = false;
 let refreshPromise: Promise<NetworkStatus> | null = null;
