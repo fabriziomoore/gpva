@@ -75,9 +75,7 @@ async function runProbe(): Promise<void> {
       void pullRemote();
     } else {
       offlineStep = Math.min(offlineStep + 1, OFFLINE_BACKOFF_MS.length - 1);
-      // Mantém o estado online quando o SO/WebView diz que há rede. A tentativa
-      // periódica de drainOutbox registrará erro real se a API estiver fora.
-      if (!prev) useSyncStore.getState().setOnline(true);
+      if (prev) useSyncStore.getState().setOnline(false);
     }
   } finally {
     probing = false;
