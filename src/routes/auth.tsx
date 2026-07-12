@@ -17,6 +17,29 @@ import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.webp";
 
+const LOGIN_TIMEOUT_MS = 8_000;
+
+class OfflineLoginFallbackError extends Error {
+  constructor() {
+    super("network timeout");
+    this.name = "OfflineLoginFallbackError";
+  }
+}
+
+function isBrowserOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+function withLoginTimeout<T>(promise: Promise<T>): Promise<T> {
+  if (typeof window === "undefined") return promise;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new OfflineLoginFallbackError()), LOGIN_TIMEOUT_MS);
+    }),
+  ]);
+}
+
 export const Route = createFileRoute("/auth")({
   ssr: false,
   beforeLoad: async () => {
@@ -67,7 +90,8 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      await signInTeam(team, password);
+      if (isBrowserOffline()) throw new OfflineLoginFallbackError();
+      await withLoginTimeout(signInTeam(team, password));
       sessionStorage.removeItem("gpva.forceSignedOut");
       if (remember) {
         await saveRemembered(team, password);
@@ -78,17 +102,18 @@ function AuthPage() {
       const msg = err instanceof Error ? err.message : "Erro ao autenticar";
       // Falha de rede → tenta login offline com credenciais lembradas
       const isNetwork =
-        !navigator.onLine ||
+        isBrowserOffline() ||
+        err instanceof OfflineLoginFallbackError ||
         msg.toLowerCase().includes("failed to fetch") ||
         msg.toLowerCase().includes("network") ||
+        msg.toLowerCase().includes("timeout") ||
         msg.toLowerCase().includes("load failed");
       if (isNetwork) {
         const ok = await verifyRemembered(team, password);
         if (ok) {
           try { sessionStorage.removeItem("gpva.forceSignedOut"); } catch { /* ignore */ }
-          await restoreSession({ force: true });
-          const { data } = await supabase.auth.getSession();
-          if (data.session) {
+          const restored = await restoreSession({ force: true });
+          if (restored) {
             toast.success("Acesso offline autorizado");
             navigate({ to: "/" });
             return;
