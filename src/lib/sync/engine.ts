@@ -8,7 +8,6 @@ import {
   type LocalShiftImpact,
 } from "@/lib/db/local-db";
 import { useSyncStore } from "./store";
-import { reportDatabaseReachable, refreshNetworkStatus } from "./network";
 
 let running = false;
 let scheduled = false;
@@ -35,7 +34,10 @@ export function scheduleSync(): void {
 export async function drainOutbox(): Promise<void> {
   if (running) return;
   if (typeof window === "undefined") return;
-  if (!useSyncStore.getState().online) {
+  const s0 = useSyncStore.getState();
+  // Só drena quando o dispositivo está online E o backend está alcançável.
+  // A conectividade é decidida pelo NetworkService, nunca aqui.
+  if (!s0.online || !s0.backendReachable) {
     await refreshPendingCount();
     return;
   }
@@ -68,7 +70,6 @@ export async function drainOutbox(): Promise<void> {
       for (const row of rows) {
         try {
           await pushRow(row);
-          markDatabaseReachable();
           if (row.id != null) await db.outbox.delete(row.id);
           await markSynced(table, row.row_id);
         } catch (err) {
@@ -82,44 +83,19 @@ export async function drainOutbox(): Promise<void> {
         }
       }
     }
-    markDatabaseReachable();
     useSyncStore.getState().markSynced();
   } catch (err) {
     const message = toSyncErrorMessage(err);
     console.warn("[sync] drain failed", err);
     useSyncStore.getState().setLastError(message);
     useSyncStore.getState().setPhase("error");
-    // Let the network monitor be the single source of truth for online/offline.
-    // A failed push might be a transient FK/auth issue while the network is fine —
-    // trigger a fresh probe and the 1s monitor will flip the UI instantly if
-    // (and only if) the backend is really unreachable.
-    if (isReachabilityError(err) || (typeof navigator !== "undefined" && navigator.onLine === false)) {
-      void refreshNetworkStatus();
-    }
+    // Erros de push nunca alteram conectividade. O NetworkService (pings de
+    // 1 s) é a única fonte de verdade — se o backend estiver realmente
+    // inacessível, o próximo ping vai refletir isso em backendReachable.
   } finally {
     running = false;
     await refreshPendingCount();
   }
-}
-
-function markDatabaseReachable(): void {
-  const store = useSyncStore.getState();
-  store.setOnline(true);
-  store.setLastError(null);
-  reportDatabaseReachable();
-}
-
-function isReachabilityError(err: unknown): boolean {
-  if (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError") return true;
-  const message = toSyncErrorMessage(err).toLowerCase();
-  return (
-    message.includes("failed to fetch") ||
-    message.includes("networkerror") ||
-    message.includes("network error") ||
-    message.includes("load failed") ||
-    message.includes("the internet connection appears to be offline") ||
-    message.includes("consulta excedeu o tempo limite")
-  );
 }
 
 function toSyncErrorMessage(err: unknown): string {
