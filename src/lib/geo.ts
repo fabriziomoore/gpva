@@ -8,6 +8,15 @@ export type GeoFix = {
   captured_at: string;
 };
 
+type PositionLike = {
+  coords: {
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+  };
+  timestamp: number;
+};
+
 const LAST_GEO_FIX_KEY = "gpva:lastGeoFix";
 const MAX_CACHED_FIX_AGE_MS = 5 * 60 * 1000;
 
@@ -106,7 +115,7 @@ async function tryCapacitorFix(timeoutMs: number): Promise<GeoFix | null> {
   }
 }
 
-function positionToFix(pos: GeolocationPosition): GeoFix {
+function positionToFix(pos: PositionLike): GeoFix {
   return {
     lat: pos.coords.latitude,
     lng: pos.coords.longitude,
