@@ -141,7 +141,6 @@ export async function initNetwork(): Promise<void> {
     }
   } else {
     netLog("initNetwork", "not native, navigator only", { onLine: navigator?.onLine });
-    useNetDiag.getState().setIsNative(false);
     useNetDiag.getState().setPluginLoaded(false);
     setDeviceOnline(navigator?.onLine ?? true);
   }
