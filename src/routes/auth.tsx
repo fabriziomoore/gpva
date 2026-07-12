@@ -67,6 +67,19 @@ function AuthPage() {
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setIsOffline(navigator.onLine === false);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
 
   // Preencher equipe salva, se houver
   useEffect(() => {
@@ -198,8 +211,27 @@ function AuthPage() {
               />
               Lembrar acesso
             </label>
-            <Button type="submit" disabled={loading} className="h-12 w-full text-base font-semibold">
-              {loading ? <Loader2 className="size-5 animate-spin" /> : "Entrar"}
+            <Button
+              type="submit"
+              disabled={loading}
+              className={
+                isOffline
+                  ? "flex h-14 w-full flex-col items-center justify-center gap-0.5 bg-destructive text-base font-semibold text-white hover:bg-destructive/90"
+                  : "h-12 w-full text-base font-semibold"
+              }
+            >
+              {loading ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : isOffline ? (
+                <>
+                  <span className="leading-none">Entrar</span>
+                  <span className="text-[10px] font-medium leading-none tracking-[0.18em] text-white/90">
+                    (MODO OFFLINE)
+                  </span>
+                </>
+              ) : (
+                "Entrar"
+              )}
             </Button>
         </form>
 
