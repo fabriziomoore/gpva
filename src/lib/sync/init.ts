@@ -3,6 +3,7 @@ import { useSyncStore } from "./store";
 import { drainOutbox, refreshPendingCount, scheduleSync, pullRemote } from "./engine";
 import { installSessionMirror, restoreSession } from "./session-backup";
 import { getLocalDB } from "@/lib/db/local-db";
+import { supabase } from "@/integrations/supabase/client";
 
 let started = false;
 let probing = false;
@@ -18,10 +19,12 @@ let syncRetryTimer: ReturnType<typeof setInterval> | null = null;
 // falhar por CORS/DNS/captive network mesmo com internet suficiente para a API.
 // Se usarmos essa falha como verdade, a outbox para de tentar enviar e a linha
 // fica vermelha como padrão. O envio real é quem confirma se a nuvem aceitou.
-const ONLINE_INTERVAL_MS = 3_000;
-const OFFLINE_BACKOFF_MS = [1_500, 3_000, 5_000, 10_000] as const;
-const PROBE_TIMEOUT_MS = 5_000;
+const ONLINE_INTERVAL_MS = 1_500;
+const OFFLINE_BACKOFF_MS = [800, 1_500, 3_000, 5_000] as const;
+const PROBE_TIMEOUT_MS = 2_500;
 const SYNC_RETRY_MS = 15_000;
+const WAKE_PROBE_DEBOUNCE_MS = 600;
+let lastWakeProbe = 0;
 let offlineStep = 0;
 
 async function probeReachability(): Promise<boolean> {
@@ -135,6 +138,28 @@ export async function startSync(): Promise<void> {
     });
   }
 
+  // Any user interaction is a great excuse to re-check reachability quickly
+  // (debounced), so the top indicator flips the instant Wi-Fi comes back.
+  if (typeof window !== "undefined") {
+    const wake = () => {
+      const now = Date.now();
+      if (now - lastWakeProbe < WAKE_PROBE_DEBOUNCE_MS) return;
+      lastWakeProbe = now;
+      void runProbe();
+    };
+    window.addEventListener("pointerdown", wake, { passive: true });
+    window.addEventListener("touchstart", wake, { passive: true });
+    window.addEventListener("focus", wake);
+  }
+
+  // Warm the offline catalog cache whenever a session becomes available or the
+  // device reconnects — so opening a shift offline never shows an empty grid.
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+      void warmCatalogs();
+    }
+  });
+
   // Rede de segurança: enquanto o SO informa online, continue tentando escoar
   // a outbox. Assim um único erro temporário não deixa o dia inteiro preso no
   // relatório local/offline.
@@ -147,6 +172,7 @@ export async function startSync(): Promise<void> {
   // Initial drain + adaptive reachability probe loop.
   void drainOutbox();
   void runProbe();
+  void warmCatalogs();
 }
 
 /**
@@ -158,4 +184,62 @@ export async function manualSync(): Promise<void> {
   if (useSyncStore.getState().online) {
     await drainOutbox();
   }
+}
+
+/**
+ * Pre-fetches every catalog used by the "Add service" flow into Dexie kv so
+ * the sheet works fully offline (Tipo de Serviço, Motivos, Complementos,
+ * Impactos). Silently no-ops when offline or unauthenticated.
+ */
+async function warmCatalogs(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (!useSyncStore.getState().online) return;
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+  } catch {
+    return;
+  }
+  const db = getLocalDB();
+  const jobs: Array<Promise<unknown>> = [
+    (async () => {
+      const { data, error } = await supabase
+        .from("tipos_servico")
+        .select("id,name,is_negotiation,sort_order")
+        .eq("active", true)
+        .order("sort_order")
+        .order("name");
+      if (error || !data) return;
+      await db.kv.put({ key: "cat:service_types:global", value: data });
+    })(),
+    (async () => {
+      const { data, error } = await supabase
+        .from("motivos_inviabilidade")
+        .select("id,name")
+        .eq("active", true)
+        .order("name");
+      if (error || !data) return;
+      await db.kv.put({ key: "cat:inviability_reasons:global", value: data });
+    })(),
+    (async () => {
+      const { data, error } = await supabase
+        .from("complementos_servico")
+        .select("id,name,sort_order")
+        .eq("active", true)
+        .order("sort_order")
+        .order("name");
+      if (error || !data) return;
+      await db.kv.put({ key: "cat:service_complements:global", value: data });
+    })(),
+    (async () => {
+      const { data, error } = await supabase
+        .from("impactos")
+        .select("id,name")
+        .eq("active", true)
+        .order("name");
+      if (error || !data) return;
+      await db.kv.put({ key: "cat:impacts:global", value: data });
+    })(),
+  ];
+  await Promise.allSettled(jobs);
 }
