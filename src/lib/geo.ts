@@ -21,25 +21,23 @@ const LAST_GEO_FIX_KEY = "gpva:lastGeoFix";
 const MAX_CACHED_FIX_AGE_MS = 5 * 60 * 1000;
 
 export async function tryGetGeoFix(timeoutMs = 6000): Promise<GeoFix | null> {
-  // Prefer the Capacitor plugin on native. Android may fail high-accuracy GPS
-  // while offline, so use a second balanced/cached attempt before giving up.
   const native = await tryCapacitorFix(timeoutMs, isProbablyOffline());
-  if (native) return rememberGeoFix(native);
-  if (typeof navigator === "undefined" || !navigator.geolocation) return null;
+  if (isValidFix(native)) return rememberGeoFix(native);
+  if (typeof navigator === "undefined" || !navigator.geolocation) return readRecentGeoFix();
 
   const browserHigh = await tryBrowserFix({
     enableHighAccuracy: true,
     timeoutMs: Math.min(timeoutMs, 3500),
     maximumAge: 15_000,
   });
-  if (browserHigh) return rememberGeoFix(browserHigh);
+  if (isValidFix(browserHigh)) return rememberGeoFix(browserHigh);
 
   const browserBalanced = await tryBrowserFix({
     enableHighAccuracy: false,
     timeoutMs: Math.min(timeoutMs, 2500),
     maximumAge: 120_000,
   });
-  if (browserBalanced) return rememberGeoFix(browserBalanced);
+  if (isValidFix(browserBalanced)) return rememberGeoFix(browserBalanced);
 
   return readRecentGeoFix();
 }
