@@ -131,3 +131,17 @@ export function netLog(source: string, kind: string, detail?: unknown): void {
     /* ignore */
   }
 }
+
+// Store simples para abrir/fechar o painel de diagnóstico a partir de
+// qualquer componente (ex.: popover do SyncIndicator).
+interface DiagUiState {
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  toggle: () => void;
+}
+
+export const useNetDiagUi = create<DiagUiState>((set) => ({
+  open: false,
+  setOpen: (open) => set({ open }),
+  toggle: () => set((s) => ({ open: !s.open })),
+}));

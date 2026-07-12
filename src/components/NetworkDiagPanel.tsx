@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNetDiag } from "@/lib/sync/diagnostics";
+import { useNetDiag, useNetDiagUi } from "@/lib/sync/diagnostics";
 import { useSyncStore } from "@/lib/sync/store";
 import { getNetworkStatus, refreshNetworkStatus } from "@/lib/sync/network";
 
@@ -12,7 +12,8 @@ import { getNetworkStatus, refreshNetworkStatus } from "@/lib/sync/network";
  * Remover após concluída a validação.
  */
 export function NetworkDiagPanel() {
-  const [open, setOpen] = useState(false);
+  const open = useNetDiagUi((s) => s.open);
+  const setOpen = useNetDiagUi((s) => s.setOpen);
   const [, force] = useState(0);
   const diag = useNetDiag();
   const online = useSyncStore((s) => s.online);
@@ -32,42 +33,18 @@ export function NetworkDiagPanel() {
       : "ONLINE";
   const syncBadgeVisible = !online || !backendReachable;
 
+  if (!open) return null;
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Diagnóstico de rede"
-        style={{
-          position: "fixed",
-          left: 8,
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
-          zIndex: 99999,
-          height: 32,
-          width: 32,
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.2)",
-          background: online && backendReachable ? "#16a34a" : online ? "#f59e0b" : "#dc2626",
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 700,
-          lineHeight: "32px",
-          textAlign: "center",
-          padding: 0,
-        }}
-      >
-        {online ? (backendReachable ? "✓" : "!") : "✕"}
-      </button>
-
-      {open && (
         <div
           style={{
             position: "fixed",
             left: 8,
             right: 8,
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)",
+            top: "calc(env(safe-area-inset-top, 0px) + 12px)",
             zIndex: 99999,
-            maxHeight: "70vh",
+            maxHeight: "80vh",
             overflow: "auto",
             background: "rgba(15,17,22,0.98)",
             color: "#e5e7eb",
@@ -82,20 +59,36 @@ export function NetworkDiagPanel() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
             <strong>DIAGNÓSTICO DE CONECTIVIDADE</strong>
-            <button
-              type="button"
-              onClick={() => void refreshNetworkStatus()}
-              style={{
-                background: "#1d4ed8",
-                color: "#fff",
-                border: 0,
-                borderRadius: 6,
-                padding: "2px 8px",
-                fontSize: 11,
-              }}
-            >
-              refresh
-            </button>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => void refreshNetworkStatus()}
+                style={{
+                  background: "#1d4ed8",
+                  color: "#fff",
+                  border: 0,
+                  borderRadius: 6,
+                  padding: "2px 8px",
+                  fontSize: 11,
+                }}
+              >
+                refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                style={{
+                  background: "#374151",
+                  color: "#fff",
+                  border: 0,
+                  borderRadius: 6,
+                  padding: "2px 8px",
+                  fontSize: 11,
+                }}
+              >
+                fechar
+              </button>
+            </div>
           </div>
 
           <Section title="Resumo">
@@ -200,7 +193,6 @@ export function NetworkDiagPanel() {
             </div>
           </Section>
         </div>
-      )}
     </>
   );
 }

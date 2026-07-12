@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useSyncStore } from "@/lib/sync/store";
 import { manualSync } from "@/lib/sync/init";
 import { cn } from "@/lib/utils";
-import { netLog, useNetDiag } from "@/lib/sync/diagnostics";
+import { netLog, useNetDiag, useNetDiagUi } from "@/lib/sync/diagnostics";
 
 /**
  * Indicador Global Inteligente de Sincronização (GPVA Design System).
@@ -22,6 +22,7 @@ export function SyncIndicator() {
   });
   const [justCompleted, setJustCompleted] = useState(false);
   const [manualRunning, setManualRunning] = useState(false);
+  const openDiag = useNetDiagUi((s) => s.setOpen);
   const prevPhase = useRef(phase);
 
   // Detect syncing → idle transition and play a single confirmation pass.
@@ -156,17 +157,26 @@ export function SyncIndicator() {
         <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
           A sincronização ocorre automaticamente em segundo plano.
         </p>
-        <button
-          type="button"
-          disabled={manualRunning || (!online && typeof navigator !== "undefined" && navigator.onLine === false)}
-          onClick={() => {
-            setManualRunning(true);
-            void manualSync().finally(() => setManualRunning(false));
-          }}
-          className="mt-3 h-9 w-full rounded-lg bg-primary text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {manualRunning ? "Enviando…" : "Enviar agora"}
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={() => openDiag(true)}
+            className="h-9 flex-1 rounded-lg border border-border bg-muted text-xs font-semibold text-foreground hover:bg-muted/80"
+          >
+            Diagnóstico
+          </button>
+          <button
+            type="button"
+            disabled={manualRunning || (!online && typeof navigator !== "undefined" && navigator.onLine === false)}
+            onClick={() => {
+              setManualRunning(true);
+              void manualSync().finally(() => setManualRunning(false));
+            }}
+            className="h-9 flex-1 rounded-lg bg-primary text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {manualRunning ? "Enviando…" : "Enviar agora"}
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   );
