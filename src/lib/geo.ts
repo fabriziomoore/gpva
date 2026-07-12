@@ -129,6 +129,15 @@ function positionToFix(pos: PositionLike): GeoFix {
   };
 }
 
+function isValidFix(fix: GeoFix | null): fix is GeoFix {
+  if (!fix) return false;
+  if (!Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
+  if (Math.abs(fix.lat) > 90 || Math.abs(fix.lng) > 180) return false;
+  // Descarta a coordenada nula (0,0) — costuma indicar leitura inválida do GPS.
+  if (fix.lat === 0 && fix.lng === 0) return false;
+  return true;
+}
+
 function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T | null> {
   if (typeof window === "undefined") return Promise.resolve(promise);
   return Promise.race([
