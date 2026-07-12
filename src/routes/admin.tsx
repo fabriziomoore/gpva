@@ -222,7 +222,7 @@ function AdminPage() {
       />
 
       {view === "menu" ? (
-        <main className="mx-auto max-w-5xl space-y-5 overflow-x-hidden px-4 py-6">
+        <main className="mx-auto max-w-5xl space-y-5 overflow-x-hidden px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={() => setView("ranking")}
@@ -283,11 +283,11 @@ function AdminPage() {
           </div>
         </main>
       ) : view === "ranking" ? (
-        <main className="mx-auto max-w-2xl px-4 py-6">
+        <main className="mx-auto max-w-2xl px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <RankingSection adminPw={adminPw} />
         </main>
       ) : (
-        <main className="mx-auto max-w-2xl px-4 py-6">
+        <main className="mx-auto max-w-2xl px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
@@ -1603,7 +1603,7 @@ function AdminSideMenu({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-background/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
-          className="fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[max(env(safe-area-inset-bottom),3.25rem)]"
+          className="fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
         >
           <Dialog.Title className="sr-only">Menu de administração</Dialog.Title>
           <div className="flex items-center justify-between px-4 py-4">
