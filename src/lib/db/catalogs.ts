@@ -10,6 +10,23 @@ import { useMemo } from "react";
 // we transparently return the last cached snapshot so the UI keeps working.
 
 type Fetcher<T> = () => Promise<T>;
+const CATALOG_FETCH_TIMEOUT_MS = 2_500;
+
+function isOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, ms = CATALOG_FETCH_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error("Consulta excedeu o tempo limite")), ms);
+    }),
+  ]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
 
 async function readCache<T>(key: string): Promise<T | null> {
   try {
@@ -32,18 +49,22 @@ function useCachedQuery<T>(key: string, fetcher: Fetcher<T>, queryKey: unknown[]
   return useQuery({
     queryKey,
     queryFn: async (): Promise<T> => {
+      const cached = await readCache<T>(key);
+      if (isOffline() && cached != null) return cached;
       try {
-        const fresh = await fetcher();
+        const fresh = await withTimeout(fetcher());
         await writeCache(key, fresh);
         return fresh;
       } catch (err) {
-        const cached = await readCache<T>(key);
         if (cached != null) return cached;
         throw err;
       }
     },
     initialData: () => undefined,
     staleTime: 5 * 60 * 1000,
+    retry: false,
+    networkMode: "always",
+    refetchOnWindowFocus: false,
     enabled,
   });
 }
