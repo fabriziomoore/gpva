@@ -23,7 +23,7 @@ const MAX_CACHED_FIX_AGE_MS = 5 * 60 * 1000;
 export async function tryGetGeoFix(timeoutMs = 6000): Promise<GeoFix | null> {
   // Prefer the Capacitor plugin on native. Android may fail high-accuracy GPS
   // while offline, so use a second balanced/cached attempt before giving up.
-  const native = await tryCapacitorFix(timeoutMs);
+  const native = await tryCapacitorFix(timeoutMs, isProbablyOffline());
   if (native) return rememberGeoFix(native);
   if (typeof navigator === "undefined" || !navigator.geolocation) return null;
 
@@ -86,7 +86,7 @@ function tryBrowserFix(opts: {
   });
 }
 
-async function tryCapacitorFix(timeoutMs: number): Promise<GeoFix | null> {
+async function tryCapacitorFix(timeoutMs: number, preferCached: boolean): Promise<GeoFix | null> {
   try {
     // Dynamic imports so web builds don't fail if the plugin isn't wired.
     const { Capacitor } = await import("@capacitor/core");
@@ -97,22 +97,27 @@ async function tryCapacitorFix(timeoutMs: number): Promise<GeoFix | null> {
       const req = await Geolocation.requestPermissions({ permissions: ["location", "coarseLocation"] });
       if (req.location !== "granted" && req.coarseLocation !== "granted") return null;
     }
+    const balanced = await withTimeout(Geolocation.getCurrentPosition({
+      enableHighAccuracy: false,
+      timeout: preferCached ? 1500 : Math.min(timeoutMs, 2500),
+      maximumAge: 120_000,
+    }), preferCached ? 1800 : Math.min(timeoutMs, 2800));
+    if (balanced) return positionToFix(balanced);
+
     const high = await withTimeout(Geolocation.getCurrentPosition({
       enableHighAccuracy: true,
       timeout: Math.min(timeoutMs, 3500),
       maximumAge: 15_000,
     }), Math.min(timeoutMs, 3800));
-    if (high) return positionToFix(high);
-
-    const balanced = await withTimeout(Geolocation.getCurrentPosition({
-      enableHighAccuracy: false,
-      timeout: Math.min(timeoutMs, 2500),
-      maximumAge: 120_000,
-    }), Math.min(timeoutMs, 2800));
-    return balanced ? positionToFix(balanced) : null;
+    return high ? positionToFix(high) : null;
   } catch {
     return null;
   }
+}
+
+function isProbablyOffline(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return navigator.onLine === false;
 }
 
 function positionToFix(pos: PositionLike): GeoFix {
