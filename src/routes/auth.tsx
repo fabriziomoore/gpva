@@ -85,14 +85,15 @@ function AuthPage() {
       if (isNetwork) {
         const ok = await verifyRemembered(team, password);
         if (ok) {
-          await restoreSession();
+          try { sessionStorage.removeItem("gpva.forceSignedOut"); } catch { /* ignore */ }
+          await restoreSession({ force: true });
           const { data } = await supabase.auth.getSession();
           if (data.session) {
             toast.success("Acesso offline autorizado");
             navigate({ to: "/" });
             return;
           }
-          toast.error("Sem sessão salva para acesso offline. Conecte-se uma vez.");
+          toast.error("Sem sessão salva para acesso offline. Conecte-se uma vez com internet para gerar a sessão offline.");
         } else {
           toast.error("Sem internet. Marque 'Lembrar acesso' em um login online.");
         }

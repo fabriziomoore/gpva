@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { claimCurrentSession } from "@/lib/session-guard";
 import { clearSessionBackup } from "@/lib/sync/session-backup";
+import { getRemembered } from "@/lib/remember-access";
 import type { QueryClient } from "@tanstack/react-query";
 
 const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
@@ -58,7 +59,12 @@ export async function signOut() {
     /* ignore: logout must still clear local auth state offline */
   }
 
-  await clearSessionBackup().catch(() => undefined);
+  // Preserve the offline session backup when "Lembrar acesso" is active,
+  // so the user can log in offline later without a network round-trip.
+  const remembered = await getRemembered().catch(() => null);
+  if (!remembered) {
+    await clearSessionBackup().catch(() => undefined);
+  }
 }
 
 export async function signOutApp(queryClient?: QueryClient): Promise<void> {
