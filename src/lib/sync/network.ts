@@ -22,6 +22,7 @@ const DB_PING_INTERVAL_MS = 1_000;
 const DB_PING_TIMEOUT_MS = 900;
 let capacitorNetwork: CapacitorNetworkApi | null = null;
 let refreshRunning = false;
+let refreshPromise: Promise<NetworkStatus> | null = null;
 
 async function loadCapacitor() {
   try {
@@ -99,15 +100,35 @@ export async function initNetwork(): Promise<void> {
 
 export async function refreshNetworkStatus(): Promise<NetworkStatus> {
   if (typeof window === "undefined") return lastStatus;
-  if (refreshRunning) return lastStatus;
+  if (refreshRunning && refreshPromise) return refreshPromise;
   refreshRunning = true;
-  try {
-  const status = await readDeviceNetworkStatus();
-  emitIfChanged(status);
-  return status;
-  } finally {
-    refreshRunning = false;
-  }
+  refreshPromise = (async () => {
+    try {
+      const status = await readDeviceNetworkStatus();
+      emitIfChanged(status);
+      return status;
+    } finally {
+      refreshRunning = false;
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
+/**
+ * A successful database write/read is stronger evidence than navigator status.
+ * Use this to clear the offline UI immediately after the outbox drains.
+ */
+export function reportDatabaseReachable(): void {
+  emitIfChanged({ connected: true });
+}
+
+/**
+ * Network-level write/read failures should flip the UI to offline even when
+ * Android's WebView keeps navigator.onLine as true.
+ */
+export function reportDatabaseUnreachable(): void {
+  emitIfChanged({ connected: false });
 }
 
 export function getNetworkStatus(): NetworkStatus {
