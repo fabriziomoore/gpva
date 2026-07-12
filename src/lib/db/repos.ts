@@ -232,6 +232,67 @@ export async function repoAddService(input: {
   return row;
 }
 
+export async function repoAttachServiceLocation(input: {
+  service_id: string;
+  lat: number;
+  lng: number;
+  accuracy_m?: number | null;
+  captured_at: string;
+}): Promise<void> {
+  const db = getLocalDB();
+  const service = await db.services.get(input.service_id);
+  if (!service) return;
+
+  const updated: LocalService = {
+    ...service,
+    lat: input.lat,
+    lng: input.lng,
+    accuracy_m: input.accuracy_m ?? null,
+    captured_at: input.captured_at,
+    updated_at: nowIso(),
+    sync_state: "pending",
+  };
+  await db.services.put(updated);
+
+  const pending = await db.outbox
+    .where("table")
+    .equals("servicos")
+    .and((r) => r.row_id === input.service_id)
+    .toArray();
+
+  if (pending.length > 0) {
+    for (const item of pending) {
+      if (item.id == null) continue;
+      await db.outbox.update(item.id, {
+        payload: {
+          ...item.payload,
+          lat: input.lat,
+          lng: input.lng,
+          accuracy_m: input.accuracy_m ?? null,
+          captured_at: input.captured_at,
+        },
+      });
+    }
+  } else {
+    await db.outbox.add({
+      table: "servicos",
+      op: "update",
+      row_id: input.service_id,
+      payload: {
+        lat: input.lat,
+        lng: input.lng,
+        accuracy_m: input.accuracy_m ?? null,
+        captured_at: input.captured_at,
+      },
+      tries: 0,
+      created_at: nowIso(),
+    });
+  }
+
+  await refreshPendingCount();
+  scheduleSync();
+}
+
 function toShiftPayload(r: LocalShift) {
   return {
     id: r.id,

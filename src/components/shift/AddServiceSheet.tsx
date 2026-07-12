@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { repoAddService, repoSaveCatalogOrder } from "@/lib/db/repos";
+import { repoAddService, repoAttachServiceLocation, repoSaveCatalogOrder } from "@/lib/db/repos";
 import {
   useServiceTypesCached,
   useReasonsCached,
@@ -124,8 +124,10 @@ export function AddServiceSheet({
       const chosen = (complements.data ?? []).filter((c) =>
         (opts.complementIds ?? []).includes(c.id),
       );
-      // Captura GPS em paralelo com o salvamento — nunca bloqueia.
-      const fix = await tryGetGeoFix();
+      // Captura GPS em paralelo: espera pouco para gravar junto; se o Android
+      // entregar a posição depois (comum offline), anexamos ao registro local.
+      const fixPromise = tryGetGeoFix(8_000);
+      const fix = await withSoftTimeout(fixPromise, 1_200);
       const created = await repoAddService({
         team_id: teamId,
         shift_id: shiftId,
@@ -144,6 +146,19 @@ export function AddServiceSheet({
         captured_at: fix?.captured_at ?? null,
       });
 
+      if (!fix) {
+        void fixPromise.then((lateFix) => {
+          if (!lateFix) return;
+          return repoAttachServiceLocation({
+            service_id: created.id,
+            lat: lateFix.lat,
+            lng: lateFix.lng,
+            accuracy_m: lateFix.accuracy_m,
+            captured_at: lateFix.captured_at,
+          });
+        });
+      }
+
       await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
       toast.success("Serviço registrado");
       onOpenChange(false);
@@ -154,6 +169,13 @@ export function AddServiceSheet({
     } finally {
       setSaving(false);
     }
+  }
+
+  function withSoftTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T | null> {
+    return Promise.race([
+      promise,
+      new Promise<null>((resolve) => window.setTimeout(() => resolve(null), timeoutMs)),
+    ]);
   }
 
   function pickType(t: ServiceType) {
