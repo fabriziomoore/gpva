@@ -4,6 +4,8 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { Capacitor } from "@capacitor/core";
+import { Preferences } from "@capacitor/preferences";
 
 const KEY = "gpva.supabase.session.v1";
 const FORCE_SIGNED_OUT_KEY = "gpva.forceSignedOut";
@@ -81,49 +83,32 @@ function hasForcedSignOut(): boolean {
   }
 }
 
-async function isNative(): Promise<boolean> {
+function isNative(): boolean {
   if (typeof window === "undefined") return false;
-  try {
-    const { Capacitor } = await import("@capacitor/core");
-    return Capacitor.isNativePlatform();
-  } catch {
-    /* fallback below */
-  }
-  const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
-  return !!w.Capacitor?.isNativePlatform?.();
-}
-
-async function prefs() {
-  try {
-    const { Preferences } = await import("@capacitor/preferences");
-    return Preferences;
-  } catch {
-    return null;
-  }
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
 }
 
 export async function backupSession(): Promise<void> {
-  if (!(await isNative())) return;
-  const p = await prefs();
-  if (!p) return;
+  if (!isNative()) return;
   const session = readStoredAuthSession() ?? (await withTimeout(supabase.auth.getSession()))?.data.session ?? null;
-  if (session) {
-    await p.set({ key: KEY, value: JSON.stringify(session) });
-  } else {
-    await p.remove({ key: KEY });
-  }
+  try {
+    if (session) {
+      await Preferences.set({ key: KEY, value: JSON.stringify(session) });
+    } else {
+      await Preferences.remove({ key: KEY });
+    }
+  } catch { /* ignore */ }
 }
 
 export async function restoreSession(opts: { force?: boolean } = {}): Promise<boolean> {
   if (!opts.force && hasForcedSignOut()) return false;
   if (readStoredAuthSession()) return true;
-  if (!(await isNative())) return false;
+  if (!isNative()) return false;
   // Only restore when no local session is present (e.g. WebView storage wiped).
   const current = await withTimeout(supabase.auth.getSession());
   if (current?.data.session) return true;
-  const p = await prefs();
-  if (!p) return false;
-  const { value } = await p.get({ key: KEY });
+  let value: string | null = null;
+  try { value = (await Preferences.get({ key: KEY })).value ?? null; } catch { return false; }
   if (!value) return false;
   try {
     const s = JSON.parse(value) as StoredSession;
@@ -148,19 +133,15 @@ export async function restoreSession(opts: { force?: boolean } = {}): Promise<bo
 }
 
 export async function clearSessionBackup(): Promise<void> {
-  if (!(await isNative())) return;
-  const p = await prefs();
-  if (!p) return;
-  await p.remove({ key: KEY });
+  if (!isNative()) return;
+  try { await Preferences.remove({ key: KEY }); } catch { /* ignore */ }
 }
 
 export function installSessionMirror(): void {
   if (typeof window === "undefined") return;
-  void isNative().then((native) => {
-    if (!native) return;
+  if (!isNative()) return;
+  void backupSession();
+  supabase.auth.onAuthStateChange(() => {
     void backupSession();
-    supabase.auth.onAuthStateChange(() => {
-      void backupSession();
-    });
   });
 }
