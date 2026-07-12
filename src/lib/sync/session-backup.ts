@@ -43,9 +43,9 @@ export async function backupSession(): Promise<void> {
   }
 }
 
-export async function restoreSession(): Promise<void> {
+export async function restoreSession(opts: { force?: boolean } = {}): Promise<void> {
   if (!isNative()) return;
-  if (hasForcedSignOut()) return;
+  if (!opts.force && hasForcedSignOut()) return;
   // Only restore when no local session is present (e.g. WebView storage wiped).
   const { data } = await supabase.auth.getSession();
   if (data.session) return;
