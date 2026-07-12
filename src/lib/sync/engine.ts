@@ -8,7 +8,7 @@ import {
   type LocalShiftImpact,
 } from "@/lib/db/local-db";
 import { useSyncStore } from "./store";
-import { reportDatabaseReachable, reportDatabaseUnreachable } from "./network";
+import { reportDatabaseReachable, refreshNetworkStatus } from "./network";
 
 let running = false;
 let scheduled = false;
@@ -89,9 +89,12 @@ export async function drainOutbox(): Promise<void> {
     console.warn("[sync] drain failed", err);
     useSyncStore.getState().setLastError(message);
     useSyncStore.getState().setPhase("error");
+    // Let the network monitor be the single source of truth for online/offline.
+    // A failed push might be a transient FK/auth issue while the network is fine —
+    // trigger a fresh probe and the 1s monitor will flip the UI instantly if
+    // (and only if) the backend is really unreachable.
     if (isReachabilityError(err) || (typeof navigator !== "undefined" && navigator.onLine === false)) {
-      reportDatabaseUnreachable();
-      useSyncStore.getState().setOnline(false);
+      void refreshNetworkStatus();
     }
   } finally {
     running = false;

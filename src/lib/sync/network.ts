@@ -171,6 +171,12 @@ function applyStatusToSyncStore(connected: boolean): void {
 }
 
 async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
+  // If the OS/browser already knows we're offline, don't waste a ping —
+  // reflect it instantly. The ping is only useful to *confirm* reachability
+  // when navigator says we're online (WebViews can lie).
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { connected: false };
+  }
   const databaseReachable = await pingDatabase();
   return { connected: databaseReachable };
 }
