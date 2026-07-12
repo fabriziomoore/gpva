@@ -36,6 +36,15 @@ interface DiagState {
   lastEventKind: string | null;
   lastEventDetail: unknown;
 
+  // Plugin & ping
+  pluginLoaded: boolean | null;
+  isNative: boolean | null;
+  lastPingAt: number | null;
+  lastPingOk: boolean | null;
+  lastPingDurationMs: number | null;
+  lastPingError: string | null;
+  pingCount: number;
+
   // Histórico curto (últimos 30 eventos)
   events: DiagEvent[];
 
@@ -43,6 +52,9 @@ interface DiagState {
   push: (evt: DiagEvent) => void;
   setNative: (v: { connected: boolean | null; connectionType: string | null }) => void;
   markGetStatus: () => void;
+  setPluginLoaded: (loaded: boolean) => void;
+  setIsNative: (v: boolean) => void;
+  recordPing: (v: { ok: boolean; durationMs: number; error?: string | null }) => void;
 }
 
 export const useNetDiag = create<DiagState>((set) => ({
@@ -61,6 +73,13 @@ export const useNetDiag = create<DiagState>((set) => ({
   lastEventAt: null,
   lastEventKind: null,
   lastEventDetail: null,
+  pluginLoaded: null,
+  isNative: null,
+  lastPingAt: null,
+  lastPingOk: null,
+  lastPingDurationMs: null,
+  lastPingError: null,
+  pingCount: 0,
   events: [],
   bump: (key) =>
     set((s) => {
@@ -79,6 +98,16 @@ export const useNetDiag = create<DiagState>((set) => ({
     set({ lastNativeConnected: connected, lastNativeConnectionType: connectionType }),
   markGetStatus: () =>
     set((s) => ({ getStatusCalls: s.getStatusCalls + 1, lastGetStatusAt: Date.now() })),
+  setPluginLoaded: (loaded) => set({ pluginLoaded: loaded }),
+  setIsNative: (v) => set({ isNative: v }),
+  recordPing: ({ ok, durationMs, error }) =>
+    set((s) => ({
+      pingCount: s.pingCount + 1,
+      lastPingAt: Date.now(),
+      lastPingOk: ok,
+      lastPingDurationMs: durationMs,
+      lastPingError: error ?? null,
+    })),
 }));
 
 /**
