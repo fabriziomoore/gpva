@@ -317,7 +317,8 @@ async function markSynced(table: OutboxRow["table"], id: string): Promise<void> 
  */
 export async function pullRemote(): Promise<void> {
   if (typeof window === "undefined") return;
-  if (!useSyncStore.getState().online) return;
+  const s = useSyncStore.getState();
+  if (!s.online || !s.backendReachable) return;
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes.user;
   if (!user) return;
