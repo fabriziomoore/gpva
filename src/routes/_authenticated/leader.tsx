@@ -632,7 +632,7 @@ function PeriodView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
         <Kpi label="Total" value={fmtQty(stats.current.total)} delta={deltaPct(stats.current.total, stats.previous.total)} hint={`vs ${previousLabel(period)}: ${stats.previous.total}`} />
         <Kpi label="Viabilidade" value={`${stats.pctV}%`} delta={deltaPct(stats.pctV, stats.pctVPrev)} hint={`${stats.current.viable} viáv. / ${stats.current.unviable} inviáv.`} tone="success" />
         <Kpi label="Negociado" value={formatBRL(stats.current.negotiated_value)} delta={deltaPct(stats.current.negotiated_value, stats.previous.negotiated_value)} hint={`${stats.current.negotiations} negociações`} small />
@@ -643,7 +643,7 @@ function PeriodView({
       {period !== "day" && (
         <div className="rounded-2xl border border-border bg-card p-4">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{projectionLabel(period)}</p>
-          <div className="mt-2 grid grid-cols-2 gap-3">
+          <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
               <p className="text-xs text-white/80">Serviços</p>
               <p className="text-2xl font-bold text-white">{stats.projected.total}</p>
@@ -660,9 +660,10 @@ function PeriodView({
         </div>
       )}
 
+      <div className="grid gap-4 md:grid-cols-2">
       <div className="rounded-2xl border border-border bg-card p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Atual vs {previousLabel(period)}</p>
-        <div className="h-52">
+        <div className="h-52 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={stats.compareBars}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -679,7 +680,7 @@ function PeriodView({
 
       <div className="rounded-2xl border border-border bg-card p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Evolução (viáveis x inviáveis)</p>
-        <div className="h-44">
+        <div className="h-44 md:h-64">
           {stats.evolution.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Sem serviços no período.</div>
           ) : (
@@ -697,11 +698,14 @@ function PeriodView({
           )}
         </div>
       </div>
+      </div>
 
-      <RankList title="Top serviços (viáveis)" items={stats.byType} empty="Sem serviços viáveis." />
-      <RankList title="Top motivos de inviabilidade" items={stats.topReasons} empty="Nenhum inviável no período." />
-      <RankList title="Complementos mais usados" items={stats.topComps} empty="Nenhum complemento registrado." />
-      <RankList title="Impactos recorrentes" items={stats.topImpacts} empty="Nenhum impacto registrado." />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <RankList title="Top serviços (viáveis)" items={stats.byType} empty="Sem serviços viáveis." />
+        <RankList title="Top motivos de inviabilidade" items={stats.topReasons} empty="Nenhum inviável no período." />
+        <RankList title="Complementos mais usados" items={stats.topComps} empty="Nenhum complemento registrado." />
+        <RankList title="Impactos recorrentes" items={stats.topImpacts} empty="Nenhum impacto registrado." />
+      </div>
 
       {stats.bestDay && (
         <div className="rounded-xl border border-border bg-card p-3">
@@ -710,7 +714,7 @@ function PeriodView({
         </div>
       )}
 
-      <div className="pt-2">
+      <div className="pt-2 md:max-w-md">
         <Button
           className="h-12 w-full text-sm font-semibold"
           variant="default"
