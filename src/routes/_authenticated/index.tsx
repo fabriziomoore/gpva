@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/")({
 
 function HomePage() {
   const navigate = useNavigate();
-  const { userId } = useAuthSession();
+  const { userId, loading: authLoading } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const isAdmin = useIsAdmin(userId);
   const queryClient = useQueryClient();
@@ -179,10 +179,14 @@ function HomePage() {
   // Enquanto papel (líder/admin) ainda carrega, ou o próprio usuário indica ser
   // líder/admin, não renderizamos o home de equipe para evitar o "flash" antes
   // do redirect.
+  // authReady garante que o spinner só depende de `userId` ENQUANTO a sessão
+  // ainda está sendo lida do storage. Depois disso, se `userId` seguir null,
+  // renderizamos a UI (com "Equipe não encontrada" via useTeam) em vez de
+  // prender o usuário num loading infinito.
+  const authReady = !authLoading;
   const rolePending =
-    !userId ||
-    isLeader.isLoading ||
-    isAdmin.isLoading ||
+    !authReady ||
+    (userId && (isLeader.isLoading || isAdmin.isLoading)) ||
     isLeader.data === true ||
     isAdmin.data === true;
 
