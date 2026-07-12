@@ -213,7 +213,8 @@ export function LeaderMapSection() {
 
   return (
     <div className="space-y-3 pb-24">
-      <div className="flex items-center justify-between gap-2">
+      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] md:items-end">
+      <div className="flex items-center justify-between gap-2 md:contents">
         <select
           value={viabilityFilter}
           onChange={(e) => setViabilityFilter(e.target.value as "all" | "viable" | "unviable")}
@@ -224,7 +225,7 @@ export function LeaderMapSection() {
           <option value="viable">Viáveis ({counts.viable})</option>
           <option value="unviable">Inviáveis ({counts.unviable})</option>
         </select>
-        <div className="inline-flex overflow-hidden rounded-lg border border-border">
+        <div className="inline-flex overflow-hidden rounded-lg border border-border md:order-last md:justify-self-end">
           {(["day", "week", "month"] as Period[]).map((p) => {
             const active = periodFilter === p;
             const label = p === "day" ? "Dia" : p === "week" ? "Semana" : "Mês";
@@ -242,7 +243,7 @@ export function LeaderMapSection() {
         </div>
       </div>
 
-      <div>
+      <div className="md:col-span-1">
         <label htmlFor="leader-map-team" className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Equipe
         </label>
@@ -259,6 +260,7 @@ export function LeaderMapSection() {
             </option>
           ))}
         </select>
+      </div>
       </div>
 
       <div className="flex gap-2 min-w-0">
@@ -307,10 +309,10 @@ export function LeaderMapSection() {
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (
-        <div className="-mx-4 overflow-hidden border-y border-border">
+        <div className="-mx-4 overflow-hidden border-y border-border md:-mx-6 lg:-mx-8">
           <ServicesMap
             points={points}
-            height={560}
+            height={720}
             onDelete={isAdmin.data ? handleDelete : undefined}
             hideLegend
           />
