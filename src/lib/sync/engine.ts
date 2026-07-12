@@ -68,7 +68,7 @@ export async function drainOutbox(): Promise<void> {
       for (const row of rows) {
         try {
           await pushRow(row);
-          reportDatabaseReachable();
+          markDatabaseReachable();
           if (row.id != null) await db.outbox.delete(row.id);
           await markSynced(table, row.row_id);
         } catch (err) {
@@ -82,7 +82,7 @@ export async function drainOutbox(): Promise<void> {
         }
       }
     }
-    reportDatabaseReachable();
+    markDatabaseReachable();
     useSyncStore.getState().markSynced();
   } catch (err) {
     const message = toSyncErrorMessage(err);
@@ -97,6 +97,13 @@ export async function drainOutbox(): Promise<void> {
     running = false;
     await refreshPendingCount();
   }
+}
+
+function markDatabaseReachable(): void {
+  const store = useSyncStore.getState();
+  store.setOnline(true);
+  store.setLastError(null);
+  reportDatabaseReachable();
 }
 
 function isReachabilityError(err: unknown): boolean {
