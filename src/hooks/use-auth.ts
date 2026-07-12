@@ -15,18 +15,41 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = SESSION_TIMEOUT_MS): Promi
   ]);
 }
 
+function isBrowserOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
 export function useAuthSession() {
   const [session, setSession] = useState<Session | null>(() => readStoredAuthSession());
   const [loading, setLoading] = useState(() => !readStoredAuthSession());
 
   useEffect(() => {
     let mounted = true;
-    void withTimeout(supabase.auth.getSession()).then((result) => {
-      if (!mounted) return;
-      setSession(result?.data.session ?? readStoredAuthSession());
+    // Offline: NUNCA chamar supabase.auth.getSession(). Internamente ele pode
+    // disparar refresh do access_token; offline o refresh falha e o
+    // supabase-js emite SIGNED_OUT, apagando o sb-…-auth-token do
+    // localStorage. Isso zera userId e trava a Home sem team/openShift.
+    if (isBrowserOffline()) {
+      setSession(readStoredAuthSession());
       setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    } else {
+      void withTimeout(supabase.auth.getSession()).then((result) => {
+        if (!mounted) return;
+        setSession(result?.data.session ?? readStoredAuthSession());
+        setLoading(false);
+      });
+    }
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      // Se ficamos offline e o supabase-js emite SIGNED_OUT por falha de
+      // refresh, ignoramos desde que ainda haja sessão espelhada em
+      // localStorage — assim o app segue autenticado com os dados locais.
+      if (event === "SIGNED_OUT" && isBrowserOffline()) {
+        const stored = readStoredAuthSession();
+        if (stored) {
+          setSession(stored);
+          return;
+        }
+      }
       setSession(s);
     });
     return () => {
