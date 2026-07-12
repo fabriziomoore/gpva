@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useSyncStore } from "@/lib/sync/store";
 import { manualSync } from "@/lib/sync/init";
 import { cn } from "@/lib/utils";
+import { netLog, useNetDiag } from "@/lib/sync/diagnostics";
 
 /**
  * Indicador Global Inteligente de Sincronização (GPVA Design System).
@@ -15,6 +16,10 @@ import { cn } from "@/lib/utils";
  */
 export function SyncIndicator() {
   const { online, backendReachable, phase, pending, lastSyncAt, lastError } = useSyncStore();
+  useEffect(() => {
+    useNetDiag.getState().bump("syncIndicatorRenders");
+    netLog("SyncIndicator", "render", { online, backendReachable, phase, pending });
+  });
   const [justCompleted, setJustCompleted] = useState(false);
   const [manualRunning, setManualRunning] = useState(false);
   const prevPhase = useRef(phase);

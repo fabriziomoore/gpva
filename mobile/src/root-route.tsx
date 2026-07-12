@@ -6,6 +6,7 @@ import { startSessionGuard } from "@/lib/session-guard";
 import { Toaster } from "@/components/ui/sonner";
 import { requestBootPermissions } from "@/lib/boot-permissions";
 import { SyncBadge } from "@/components/sync-badge";
+import { NetworkDiagPanel } from "@/components/NetworkDiagPanel";
 
 function NotFoundComponent() {
   return (
@@ -57,6 +58,7 @@ function RootComponent(): ReactNode {
       <Outlet />
       <Toaster />
       <SyncBadge />
+      <NetworkDiagPanel />
     </QueryClientProvider>
   );
 }

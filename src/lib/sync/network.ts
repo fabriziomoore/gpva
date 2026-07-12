@@ -12,6 +12,7 @@
 // o estado do store.
 
 import { useSyncStore } from "./store";
+import { netLog, useNetDiag } from "./diagnostics";
 
 export type NetworkStatus = {
   /** @deprecated use deviceOnline; mantido por compat. */
@@ -32,10 +33,10 @@ let lastStatus: NetworkStatus = {
 let monitorTimer: ReturnType<typeof setInterval> | null = null;
 
 type CapacitorNetworkApi = {
-  getStatus: () => Promise<{ connected: boolean }>;
+  getStatus: () => Promise<{ connected: boolean; connectionType?: string }>;
   addListener: (
     eventName: "networkStatusChange",
-    listenerFunc: (status: { connected: boolean }) => void,
+    listenerFunc: (status: { connected: boolean; connectionType?: string }) => void,
   ) => Promise<{ remove: () => Promise<void> }>;
 };
 
@@ -68,32 +69,69 @@ async function isNative(): Promise<boolean> {
 }
 
 export async function initNetwork(): Promise<void> {
-  if (initialized || typeof window === "undefined") return;
+  if (initialized || typeof window === "undefined") {
+    netLog("initNetwork", "skip", { initialized, hasWindow: typeof window !== "undefined" });
+    return;
+  }
   initialized = true;
+  useNetDiag.getState().bump("initCalls");
+  netLog("initNetwork", "start");
 
   // 1) Descobre estado inicial do dispositivo (Capacitor ou navegador).
-  if (await isNative()) {
+  const native = await isNative();
+  netLog("initNetwork", "isNative", { native });
+  if (native) {
     capacitorNetwork = await loadCapacitor();
+    netLog("initNetwork", "loadCapacitor", { loaded: !!capacitorNetwork });
     if (capacitorNetwork) {
       try {
+        useNetDiag.getState().markGetStatus();
         const initial = await capacitorNetwork.getStatus();
+        netLog("Network.getStatus", "resolved", initial);
+        useNetDiag.getState().setNative({
+          connected: initial.connected,
+          connectionType: initial.connectionType ?? null,
+        });
         setDeviceOnline(initial.connected);
-      } catch {
+      } catch (err) {
+        netLog("Network.getStatus", "error", String(err));
         setDeviceOnline(navigator?.onLine ?? true);
       }
-      await capacitorNetwork.addListener("networkStatusChange", (s) => {
-        setDeviceOnline(s.connected);
-      });
+      useNetDiag.getState().bump("addListenerCalls");
+      netLog("Network.addListener", "registering");
+      try {
+        await capacitorNetwork.addListener("networkStatusChange", (s) => {
+          useNetDiag.getState().bump("networkStatusChangeEvents");
+          useNetDiag.getState().setNative({
+            connected: s.connected,
+            connectionType: s.connectionType ?? null,
+          });
+          netLog("Network.event", "networkStatusChange", s);
+          setDeviceOnline(s.connected);
+        });
+        useNetDiag.getState().bump("listenersRegistered");
+        netLog("Network.addListener", "registered");
+      } catch (err) {
+        netLog("Network.addListener", "error", String(err));
+      }
     } else {
+      netLog("initNetwork", "capacitorNetwork missing, using navigator");
       setDeviceOnline(navigator?.onLine ?? true);
     }
   } else {
+    netLog("initNetwork", "not native, navigator only", { onLine: navigator?.onLine });
     setDeviceOnline(navigator?.onLine ?? true);
   }
 
   // 2) Eventos do WebView/navegador — instantâneos, sem esperar ping.
-  window.addEventListener("online", () => setDeviceOnline(true));
-  window.addEventListener("offline", () => setDeviceOnline(false));
+  window.addEventListener("online", () => {
+    netLog("window", "online");
+    setDeviceOnline(true);
+  });
+  window.addEventListener("offline", () => {
+    netLog("window", "offline");
+    setDeviceOnline(false);
+  });
   window.addEventListener("focus", () => {
     setDeviceOnline(navigator?.onLine ?? lastStatus.deviceOnline);
     void pingBackendIfOnline();
@@ -122,10 +160,16 @@ export async function refreshNetworkStatus(): Promise<NetworkStatus> {
   if (typeof window === "undefined") return lastStatus;
   if (capacitorNetwork) {
     try {
+      useNetDiag.getState().markGetStatus();
       const s = await capacitorNetwork.getStatus();
+      netLog("Network.getStatus", "refresh", s);
+      useNetDiag.getState().setNative({
+        connected: s.connected,
+        connectionType: s.connectionType ?? null,
+      });
       setDeviceOnline(s.connected);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      netLog("Network.getStatus", "refresh-error", String(err));
     }
   } else if (typeof navigator !== "undefined") {
     setDeviceOnline(navigator.onLine);
@@ -150,14 +194,17 @@ export function onNetworkChange(fn: Listener): () => void {
 // ---------------------------------------------------------------------------
 
 function setDeviceOnline(deviceOnline: boolean): void {
+  netLog("network", "setDeviceOnline", { deviceOnline, prev: lastStatus.deviceOnline });
   const backendReachable = deviceOnline ? lastStatus.backendReachable : false;
   commit({ deviceOnline, backendReachable });
 }
 
 function setBackendReachable(backendReachable: boolean): void {
-  // O ping nunca deve alterar deviceOnline. Se, por qualquer motivo, o ping
-  // rodou enquanto o dispositivo já estava offline, ignoramos o resultado.
-  if (!lastStatus.deviceOnline) return;
+  if (!lastStatus.deviceOnline) {
+    netLog("network", "setBackendReachable-ignored (device offline)", { backendReachable });
+    return;
+  }
+  netLog("network", "setBackendReachable", { backendReachable, prev: lastStatus.backendReachable });
   commit({ deviceOnline: true, backendReachable });
 }
 
@@ -177,9 +224,16 @@ function commit(next: { deviceOnline: boolean; backendReachable: boolean }): voi
 
 function applyStatusToSyncStore(s: NetworkStatus): void {
   const store = useSyncStore.getState();
-  if (store.online !== s.deviceOnline) store.setOnline(s.deviceOnline);
-  if (store.backendReachable !== s.backendReachable)
+  if (store.online !== s.deviceOnline) {
+    useNetDiag.getState().bump("storeSetOnlineCalls");
+    netLog("store", "setOnline", { value: s.deviceOnline });
+    store.setOnline(s.deviceOnline);
+  }
+  if (store.backendReachable !== s.backendReachable) {
+    useNetDiag.getState().bump("storeSetBackendReachableCalls");
+    netLog("store", "setBackendReachable", { value: s.backendReachable });
     store.setBackendReachable(s.backendReachable);
+  }
   if (!s.deviceOnline && store.phase === "syncing") store.setPhase("idle");
   if (s.deviceOnline && s.backendReachable && store.phase === "error") {
     store.setPhase("idle");

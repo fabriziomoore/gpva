@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSyncStore } from "@/lib/sync/store";
 import { cn } from "@/lib/utils";
+import { netLog, useNetDiag } from "@/lib/sync/diagnostics";
 
 /**
  * Faixa inferior de largura total exibida quando o app está offline, com
@@ -11,6 +12,10 @@ import { cn } from "@/lib/utils";
 export function SyncBadge() {
   const online = useSyncStore((s) => s.online);
   const pending = useSyncStore((s) => s.pending);
+  useEffect(() => {
+    useNetDiag.getState().bump("syncBadgeRenders");
+    netLog("SyncBadge", "render", { online, pending });
+  });
   const [mounted, setMounted] = useState(false);
   const bannerRef = useRef<HTMLDivElement | null>(null);
 
