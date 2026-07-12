@@ -15,7 +15,7 @@ export function AppShell({
   showSync?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-background pb-6">
+    <div className="min-h-screen bg-background pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-md items-center gap-2 px-4 py-3">
           <SideMenu />
@@ -24,7 +24,7 @@ export function AppShell({
         </div>
         {showSync ? <SyncIndicator /> : <div className="h-[2px] w-full bg-border/60" />}
       </header>
-      <main className="mx-auto max-w-md px-4 py-4">{children}</main>
+      <main className="mx-auto max-w-md px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</main>
     </div>
   );
 }
