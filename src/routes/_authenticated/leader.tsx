@@ -323,8 +323,8 @@ function LeaderPage() {
   const filteredComps = filterByScope(complements.data ?? []);
 
   return (
-    <AppShell title="Painel" right={<LeaderMeta />} showSync={false}>
-      <div className="mb-4">
+    <AppShell title="Painel" right={<LeaderMeta />} showSync={false} wide>
+      <div className="mb-4 md:max-w-sm">
         <label htmlFor="leader-team-scope" className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Equipe
         </label>
