@@ -152,14 +152,3 @@ function readRecentGeoFix(): GeoFix | null {
     return null;
   }
 }
-    });
-    return {
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      accuracy_m: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
-      captured_at: new Date(pos.timestamp || Date.now()).toISOString(),
-    };
-  } catch {
-    return null;
-  }
-}
