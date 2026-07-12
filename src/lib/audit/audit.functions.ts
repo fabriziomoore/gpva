@@ -160,10 +160,15 @@ export const runSecurityAudit = createServerFn({ method: "POST" })
       results.push({ id: "sec.rpc.has_role", category: "seguranca", title: "Função has_role", severity: "error", message: (e as Error).message });
     }
 
-    // Segredos esperados
-    const expected = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "LOVABLE_API_KEY"];
-    for (const name of expected) {
-      const present = Boolean(process.env[name]);
+    // Segredos esperados. Alguns projetos usam variações com plural (ex.: SUPABASE_PUBLISHABLE_KEYS).
+    const expected: Array<{ name: string; aliases?: string[] }> = [
+      { name: "SUPABASE_URL" },
+      { name: "SUPABASE_PUBLISHABLE_KEY", aliases: ["SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_ANON_KEY"] },
+      { name: "SUPABASE_SERVICE_ROLE_KEY" },
+      { name: "LOVABLE_API_KEY" },
+    ];
+    for (const { name, aliases = [] } of expected) {
+      const present = Boolean(process.env[name]) || aliases.some((a) => Boolean(process.env[a]));
       results.push({
         id: `sec.secret.${name}`, category: "seguranca", title: `Segredo ${name}`,
         severity: present ? "info" : "error",

@@ -21,25 +21,23 @@ const LAST_GEO_FIX_KEY = "gpva:lastGeoFix";
 const MAX_CACHED_FIX_AGE_MS = 5 * 60 * 1000;
 
 export async function tryGetGeoFix(timeoutMs = 6000): Promise<GeoFix | null> {
-  // Prefer the Capacitor plugin on native. Android may fail high-accuracy GPS
-  // while offline, so use a second balanced/cached attempt before giving up.
   const native = await tryCapacitorFix(timeoutMs, isProbablyOffline());
-  if (native) return rememberGeoFix(native);
-  if (typeof navigator === "undefined" || !navigator.geolocation) return null;
+  if (isValidFix(native)) return rememberGeoFix(native);
+  if (typeof navigator === "undefined" || !navigator.geolocation) return readRecentGeoFix();
 
   const browserHigh = await tryBrowserFix({
     enableHighAccuracy: true,
     timeoutMs: Math.min(timeoutMs, 3500),
     maximumAge: 15_000,
   });
-  if (browserHigh) return rememberGeoFix(browserHigh);
+  if (isValidFix(browserHigh)) return rememberGeoFix(browserHigh);
 
   const browserBalanced = await tryBrowserFix({
     enableHighAccuracy: false,
     timeoutMs: Math.min(timeoutMs, 2500),
     maximumAge: 120_000,
   });
-  if (browserBalanced) return rememberGeoFix(browserBalanced);
+  if (isValidFix(browserBalanced)) return rememberGeoFix(browserBalanced);
 
   return readRecentGeoFix();
 }
@@ -127,6 +125,15 @@ function positionToFix(pos: PositionLike): GeoFix {
     accuracy_m: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
     captured_at: new Date(pos.timestamp || Date.now()).toISOString(),
   };
+}
+
+function isValidFix(fix: GeoFix | null): fix is GeoFix {
+  if (!fix) return false;
+  if (!Number.isFinite(fix.lat) || !Number.isFinite(fix.lng)) return false;
+  if (Math.abs(fix.lat) > 90 || Math.abs(fix.lng) > 180) return false;
+  // Descarta a coordenada nula (0,0) — costuma indicar leitura inválida do GPS.
+  if (fix.lat === 0 && fix.lng === 0) return false;
+  return true;
 }
 
 function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T | null> {

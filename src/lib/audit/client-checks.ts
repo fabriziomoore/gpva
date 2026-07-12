@@ -11,7 +11,9 @@ export async function runClientChecks(): Promise<CheckResult[]> {
     message: navigator.onLine ? "online" : "offline",
   });
 
-  // APIs esperadas
+  // APIs esperadas. `share` só existe em navegadores mobile/PWA — ausente no desktop
+  // não é problema real, então rebaixamos para info.
+  const optionalApis = new Set(["share"]);
   const apis: [string, boolean][] = [
     ["clipboard", !!navigator.clipboard?.writeText],
     ["share", !!(navigator as Navigator & { share?: unknown }).share],
@@ -19,10 +21,11 @@ export async function runClientChecks(): Promise<CheckResult[]> {
     ["localStorage", (() => { try { return !!window.localStorage; } catch { return false; } })()],
   ];
   for (const [name, ok] of apis) {
+    const severity = ok ? "info" : optionalApis.has(name) ? "info" : "warning";
     results.push({
       id: `cli.api.${name}`, category: "cliente", title: `API do navegador: ${name}`,
-      severity: ok ? "info" : "warning",
-      message: ok ? "disponível" : "indisponível",
+      severity,
+      message: ok ? "disponível" : optionalApis.has(name) ? "indisponível (apenas mobile/PWA)" : "indisponível",
     });
   }
 
