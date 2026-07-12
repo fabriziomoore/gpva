@@ -33,6 +33,12 @@ let lastStatus: NetworkStatus = {
 };
 let monitorTimer: ReturnType<typeof setInterval> | null = null;
 
+// Timing baseline para provar reatividade do NetworkService (Regressão 2).
+const NET_T0 = typeof performance !== "undefined" ? performance.now() : Date.now();
+function nowMs(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
 type CapacitorNetworkApi = {
   getStatus: () => Promise<{ connected: boolean; connectionType?: string }>;
   addListener: (
@@ -216,7 +222,10 @@ export function onNetworkChange(fn: Listener): () => void {
 // ---------------------------------------------------------------------------
 
 function setDeviceOnline(deviceOnline: boolean): void {
-  netLog("network", "setDeviceOnline", { deviceOnline, prev: lastStatus.deviceOnline });
+  const delta = Math.round(nowMs() - NET_T0);
+  // eslint-disable-next-line no-console
+  console.log("[NET] setDeviceOnline", { deviceOnline, prev: lastStatus.deviceOnline, deltaMsFromInit: delta });
+  netLog("network", "setDeviceOnline", { deviceOnline, prev: lastStatus.deviceOnline, deltaMsFromInit: delta });
   const backendReachable = deviceOnline ? lastStatus.backendReachable : false;
   commit({ deviceOnline, backendReachable });
 }

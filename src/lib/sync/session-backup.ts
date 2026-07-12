@@ -137,6 +137,36 @@ export async function clearSessionBackup(): Promise<void> {
   try { await Preferences.remove({ key: KEY }); } catch { /* ignore */ }
 }
 
+/**
+ * Hidratação offline-safe: lê a sessão espelhada em Preferences e escreve
+ * diretamente no localStorage do WebView, SEM chamar `supabase.auth.setSession()`.
+ *
+ * Motivação: `setSession()` dispara refresh do access_token contra a rede.
+ * Offline, esse refresh falha e o supabase-js pode emitir `SIGNED_OUT`,
+ * apagando o `sb-…-auth-token` do localStorage — o que fazia `useAuthSession`
+ * devolver `userId=null` e travar a Home no spinner após login offline.
+ *
+ * Esta função NUNCA toca em `supabase.auth`. É segura para chamar offline.
+ */
+export async function hydrateLocalStorageFromBackup(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (readStoredAuthSession()) return true;
+  if (!isNative()) return false;
+  let value: string | null = null;
+  try {
+    value = (await Preferences.get({ key: KEY })).value ?? null;
+  } catch {
+    return false;
+  }
+  if (!value) return false;
+  try {
+    const s = JSON.parse(value) as StoredSession;
+    return writeSessionDirectly(s);
+  } catch {
+    return false;
+  }
+}
+
 export function installSessionMirror(): void {
   if (typeof window === "undefined") return;
   if (!isNative()) return;
