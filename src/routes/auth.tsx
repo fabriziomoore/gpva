@@ -13,6 +13,7 @@ import {
   type OfflineLoginReason,
 } from "@/lib/offline-auth";
 import { readStoredAuthSession } from "@/lib/sync/session-backup";
+import { restoreSession } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.webp";
@@ -143,6 +144,10 @@ function AuthPage() {
     const result = await tryOfflineLogin(team, password);
     if (result.ok) {
       try { sessionStorage.removeItem("gpva.forceSignedOut"); } catch { /* ignore */ }
+      // Restaura a sessão Supabase espelhada em Preferences para o
+      // localStorage do WebView. Sem isso, useAuthSession() retorna
+      // userId=null offline e a Home fica travada em loading.
+      try { await restoreSession({ force: true }); } catch { /* ignore */ }
       toast.success("Acesso offline autorizado");
       navigate({ to: "/" });
       return;
