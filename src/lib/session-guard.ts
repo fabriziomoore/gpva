@@ -11,6 +11,7 @@ const MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
 const EXPIRY_CHECK_MS = 5 * 60 * 1000; // 5 min
 const HEARTBEAT_MS = 60 * 1000; // 60 s — realtime cobre takeover instantâneo
 const ACTIVE_CHECK_THROTTLE_MS = 10 * 1000; // 10 s
+const AUTH_PROBE_TIMEOUT_MS = 2_500;
 
 let started = false;
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
@@ -63,11 +64,21 @@ function isOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
+function withAuthProbeTimeout<T>(promise: Promise<T>): Promise<T | null> {
+  if (typeof window === "undefined") return promise;
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), AUTH_PROBE_TIMEOUT_MS);
+    }),
+  ]);
+}
+
 async function getAuthUserIdOfflineSafe(): Promise<string | null> {
   try {
     if (!isOffline()) {
-      const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user?.id) return data.user.id;
+      const result = await withAuthProbeTimeout(supabase.auth.getUser());
+      if (!result?.error && result?.data.user?.id) return result.data.user.id;
     }
   } catch {
     /* rede indisponível — usa sessão local abaixo */
