@@ -25,6 +25,12 @@ export function NetworkDiagPanel() {
   }, []);
 
   const ns = getNetworkStatus();
+  const syncIndicatorState = !online
+    ? "OFFLINE"
+    : !backendReachable
+      ? "SERVIDOR INDISPONÍVEL"
+      : "ONLINE";
+  const syncBadgeVisible = !online || !backendReachable;
 
   return (
     <>
@@ -75,7 +81,7 @@ export function NetworkDiagPanel() {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <strong>GPVA · Diagnóstico de Rede</strong>
+            <strong>DIAGNÓSTICO DE CONECTIVIDADE</strong>
             <button
               type="button"
               onClick={() => void refreshNetworkStatus()}
@@ -91,6 +97,46 @@ export function NetworkDiagPanel() {
               refresh
             </button>
           </div>
+
+          <Section title="Resumo">
+            <Row
+              k="Plugin carregado"
+              v={diag.pluginLoaded == null ? "…" : diag.pluginLoaded ? "✅ SIM" : "❌ NÃO"}
+            />
+            <Row
+              k="Ambiente nativo"
+              v={diag.isNative == null ? "…" : diag.isNative ? "SIM (Capacitor)" : "NÃO (Web)"}
+            />
+            <Row
+              k="Network.getStatus()"
+              v={`connected: ${diag.lastNativeConnected ?? "—"} · type: ${
+                diag.lastNativeConnectionType ?? "—"
+              }`}
+            />
+            <Row
+              k="Último evento"
+              v={
+                diag.lastEventKind
+                  ? `${diag.lastNativeConnected ? "ONLINE" : "OFFLINE"} (${diag.lastEventKind})`
+                  : "—"
+              }
+            />
+            <Row k="Horário" v={fmtTime(diag.lastEventAt)} />
+            <Row k="Listener registrado" v={String(diag.listenersRegistered)} />
+            <Row k="Store.online" v={String(online)} />
+            <Row k="Store.backendReachable" v={String(backendReachable)} />
+            <Row k="SyncIndicator" v={syncIndicatorState} />
+            <Row k="SyncBadge" v={syncBadgeVisible ? "VISÍVEL" : "OCULTO"} />
+            <Row
+              k="Último ping"
+              v={
+                diag.lastPingAt == null
+                  ? "—"
+                  : `${diag.lastPingOk ? "OK" : "FALHOU"} · ${diag.lastPingDurationMs ?? "?"} ms`
+              }
+            />
+            <Row k="Ping em" v={fmtTime(diag.lastPingAt)} />
+          </Section>
 
           <Section title="Estado bruto (Capacitor)">
             <Row k="Network.getStatus.connected" v={String(diag.lastNativeConnected)} />
@@ -111,6 +157,7 @@ export function NetworkDiagPanel() {
             <Row k="addListener() chamadas" v={String(diag.addListenerCalls)} />
             <Row k="listeners registrados" v={String(diag.listenersRegistered)} />
             <Row k="eventos networkStatusChange" v={String(diag.networkStatusChangeEvents)} />
+            <Row k="pings executados" v={String(diag.pingCount)} />
             <Row k="store.setOnline calls" v={String(diag.storeSetOnlineCalls)} />
             <Row k="store.setBackendReachable calls" v={String(diag.storeSetBackendReachableCalls)} />
             <Row k="SyncIndicator renders" v={String(diag.syncIndicatorRenders)} />
@@ -180,6 +227,16 @@ function fmt(ts: number | null): string {
   if (!ts) return "—";
   const diff = Math.round((Date.now() - ts) / 1000);
   return `${new Date(ts).toLocaleTimeString("pt-BR")} (há ${diff}s)`;
+}
+
+function fmtTime(ts: number | null): string {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  const ms = String(d.getMilliseconds()).padStart(3, "0");
+  return `${hh}:${mm}:${ss}.${ms}`;
 }
 
 function safeJson(v: unknown): string {

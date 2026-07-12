@@ -83,6 +83,8 @@ export async function initNetwork(): Promise<void> {
   if (native) {
     capacitorNetwork = await loadCapacitor();
     netLog("initNetwork", "loadCapacitor", { loaded: !!capacitorNetwork });
+    useNetDiag.getState().setIsNative(true);
+    useNetDiag.getState().setPluginLoaded(!!capacitorNetwork);
     if (capacitorNetwork) {
       try {
         useNetDiag.getState().markGetStatus();
@@ -120,6 +122,8 @@ export async function initNetwork(): Promise<void> {
     }
   } else {
     netLog("initNetwork", "not native, navigator only", { onLine: navigator?.onLine });
+    useNetDiag.getState().setIsNative(false);
+    useNetDiag.getState().setPluginLoaded(false);
     setDeviceOnline(navigator?.onLine ?? true);
   }
 
@@ -249,9 +253,15 @@ async function pingBackendIfOnline(): Promise<void> {
     return;
   }
   pingRunning = true;
+  const started = Date.now();
   pingPromise = pingDatabase();
   try {
     const reachable = await pingPromise;
+    useNetDiag.getState().recordPing({
+      ok: reachable,
+      durationMs: Date.now() - started,
+      error: reachable ? null : "unreachable",
+    });
     setBackendReachable(reachable);
   } finally {
     pingRunning = false;
