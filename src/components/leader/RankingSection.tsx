@@ -276,7 +276,7 @@ export function LeaderRankingSection() {
           Atualizando em tempo real durante o expediente.
         </p>
       )}
-      <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {sorted.map((t) => {
           const pct = Math.round((t.viable / max) * 100);
           const isTopNeg = t.id === topNegId && t.negotiationValue > 0;
@@ -309,7 +309,7 @@ export function LeaderRankingSection() {
           );
         })}
         {sorted.length === 0 && (
-          <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
+          <p className="text-sm text-muted-foreground md:col-span-full">Sem equipes cadastradas.</p>
         )}
       </div>
     </div>
