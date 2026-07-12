@@ -171,29 +171,29 @@ function HomePage() {
     <AppShell title={titleNode} showBack={false}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
-        <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
-          <div className="size-36 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
+          <div className="size-24 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
             ) : (
-              <UserRound className="size-10 text-muted-foreground" />
+              <UserRound className="size-8 text-muted-foreground" />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Equipe</p>
-            <p className="mt-1 break-words text-2xl font-bold leading-tight tracking-tight">{team?.team_name}</p>
+            <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">Equipe</p>
+            <p className="mt-0.5 truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
             {(team?.collaborator1 || team?.collaborator2) && (
-              <p className="mt-1 break-words text-sm text-muted-foreground">
+              <p className="mt-1 truncate text-xs text-muted-foreground">
                 <span className="text-foreground">
                   {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
                 </span>
               </p>
             )}
             {team?.supervisor && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                <span className="block break-words">Supervisor: <span className="text-foreground">{team.supervisor}</span></span>
-                <span className="block break-words">Líder: <span className="text-foreground">{team.leader}</span></span>
-                <span className="mt-1 block">{today}</span>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                <span className="block truncate">Supervisor: <span className="text-foreground">{team.supervisor}</span></span>
+                <span className="block truncate">Líder: <span className="text-foreground">{team.leader}</span></span>
+                <span className="mt-0.5 block truncate">{today}</span>
               </p>
             )}
           </div>
