@@ -180,8 +180,8 @@ async function pingDatabase(): Promise<boolean> {
   if (!config || typeof fetch === "undefined") return true;
 
   const endpoints = [
-    `${config.url}/rest/v1/setores?select=id&limit=1`,
     `${config.url}/rest/v1/`,
+    `${config.url}/rest/v1/setores?select=id&limit=1`,
   ];
 
   for (const endpoint of endpoints) {
