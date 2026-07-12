@@ -188,6 +188,35 @@
   .gpva-sync-pulse-slow { animation: none !important; }
 }
 
+/* Global app notices: always centered at the top, including mobile webview. */
+[data-sonner-toaster][data-x-position="center"] {
+  left: 50% !important;
+  right: auto !important;
+  width: min(92vw, 480px) !important;
+  max-width: calc(100vw - 32px) !important;
+  transform: translateX(-50%) !important;
+}
+
+[data-sonner-toaster][data-x-position="center"] [data-sonner-toast] {
+  left: 0 !important;
+  right: auto !important;
+  width: min(92vw, 480px) !important;
+  max-width: calc(100vw - 32px) !important;
+}
+
+[data-sonner-toaster][data-y-position="top"] [data-sonner-toast] {
+  --y: translateY(0) !important;
+}
+
+@media (max-width: 600px) {
+  [data-sonner-toaster][data-x-position="center"] {
+    left: 50% !important;
+    right: auto !important;
+    width: min(92vw, 480px) !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
 /* Hide scrollbars everywhere, keep scroll functionality */
 html,
 body,

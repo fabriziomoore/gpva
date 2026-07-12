@@ -7,8 +7,18 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       className="toaster group"
       position="top-center"
-      offset="calc(env(safe-area-inset-top, 0px) + 56px)"
-      mobileOffset="calc(env(safe-area-inset-top, 0px) + 56px)"
+      offset={{
+        top: "calc(env(safe-area-inset-top, 0px) + 56px)",
+        right: 24,
+        bottom: 24,
+        left: 24,
+      }}
+      mobileOffset={{
+        top: "calc(env(safe-area-inset-top, 0px) + 56px)",
+        right: 16,
+        bottom: 16,
+        left: 16,
+      }}
       style={
         {
           "--width": "min(92vw, 480px)",
@@ -16,7 +26,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         } as React.CSSProperties
       }
       toastOptions={{
-        style: { width: "min(92vw, 480px)", maxWidth: "92vw" },
+        style: { width: "min(92vw, 480px)", maxWidth: "calc(100vw - 32px)" },
         classNames: {
           toast:
             "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",

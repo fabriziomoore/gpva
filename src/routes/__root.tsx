@@ -17,6 +17,7 @@ import { requestBootPermissions } from "../lib/boot-permissions";
 import { THEME_BOOT_SCRIPT } from "../hooks/use-theme";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { SyncBadge } from "@/components/sync-badge";
+import { Toaster } from "@/components/ui/sonner";
 import { registerPWA } from "../lib/pwa/register";
 
 function NotFoundComponent() {
@@ -149,6 +150,7 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <ConfirmDialogHost />
+      <Toaster />
       <SyncBadge />
     </QueryClientProvider>
   );
