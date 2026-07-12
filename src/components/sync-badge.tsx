@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSyncStore } from "@/lib/sync/store";
 import { cn } from "@/lib/utils";
 import { netLog, useNetDiag } from "@/lib/sync/diagnostics";
+import { useAuthSession } from "@/hooks/use-auth";
+import { useUserRoles } from "@/hooks/use-user-roles";
 
 /**
  * Faixa inferior de largura total exibida quando o app está offline, com
@@ -12,6 +14,8 @@ import { netLog, useNetDiag } from "@/lib/sync/diagnostics";
 export function SyncBadge() {
   const online = useSyncStore((s) => s.online);
   const pending = useSyncStore((s) => s.pending);
+  const { userId } = useAuthSession();
+  const { data: roles } = useUserRoles(userId);
   useEffect(() => {
     useNetDiag.getState().bump("syncBadgeRenders");
     netLog("SyncBadge", "render", { online, pending });
@@ -21,10 +25,14 @@ export function SyncBadge() {
 
   useEffect(() => setMounted(true), []);
 
-  // Faixa exibida SOMENTE quando o dispositivo está offline. Sincronização,
-  // pendências e erros são comunicados via toast/indicador de topo — a faixa
-  // vermelha não deve piscar ao registrar um serviço.
-  const visible = mounted && !online;
+  // Faixa exibida SOMENTE quando o dispositivo está offline E o usuário
+  // pertence a uma equipe (ou é a conta de teste). Contas privilegiadas
+  // (admin, líder, supervisor) NÃO veem a faixa. Sem sessão (tela de login)
+  // também não exibe.
+  const isPrivileged = Array.isArray(roles)
+    ? roles.some((r) => r === "admin" || r === "leader" || r === "supervisor")
+    : false;
+  const visible = mounted && !online && !!userId && !isPrivileged;
 
   // Mantém outros elementos fixos sincronizados com a faixa offline usando a
   // altura real da faixa. Isso evita somar safe-area duas vezes no Android.
@@ -60,8 +68,8 @@ export function SyncBadge() {
   if (!visible) return null;
 
   const label = pending > 0
-    ? `Offline · ${pending} pendente${pending > 1 ? "s" : ""}`
-    : "Offline";
+    ? `MODO OFFLINE · ${pending} pendente${pending > 1 ? "s" : ""}`
+    : "MODO OFFLINE";
 
   return (
     <div
