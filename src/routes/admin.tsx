@@ -222,7 +222,7 @@ function AdminPage() {
       />
 
       {view === "menu" ? (
-        <main className="mx-auto max-w-5xl px-4 py-6 space-y-5">
+        <main className="mx-auto max-w-5xl space-y-5 overflow-x-hidden px-4 py-6">
           <button
             type="button"
             onClick={() => setView("ranking")}
@@ -239,13 +239,13 @@ function AdminPage() {
             <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
           </button>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {SECTION_GROUPS.map((group) => {
               const GIcon = group.icon;
               return (
                 <section
                   key={group.id}
-                  className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+                  className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm"
                 >
                   <div className="mb-3 flex items-center gap-2">
                     <GIcon className="size-4 text-primary" />
@@ -262,7 +262,7 @@ function AdminPage() {
                           <button
                             type="button"
                             onClick={() => { setSection(id); setView("section"); }}
-                            className="group flex w-full items-start gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
+                            className="group flex w-full min-w-0 items-start gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
                           >
                             <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
                               <Icon className="size-4" />
@@ -1603,7 +1603,7 @@ function AdminSideMenu({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-background/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
-          className="fixed inset-y-0 left-0 z-50 flex h-full w-72 max-w-[80vw] flex-col border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className="fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[max(env(safe-area-inset-bottom),3.25rem)]"
         >
           <Dialog.Title className="sr-only">Menu de administração</Dialog.Title>
           <div className="flex items-center justify-between px-4 py-4">
@@ -1617,7 +1617,7 @@ function AdminSideMenu({
               <X className="size-5" />
             </Dialog.Close>
           </div>
-          <nav className="flex-1 overflow-y-auto px-2">
+          <nav className="min-h-0 flex-1 overflow-y-auto px-2">
             <ul className="space-y-1">
               <li>
                 <button
