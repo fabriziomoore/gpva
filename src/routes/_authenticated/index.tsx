@@ -35,6 +35,35 @@ function HomePage() {
   const [starting, setStarting] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
 
+  // [HOME] instrumentação — Regressão 1: identificar qual condição segura o spinner.
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[HOME] state", {
+      userId,
+      teamLoading: isLoading,
+      hasTeam: !!team,
+      leader: { status: isLeader.status, data: isLeader.data, isLoading: isLeader.isLoading },
+      admin: { status: isAdmin.status, data: isAdmin.data, isLoading: isAdmin.isLoading },
+    });
+  }, [userId, isLoading, team, isLeader.status, isLeader.data, isLeader.isLoading, isAdmin.status, isAdmin.data, isAdmin.isLoading]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const stuck = {
+        userIdMissing: !userId,
+        teamLoading: isLoading,
+        leaderLoading: isLeader.isLoading,
+        adminLoading: isAdmin.isLoading,
+        leaderIsTrue: isLeader.data === true,
+        adminIsTrue: isAdmin.data === true,
+      };
+      const any = Object.entries(stuck).filter(([, v]) => v);
+      // eslint-disable-next-line no-console
+      console.log("[HOME] watchdog(3s) — spinner conditions still true:", any);
+    }, 3000);
+    return () => window.clearTimeout(t);
+  }, [userId, isLoading, isLeader.isLoading, isAdmin.isLoading, isLeader.data, isAdmin.data]);
+
   useEffect(() => {
     if (isLeader.data === true) navigate({ to: "/leader" });
   }, [isLeader.data, navigate]);
