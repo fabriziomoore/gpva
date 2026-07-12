@@ -222,7 +222,10 @@ export function onNetworkChange(fn: Listener): () => void {
 // ---------------------------------------------------------------------------
 
 function setDeviceOnline(deviceOnline: boolean): void {
-  netLog("network", "setDeviceOnline", { deviceOnline, prev: lastStatus.deviceOnline });
+  const delta = Math.round(nowMs() - NET_T0);
+  // eslint-disable-next-line no-console
+  console.log("[NET] setDeviceOnline", { deviceOnline, prev: lastStatus.deviceOnline, deltaMsFromInit: delta });
+  netLog("network", "setDeviceOnline", { deviceOnline, prev: lastStatus.deviceOnline, deltaMsFromInit: delta });
   const backendReachable = deviceOnline ? lastStatus.backendReachable : false;
   commit({ deviceOnline, backendReachable });
 }
