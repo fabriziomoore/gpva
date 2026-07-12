@@ -87,7 +87,7 @@ export async function backupSession(): Promise<void> {
   if (!p) return;
   const result = await withTimeout(supabase.auth.getSession());
   const data = result?.data;
-  if (data.session) {
+  if (data?.session) {
     await p.set({ key: KEY, value: JSON.stringify(data.session) });
   } else {
     await p.remove({ key: KEY });
