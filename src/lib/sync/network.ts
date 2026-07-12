@@ -33,6 +33,12 @@ let lastStatus: NetworkStatus = {
 };
 let monitorTimer: ReturnType<typeof setInterval> | null = null;
 
+// Timing baseline para provar reatividade do NetworkService (Regressão 2).
+const NET_T0 = typeof performance !== "undefined" ? performance.now() : Date.now();
+function nowMs(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
 type CapacitorNetworkApi = {
   getStatus: () => Promise<{ connected: boolean; connectionType?: string }>;
   addListener: (
