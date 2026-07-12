@@ -25,9 +25,7 @@ android {
 
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            def appName = "GPVA"
-            def buildType = variant.buildType.name
-            outputFileName = "${appName}-${buildType}.apk"
+            outputFileName = "GPVA.apk"
         }
     }
 }
