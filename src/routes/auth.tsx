@@ -12,7 +12,7 @@ import {
   clearRemembered,
   verifyRemembered,
 } from "@/lib/remember-access";
-import { restoreSession } from "@/lib/sync/session-backup";
+import { readStoredAuthSession, restoreSession } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.webp";
@@ -46,8 +46,14 @@ export const Route = createFileRoute("/auth")({
     if (typeof window !== "undefined" && window.sessionStorage.getItem("gpva.forceSignedOut") === "1") {
       return;
     }
-    const { data } = await supabase.auth.getSession();
-    if (data.session) throw redirect({ to: "/" });
+    const localSession = readStoredAuthSession();
+    if (localSession) throw redirect({ to: "/" });
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 1_200)),
+    ]);
+    if (result?.data.session) throw redirect({ to: "/" });
   },
   head: () => ({ meta: [{ title: "Entrar — GPVA" }] }),
   component: AuthPage,
@@ -113,7 +119,7 @@ function AuthPage() {
         if (ok) {
           try { sessionStorage.removeItem("gpva.forceSignedOut"); } catch { /* ignore */ }
           const restored = await restoreSession({ force: true });
-          if (restored) {
+          if (restored || readStoredAuthSession()) {
             toast.success("Acesso offline autorizado");
             navigate({ to: "/" });
             return;
