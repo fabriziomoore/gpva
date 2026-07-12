@@ -186,7 +186,7 @@ async function pingDatabase(): Promise<boolean> {
 
   for (const endpoint of endpoints) {
     const reachable = await pingEndpoint(endpoint, config.key);
-    if (reachable !== null) return reachable;
+    if (reachable === true) return true;
   }
 
   return false;
@@ -205,8 +205,7 @@ async function pingEndpoint(endpoint: string, key: string): Promise<boolean | nu
     });
 
     // Permission/auth/not-found responses still prove the database endpoint answered.
-    if (response.status < 500) return true;
-    return null;
+    return response.status < 500;
   } catch {
     return false;
   } finally {
