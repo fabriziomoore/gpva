@@ -96,10 +96,11 @@ function AuthPage() {
         } else {
           toast.error("Sem internet. Marque 'Lembrar acesso' em um login online.");
         }
-      } else if (msg.includes("Invalid login")) {
+      } else if (msg.toLowerCase().includes("invalid login")) {
         setErrorMsg("Usuário ou senha incorretos.");
       } else {
-        setErrorMsg(msg);
+        const { translateAuthError } = await import("@/lib/auth-errors");
+        setErrorMsg(translateAuthError(err, "Erro ao autenticar"));
       }
     } finally {
       setLoading(false);
