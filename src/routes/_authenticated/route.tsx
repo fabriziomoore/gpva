@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { verifyActiveSession } from "@/lib/session-guard";
 import { readStoredAuthSession, restoreSession } from "@/lib/sync/session-backup";
 
-const AUTH_ROUTE_TIMEOUT_MS = 1_200;
+const AUTH_ROUTE_TIMEOUT_MS = 800;
 
 function withAuthRouteTimeout<T>(promise: PromiseLike<T>): Promise<T | null> {
   if (typeof window === "undefined") return Promise.resolve(promise);
@@ -16,30 +16,31 @@ function withAuthRouteTimeout<T>(promise: PromiseLike<T>): Promise<T | null> {
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    // Offline-safe: se getUser() falhar por rede, usa a sessão local
-    // (localStorage) para não travar o app em tela preta ao abrir sem internet.
+    // FAST PATH: se já há sessão em localStorage, entra sem esperar rede.
+    // Isso evita "tela preta" enquanto o beforeLoad aguarda getUser/refresh.
     const localSession = readStoredAuthSession();
-    const online = typeof navigator === "undefined" ? true : navigator.onLine;
-    try {
-      if (online) {
-        const result = await withAuthRouteTimeout(supabase.auth.getUser());
-        if (!result?.error && result?.data.user) {
-          void verifyActiveSession();
-          return { user: result.data.user };
-        }
-      }
-    } catch {
-      /* rede indisponível — cai para sessão local abaixo */
-    }
     if (localSession?.user) {
       void verifyActiveSession();
       return { user: localSession.user };
     }
-    const restored = await restoreSession();
+
+    // Sem sessão local: tenta restaurar de armazenamento nativo (Capacitor
+    // Preferences) com timeout curto. Se nada aparecer, vai para /auth.
+    const restored = await withAuthRouteTimeout(restoreSession());
     const restoredSession = restored ? readStoredAuthSession() : null;
     if (restoredSession?.user) {
       void verifyActiveSession();
       return { user: restoredSession.user };
+    }
+
+    // Última tentativa rápida via supabase (memória) — não bloqueia offline.
+    const online = typeof navigator === "undefined" ? true : navigator.onLine;
+    if (online) {
+      const result = await withAuthRouteTimeout(supabase.auth.getUser());
+      if (result && !("error" in result && result.error) && result?.data?.user) {
+        void verifyActiveSession();
+        return { user: result.data.user };
+      }
     }
     throw redirect({ to: "/auth" });
   },
