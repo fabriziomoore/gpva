@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDB } from "./local-db";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -45,8 +45,9 @@ async function writeCache<T>(key: string, value: T): Promise<void> {
   }
 }
 
-function useCachedQuery<T>(key: string, fetcher: Fetcher<T>, queryKey: unknown[], enabled: boolean = true) {
-  return useQuery({
+function useCachedQuery<T>(key: string, fetcher: Fetcher<T>, queryKey: unknown[], enabled: boolean = true): UseQueryResult<T> {
+  const liveCached = useLiveQuery(() => readCache<T>(key), [key]);
+  const query = useQuery({
     queryKey,
     queryFn: async (): Promise<T> => {
       const cached = await readCache<T>(key);
@@ -67,6 +68,19 @@ function useCachedQuery<T>(key: string, fetcher: Fetcher<T>, queryKey: unknown[]
     refetchOnWindowFocus: false,
     enabled,
   });
+
+  if (query.data == null && liveCached != null) {
+    return {
+      ...query,
+      data: liveCached,
+      isLoading: false,
+      isPending: false,
+      isSuccess: true,
+      status: "success",
+    } as UseQueryResult<T>;
+  }
+
+  return query;
 }
 
 export type CatServiceType = { id: string; name: string; is_negotiation: boolean; sort_order: number };
