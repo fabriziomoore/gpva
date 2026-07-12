@@ -6,6 +6,56 @@ import { supabase } from "@/integrations/supabase/client";
 
 const KEY = "gpva.supabase.session.v1";
 const FORCE_SIGNED_OUT_KEY = "gpva.forceSignedOut";
+const AUTH_TIMEOUT_MS = 1_500;
+
+type StoredSession = {
+  access_token?: string;
+  refresh_token?: string;
+  expires_at?: number;
+  user?: { id?: string };
+  [key: string]: unknown;
+};
+
+function withTimeout<T>(promise: Promise<T>, ms = AUTH_TIMEOUT_MS): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), ms);
+    }),
+  ]);
+}
+
+function getAuthStorageKey(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const configuredUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    if (configuredUrl) {
+      const projectRef = new URL(configuredUrl).hostname.split(".")[0];
+      if (projectRef) return `sb-${projectRef}-auth-token`;
+    }
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith("sb-") && key.endsWith("-auth-token")) return key;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function writeSessionDirectly(session: StoredSession): boolean {
+  if (typeof window === "undefined") return false;
+  if (!session.access_token || !session.refresh_token) return false;
+  const key = getAuthStorageKey();
+  if (!key) return false;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(session));
+    window.dispatchEvent(new StorageEvent("storage", { key, newValue: JSON.stringify(session) }));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function hasForcedSignOut(): boolean {
   if (typeof window === "undefined") return false;
@@ -35,7 +85,8 @@ export async function backupSession(): Promise<void> {
   if (!isNative()) return;
   const p = await prefs();
   if (!p) return;
-  const { data } = await supabase.auth.getSession();
+  const result = await withTimeout(supabase.auth.getSession());
+  const data = result?.data;
   if (data.session) {
     await p.set({ key: KEY, value: JSON.stringify(data.session) });
   } else {
@@ -47,22 +98,29 @@ export async function restoreSession(opts: { force?: boolean } = {}): Promise<vo
   if (!isNative()) return;
   if (!opts.force && hasForcedSignOut()) return;
   // Only restore when no local session is present (e.g. WebView storage wiped).
-  const { data } = await supabase.auth.getSession();
-  if (data.session) return;
+  const current = await withTimeout(supabase.auth.getSession());
+  if (current?.data.session) return;
   const p = await prefs();
   if (!p) return;
   const { value } = await p.get({ key: KEY });
   if (!value) return;
   try {
-    const s = JSON.parse(value) as { access_token: string; refresh_token: string };
+    const s = JSON.parse(value) as StoredSession;
     if (s.access_token && s.refresh_token) {
-      await supabase.auth.setSession({
-        access_token: s.access_token,
-        refresh_token: s.refresh_token,
-      });
+      const restored = await withTimeout(
+        supabase.auth.setSession({
+          access_token: s.access_token,
+          refresh_token: s.refresh_token,
+        }),
+      );
+      if (!restored?.data.session) writeSessionDirectly(s);
     }
   } catch {
-    /* corrupt cache — ignore */
+    try {
+      writeSessionDirectly(JSON.parse(value) as StoredSession);
+    } catch {
+      /* corrupt cache — ignore */
+    }
   }
 }
 
