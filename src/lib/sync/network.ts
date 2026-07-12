@@ -33,6 +33,19 @@ let lastStatus: NetworkStatus = {
 };
 let monitorTimer: ReturnType<typeof setInterval> | null = null;
 
+const GETSTATUS_TIMEOUT_MS = 800;
+const ADDLISTENER_TIMEOUT_MS = 800;
+
+function withDeadline<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timeout ${ms}ms`)), ms);
+    Promise.resolve(p).then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
 // Timing baseline para provar reatividade do NetworkService (Regressão 2).
 const NET_T0 = typeof performance !== "undefined" ? performance.now() : Date.now();
 function nowMs(): number {
@@ -53,11 +66,11 @@ let capacitorNetwork: CapacitorNetworkApi | null = null;
 let pingRunning = false;
 let pingPromise: Promise<boolean> | null = null;
 
-async function loadCapacitor() {
+// SÍNCRONA por design: `@capacitor/network` é import estático e o global
+// `Capacitor.Plugins.Network` já está injetado no boot do APK. Envolver isso
+// em `async/await` cria um ponto único de travamento no event loop do WebView.
+function loadCapacitor(): CapacitorNetworkApi | null {
   try {
-    // Prefer the already-registered global (Capacitor injects plugins on
-    // native at boot). Avoids relying on async chunk resolution under
-    // file:// which can hang silently on some Android WebView builds.
     const w = window as unknown as {
       Capacitor?: { Plugins?: { Network?: CapacitorNetworkApi } };
     };
@@ -107,43 +120,58 @@ export async function initNetwork(): Promise<void> {
   netLog("initNetwork", "isNative", { native });
   useNetDiag.getState().setIsNative(native);
   if (native) {
-    capacitorNetwork = await loadCapacitor();
+    // Resolução SÍNCRONA do plugin — sem await, sem chunk async.
+    capacitorNetwork = loadCapacitor();
     netLog("initNetwork", "loadCapacitor", { loaded: !!capacitorNetwork });
     useNetDiag.getState().setPluginLoaded(!!capacitorNetwork);
+
+    // Semente imediata a partir do navegador para nunca deixar o Store em
+    // estado default indefinido caso getStatus/addListener travem.
+    setDeviceOnline(navigator?.onLine ?? true);
+
     if (capacitorNetwork) {
-      try {
-        useNetDiag.getState().markGetStatus();
-        const initial = await capacitorNetwork.getStatus();
-        netLog("Network.getStatus", "resolved", initial);
-        useNetDiag.getState().setNative({
-          connected: initial.connected,
-          connectionType: initial.connectionType ?? null,
-        });
-        setDeviceOnline(initial.connected);
-      } catch (err) {
-        netLog("Network.getStatus", "error", String(err));
-        setDeviceOnline(navigator?.onLine ?? true);
-      }
-      useNetDiag.getState().bump("addListenerCalls");
-      netLog("Network.addListener", "registering");
-      try {
-        await capacitorNetwork.addListener("networkStatusChange", (s) => {
-          useNetDiag.getState().bump("networkStatusChangeEvents");
+      // getStatus e addListener em blocos independentes com deadline:
+      // uma falha/timeout num deles NUNCA impede o outro.
+      const plugin = capacitorNetwork;
+      void (async () => {
+        try {
+          useNetDiag.getState().markGetStatus();
+          const initial = await withDeadline(plugin.getStatus(), GETSTATUS_TIMEOUT_MS, "getStatus");
+          netLog("Network.getStatus", "resolved", initial);
           useNetDiag.getState().setNative({
-            connected: s.connected,
-            connectionType: s.connectionType ?? null,
+            connected: initial.connected,
+            connectionType: initial.connectionType ?? null,
           });
-          netLog("Network.event", "networkStatusChange", s);
-          setDeviceOnline(s.connected);
-        });
-        useNetDiag.getState().bump("listenersRegistered");
-        netLog("Network.addListener", "registered");
-      } catch (err) {
-        netLog("Network.addListener", "error", String(err));
-      }
+          setDeviceOnline(initial.connected);
+        } catch (err) {
+          netLog("Network.getStatus", "error", String(err));
+        }
+      })();
+      void (async () => {
+        useNetDiag.getState().bump("addListenerCalls");
+        netLog("Network.addListener", "registering");
+        try {
+          await withDeadline(
+            plugin.addListener("networkStatusChange", (s) => {
+              useNetDiag.getState().bump("networkStatusChangeEvents");
+              useNetDiag.getState().setNative({
+                connected: s.connected,
+                connectionType: s.connectionType ?? null,
+              });
+              netLog("Network.event", "networkStatusChange", s);
+              setDeviceOnline(s.connected);
+            }),
+            ADDLISTENER_TIMEOUT_MS,
+            "addListener",
+          );
+          useNetDiag.getState().bump("listenersRegistered");
+          netLog("Network.addListener", "registered");
+        } catch (err) {
+          netLog("Network.addListener", "error", String(err));
+        }
+      })();
     } else {
       netLog("initNetwork", "capacitorNetwork missing, using navigator");
-      setDeviceOnline(navigator?.onLine ?? true);
     }
   } else {
     netLog("initNetwork", "not native, navigator only", { onLine: navigator?.onLine });
