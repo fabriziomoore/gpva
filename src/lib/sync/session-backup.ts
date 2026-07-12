@@ -2,6 +2,7 @@
 // secure-ish storage) so that if the WebView ever wipes localStorage the
 // next launch can re-hydrate the session offline.
 
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 const KEY = "gpva.supabase.session.v1";
@@ -16,13 +17,27 @@ type StoredSession = {
   [key: string]: unknown;
 };
 
-function withTimeout<T>(promise: Promise<T>, ms = AUTH_TIMEOUT_MS): Promise<T | null> {
+function withTimeout<T>(promise: PromiseLike<T>, ms = AUTH_TIMEOUT_MS): Promise<T | null> {
+  if (typeof window === "undefined") return Promise.resolve(promise);
   return Promise.race([
     promise,
     new Promise<null>((resolve) => {
       window.setTimeout(() => resolve(null), ms);
     }),
   ]);
+}
+
+export function readStoredAuthSession(): Session | null {
+  const key = getAuthStorageKey();
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Session | null;
+    return parsed?.access_token && parsed.user?.id ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function getAuthStorageKey(): string | null {
@@ -66,8 +81,14 @@ function hasForcedSignOut(): boolean {
   }
 }
 
-function isNative(): boolean {
+async function isNative(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    return Capacitor.isNativePlatform();
+  } catch {
+    /* fallback below */
+  }
   const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
   return !!w.Capacitor?.isNativePlatform?.();
 }
@@ -82,21 +103,21 @@ async function prefs() {
 }
 
 export async function backupSession(): Promise<void> {
-  if (!isNative()) return;
+  if (!(await isNative())) return;
   const p = await prefs();
   if (!p) return;
-  const result = await withTimeout(supabase.auth.getSession());
-  const data = result?.data;
-  if (data?.session) {
-    await p.set({ key: KEY, value: JSON.stringify(data.session) });
+  const session = readStoredAuthSession() ?? (await withTimeout(supabase.auth.getSession()))?.data.session ?? null;
+  if (session) {
+    await p.set({ key: KEY, value: JSON.stringify(session) });
   } else {
     await p.remove({ key: KEY });
   }
 }
 
 export async function restoreSession(opts: { force?: boolean } = {}): Promise<boolean> {
-  if (!isNative()) return false;
   if (!opts.force && hasForcedSignOut()) return false;
+  if (readStoredAuthSession()) return true;
+  if (!(await isNative())) return false;
   // Only restore when no local session is present (e.g. WebView storage wiped).
   const current = await withTimeout(supabase.auth.getSession());
   if (current?.data.session) return true;
@@ -127,15 +148,19 @@ export async function restoreSession(opts: { force?: boolean } = {}): Promise<bo
 }
 
 export async function clearSessionBackup(): Promise<void> {
-  if (!isNative()) return;
+  if (!(await isNative())) return;
   const p = await prefs();
   if (!p) return;
   await p.remove({ key: KEY });
 }
 
 export function installSessionMirror(): void {
-  if (!isNative()) return;
-  supabase.auth.onAuthStateChange(() => {
+  if (typeof window === "undefined") return;
+  void isNative().then((native) => {
+    if (!native) return;
     void backupSession();
+    supabase.auth.onAuthStateChange(() => {
+      void backupSession();
+    });
   });
 }

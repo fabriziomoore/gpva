@@ -22,6 +22,17 @@ export async function startSync(): Promise<void> {
   if (started || typeof window === "undefined") return;
   started = true;
 
+  await initNetwork();
+  applyNetworkStatus(getNetworkStatus().connected);
+
+  onNetworkChange((s) => {
+    applyNetworkStatus(s.connected);
+  });
+
+  // Initial immediate network refresh; keep this before any auth/db work so
+  // the visual indicators react as soon as the app opens.
+  void refreshNetworkStatus().then((s) => applyNetworkStatus(s.connected));
+
   // One-shot cleanup: catálogos ficaram globais; apagar chaves antigas com
   // team_id no sufixo (podem ter arrays vazios em cache) para evitar UI vazia.
   try {
@@ -47,13 +58,7 @@ export async function startSync(): Promise<void> {
 
   await restoreSession();
   installSessionMirror();
-  await initNetwork();
-  applyNetworkStatus(getNetworkStatus().connected);
   await refreshPendingCount();
-
-  onNetworkChange((s) => {
-    applyNetworkStatus(s.connected);
-  });
 
   // Foreground returns are the moment the user actually cares — refresh now.
   if (typeof document !== "undefined") {
@@ -89,7 +94,6 @@ export async function startSync(): Promise<void> {
 
   // Initial drain + immediate network refresh.
   void drainOutbox();
-  void refreshNetworkStatus().then((s) => applyNetworkStatus(s.connected));
   void warmCatalogs();
 }
 

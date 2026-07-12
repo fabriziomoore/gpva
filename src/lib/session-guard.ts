@@ -326,6 +326,7 @@ function stopPerUserWatchers(): void {
 function checkExpiration(): void {
   const ts = getLoginTs();
   if (!ts) return;
+  if (isOffline()) return;
   if (Date.now() - ts > MAX_SESSION_MS) void forceSignOut("expired");
 }
 

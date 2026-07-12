@@ -18,7 +18,7 @@ type CapacitorNetworkApi = {
   ) => Promise<{ remove: () => Promise<void> }>;
 };
 
-const STATUS_POLL_INTERVAL_MS = 750;
+const STATUS_POLL_INTERVAL_MS = 500;
 let capacitorNetwork: CapacitorNetworkApi | null = null;
 
 async function loadCapacitor() {
@@ -64,10 +64,10 @@ export async function initNetwork(): Promise<void> {
     capacitorNetwork = await loadCapacitor();
     if (capacitorNetwork) {
       const status = await capacitorNetwork.getStatus();
-      lastStatus = { connected: status.connected };
+      lastStatus = normalizeStatus(status.connected);
       emit(lastStatus);
       await capacitorNetwork.addListener("networkStatusChange", (s) => {
-        emitIfChanged({ connected: s.connected });
+        emitIfChanged(normalizeStatus(s.connected));
       });
       // Redundância: eventos online/offline do WebView também disparam
       // instantaneamente quando o SO detecta a mudança de rede.
@@ -79,7 +79,7 @@ export async function initNetwork(): Promise<void> {
   }
 
   // Web fallback
-  lastStatus = { connected: navigator.onLine };
+  lastStatus = normalizeStatus();
   emit(lastStatus);
   window.addEventListener("online", () => emitIfChanged({ connected: true }));
   window.addEventListener("offline", () => emitIfChanged({ connected: false }));
@@ -115,19 +115,21 @@ function emitIfChanged(s: NetworkStatus): void {
   emit(s);
 }
 
+function normalizeStatus(nativeConnected?: boolean): NetworkStatus {
+  const webConnected = typeof navigator === "undefined" ? true : navigator.onLine !== false;
+  if (nativeConnected === undefined) return { connected: webConnected };
+  return { connected: nativeConnected || webConnected };
+}
+
 async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
   if (capacitorNetwork) {
     try {
       const status = await capacitorNetwork.getStatus();
-      return { connected: status.connected };
+      return normalizeStatus(status.connected);
     } catch {
       // Fall back to the WebView signal below.
     }
   }
 
-  if (typeof navigator !== "undefined") {
-    return { connected: navigator.onLine };
-  }
-
-  return { connected: true };
+  return normalizeStatus();
 }
