@@ -179,20 +179,34 @@ async function pingDatabase(): Promise<boolean> {
   const config = getBackendConfig();
   if (!config || typeof fetch === "undefined") return true;
 
+  const endpoints = [
+    `${config.url}/rest/v1/setores?select=id&limit=1`,
+    `${config.url}/rest/v1/`,
+  ];
+
+  for (const endpoint of endpoints) {
+    const reachable = await pingEndpoint(endpoint, config.key);
+    if (reachable !== null) return reachable;
+  }
+
+  return false;
+}
+
+async function pingEndpoint(endpoint: string, key: string): Promise<boolean | null> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), DB_PING_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${config.url}/rest/v1/setores?select=id&limit=1`, {
+    const response = await fetch(endpoint, {
       method: "GET",
       cache: "no-store",
       signal: controller.signal,
-      headers: buildPingHeaders(config.key),
+      headers: buildPingHeaders(key),
     });
 
-    // Permission/auth responses still prove the database endpoint answered.
-    // Network failures, timeouts and backend 5xx responses put the app offline.
-    return response.status < 500;
+    // Permission/auth/not-found responses still prove the database endpoint answered.
+    if (response.status < 500) return true;
+    return null;
   } catch {
     return false;
   } finally {
