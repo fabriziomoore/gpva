@@ -188,22 +188,13 @@
   .gpva-sync-pulse-slow { animation: none !important; }
 }
 
-/* Discreet scrollbars */
+/* Hide scrollbars everywhere, keep scroll functionality */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklch, currentColor 20%, transparent) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background-color: color-mix(in oklch, currentColor 20%, transparent);
-  border-radius: 9999px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background-color: color-mix(in oklch, currentColor 35%, transparent);
+  width: 0;
+  height: 0;
+  display: none;
 }
