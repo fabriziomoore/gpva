@@ -204,7 +204,7 @@ function AuthPage() {
         </form>
 
       </div>
-      <p className="absolute inset-x-0 bottom-3 whitespace-nowrap overflow-hidden text-ellipsis px-4 text-center text-[10px] uppercase tracking-[0.18em] text-foreground dark:text-muted-foreground/60">
+      <p className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] whitespace-nowrap overflow-hidden text-ellipsis px-4 text-center text-[10px] uppercase tracking-[0.18em] text-foreground dark:text-muted-foreground/60">
         Criado e desenvolvido por Fabrízio Moore
       </p>
     </div>
