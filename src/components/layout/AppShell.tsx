@@ -24,7 +24,7 @@ export function AppShell({
         </div>
         {showSync ? <SyncIndicator /> : <div className="h-[2px] w-full bg-border/60" />}
       </header>
-      <main className="mx-auto max-w-md px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</main>
+      <main className="mx-auto max-w-md px-4 pt-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">{children}</main>
     </div>
   );
 }
