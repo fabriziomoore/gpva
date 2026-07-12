@@ -189,12 +189,21 @@
 }
 
 /* Hide scrollbars everywhere, keep scroll functionality */
+html,
+body,
 * {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
-*::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar,
+*::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
 }
