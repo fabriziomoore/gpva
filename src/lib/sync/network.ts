@@ -9,17 +9,24 @@ const listeners = new Set<Listener>();
 let initialized = false;
 let lastStatus: NetworkStatus = { connected: true };
 let monitorTimer: ReturnType<typeof setInterval> | null = null;
-let probing = false;
 
-const REACHABILITY_INTERVAL_MS = 1_000;
-const REACHABILITY_TIMEOUT_MS = 1_500;
+type CapacitorNetworkApi = {
+  getStatus: () => Promise<{ connected: boolean }>;
+  addListener: (
+    eventName: "networkStatusChange",
+    listenerFunc: (status: { connected: boolean }) => void,
+  ) => Promise<{ remove: () => Promise<void> }>;
+};
+
+const STATUS_POLL_INTERVAL_MS = 750;
+let capacitorNetwork: CapacitorNetworkApi | null = null;
 
 async function loadCapacitor() {
   try {
     // Dynamic import so the package is only resolved when present (it is, but
     // this keeps SSR safe).
     const mod = await import("@capacitor/network");
-    return mod.Network;
+    return mod.Network as CapacitorNetworkApi;
   } catch {
     return null;
   }
@@ -42,35 +49,30 @@ export async function initNetwork(): Promise<void> {
 
   const startContinuousMonitor = () => {
     if (monitorTimer) return;
-    const wake = () => void probeReachabilityAndEmit();
-    monitorTimer = setInterval(wake, REACHABILITY_INTERVAL_MS);
+    const wake = () => void refreshNetworkStatus();
+    monitorTimer = setInterval(wake, STATUS_POLL_INTERVAL_MS);
     window.addEventListener("online", wake);
     window.addEventListener("offline", wake);
     window.addEventListener("focus", wake);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") wake();
     });
-    void probeReachabilityAndEmit();
+    void refreshNetworkStatus();
   };
 
   if (await isNative()) {
-    const Network = await loadCapacitor();
-    if (Network) {
-      const status = await Network.getStatus();
+    capacitorNetwork = await loadCapacitor();
+    if (capacitorNetwork) {
+      const status = await capacitorNetwork.getStatus();
       lastStatus = { connected: status.connected };
       emit(lastStatus);
-      await Network.addListener("networkStatusChange", (s) => {
-        lastStatus = { connected: s.connected };
-        emit(lastStatus);
-        void probeReachabilityAndEmit();
+      await capacitorNetwork.addListener("networkStatusChange", (s) => {
+        emitIfChanged({ connected: s.connected });
       });
       // Redundância: eventos online/offline do WebView também disparam
       // instantaneamente quando o SO detecta a mudança de rede.
-      window.addEventListener("online", () => {
-        emit((lastStatus = { connected: true }));
-        void probeReachabilityAndEmit();
-      });
-      window.addEventListener("offline", () => emit((lastStatus = { connected: false })));
+      window.addEventListener("online", () => void refreshNetworkStatus());
+      window.addEventListener("offline", () => void refreshNetworkStatus());
       startContinuousMonitor();
       return;
     }
@@ -79,12 +81,16 @@ export async function initNetwork(): Promise<void> {
   // Web fallback
   lastStatus = { connected: navigator.onLine };
   emit(lastStatus);
-  window.addEventListener("online", () => {
-    emit((lastStatus = { connected: true }));
-    void probeReachabilityAndEmit();
-  });
-  window.addEventListener("offline", () => emit((lastStatus = { connected: false })));
+  window.addEventListener("online", () => emitIfChanged({ connected: true }));
+  window.addEventListener("offline", () => emitIfChanged({ connected: false }));
   startContinuousMonitor();
+}
+
+export async function refreshNetworkStatus(): Promise<NetworkStatus> {
+  if (typeof window === "undefined") return lastStatus;
+  const status = await readDeviceNetworkStatus();
+  emitIfChanged(status);
+  return status;
 }
 
 export function getNetworkStatus(): NetworkStatus {
@@ -101,26 +107,30 @@ function emit(s: NetworkStatus) {
   listeners.forEach((l) => l(s));
 }
 
-async function probeReachabilityAndEmit(): Promise<void> {
-  if (probing || typeof window === "undefined") return;
-  probing = true;
-  try {
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      if (lastStatus.connected) emit({ connected: false });
-      return;
-    }
-    const connected = await probeReachability();
-    if (connected !== lastStatus.connected) emit({ connected });
-  } finally {
-    probing = false;
+function emitIfChanged(s: NetworkStatus): void {
+  if (s.connected === lastStatus.connected) {
+    lastStatus = s;
+    return;
   }
+  emit(s);
 }
 
-async function probeReachability(): Promise<boolean> {
-  const base = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  if (!base) return typeof navigator !== "undefined" ? navigator.onLine : true;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), REACHABILITY_TIMEOUT_MS);
+async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
+  if (capacitorNetwork) {
+    try {
+      const status = await capacitorNetwork.getStatus();
+      return { connected: status.connected };
+    } catch {
+      // Fall back to the WebView signal below.
+    }
+  }
+
+  if (typeof navigator !== "undefined") {
+    return { connected: navigator.onLine };
+  }
+
+  return { connected: true };
+}
   try {
     const res = await fetch(`${base}/auth/v1/health?_=${Date.now()}`, {
       method: "GET",

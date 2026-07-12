@@ -119,7 +119,7 @@ function ShiftPage() {
         </div>
       <div
         className="fixed inset-x-0 z-30 mx-auto flex max-w-md justify-between gap-2 px-4 transition-[bottom] duration-150"
-        style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem + var(--sync-banner-h, 0px))" }}
+        style={{ bottom: "var(--sync-floating-bottom, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
       >
           <Button
             onClick={() => setFinishOpen(true)}
