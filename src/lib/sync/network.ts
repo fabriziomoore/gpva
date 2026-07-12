@@ -185,5 +185,3 @@ function getBackendConfig(): { url: string; key: string } | null {
   if (!rawUrl || !key) return null;
   return { url: rawUrl.replace(/\/$/, ""), key };
 }
-
-}
