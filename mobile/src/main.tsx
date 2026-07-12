@@ -19,6 +19,8 @@ const router = createRouter({
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,
   defaultPreload: "intent",
+  defaultPendingMs: 0,
+  defaultPendingComponent: BootSpinner,
 });
 
 declare module "@tanstack/react-router" {
@@ -37,3 +39,11 @@ createRoot(container).render(
 );
 
 initNative(router);
+
+function BootSpinner() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+    </div>
+  );
+}
