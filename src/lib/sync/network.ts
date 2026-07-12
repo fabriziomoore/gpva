@@ -9,7 +9,6 @@ const listeners = new Set<Listener>();
 let initialized = false;
 let lastStatus: NetworkStatus = { connected: true };
 let monitorTimer: ReturnType<typeof setInterval> | null = null;
-let removeNativeListener: (() => void) | null = null;
 
 type CapacitorNetworkApi = {
   getStatus: () => Promise<{ connected: boolean }>;
@@ -67,10 +66,9 @@ export async function initNetwork(): Promise<void> {
       const status = await capacitorNetwork.getStatus();
       lastStatus = normalizeStatus(status.connected);
       emit(lastStatus);
-      const handle = await capacitorNetwork.addListener("networkStatusChange", (s) => {
+      await capacitorNetwork.addListener("networkStatusChange", (s) => {
         emitIfChanged(normalizeStatus(s.connected));
       });
-      removeNativeListener = () => void handle.remove();
       // Redundância: eventos online/offline do WebView também disparam
       // instantaneamente quando o SO detecta a mudança de rede.
       window.addEventListener("online", () => void refreshNetworkStatus());
@@ -119,7 +117,8 @@ function emitIfChanged(s: NetworkStatus): void {
 
 function normalizeStatus(nativeConnected?: boolean): NetworkStatus {
   const webConnected = typeof navigator === "undefined" ? true : navigator.onLine !== false;
-  return { connected: nativeConnected === undefined ? webConnected : nativeConnected && webConnected };
+  if (nativeConnected === undefined) return { connected: webConnected };
+  return { connected: nativeConnected || webConnected };
 }
 
 async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
