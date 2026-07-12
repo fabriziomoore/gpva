@@ -242,7 +242,9 @@ export async function hasValidOfflineUnlock(): Promise<boolean> {
   return true;
 }
 
-export function offlineErrorMessage(reason: OfflineLoginResult extends { ok: false; reason: infer R } ? R : never): string {
+export type OfflineLoginReason = "no-credential" | "expired" | "mismatch" | "corrupted";
+
+export function offlineErrorMessage(reason: OfflineLoginReason): string {
   switch (reason) {
     case "no-credential":
       return "É necessário realizar o primeiro acesso com conexão à Internet.";
@@ -252,5 +254,7 @@ export function offlineErrorMessage(reason: OfflineLoginResult extends { ok: fal
       return "Usuário ou senha incorretos.";
     case "corrupted":
       return "Credencial local inválida. Faça login com Internet novamente.";
+    default:
+      return "Não foi possível autenticar offline.";
   }
 }
