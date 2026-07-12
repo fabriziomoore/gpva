@@ -65,7 +65,7 @@ function isOffline(): boolean {
 }
 
 function withAuthProbeTimeout<T>(promise: PromiseLike<T>): Promise<T | null> {
-  if (typeof window === "undefined") return promise;
+  if (typeof window === "undefined") return Promise.resolve(promise);
   return Promise.race([
     promise,
     new Promise<null>((resolve) => {
