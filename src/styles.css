@@ -204,6 +204,10 @@
   max-width: calc(100vw - 32px) !important;
 }
 
+[data-sonner-toaster][data-y-position="top"] [data-sonner-toast] {
+  --y: translateY(0) !important;
+}
+
 @media (max-width: 600px) {
   [data-sonner-toaster][data-x-position="center"] {
     left: 50% !important;
