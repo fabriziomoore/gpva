@@ -64,7 +64,7 @@ function isOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
-function withAuthProbeTimeout<T>(promise: Promise<T>): Promise<T | null> {
+function withAuthProbeTimeout<T>(promise: PromiseLike<T>): Promise<T | null> {
   if (typeof window === "undefined") return promise;
   return Promise.race([
     promise,
@@ -150,13 +150,17 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
       return true;
     }
 
-    const { data, error } = await supabase
-      .from("active_sessions")
-      .select("session_id")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const result = await withAuthProbeTimeout(
+      supabase
+        .from("active_sessions")
+        .select("session_id")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    );
 
     // Se estiver sem rede ou a leitura falhar, não bloqueia o modo offline.
+    if (!result) return true;
+    const { data, error } = result;
     if (error || !data) return true;
     if (data.session_id === mine) return true;
     if (Date.now() - claimedAt < CLAIM_GRACE_MS) return true;
