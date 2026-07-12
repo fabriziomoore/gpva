@@ -4,6 +4,7 @@ import { clearSessionBackup } from "@/lib/sync/session-backup";
 import {
   saveCredentialFromOnlineLogin,
   clearOfflineUnlock,
+  saveLastUserId,
 } from "@/lib/offline-auth";
 import type { QueryClient } from "@tanstack/react-query";
 
@@ -29,6 +30,9 @@ export async function signInTeam(teamName: string, password: string) {
   // Grava credencial local automaticamente para viabilizar login offline
   // permanente após este primeiro acesso online.
   await saveCredentialFromOnlineLogin(teamName, password).catch(() => undefined);
+  // Persiste o UUID em Preferences (sobrevive a signOut) para servir como
+  // fallback do userId no próximo acesso offline.
+  if (data.user?.id) await saveLastUserId(data.user.id).catch(() => undefined);
   return data;
 }
 

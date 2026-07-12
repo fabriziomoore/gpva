@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { readStoredAuthSession } from "@/lib/sync/session-backup";
+import { getLastUserId } from "@/lib/offline-auth";
 
 const SESSION_TIMEOUT_MS = 1_500;
 
@@ -22,6 +23,7 @@ function isBrowserOffline(): boolean {
 export function useAuthSession() {
   const [session, setSession] = useState<Session | null>(() => readStoredAuthSession());
   const [loading, setLoading] = useState(() => !readStoredAuthSession());
+  const [fallbackUserId, setFallbackUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -52,11 +54,17 @@ export function useAuthSession() {
       }
       setSession(s);
     });
+    // Fallback offline: quando não há sessão Supabase (ex.: usuário deslogou
+    // online antes de ficar offline), usamos o último userId conhecido para
+    // que useTeam/openShift continuem enxergando os dados locais gravados.
+    void getLastUserId().then((id) => {
+      if (mounted && id) setFallbackUserId(id);
+    });
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
   }, []);
 
-  return { session, loading, userId: session?.user.id ?? null };
+  return { session, loading, userId: session?.user.id ?? fallbackUserId };
 }

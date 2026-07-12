@@ -21,6 +21,7 @@ const ITER = 150_000;
 
 const CREDENTIAL_KEY = "gpva.offline.credential.v2";
 const UNLOCK_KEY = "gpva.offline.unlock.v1";
+const LAST_USER_ID_KEY = "gpva.offline.lastUserId.v1";
 
 export type CredentialRecord = {
   team: string;
@@ -160,6 +161,27 @@ export async function setOfflineUnlock(team: string): Promise<void> {
 
 export async function clearOfflineUnlock(): Promise<void> {
   await prefsRemove(UNLOCK_KEY);
+}
+
+// ---- Último userId autenticado (persistente entre signOut) -----------------
+
+/**
+ * Guarda o UUID do usuário autenticado com sucesso online. Sobrevive a
+ * signOut/limpeza de localStorage porque fica em Capacitor Preferences.
+ * Usado como fallback do userId no modo offline após logout online.
+ */
+export async function saveLastUserId(userId: string): Promise<void> {
+  if (!userId) return;
+  await prefsSet(LAST_USER_ID_KEY, userId);
+}
+
+export async function getLastUserId(): Promise<string | null> {
+  const v = await prefsGet(LAST_USER_ID_KEY);
+  return v && v.length > 0 ? v : null;
+}
+
+export async function clearLastUserId(): Promise<void> {
+  await prefsRemove(LAST_USER_ID_KEY);
 }
 
 // ---- Login offline ---------------------------------------------------------

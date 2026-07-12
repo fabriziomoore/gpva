@@ -3,6 +3,7 @@ import { newId } from "@/lib/db/local-db";
 import { pullRemote } from "@/lib/sync/engine";
 import { getLocalDB, type LocalShift } from "@/lib/db/local-db";
 import { clearRemembered } from "@/lib/remember-access";
+import { getLastUserId } from "@/lib/offline-auth";
 import { toast } from "sonner";
 
 const LOGIN_TS_KEY = "gpva.loginAt";
@@ -86,7 +87,16 @@ async function getAuthUserIdOfflineSafe(): Promise<string | null> {
 
   try {
     const { data } = await supabase.auth.getSession();
-    return data.session?.user.id ?? null;
+    if (data.session?.user.id) return data.session.user.id;
+  } catch {
+    /* segue para fallback persistente */
+  }
+
+  // Fallback offline: sem sessão Supabase, usa o último userId gravado em
+  // Preferences no último login online bem-sucedido. Isso libera
+  // assertActiveSession() e as escritas locais em modo offline após signOut.
+  try {
+    return await getLastUserId();
   } catch {
     return null;
   }
