@@ -1,6 +1,8 @@
 // Thin wrapper around @capacitor/network with a browser fallback so the same
 // API works in the Vite preview and in the native Capacitor WebView.
 
+import { useSyncStore } from "./store";
+
 export type NetworkStatus = { connected: boolean };
 
 type Listener = (status: NetworkStatus) => void;
@@ -142,15 +144,30 @@ export function onNetworkChange(fn: Listener): () => void {
 
 function emit(s: NetworkStatus) {
   lastStatus = s;
+  applyStatusToSyncStore(s.connected);
   listeners.forEach((l) => l(s));
 }
 
 function emitIfChanged(s: NetworkStatus): void {
-  if (s.connected === lastStatus.connected) {
+  const storeOnline = useSyncStore.getState().online;
+  const shouldNotify = s.connected !== lastStatus.connected || s.connected !== storeOnline;
+  if (!shouldNotify) {
     lastStatus = s;
+    applyStatusToSyncStore(s.connected);
     return;
   }
   emit(s);
+}
+
+function applyStatusToSyncStore(connected: boolean): void {
+  const store = useSyncStore.getState();
+  store.setOnline(connected);
+  if (connected) {
+    store.setLastError(null);
+    if (store.phase === "error") store.setPhase("idle");
+    return;
+  }
+  if (store.phase === "syncing") store.setPhase("idle");
 }
 
 async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
@@ -162,19 +179,32 @@ async function pingDatabase(): Promise<boolean> {
   const config = getBackendConfig();
   if (!config || typeof fetch === "undefined") return true;
 
+  const endpoints = [
+    `${config.url}/rest/v1/`,
+    `${config.url}/rest/v1/setores?select=id&limit=1`,
+  ];
+
+  for (const endpoint of endpoints) {
+    const reachable = await pingEndpoint(endpoint, config.key);
+    if (reachable === true) return true;
+  }
+
+  return false;
+}
+
+async function pingEndpoint(endpoint: string, key: string): Promise<boolean | null> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), DB_PING_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${config.url}/rest/v1/setores?select=id&limit=1`, {
+    const response = await fetch(endpoint, {
       method: "GET",
       cache: "no-store",
       signal: controller.signal,
-      headers: buildPingHeaders(config.key),
+      headers: buildPingHeaders(key),
     });
 
-    // Permission/auth responses still prove the database endpoint answered.
-    // Network failures, timeouts and backend 5xx responses put the app offline.
+    // Permission/auth/not-found responses still prove the database endpoint answered.
     return response.status < 500;
   } catch {
     return false;
