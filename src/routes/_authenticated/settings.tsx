@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { translateAuthError } from "@/lib/auth-errors";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useTeamPhoto, saveTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
 import { repoUpdateTeam } from "@/lib/db/repos";
@@ -135,7 +136,7 @@ function SettingsPage() {
       );
       toast.success("Equipe atualizada");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro");
+      toast.error(translateAuthError(err, "Erro ao salvar equipe"));
     } finally {
       setSaving(false);
     }
@@ -154,7 +155,7 @@ function SettingsPage() {
       setPw2("");
       toast.success("Senha alterada");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro");
+      toast.error(translateAuthError(err, "Erro ao alterar senha"));
     } finally {
       setSaving(false);
     }
