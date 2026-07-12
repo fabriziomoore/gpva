@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * Web/Android/iOS.
  */
 export function SyncIndicator() {
-  const { online, phase, pending, lastSyncAt, lastError } = useSyncStore();
+  const { online, backendReachable, phase, pending, lastSyncAt, lastError } = useSyncStore();
   const [justCompleted, setJustCompleted] = useState(false);
   const [manualRunning, setManualRunning] = useState(false);
   const prevPhase = useRef(phase);
@@ -29,32 +29,44 @@ export function SyncIndicator() {
     prevPhase.current = phase;
   }, [phase]);
 
-  const state: "offline" | "syncing" | "pending" | "completed" | "idle" = !online
+  const state:
+    | "offline"
+    | "server-down"
+    | "syncing"
+    | "pending"
+    | "completed"
+    | "idle" = !online
     ? "offline"
-    : phase === "syncing"
-      ? "syncing"
-      : justCompleted
-        ? "completed"
-        : pending > 0 || phase === "error"
-          ? "pending"
-          : "idle";
+    : !backendReachable
+      ? "server-down"
+      : phase === "syncing"
+        ? "syncing"
+        : justCompleted
+          ? "completed"
+          : pending > 0 || phase === "error"
+            ? "pending"
+            : "idle";
 
   // GPVA official gradient + per-state palettes (CSS vars for theming).
   const gradient =
     state === "offline"
       ? "linear-gradient(90deg,#7f1d1d,#ef4444,#7f1d1d)"
-      : state === "pending"
-        ? "linear-gradient(90deg,#7c2d12,#f97316,#facc15,#f97316,#7c2d12)"
-        : "linear-gradient(90deg,#1d4ed8,#06b6d4,#22c55e)";
+      : state === "server-down"
+        ? "linear-gradient(90deg,#78350f,#f59e0b,#fde68a,#f59e0b,#78350f)"
+        : state === "pending"
+          ? "linear-gradient(90deg,#7c2d12,#f97316,#facc15,#f97316,#7c2d12)"
+          : "linear-gradient(90deg,#1d4ed8,#06b6d4,#22c55e)";
 
   const label =
     state === "offline"
       ? "Sem conexão"
-      : state === "syncing"
-        ? "Sincronizando…"
-        : state === "pending"
-          ? `${pending} registro${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"}`
-          : "Sincronizado";
+      : state === "server-down"
+        ? "Servidor indisponível"
+        : state === "syncing"
+          ? "Sincronizando…"
+          : state === "pending"
+            ? `${pending} registro${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"}`
+            : "Sincronizado";
 
   return (
     <Popover>
@@ -94,7 +106,7 @@ export function SyncIndicator() {
             />
           )}
           {/* Pulsation for pending / offline */}
-          {(state === "pending" || state === "offline") && (
+          {(state === "pending" || state === "offline" || state === "server-down") && (
             <span
               aria-hidden
               className={cn(
@@ -117,6 +129,10 @@ export function SyncIndicator() {
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-muted-foreground">
           <dt>Conexão</dt>
           <dd className="text-foreground">{online ? "Online" : "Offline"}</dd>
+          <dt>Servidor</dt>
+          <dd className="text-foreground">
+            {!online ? "—" : backendReachable ? "Acessível" : "Indisponível"}
+          </dd>
           <dt>Pendentes</dt>
           <dd className="text-foreground">{pending}</dd>
           <dt>Última sincronização</dt>

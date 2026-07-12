@@ -1,15 +1,34 @@
-// Thin wrapper around @capacitor/network with a browser fallback so the same
-// API works in the Vite preview and in the native Capacitor WebView.
+// NetworkService — única fonte de verdade da conectividade.
+//
+// Separa dois estados independentes:
+//   • deviceOnline    → o Android (via @capacitor/network) ou o navegador
+//                       (navigator.onLine + eventos online/offline) diz que
+//                       existe interface de rede ativa. Reage instantaneamente.
+//   • backendReachable → resultado do ping ao backend. Nunca influencia
+//                       deviceOnline; só serve para diferenciar "conectado
+//                       mas servidor indisponível" de "sem internet".
+//
+// O engine de sincronização NUNCA escreve nesse módulo — ele apenas consome
+// o estado do store.
 
 import { useSyncStore } from "./store";
 
-export type NetworkStatus = { connected: boolean };
+export type NetworkStatus = {
+  /** @deprecated use deviceOnline; mantido por compat. */
+  connected: boolean;
+  deviceOnline: boolean;
+  backendReachable: boolean;
+};
 
 type Listener = (status: NetworkStatus) => void;
 
 const listeners = new Set<Listener>();
 let initialized = false;
-let lastStatus: NetworkStatus = { connected: true };
+let lastStatus: NetworkStatus = {
+  connected: true,
+  deviceOnline: true,
+  backendReachable: true,
+};
 let monitorTimer: ReturnType<typeof setInterval> | null = null;
 
 type CapacitorNetworkApi = {
@@ -23,8 +42,8 @@ type CapacitorNetworkApi = {
 const DB_PING_INTERVAL_MS = 1_000;
 const DB_PING_TIMEOUT_MS = 1_000;
 let capacitorNetwork: CapacitorNetworkApi | null = null;
-let refreshRunning = false;
-let refreshPromise: Promise<NetworkStatus> | null = null;
+let pingRunning = false;
+let pingPromise: Promise<boolean> | null = null;
 
 async function loadCapacitor() {
   try {
@@ -52,85 +71,67 @@ export async function initNetwork(): Promise<void> {
   if (initialized || typeof window === "undefined") return;
   initialized = true;
 
-  const startContinuousMonitor = () => {
-    if (monitorTimer) return;
-    const wake = () => void refreshNetworkStatus();
-    const markOfflineThenProbe = () => {
-      emitIfChanged({ connected: false });
-      wake();
-    };
-    monitorTimer = setInterval(wake, DB_PING_INTERVAL_MS);
-    window.addEventListener("online", wake);
-    window.addEventListener("offline", markOfflineThenProbe);
-    window.addEventListener("focus", wake);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") wake();
-    });
-    void refreshNetworkStatus();
-  };
-
+  // 1) Descobre estado inicial do dispositivo (Capacitor ou navegador).
   if (await isNative()) {
     capacitorNetwork = await loadCapacitor();
     if (capacitorNetwork) {
-      const status = await refreshNetworkStatus();
-      emit(status);
+      try {
+        const initial = await capacitorNetwork.getStatus();
+        setDeviceOnline(initial.connected);
+      } catch {
+        setDeviceOnline(navigator?.onLine ?? true);
+      }
       await capacitorNetwork.addListener("networkStatusChange", (s) => {
-        if (!s.connected) emitIfChanged({ connected: false });
-        void refreshNetworkStatus();
+        setDeviceOnline(s.connected);
       });
-      // Redundância: eventos online/offline do WebView também disparam
-      // instantaneamente quando o SO detecta a mudança de rede.
-      window.addEventListener("online", () => void refreshNetworkStatus());
-      window.addEventListener("offline", () => {
-        emitIfChanged({ connected: false });
-        void refreshNetworkStatus();
-      });
-      startContinuousMonitor();
-      return;
+    } else {
+      setDeviceOnline(navigator?.onLine ?? true);
     }
+  } else {
+    setDeviceOnline(navigator?.onLine ?? true);
   }
 
-  // Web fallback
-  await refreshNetworkStatus();
-  window.addEventListener("online", () => void refreshNetworkStatus());
-  window.addEventListener("offline", () => {
-    emitIfChanged({ connected: false });
-    void refreshNetworkStatus();
+  // 2) Eventos do WebView/navegador — instantâneos, sem esperar ping.
+  window.addEventListener("online", () => setDeviceOnline(true));
+  window.addEventListener("offline", () => setDeviceOnline(false));
+  window.addEventListener("focus", () => {
+    setDeviceOnline(navigator?.onLine ?? lastStatus.deviceOnline);
+    void pingBackendIfOnline();
   });
-  startContinuousMonitor();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      setDeviceOnline(navigator?.onLine ?? lastStatus.deviceOnline);
+      void pingBackendIfOnline();
+    }
+  });
+
+  // 3) Monitor contínuo de alcance do backend (1s). NUNCA muda deviceOnline;
+  //    apenas atualiza backendReachable.
+  monitorTimer = setInterval(() => {
+    void pingBackendIfOnline();
+  }, DB_PING_INTERVAL_MS);
+
+  void pingBackendIfOnline();
 }
 
+/**
+ * Força um refresh imediato: reflete o estado atual do dispositivo e dispara
+ * um ping ao backend. Usado por pull-to-refresh / boot.
+ */
 export async function refreshNetworkStatus(): Promise<NetworkStatus> {
   if (typeof window === "undefined") return lastStatus;
-  if (refreshRunning && refreshPromise) return refreshPromise;
-  refreshRunning = true;
-  refreshPromise = (async () => {
+  if (capacitorNetwork) {
     try {
-      const status = await readDeviceNetworkStatus();
-      emitIfChanged(status);
-      return status;
-    } finally {
-      refreshRunning = false;
-      refreshPromise = null;
+      const s = await capacitorNetwork.getStatus();
+      setDeviceOnline(s.connected);
+    } catch {
+      /* ignore */
     }
-  })();
-  return refreshPromise;
-}
-
-/**
- * A successful database write/read is stronger evidence than navigator status.
- * Use this to clear the offline UI immediately after the outbox drains.
- */
-export function reportDatabaseReachable(): void {
-  emitIfChanged({ connected: true });
-}
-
-/**
- * Network-level write/read failures should flip the UI to offline even when
- * Android's WebView keeps navigator.onLine as true.
- */
-export function reportDatabaseUnreachable(): void {
-  emitIfChanged({ connected: false });
+  } else if (typeof navigator !== "undefined") {
+    setDeviceOnline(navigator.onLine);
+  }
+  await pingBackendIfOnline();
+  return lastStatus;
 }
 
 export function getNetworkStatus(): NetworkStatus {
@@ -139,46 +140,69 @@ export function getNetworkStatus(): NetworkStatus {
 
 export function onNetworkChange(fn: Listener): () => void {
   listeners.add(fn);
-  return () => listeners.delete(fn);
+  return () => {
+    listeners.delete(fn);
+  };
 }
 
-function emit(s: NetworkStatus) {
-  lastStatus = s;
-  applyStatusToSyncStore(s.connected);
-  listeners.forEach((l) => l(s));
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+function setDeviceOnline(deviceOnline: boolean): void {
+  const backendReachable = deviceOnline ? lastStatus.backendReachable : false;
+  commit({ deviceOnline, backendReachable });
 }
 
-function emitIfChanged(s: NetworkStatus): void {
-  const storeOnline = useSyncStore.getState().online;
-  const shouldNotify = s.connected !== lastStatus.connected || s.connected !== storeOnline;
-  if (!shouldNotify) {
-    lastStatus = s;
-    applyStatusToSyncStore(s.connected);
-    return;
-  }
-  emit(s);
+function setBackendReachable(backendReachable: boolean): void {
+  // O ping nunca deve alterar deviceOnline. Se, por qualquer motivo, o ping
+  // rodou enquanto o dispositivo já estava offline, ignoramos o resultado.
+  if (!lastStatus.deviceOnline) return;
+  commit({ deviceOnline: true, backendReachable });
 }
 
-function applyStatusToSyncStore(connected: boolean): void {
+function commit(next: { deviceOnline: boolean; backendReachable: boolean }): void {
+  const changed =
+    next.deviceOnline !== lastStatus.deviceOnline ||
+    next.backendReachable !== lastStatus.backendReachable;
+  const status: NetworkStatus = {
+    deviceOnline: next.deviceOnline,
+    backendReachable: next.backendReachable,
+    connected: next.deviceOnline, // compat com callers antigos
+  };
+  lastStatus = status;
+  applyStatusToSyncStore(status);
+  if (changed) listeners.forEach((l) => l(status));
+}
+
+function applyStatusToSyncStore(s: NetworkStatus): void {
   const store = useSyncStore.getState();
-  store.setOnline(connected);
-  if (connected) {
+  if (store.online !== s.deviceOnline) store.setOnline(s.deviceOnline);
+  if (store.backendReachable !== s.backendReachable)
+    store.setBackendReachable(s.backendReachable);
+  if (!s.deviceOnline && store.phase === "syncing") store.setPhase("idle");
+  if (s.deviceOnline && s.backendReachable && store.phase === "error") {
+    store.setPhase("idle");
     store.setLastError(null);
-    if (store.phase === "error") store.setPhase("idle");
-    return;
   }
-  if (store.phase === "syncing") store.setPhase("idle");
 }
 
-async function readDeviceNetworkStatus(): Promise<NetworkStatus> {
-  // If the OS/browser already knows we're offline, don't waste a ping —
-  // reflect it instantly. The ping is only useful to *confirm* reachability
-  // when navigator says we're online (WebViews can lie).
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    return { connected: false };
+async function pingBackendIfOnline(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (!lastStatus.deviceOnline) return;
+  if (pingRunning && pingPromise) {
+    await pingPromise;
+    return;
   }
-  const databaseReachable = await pingDatabase();
-  return { connected: databaseReachable };
+  pingRunning = true;
+  pingPromise = pingDatabase();
+  try {
+    const reachable = await pingPromise;
+    setBackendReachable(reachable);
+  } finally {
+    pingRunning = false;
+    pingPromise = null;
+  }
 }
 
 async function pingDatabase(): Promise<boolean> {

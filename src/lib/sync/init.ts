@@ -1,4 +1,4 @@
-import { initNetwork, onNetworkChange, getNetworkStatus, refreshNetworkStatus } from "./network";
+import { initNetwork, refreshNetworkStatus } from "./network";
 import { useSyncStore } from "./store";
 import { drainOutbox, refreshPendingCount, scheduleSync, pullRemote } from "./engine";
 import { installSessionMirror, restoreSession } from "./session-backup";
@@ -10,18 +10,22 @@ let syncRetryTimer: ReturnType<typeof setInterval> | null = null;
 
 const SYNC_RETRY_MS = 15_000;
 
-function applyNetworkStatus(connected: boolean): void {
-  const store = useSyncStore.getState();
-  store.setOnline(connected);
-  if (!connected) {
-    if (store.phase === "syncing") store.setPhase("idle");
-    return;
+/**
+ * Reage a mudanças de conectividade puramente lendo o store. O
+ * NetworkService é a única fonte de verdade — este módulo apenas orquestra
+ * sync quando a combinação (deviceOnline && backendReachable) fica verdadeira.
+ */
+function handleConnectivityTransition(prev: {
+  online: boolean;
+  backendReachable: boolean;
+}, next: { online: boolean; backendReachable: boolean }): void {
+  const wasFullyOnline = prev.online && prev.backendReachable;
+  const isFullyOnline = next.online && next.backendReachable;
+  if (!wasFullyOnline && isFullyOnline) {
+    scheduleSync();
+    void pullRemote();
+    void warmCatalogs();
   }
-  store.setLastError(null);
-  if (store.phase === "error") store.setPhase("idle");
-  scheduleSync();
-  void pullRemote();
-  void warmCatalogs();
 }
 
 export async function startSync(): Promise<void> {
@@ -29,15 +33,22 @@ export async function startSync(): Promise<void> {
   started = true;
 
   await initNetwork();
-  applyNetworkStatus(getNetworkStatus().connected);
 
-  onNetworkChange((s) => {
-    applyNetworkStatus(s.connected);
+  // Assina o store: é o único caminho de reação a conectividade.
+  let prev = {
+    online: useSyncStore.getState().online,
+    backendReachable: useSyncStore.getState().backendReachable,
+  };
+  useSyncStore.subscribe((state) => {
+    const next = { online: state.online, backendReachable: state.backendReachable };
+    if (next.online === prev.online && next.backendReachable === prev.backendReachable) return;
+    const before = prev;
+    prev = next;
+    handleConnectivityTransition(before, next);
   });
 
-  // Initial immediate network refresh; keep this before any auth/db work so
-  // the visual indicators react as soon as the app opens.
-  void refreshNetworkStatus().then((s) => applyNetworkStatus(s.connected));
+  // Sonda imediata (não bloqueia UI).
+  void refreshNetworkStatus();
 
   // One-shot cleanup: catálogos ficaram globais; apagar chaves antigas com
   // team_id no sufixo (podem ter arrays vazios em cache) para evitar UI vazia.
@@ -70,14 +81,14 @@ export async function startSync(): Promise<void> {
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        void refreshNetworkStatus().then((s) => applyNetworkStatus(s.connected));
+        void refreshNetworkStatus();
       }
     });
   }
 
   if (typeof window !== "undefined") {
     window.addEventListener("focus", () => {
-      void refreshNetworkStatus().then((s) => applyNetworkStatus(s.connected));
+      void refreshNetworkStatus();
     });
   }
 
@@ -94,7 +105,8 @@ export async function startSync(): Promise<void> {
   // relatório local/offline.
   if (!syncRetryTimer) {
     syncRetryTimer = setInterval(() => {
-      if (useSyncStore.getState().online) void drainOutbox();
+      const st = useSyncStore.getState();
+      if (st.online && st.backendReachable) void drainOutbox();
     }, SYNC_RETRY_MS);
   }
 
@@ -108,9 +120,9 @@ export async function startSync(): Promise<void> {
  * the outbox. Resolves when both steps complete (or fail).
  */
 export async function manualSync(): Promise<void> {
-  const status = await refreshNetworkStatus();
-  applyNetworkStatus(status.connected);
-  if (useSyncStore.getState().online) {
+  await refreshNetworkStatus();
+  const st = useSyncStore.getState();
+  if (st.online && st.backendReachable) {
     await drainOutbox();
   }
 }
@@ -122,7 +134,8 @@ export async function manualSync(): Promise<void> {
  */
 async function warmCatalogs(): Promise<void> {
   if (typeof window === "undefined") return;
-  if (!useSyncStore.getState().online) return;
+  const st = useSyncStore.getState();
+  if (!st.online || !st.backendReachable) return;
   try {
     const { data } = await supabase.auth.getSession();
     if (!data.session) return;
