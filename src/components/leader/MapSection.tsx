@@ -213,8 +213,7 @@ export function LeaderMapSection() {
 
   return (
     <div className="space-y-3 pb-24">
-      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] md:items-end">
-      <div className="flex items-center justify-between gap-2 md:contents">
+      <div className="flex items-center justify-between gap-2">
         <select
           value={viabilityFilter}
           onChange={(e) => setViabilityFilter(e.target.value as "all" | "viable" | "unviable")}
@@ -225,7 +224,7 @@ export function LeaderMapSection() {
           <option value="viable">Viáveis ({counts.viable})</option>
           <option value="unviable">Inviáveis ({counts.unviable})</option>
         </select>
-        <div className="inline-flex overflow-hidden rounded-lg border border-border md:order-last md:justify-self-end">
+        <div className="inline-flex overflow-hidden rounded-lg border border-border">
           {(["day", "week", "month"] as Period[]).map((p) => {
             const active = periodFilter === p;
             const label = p === "day" ? "Dia" : p === "week" ? "Semana" : "Mês";
@@ -243,7 +242,7 @@ export function LeaderMapSection() {
         </div>
       </div>
 
-      <div className="md:col-span-1">
+      <div>
         <label htmlFor="leader-map-team" className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Equipe
         </label>
@@ -251,7 +250,7 @@ export function LeaderMapSection() {
           id="leader-map-team"
           value={teamScope}
           onChange={(e) => setTeamScope(e.target.value)}
-          className={cn(selectCls, "mt-1 h-11 w-full")}
+          className={cn(selectCls, "mt-1 h-11 w-full md:max-w-md")}
         >
           <option value={ALL}>Todas as equipes ({teams.length})</option>
           {teams.map((t) => (
@@ -260,7 +259,6 @@ export function LeaderMapSection() {
             </option>
           ))}
         </select>
-      </div>
       </div>
 
       <div className="flex gap-2 min-w-0">
