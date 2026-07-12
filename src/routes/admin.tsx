@@ -222,7 +222,7 @@ function AdminPage() {
       />
 
       {view === "menu" ? (
-        <main className="mx-auto max-w-5xl space-y-5 overflow-x-hidden px-4 py-6">
+        <main className="mx-auto max-w-5xl space-y-5 overflow-x-hidden px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={() => setView("ranking")}
@@ -283,11 +283,11 @@ function AdminPage() {
           </div>
         </main>
       ) : view === "ranking" ? (
-        <main className="mx-auto max-w-2xl px-4 py-6">
+        <main className="mx-auto max-w-2xl px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <RankingSection adminPw={adminPw} />
         </main>
       ) : (
-        <main className="mx-auto max-w-2xl px-4 py-6">
+        <main className="mx-auto max-w-2xl px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
