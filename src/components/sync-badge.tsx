@@ -20,11 +20,14 @@ export function SyncBadge() {
   // vermelha não deve piscar ao registrar um serviço.
   const visible = mounted && !online;
 
-  // Nunca reservar espaço no layout: a faixa sobrepõe os botões de ação.
+  // Mantém outros elementos fixos sincronizados com a faixa offline.
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.style.setProperty("--sync-banner-h", "0px");
-  }, []);
+    document.documentElement.style.setProperty(
+      "--sync-banner-h",
+      visible ? "calc(1.25rem + env(safe-area-inset-bottom, 0px))" : "0px",
+    );
+  }, [visible]);
 
   if (!visible) return null;
 

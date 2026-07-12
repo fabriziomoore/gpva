@@ -2,6 +2,26 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cacheTeam, getCachedTeam } from "@/lib/db/catalogs";
 
+const TEAM_QUERY_TIMEOUT_MS = 2_500;
+
+function isOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+async function withTimeout<T>(promise: PromiseLike<T>, ms = TEAM_QUERY_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Consulta da equipe excedeu o tempo limite")), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export type Team = {
   id: string;
   team_name: string;
@@ -23,14 +43,21 @@ export function useTeam(userId: string | null) {
     enabled: !!userId,
     networkMode: "always",
     retry: false,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    initialData: () => (userId ? undefined : null),
     queryFn: async (): Promise<Team | null> => {
+      const cached = userId ? await getCachedTeam(userId) : null;
+      if (isOffline() && cached) return cached;
       try {
-        const { data, error } = await supabase
-          .from("equipes")
-          .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome)")
-          .maybeSingle();
+        const { data, error } = await withTimeout(
+          supabase
+            .from("equipes")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome)")
+            .maybeSingle(),
+        );
         if (error) throw error;
-        if (!data) return userId ? await getCachedTeam(userId) : null;
+        if (!data) return cached;
         const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string } | null }).setores;
         const team: Team = {
           id: data.id,
@@ -49,10 +76,7 @@ export function useTeam(userId: string | null) {
         await cacheTeam(team);
         return team;
       } catch (err) {
-        if (userId) {
-          const cached = await getCachedTeam(userId);
-          if (cached) return cached;
-        }
+        if (cached) return cached;
         throw err;
       }
     },
