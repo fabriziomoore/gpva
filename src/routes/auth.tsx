@@ -5,14 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
-  saveRemembered,
-  getRemembered,
-  clearRemembered,
-  verifyRemembered,
-} from "@/lib/remember-access";
-import { readStoredAuthSession, restoreSession } from "@/lib/sync/session-backup";
+  tryOfflineLogin,
+  hasValidOfflineUnlock,
+  getCredential,
+  offlineErrorMessage,
+  type OfflineLoginReason,
+} from "@/lib/offline-auth";
+import { readStoredAuthSession } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.webp";
@@ -48,6 +48,8 @@ export const Route = createFileRoute("/auth")({
     }
     const localSession = readStoredAuthSession();
     if (localSession) throw redirect({ to: "/" });
+    // Se já existe um unlock offline ativo, entra direto (sem passar por login).
+    if (await hasValidOfflineUnlock()) throw redirect({ to: "/" });
     if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     const result = await Promise.race([
       supabase.auth.getSession(),
@@ -64,7 +66,6 @@ function AuthPage() {
   const [team, setTeam] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState<boolean>(false);
@@ -81,13 +82,11 @@ function AuthPage() {
     };
   }, []);
 
-  // Preencher equipe salva, se houver
+  // Pré-preenche o login com a equipe salva anteriormente (se houver
+  // credencial local de um primeiro acesso online prévio).
   useEffect(() => {
-    void getRemembered().then((rec) => {
-      if (rec?.team) {
-        setTeam(rec.team);
-        setRemember(true);
-      }
+    void getCredential().then((rec) => {
+      if (rec?.team) setTeam(rec.team);
     });
   }, []);
 
@@ -109,17 +108,17 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      if (isBrowserOffline()) throw new OfflineLoginFallbackError();
+      // Offline conhecido: pula direto para a validação local, sem
+      // qualquer chamada ao Supabase.
+      if (isBrowserOffline()) {
+        await handleOfflineLogin();
+        return;
+      }
       await withLoginTimeout(signInTeam(team, password));
       sessionStorage.removeItem("gpva.forceSignedOut");
-      if (remember) {
-        await saveRemembered(team, password);
-      } else {
-        await clearRemembered();
-      }
+      // A credencial local já foi persistida dentro de signInTeam().
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao autenticar";
-      // Falha de rede → tenta login offline com credenciais lembradas
       const isNetwork =
         isBrowserOffline() ||
         err instanceof OfflineLoginFallbackError ||
@@ -128,19 +127,7 @@ function AuthPage() {
         msg.toLowerCase().includes("timeout") ||
         msg.toLowerCase().includes("load failed");
       if (isNetwork) {
-        const ok = await verifyRemembered(team, password);
-        if (ok) {
-          try { sessionStorage.removeItem("gpva.forceSignedOut"); } catch { /* ignore */ }
-          const restored = await restoreSession({ force: true });
-          if (restored || readStoredAuthSession()) {
-            toast.success("Acesso offline autorizado");
-            navigate({ to: "/" });
-            return;
-          }
-          toast.error("Sem sessão salva para acesso offline. Conecte-se uma vez com internet para gerar a sessão offline.");
-        } else {
-          toast.error("Sem internet. Marque 'Lembrar acesso' em um login online.");
-        }
+        await handleOfflineLogin();
       } else if (msg.toLowerCase().includes("invalid login")) {
         setErrorMsg("Usuário ou senha incorretos.");
       } else {
@@ -150,6 +137,20 @@ function AuthPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleOfflineLogin(): Promise<void> {
+    const result = await tryOfflineLogin(team, password);
+    if (result.ok) {
+      try { sessionStorage.removeItem("gpva.forceSignedOut"); } catch { /* ignore */ }
+      toast.success("Acesso offline autorizado");
+      navigate({ to: "/" });
+      return;
+    }
+    const reason: OfflineLoginReason = result.reason;
+    const message = offlineErrorMessage(reason);
+    setErrorMsg(message);
+    if (reason !== "mismatch") toast.error(message);
   }
 
   return (
@@ -200,17 +201,6 @@ function AuthPage() {
                 {errorMsg}
               </p>
             )}
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-              <Checkbox
-                checked={remember}
-                onCheckedChange={(v) => {
-                  const next = v === true;
-                  setRemember(next);
-                  if (!next) void clearRemembered();
-                }}
-              />
-              Lembrar acesso
-            </label>
             <Button
               type="submit"
               disabled={loading}

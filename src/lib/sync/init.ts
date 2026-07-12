@@ -4,6 +4,7 @@ import { drainOutbox, refreshPendingCount, scheduleSync, pullRemote } from "./en
 import { installSessionMirror, restoreSession } from "./session-backup";
 import { getLocalDB } from "@/lib/db/local-db";
 import { supabase } from "@/integrations/supabase/client";
+import { markOnlineAuthSuccess } from "@/lib/offline-auth";
 
 let started = false;
 let syncRetryTimer: ReturnType<typeof setInterval> | null = null;
@@ -97,6 +98,9 @@ export async function startSync(): Promise<void> {
   supabase.auth.onAuthStateChange((event) => {
     if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
       void warmCatalogs();
+      // Revalidação online bem-sucedida — renova a janela de 30 dias do
+      // acesso offline.
+      void markOnlineAuthSuccess();
     }
   });
 
