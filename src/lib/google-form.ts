@@ -112,9 +112,10 @@ function buildParams(input: NegotiationSubmission, ENTRIES: EntryIds): URLSearch
 }
 
 /**
- * Envia a resposta abrindo uma nova aba com POST real ao Google Forms,
- * fazendo o navegador exibir a tela "Sua resposta foi registrada".
- * Retorna true se a aba foi aberta; false se foi bloqueada por popup blocker.
+ * Abre o Google Forms pré-preenchido (viewform) numa nova aba para o
+ * usuário revisar e clicar em "Enviar" manualmente. NÃO submete a resposta
+ * automaticamente. Retorna true se a aba foi aberta; false se foi bloqueada
+ * por popup blocker.
  */
 export async function submitNegotiationToGoogleForm(input: NegotiationSubmission): Promise<boolean> {
   // Em navegadores, o window.open precisa ser feito SÍNCRONO no gesto do
@@ -140,6 +141,7 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
     throw err;
   }
   const params = buildParams(input, active.entries);
+  const viewformUrl = `https://docs.google.com/forms/d/e/${active.formId}/viewform?usp=pp_url&${params.toString()}`;
 
   // No app nativo abrimos a viewform pré-preenchida dentro de um WebView
   // do próprio app (@capacitor/inappbrowser) com toolbar customizada. O
@@ -148,7 +150,6 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
   try {
     const { Capacitor } = await import("@capacitor/core");
     if (Capacitor.isNativePlatform()) {
-      const url = `https://docs.google.com/forms/d/e/${active.formId}/viewform?usp=pp_url&${params.toString()}`;
       const {
         InAppBrowser,
         ToolbarPosition,
@@ -156,7 +157,7 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
         iOSViewStyle,
       } = await import("@capacitor/inappbrowser");
       await InAppBrowser.openInWebView({
-        url,
+        url: viewformUrl,
         options: {
           showURL: false,
           showToolbar: true,
@@ -194,19 +195,9 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
     if (!win) return false;
   }
 
-  const form = win.document.createElement("form");
-  form.method = "POST";
-  form.action = active.endpoint;
-  form.acceptCharset = "UTF-8";
-  for (const [k, v] of params) {
-    const i = win.document.createElement("input");
-    i.type = "hidden";
-    i.name = k;
-    i.value = v;
-    form.appendChild(i);
-  }
-  win.document.body.appendChild(form);
-  form.submit();
+  // Navega a aba já aberta para a viewform pré-preenchida. O envio só
+  // acontece quando o usuário clicar em "Enviar" na página do Google.
+  win.location.href = viewformUrl;
   return true;
 }
 
