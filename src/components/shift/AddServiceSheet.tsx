@@ -23,7 +23,7 @@ import {
   PAYMENT_OPTIONS,
   type PaymentOption,
 } from "@/lib/google-form";
-import { buildCaption } from "@/lib/share-negotiation";
+import { buildCaption, shareNegotiation } from "@/lib/share-negotiation";
 import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 
