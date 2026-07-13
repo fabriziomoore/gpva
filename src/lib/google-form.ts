@@ -150,44 +150,16 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
   try {
     const { Capacitor } = await import("@capacitor/core");
     if (Capacitor.isNativePlatform()) {
-      const {
-        InAppBrowser,
-        ToolbarPosition,
-        iOSAnimation,
-        iOSViewStyle,
-      } = await import("@capacitor/inappbrowser");
-      await InAppBrowser.openInWebView({
-        url: viewformUrl,
-        options: {
-          showURL: false,
-          showToolbar: true,
-          clearCache: false,
-          clearSessionCache: false,
-          mediaPlaybackRequiresUserAction: true,
-          closeButtonText: "Fechar",
-          toolbarPosition: ToolbarPosition.TOP,
-          showNavigationButtons: false,
-          leftToRight: false,
-          android: {
-            allowZoom: true,
-            hardwareBack: true,
-            pauseMedia: true,
-          },
-          iOS: {
-            allowOverScroll: false,
-            enableViewportScale: true,
-            allowInLineMediaPlayback: false,
-            surpressIncrementalRendering: false,
-            viewStyle: iOSViewStyle.FULL_SCREEN,
-            animationEffect: iOSAnimation.COVER_VERTICAL,
-            allowsBackForwardNavigationGestures: false,
-          },
-        },
-      });
+      // Usa Capacitor Browser (Chrome Custom Tabs no Android / SFSafariViewController
+      // no iOS). Abre a URL pré-preenchida direto — sem passar por about:blank.
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url: viewformUrl, presentationStyle: "fullscreen" });
       return true;
     }
   } catch {
-    /* fallback para o fluxo web abaixo */
+    // Em nativo, se algo falhar, não caia no window.open (abre Chrome externo
+    // em about:blank). Só web usa o fallback abaixo.
+    if (isNativeGuess) return false;
   }
 
   if (!win) {
