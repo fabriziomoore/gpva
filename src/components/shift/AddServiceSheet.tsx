@@ -23,7 +23,7 @@ import {
   PAYMENT_OPTIONS,
   type PaymentOption,
 } from "@/lib/google-form";
-import { buildCaption } from "@/lib/share-negotiation";
+import { buildCaption, shareNegotiation } from "@/lib/share-negotiation";
 import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 
@@ -572,6 +572,25 @@ export function AddServiceSheet({
                       className="h-14 w-full text-base font-semibold"
                     >
                       {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms (print manual)"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-14 w-full text-base font-semibold"
+                      onClick={async () => {
+                        try {
+                          const ok = await shareNegotiation(submission);
+                          if (!ok) toast.error("Não foi possível abrir o compartilhamento");
+                        } catch (err) {
+                          toast.error(
+                            `Falha ao compartilhar: ${
+                              err instanceof Error ? err.message : "erro desconhecido"
+                            }`,
+                          );
+                        }
+                      }}
+                    >
+                      Compartilhar no WhatsApp
                     </Button>
                   </div>
                 );
