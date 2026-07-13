@@ -150,10 +150,26 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
   try {
     const { Capacitor } = await import("@capacitor/core");
     if (Capacitor.isNativePlatform()) {
-      // Usa Capacitor Browser (Chrome Custom Tabs no Android / SFSafariViewController
-      // no iOS). Abre a URL pré-preenchida direto — sem passar por about:blank.
-      const { Browser } = await import("@capacitor/browser");
-      await Browser.open({ url: viewformUrl, presentationStyle: "fullscreen" });
+      // Abre o Forms pré-preenchido num WebView nativo com toolbar
+      // customizada (mesmo padrão da Consulta ArcGIS). O usuário revisa
+      // os campos e toca em "Enviar" dentro do próprio WebView.
+      const { InAppBrowser, ToolBarType, BackgroundColor } = await import(
+        "@capgo/inappbrowser"
+      );
+      await InAppBrowser.openWebView({
+        url: viewformUrl,
+        title: "Descritivo Negociação",
+        toolbarType: ToolBarType.COMPACT,
+        toolbarColor: "#1a2338",
+        toolbarTextColor: "#ffffff",
+        backgroundColor: BackgroundColor.WHITE,
+        visibleTitle: true,
+        showArrow: false,
+        showReloadButton: false,
+        activeNativeNavigationForWebview: true,
+        isPresentAfterPageLoad: false,
+        isAnimated: true,
+      });
       return true;
     }
   } catch {
