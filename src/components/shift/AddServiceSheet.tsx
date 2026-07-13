@@ -529,6 +529,18 @@ export function AddServiceSheet({
                     <Button
                       disabled={saving}
                       onClick={async () => {
+                        const online = typeof navigator === "undefined" ? true : navigator.onLine;
+                        if (!online) {
+                          const serviceId = await finalizeService();
+                          if (serviceId) {
+                            saveFailedPayload(serviceId, submission);
+                            setFormsStatus(serviceId, "failed");
+                          }
+                          toast.warning(
+                            "Sem conexão — Forms marcado como pendente. Toque no rótulo depois para enviar.",
+                          );
+                          return;
+                        }
                         const caption = buildCaption(submission);
                         try {
                           await navigator.clipboard.writeText(caption);
@@ -543,6 +555,7 @@ export function AddServiceSheet({
                         ]);
                         if (serviceId) {
                           setFormsStatus(serviceId, result.ok ? "sent" : "failed");
+                          if (!result.ok) saveFailedPayload(serviceId, submission);
                         }
                         if (result.ok) {
                           toast.success("Forms aberto — descritivo copiado para colar");
@@ -565,15 +578,13 @@ export function AddServiceSheet({
                       disabled={saving}
                       onClick={() => {
                         void (async () => {
-                          const [serviceId, ok] = await Promise.all([
-                            finalizeService(),
-                            submitNegotiationSilent(submission),
-                          ]);
+                          // Não envia automaticamente ao Forms — marca como pendente para
+                          // envio manual pelo rótulo "Forms não enviado" no histórico.
+                          const serviceId = await finalizeService();
                           if (serviceId) {
-                            setFormsStatus(serviceId, ok ? "sent" : "failed");
+                            saveFailedPayload(serviceId, submission);
+                            setFormsStatus(serviceId, "failed");
                           }
-                          if (ok) toast.success("Resposta enviada ao Forms");
-                          else toast.error("Falha ao enviar para o Forms — verifique sua conexão");
                         })();
                         void shareNegotiation(submission)
                           .then((ok) => {
