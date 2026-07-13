@@ -23,7 +23,7 @@ import {
   PAYMENT_OPTIONS,
   type PaymentOption,
 } from "@/lib/google-form";
-import { shareNegotiation, buildCaption } from "@/lib/share-negotiation";
+import { buildCaption } from "@/lib/share-negotiation";
 import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 
@@ -572,31 +572,6 @@ export function AddServiceSheet({
                       className="h-14 w-full text-base font-semibold"
                     >
                       {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms (print manual)"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={saving}
-                      onClick={() => {
-                        void (async () => {
-                          // Não envia automaticamente ao Forms — marca como pendente para
-                          // envio manual pelo rótulo "Forms não enviado" no histórico.
-                          const serviceId = await finalizeService();
-                          if (serviceId) {
-                            saveFailedPayload(serviceId, submission);
-                            setFormsStatus(serviceId, "failed");
-                          }
-                        })();
-                        void shareNegotiation(submission)
-                          .then((ok) => {
-                            if (ok) {
-                              toast.success("Legenda copiada — cole no campo de legenda da imagem no WhatsApp");
-                            }
-                          })
-                          .catch(() => toast.error("Falha ao gerar imagem do descritivo"));
-                      }}
-                      className="h-14 w-full text-base font-semibold"
-                    >
-                      Finalizar e compartilhar imagem no WhatsApp
                     </Button>
                   </div>
                 );
