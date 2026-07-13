@@ -117,7 +117,28 @@ function buildParams(input: NegotiationSubmission, ENTRIES: EntryIds): URLSearch
  * Retorna true se a aba foi aberta; false se foi bloqueada por popup blocker.
  */
 export async function submitNegotiationToGoogleForm(input: NegotiationSubmission): Promise<boolean> {
-  const active = await getActiveForm();
+  // Em navegadores, o window.open precisa ser feito SÍNCRONO no gesto do
+  // clique — senão o popup abre em about:blank e a navegação posterior é
+  // bloqueada. Abrimos aqui primeiro; depois carregamos a config e
+  // submetemos o form nessa janela já aberta.
+  let win: Window | null = null;
+  const isNativeGuess =
+    typeof window !== "undefined" &&
+    // Capacitor injeta este flag antes do JS do app rodar
+    (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+      .Capacitor?.isNativePlatform?.() === true;
+  if (typeof window !== "undefined" && !isNativeGuess) {
+    win = window.open("about:blank", "_blank");
+    if (!win) return false;
+  }
+
+  let active: ActiveForm;
+  try {
+    active = await getActiveForm();
+  } catch (err) {
+    win?.close();
+    throw err;
+  }
   const params = buildParams(input, active.entries);
 
   // No app nativo abrimos a viewform pré-preenchida dentro de um WebView
@@ -168,8 +189,10 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
     /* fallback para o fluxo web abaixo */
   }
 
-  const win = window.open("about:blank", "_blank");
-  if (!win) return false;
+  if (!win) {
+    win = window.open("about:blank", "_blank");
+    if (!win) return false;
+  }
 
   const form = win.document.createElement("form");
   form.method = "POST";
