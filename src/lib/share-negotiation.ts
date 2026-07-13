@@ -25,57 +25,8 @@ export function buildCaption(input: NegotiationSubmission): string {
 export async function buildNegotiationImage(input: NegotiationSubmission): Promise<Blob> {
   // Proporção próxima de 1:1 para o preview do WhatsApp não recortar as bordas.
   const W = 1080;
-  // Altura definida depois que sabemos o tamanho da faixa preta com o descritivo.
+  const H = 1350;
   const canvas = document.createElement("canvas");
-  // Cria um contexto temporário só para medir texto (antes de saber H).
-  const measure = document.createElement("canvas").getContext("2d")!;
-
-  // ---- Faixa preta: prepara linhas antes de definir a altura do canvas ----
-  const captionLines = buildCaption(input).split("\n");
-  const BAND_PAD_X = 56;
-  const BAND_PAD_Y = 44;
-  const BAND_LINE_H = 46;
-  const BAND_TITLE_FONT = '700 40px "Roboto", "Segoe UI", system-ui, sans-serif';
-  const BAND_BODY_FONT = '400 32px "Roboto", "Segoe UI", system-ui, sans-serif';
-
-  // Card
-  const CARD_X = 40;
-  const CARD_Y = 60;
-  const CARD_W = W - CARD_X * 2;
-  const CARD_H = 570;
-  const RADIUS = 18;
-
-  // Wrap simples para caber na largura da faixa
-  const bandWidth = CARD_W;
-  const bandInnerW = bandWidth - BAND_PAD_X * 2;
-  measure.font = BAND_BODY_FONT;
-  const wrapped: { text: string; bold: boolean }[] = [];
-  for (const raw of captionLines) {
-    const isTitle = /^\*.*\*$/.test(raw);
-    const clean = raw.replace(/^\*|\*$/g, "");
-    measure.font = isTitle ? BAND_TITLE_FONT : BAND_BODY_FONT;
-    const words = clean.split(" ");
-    let line = "";
-    for (const w of words) {
-      const test = line ? `${line} ${w}` : w;
-      if (measure.measureText(test).width > bandInnerW && line) {
-        wrapped.push({ text: line, bold: isTitle });
-        line = w;
-      } else {
-        line = test;
-      }
-    }
-    if (line) wrapped.push({ text: line, bold: isTitle });
-  }
-
-  const BAND_X = CARD_X;
-  const BAND_Y = CARD_Y + CARD_H + 24;
-  const BAND_H = BAND_PAD_Y * 2 + wrapped.length * BAND_LINE_H;
-
-  // Rodapé Google Formulários abaixo da faixa
-  const FOOTER_TOP = BAND_Y + BAND_H + 48;
-  const H = FOOTER_TOP + 260;
-
   canvas.width = W;
   canvas.height = H;
   const c = canvas.getContext("2d")!;
@@ -83,6 +34,13 @@ export async function buildNegotiationImage(input: NegotiationSubmission): Promi
   // Fundo lavanda do Google Forms
   c.fillStyle = "#f0ebf8";
   c.fillRect(0, 0, W, H);
+
+  // Cartão branco
+  const CARD_X = 40;
+  const CARD_Y = 60;
+  const CARD_W = W - CARD_X * 2;
+  const CARD_H = 570;
+  const RADIUS = 18;
 
   // Sombra sutil
   c.save();
@@ -119,21 +77,8 @@ export async function buildNegotiationImage(input: NegotiationSubmission): Promi
   const linkW = c.measureText(link).width;
   c.fillRect(linkX, linkY + 6, linkW, 2);
 
-  // ---- Faixa preta com o descritivo da negociação ----
-  c.fillStyle = "#000000";
-  roundRect(c, BAND_X, BAND_Y, bandWidth, BAND_H, RADIUS);
-  c.fill();
-
-  c.fillStyle = "#ffffff";
-  let ty = BAND_Y + BAND_PAD_Y + 34;
-  for (const line of wrapped) {
-    c.font = line.bold ? BAND_TITLE_FONT : BAND_BODY_FONT;
-    c.fillText(line.text, BAND_X + BAND_PAD_X, ty);
-    ty += BAND_LINE_H;
-  }
-
-  // Rodapé cinza
-  const footerY = FOOTER_TOP;
+  // Rodapé cinza abaixo do cartão
+  const footerY = CARD_Y + CARD_H + 58;
   c.fillStyle = "#5f6368";
   c.font = '400 22px "Roboto", "Segoe UI", system-ui, sans-serif';
   centerText(c, "Este conteúdo não foi criado nem aprovado pelo Google. -", W / 2, footerY);
@@ -160,6 +105,7 @@ export async function buildNegotiationImage(input: NegotiationSubmission): Promi
   c.fillStyle = "#5f6368";
   c.fillText(label2, x, gy);
 
+  void input;
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao gerar imagem"))), "image/png");
   });
