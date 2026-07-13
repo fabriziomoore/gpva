@@ -156,9 +156,12 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
       const { InAppBrowser, ToolBarType, BackgroundColor } = await import(
         "@capgo/inappbrowser"
       );
+      const total =
+        (input.valorAVista ?? 0) + (input.valorTotalParcelado ?? 0);
+      const title = `Forms de Negociação  •  Mat ${input.matricula}  •  ${formatMoneyBR(total)}`;
       await InAppBrowser.openWebView({
         url: viewformUrl,
-        title: "Forms de Negociação",
+        title,
         toolbarType: ToolBarType.COMPACT,
         toolbarColor: "#1a2338",
         toolbarTextColor: "#ffffff",
