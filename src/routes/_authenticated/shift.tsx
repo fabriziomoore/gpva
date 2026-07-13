@@ -15,6 +15,15 @@ import type { LocalService } from "@/lib/db/local-db";
 import { useFormsStatus, getFailedPayload, setFormsStatus } from "@/lib/forms-status";
 import { submitNegotiationToGoogleForm } from "@/lib/google-form";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
+import { getFormsStatus } from "@/lib/forms-status";
 
 export const Route = createFileRoute("/_authenticated/shift")({
   head: () => ({ meta: [{ title: "Expediente" }] }),
@@ -27,6 +36,7 @@ function ShiftPage() {
   const { data: team } = useTeam(userId);
   const [addOpen, setAddOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
+  const [pendingForms, setPendingForms] = useState<LocalService[] | null>(null);
 
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
@@ -76,6 +86,47 @@ function ShiftPage() {
     return { total, viaveis, inviaveis, totalNeg, variavel };
   }, [services, openShift, team]);
 
+  function attemptFinish() {
+    const list = services ?? [];
+    const pending = list.filter(
+      (s) => s.is_negotiation && getFormsStatus(s.id) === "failed",
+    );
+    if (pending.length > 0) {
+      setPendingForms(pending);
+      return;
+    }
+    setFinishOpen(true);
+  }
+
+  async function sendFirstPending() {
+    const first = pendingForms?.[0];
+    if (!first) return;
+    const payload = getFailedPayload(first.id);
+    if (!payload) {
+      toast.error("Dados do Forms não encontrados neste dispositivo.");
+      return;
+    }
+    const online = typeof navigator === "undefined" ? true : navigator.onLine;
+    if (!online) {
+      toast.warning("Sem conexão — tente novamente quando estiver online.");
+      return;
+    }
+    try {
+      const opened = await submitNegotiationToGoogleForm(payload);
+      if (opened) {
+        setFormsStatus(first.id, "sent");
+        toast.success("Forms aberto para envio manual.");
+        setPendingForms(null);
+      } else {
+        toast.error("Permita pop-ups para abrir o Forms.");
+      }
+    } catch (err) {
+      toast.error(
+        `Falha ao abrir Forms: ${err instanceof Error ? err.message : "erro desconhecido"}`,
+      );
+    }
+  }
+
   if (loading) {
     return (
       <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
@@ -124,7 +175,7 @@ function ShiftPage() {
         style={{ bottom: "var(--sync-floating-bottom, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
       >
           <Button
-            onClick={() => setFinishOpen(true)}
+            onClick={attemptFinish}
             className="h-14 flex-1 border-0 bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90"
           >
             <Flag className="mr-2 size-5" /> Finalizar
@@ -152,6 +203,36 @@ function ShiftPage() {
           />
         </>
       )}
+
+      <AlertDialog
+        open={pendingForms !== null}
+        onOpenChange={(v) => {
+          if (!v) setPendingForms(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Forms pendente de envio</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingForms && pendingForms.length > 1
+                ? `Existem ${pendingForms.length} negociações com o Forms ainda não enviado. Deseja enviar a primeira agora ou finalizar assim mesmo?`
+                : "Há uma negociação com o Forms ainda não enviado. Deseja enviar agora ou finalizar assim mesmo?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPendingForms(null);
+                setFinishOpen(true);
+              }}
+            >
+              Finalizar mesmo assim
+            </Button>
+            <Button onClick={() => void sendFirstPending()}>Enviar</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
