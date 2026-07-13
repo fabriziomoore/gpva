@@ -158,7 +158,7 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
       );
       await InAppBrowser.openWebView({
         url: viewformUrl,
-        title: "Descritivo Negociação",
+        title: "Forms de Negociação",
         toolbarType: ToolBarType.COMPACT,
         toolbarColor: "#1a2338",
         toolbarTextColor: "#ffffff",
