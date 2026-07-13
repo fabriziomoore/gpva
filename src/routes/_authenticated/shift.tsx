@@ -12,7 +12,9 @@ import { formatBRL } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import type { LocalService } from "@/lib/db/local-db";
-import { useFormsStatus } from "@/lib/forms-status";
+import { useFormsStatus, getFailedPayload, setFormsStatus } from "@/lib/forms-status";
+import { submitNegotiationToGoogleForm } from "@/lib/google-form";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/shift")({
   head: () => ({ meta: [{ title: "Expediente" }] }),
@@ -223,13 +225,45 @@ function ServiceRow({
             {s.is_negotiation && formsStatus && (
               <>
                 {" - "}
-                <span
-                  className={
-                    formsStatus === "sent" ? "text-success" : "text-destructive"
-                  }
-                >
-                  {formsStatus === "sent" ? "Forms enviado" : "Forms não enviado"}
-                </span>
+                {formsStatus === "sent" ? (
+                  <span className="text-success">Forms enviado</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const payload = getFailedPayload(s.id);
+                      if (!payload) {
+                        toast.error("Dados do Forms não encontrados neste dispositivo.");
+                        return;
+                      }
+                      const online =
+                        typeof navigator === "undefined" ? true : navigator.onLine;
+                      if (!online) {
+                        toast.warning("Sem conexão — tente novamente quando estiver online.");
+                        return;
+                      }
+                      try {
+                        const opened = await submitNegotiationToGoogleForm(payload);
+                        if (opened) {
+                          setFormsStatus(s.id, "sent");
+                          toast.success("Forms aberto para envio manual.");
+                        } else {
+                          toast.error("Permita pop-ups para abrir o Forms.");
+                        }
+                      } catch (err) {
+                        toast.error(
+                          `Falha ao abrir Forms: ${
+                            err instanceof Error ? err.message : "erro desconhecido"
+                          }`,
+                        );
+                      }
+                    }}
+                    className="text-destructive underline underline-offset-2"
+                  >
+                    Forms não enviado
+                  </button>
+                )}
               </>
             )}
           </p>
