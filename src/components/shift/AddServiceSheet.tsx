@@ -20,12 +20,11 @@ import { ReorderableGrid } from "./ReorderableGrid";
 import { useTeam } from "@/hooks/use-team";
 import {
   submitNegotiationToGoogleForm,
-  submitNegotiationSilent,
   PAYMENT_OPTIONS,
   type PaymentOption,
 } from "@/lib/google-form";
 import { shareNegotiation, buildCaption } from "@/lib/share-negotiation";
-import { setFormsStatus } from "@/lib/forms-status";
+import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
