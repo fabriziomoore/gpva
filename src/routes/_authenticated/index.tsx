@@ -27,13 +27,16 @@ export const Route = createFileRoute("/_authenticated/")({
 
 function HomePage() {
   const navigate = useNavigate();
-  const { userId, loading: authLoading } = useAuthSession();
+  const { session, userId, loading: authLoading } = useAuthSession();
   const isLeader = useIsLeader(userId);
   const isAdmin = useIsAdmin(userId);
   const queryClient = useQueryClient();
   const { data: team, isLoading } = useTeam(userId);
   const [starting, setStarting] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const isReservedAdminLogin =
+    session?.user.email?.toLowerCase() === "adm@gpva.local" ||
+    session?.user.user_metadata?.is_admin === true;
 
   // [HOME] instrumentação — Regressão 1: identificar qual condição segura o spinner.
   useEffect(() => {
@@ -69,11 +72,16 @@ function HomePage() {
   }, [isLeader.data, navigate]);
 
   useEffect(() => {
+    if (isReservedAdminLogin) {
+      sessionStorage.setItem("gpva-admin-pw", "137889");
+      navigate({ to: "/admin", replace: true });
+      return;
+    }
     if (isAdmin.data === true) {
       sessionStorage.setItem("gpva-admin-pw", "137889");
-      navigate({ to: "/admin" });
+      navigate({ to: "/admin", replace: true });
     }
-  }, [isAdmin.data, navigate]);
+  }, [isAdmin.data, isReservedAdminLogin, navigate]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -186,6 +194,7 @@ function HomePage() {
   const authReady = !authLoading;
   const rolePending =
     !authReady ||
+    isReservedAdminLogin ||
     (userId && (isLeader.isLoading || isAdmin.isLoading)) ||
     isLeader.data === true ||
     isAdmin.data === true;

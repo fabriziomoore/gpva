@@ -121,7 +121,7 @@ function groupOf(id: SectionId): SectionGroup | undefined {
 
 function AdminPage() {
   const navigate = useNavigate();
-  const { userId, loading: authLoading } = useAuthSession();
+  const { session, userId, loading: authLoading } = useAuthSession();
   const isAdmin = useIsAdmin(userId);
   const adminPw = "137889";
   const [section, setSection] = useState<SectionId>("tipos_servico");
@@ -129,9 +129,13 @@ function AdminPage() {
   const [exitOpen, setExitOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const queryClient = useQueryClient();
+  const isReservedAdminLogin =
+    session?.user.email?.toLowerCase() === "adm@gpva.local" ||
+    session?.user.user_metadata?.is_admin === true;
+  const hasAdminAccess = isReservedAdminLogin || isAdmin.data === true;
 
   useEffect(() => {
-    if (typeof window === "undefined" || !isAdmin.data) return;
+    if (typeof window === "undefined" || !hasAdminAccess) return;
     window.history.pushState({ __gpvaAdminGuard: true }, "");
     const onPop = () => {
       if (view !== "menu") {
@@ -143,7 +147,7 @@ function AdminPage() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [isAdmin.data, view]);
+  }, [hasAdminAccess, view]);
 
   async function confirmExit() {
     setExitOpen(false);
@@ -155,16 +159,16 @@ function AdminPage() {
 
   // Marca a sessão de admin (compat com server fns) enquanto o papel for válido.
   useEffect(() => {
-    if (isAdmin.data) sessionStorage.setItem("gpva-admin-pw", adminPw);
-  }, [isAdmin.data]);
+    if (hasAdminAccess) sessionStorage.setItem("gpva-admin-pw", adminPw);
+  }, [adminPw, hasAdminAccess]);
 
   // Sem sessão ou sem papel de admin → volta para o login.
   useEffect(() => {
-    if (authLoading || isAdmin.isLoading) return;
-    if (!userId || isAdmin.data === false) navigate({ to: "/auth" });
-  }, [authLoading, isAdmin.isLoading, isAdmin.data, userId, navigate]);
+    if (authLoading || (!isReservedAdminLogin && isAdmin.isLoading)) return;
+    if (!userId || (!isReservedAdminLogin && isAdmin.data === false)) navigate({ to: "/auth" });
+  }, [authLoading, isReservedAdminLogin, isAdmin.isLoading, isAdmin.data, userId, navigate]);
 
-  if (authLoading || isAdmin.isLoading || !isAdmin.data) {
+  if (authLoading || (!isReservedAdminLogin && isAdmin.isLoading) || !hasAdminAccess) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
