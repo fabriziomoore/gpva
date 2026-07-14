@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 const LOGIN_TS_KEY = "gpva.loginAt";
 const SESSION_ID_KEY = "gpva.sessionId";
+const EJECTED_KEY = "gpva.ejected";
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
 const EXPIRY_CHECK_MS = 5 * 60 * 1000; // 5 min
 const HEARTBEAT_MS = 60 * 1000; // 60 s — realtime cobre takeover instantâneo
@@ -27,6 +28,32 @@ let claimedAt = 0;
 let lastActiveCheckAt = 0;
 let activeCheckPromise: Promise<boolean> | null = null;
 const CLAIM_GRACE_MS = 10_000;
+
+type EjectReason = "expired" | "taken_over" | "admin_disconnect";
+
+function getEjected(): EjectReason | null {
+  try {
+    return (localStorage.getItem(EJECTED_KEY) as EjectReason | null) || null;
+  } catch {
+    return null;
+  }
+}
+
+function setEjected(reason: EjectReason): void {
+  try {
+    localStorage.setItem(EJECTED_KEY, reason);
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearEjected(): void {
+  try {
+    localStorage.removeItem(EJECTED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 function localSessionId(): string | null {
   try {
@@ -102,8 +129,9 @@ async function getAuthUserIdOfflineSafe(): Promise<string | null> {
   }
 }
 
-async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
+async function forceSignOut(reason: EjectReason): Promise<void> {
   if (signingOut) return;
+  if (getEjected()) return;
   signingOut = true;
   try {
     stopPerUserWatchers();
@@ -113,6 +141,7 @@ async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
     } catch {
       /* ignore */
     }
+    setEjected(reason);
     // Evita relogin automático offline após ser expulso.
     await clearRemembered().catch(() => undefined);
     // Escopo local: revogar apenas a sessão deste dispositivo. O padrão
@@ -122,6 +151,8 @@ async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     if (reason === "expired") {
       toast.error("Sessão expirada. Faça login novamente.");
+    } else if (reason === "admin_disconnect") {
+      toast.error("Sua sessão foi desconectada");
     } else {
       toast.error("Sua conta foi acessada em outro dispositivo.");
     }
@@ -140,6 +171,7 @@ async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
 
 export async function verifyActiveSession(opts: { force?: boolean } = {}): Promise<boolean> {
   if (typeof window === "undefined" || signingOut) return !signingOut;
+  if (getEjected()) return false;
 
   const now = Date.now();
   if (!opts.force && activeCheckPromise && now - lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
@@ -274,7 +306,7 @@ function startPerUserWatchers(userId: string): void {
         if (!mine) return;
         // Admin removeu a sessão deste dispositivo → força logout imediato.
         if (isDelete && row.session_id === mine) {
-          void forceSignOut("taken_over");
+          void forceSignOut("admin_disconnect");
           return;
         }
         if (row.session_id === mine) return;
@@ -386,6 +418,7 @@ export function startSessionGuard(): void {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_IN" && session?.user) {
+      clearEjected();
       // Login manual (transição de auth). Sempre re-claima para este device
       // se tornar o ativo — ignora qualquer sessionId antigo em localStorage
       // (lixo de logon anterior no mesmo browser, ou takeover feito por outro
