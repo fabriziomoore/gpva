@@ -79,3 +79,13 @@ export type DeviceRow = {
 };
 export const adminListDevices = call<DeviceRow[]>("adminListDevices");
 export const adminSignOutDevice = call<{ ok: true }>("adminSignOutDevice");
+
+// Lixeira (soft-delete)
+export type TrashShiftRow = {
+  id: string; team_id: string; team_name: string;
+  started_at: string; ended_at: string | null; status: string;
+  report_text: string | null; deleted_at: string; service_count: number;
+};
+export const adminListTrashShifts = call<TrashShiftRow[]>("adminListTrashShifts");
+export const adminRestoreShift = call<{ ok: true }>("adminRestoreShift");
+export const adminPurgeShift = call<{ ok: true }>("adminPurgeShift");
