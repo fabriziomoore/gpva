@@ -395,6 +395,7 @@ export const adminListShifts = createServerFn({ method: "POST" })
       .from("expedientes")
       .select("id,started_at,ended_at,status,report_text")
       .eq("team_id", data.teamId)
+      .is("deleted_at", null)
       .order("started_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -406,18 +407,19 @@ export const adminDeleteShift = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Cascade manually: vinculos -> servicos -> impactos_expediente -> expediente
+    // Soft-delete em cascata (vai para a Lixeira, pode ser restaurado pelo admin)
+    const deletedAt = new Date().toISOString();
     const { error: eVinc } = await supabaseAdmin
-      .from("vinculos_complementos").delete().eq("shift_id", data.shiftId);
+      .from("vinculos_complementos").update({ deleted_at: deletedAt }).eq("shift_id", data.shiftId).is("deleted_at", null);
     if (eVinc) throw new Error(eVinc.message);
     const { error: e1 } = await supabaseAdmin
-      .from("servicos").delete().eq("shift_id", data.shiftId);
+      .from("servicos").update({ deleted_at: deletedAt }).eq("shift_id", data.shiftId).is("deleted_at", null);
     if (e1) throw new Error(e1.message);
     const { error: e2 } = await supabaseAdmin
-      .from("impactos_expediente").delete().eq("shift_id", data.shiftId);
+      .from("impactos_expediente").update({ deleted_at: deletedAt }).eq("shift_id", data.shiftId).is("deleted_at", null);
     if (e2) throw new Error(e2.message);
     const { error: e3 } = await supabaseAdmin
-      .from("expedientes").delete().eq("id", data.shiftId);
+      .from("expedientes").update({ deleted_at: deletedAt }).eq("id", data.shiftId).is("deleted_at", null);
     if (e3) throw new Error(e3.message);
     return { ok: true as const };
   });
