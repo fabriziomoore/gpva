@@ -13,6 +13,7 @@ import {
   type OfflineLoginReason,
 } from "@/lib/offline-auth";
 import { readStoredAuthSession, hydrateLocalStorageFromBackup } from "@/lib/sync/session-backup";
+import { hasSessionEjection } from "@/lib/session-guard";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import gpvaLogo from "@/assets/gpva-logo-wide.webp";
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/auth")({
     if (typeof window !== "undefined" && window.sessionStorage.getItem("gpva.forceSignedOut") === "1") {
       return;
     }
+    if (hasSessionEjection()) return;
     const localSession = readStoredAuthSession();
     if (localSession) throw redirect({ to: "/" });
     // Se já existe um unlock offline ativo, entra direto (sem passar por login).
