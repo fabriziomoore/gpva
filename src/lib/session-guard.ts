@@ -262,7 +262,13 @@ function startPerUserWatchers(userId: string): void {
         const row = (payload.new ?? payload.old) as { session_id?: string } | null;
         if (!row?.session_id) return;
         const mine = localSessionId();
-        if (!mine || row.session_id === mine) return;
+        if (!mine) return;
+        // Admin removeu a sessão deste dispositivo → força logout imediato.
+        if (payload.eventType === "DELETE" && row.session_id === mine) {
+          void forceSignOut("taken_over");
+          return;
+        }
+        if (row.session_id === mine) return;
         // Ignora eventos ecoados enquanto o próprio claim está propagando.
         if (Date.now() - claimedAt < CLAIM_GRACE_MS) return;
         void forceSignOut("taken_over");
