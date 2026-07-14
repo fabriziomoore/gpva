@@ -12,6 +12,7 @@ import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
   Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
+  Smartphone,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
@@ -39,6 +40,8 @@ import {
   adminCreateSetor,
   adminUpdateSetor,
   adminDeleteSetor,
+  adminListDevices,
+  adminSignOutDevice,
 } from "@/lib/admin.functions";
 import {
   adminGetGoogleFormSettings,
