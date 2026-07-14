@@ -418,6 +418,7 @@ export function startSessionGuard(): void {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_IN" && session?.user) {
+      clearEjected();
       // Login manual (transição de auth). Sempre re-claima para este device
       // se tornar o ativo — ignora qualquer sessionId antigo em localStorage
       // (lixo de logon anterior no mesmo browser, ou takeover feito por outro
