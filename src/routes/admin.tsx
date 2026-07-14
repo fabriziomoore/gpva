@@ -308,6 +308,8 @@ function AdminPage() {
             <TestAccountSection adminPw={adminPw} />
           ) : section === "map_services" ? (
             <MapServicesSection adminPw={adminPw} />
+          ) : section === "devices" ? (
+            <DevicesSection adminPw={adminPw} />
           ) : section === "audit" ? (
             <AuditSection adminPw={adminPw} />
           ) : (
