@@ -171,6 +171,7 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
 
 export async function verifyActiveSession(opts: { force?: boolean } = {}): Promise<boolean> {
   if (typeof window === "undefined" || signingOut) return !signingOut;
+  if (getEjected()) return false;
 
   const now = Date.now();
   if (!opts.force && activeCheckPromise && now - lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
