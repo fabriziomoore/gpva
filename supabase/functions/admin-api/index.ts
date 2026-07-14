@@ -262,6 +262,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         const { data: rows, error } = await sb.from("servicos")
           .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
           .gte("created_at", start).lt("created_at", end)
+          .is("deleted_at", null)
           .range(from, from + pageSize - 1);
         if (error) throw new Error(error.message);
         if (!rows?.length) break;
@@ -290,16 +291,18 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
     case "adminListShifts": {
       const { data, error } = await sb.from("expedientes")
         .select("id,started_at,ended_at,status,report_text")
-        .eq("team_id", args.teamId).order("started_at", { ascending: false }).limit(200);
+        .eq("team_id", args.teamId).is("deleted_at", null).order("started_at", { ascending: false }).limit(200);
       if (error) throw new Error(error.message);
       return data ?? [];
     }
     case "adminDeleteShift": {
+      // Soft-delete: envia para a Lixeira (restaurável pelo admin)
+      const deletedAt = new Date().toISOString();
       for (const [t, col] of [
         ["vinculos_complementos", "shift_id"], ["servicos", "shift_id"],
         ["impactos_expediente", "shift_id"], ["expedientes", "id"],
       ] as const) {
-        const { error } = await sb.from(t).delete().eq(col, args.shiftId);
+        const { error } = await sb.from(t).update({ deleted_at: deletedAt }).eq(col, args.shiftId).is("deleted_at", null);
         if (error) throw new Error(error.message);
       }
       return { ok: true };
@@ -447,6 +450,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       // args: { teamId?: string, startISO?: string, endISO?: string, limit?: number }
       let q = sb.from("servicos")
         .select("id,created_at,team_id,lat,lng,viable,is_negotiation,service_type_name,negotiated_value,registration_number")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(Math.min(Number(args.limit) || 500, 2000));
       if (args.teamId) q = q.eq("team_id", args.teamId);
@@ -464,15 +468,16 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       return (data ?? []).map((r: any) => ({ ...r, team_name: teamMap.get(r.team_id) ?? "—" }));
     }
     case "adminDeleteMapService": {
-      // Remove vínculos primeiro (não há CASCADE garantido).
-      await sb.from("vinculos_complementos").delete().eq("service_id", args.id);
-      const { error } = await sb.from("servicos").delete().eq("id", args.id);
+      // Soft-delete — vai para a Lixeira do admin
+      const deletedAt = new Date().toISOString();
+      await sb.from("vinculos_complementos").update({ deleted_at: deletedAt }).eq("service_id", args.id).is("deleted_at", null);
+      const { error } = await sb.from("servicos").update({ deleted_at: deletedAt }).eq("id", args.id).is("deleted_at", null);
       if (error) throw new Error(error.message);
       return { ok: true };
     }
     case "adminDeleteMapServicesRange": {
-      // args: { teamId?, startISO?, endISO? }  → deleta todos que casam
-      let q = sb.from("servicos").select("id");
+      // Soft-delete em massa
+      let q = sb.from("servicos").select("id").is("deleted_at", null);
       if (args.teamId) q = q.eq("team_id", args.teamId);
       if (args.startISO) q = q.gte("created_at", args.startISO);
       if (args.endISO) q = q.lt("created_at", args.endISO);
@@ -480,8 +485,9 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (e1) throw new Error(e1.message);
       const ids = (rows ?? []).map((r: any) => r.id);
       if (!ids.length) return { ok: true, deleted: 0 };
-      await sb.from("vinculos_complementos").delete().in("service_id", ids);
-      const { error } = await sb.from("servicos").delete().in("id", ids);
+      const deletedAt = new Date().toISOString();
+      await sb.from("vinculos_complementos").update({ deleted_at: deletedAt }).in("service_id", ids).is("deleted_at", null);
+      const { error } = await sb.from("servicos").update({ deleted_at: deletedAt }).in("id", ids).is("deleted_at", null);
       if (error) throw new Error(error.message);
       return { ok: true, deleted: ids.length };
     }
@@ -526,6 +532,51 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const { error } = await sb.from("active_sessions").delete().eq("user_id", args.userId);
       if (error) throw new Error(error.message);
       try { await sb.auth.admin.signOut(args.userId, "global"); } catch { /* best-effort */ }
+      return { ok: true };
+    }
+
+    // ---------- Lixeira (soft-delete) ----------
+    case "adminListTrashShifts": {
+      const { data: rows, error } = await sb.from("expedientes")
+        .select("id,team_id,started_at,ended_at,status,report_text,deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+        .limit(Math.min(Number(args.limit) || 200, 500));
+      if (error) throw new Error(error.message);
+      const list = rows ?? [];
+      if (!list.length) return [];
+      const shiftIds = list.map((r: any) => r.id);
+      const teamIds = Array.from(new Set(list.map((r: any) => r.team_id).filter(Boolean)));
+      const [svcRes, teamsRes] = await Promise.all([
+        sb.from("servicos").select("shift_id").in("shift_id", shiftIds),
+        sb.from("equipes").select("id,team_name").in("id", teamIds),
+      ]);
+      const svcCount = new Map<string, number>();
+      for (const s of svcRes.data ?? []) {
+        const k = (s as any).shift_id; if (!k) continue;
+        svcCount.set(k, (svcCount.get(k) ?? 0) + 1);
+      }
+      const teamMap = new Map((teamsRes.data ?? []).map((t: any) => [t.id, t.team_name]));
+      return list.map((r: any) => ({
+        ...r,
+        team_name: teamMap.get(r.team_id) ?? "—",
+        service_count: svcCount.get(r.id) ?? 0,
+      }));
+    }
+    case "adminRestoreShift": {
+      const { error: e1 } = await sb.from("expedientes").update({ deleted_at: null }).eq("id", args.shiftId);
+      if (e1) throw new Error(e1.message);
+      await sb.from("servicos").update({ deleted_at: null }).eq("shift_id", args.shiftId);
+      await sb.from("vinculos_complementos").update({ deleted_at: null }).eq("shift_id", args.shiftId);
+      await sb.from("impactos_expediente").update({ deleted_at: null }).eq("shift_id", args.shiftId);
+      return { ok: true };
+    }
+    case "adminPurgeShift": {
+      await sb.from("vinculos_complementos").delete().eq("shift_id", args.shiftId);
+      await sb.from("servicos").delete().eq("shift_id", args.shiftId);
+      await sb.from("impactos_expediente").delete().eq("shift_id", args.shiftId);
+      const { error } = await sb.from("expedientes").delete().eq("id", args.shiftId);
+      if (error) throw new Error(error.message);
       return { ok: true };
     }
 

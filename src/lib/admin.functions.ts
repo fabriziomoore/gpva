@@ -350,6 +350,7 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
         .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
         .gte("created_at", start)
         .lt("created_at", end)
+        .is("deleted_at", null)
         .range(from, from + pageSize - 1);
       if (error) throw new Error(error.message);
       if (!rows?.length) break;
@@ -395,6 +396,7 @@ export const adminListShifts = createServerFn({ method: "POST" })
       .from("expedientes")
       .select("id,started_at,ended_at,status,report_text")
       .eq("team_id", data.teamId)
+      .is("deleted_at", null)
       .order("started_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -406,18 +408,19 @@ export const adminDeleteShift = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Cascade manually: vinculos -> servicos -> impactos_expediente -> expediente
+    // Soft-delete em cascata (vai para a Lixeira, pode ser restaurado pelo admin)
+    const deletedAt = new Date().toISOString();
     const { error: eVinc } = await supabaseAdmin
-      .from("vinculos_complementos").delete().eq("shift_id", data.shiftId);
+      .from("vinculos_complementos").update({ deleted_at: deletedAt }).eq("shift_id", data.shiftId).is("deleted_at", null);
     if (eVinc) throw new Error(eVinc.message);
     const { error: e1 } = await supabaseAdmin
-      .from("servicos").delete().eq("shift_id", data.shiftId);
+      .from("servicos").update({ deleted_at: deletedAt }).eq("shift_id", data.shiftId).is("deleted_at", null);
     if (e1) throw new Error(e1.message);
     const { error: e2 } = await supabaseAdmin
-      .from("impactos_expediente").delete().eq("shift_id", data.shiftId);
+      .from("impactos_expediente").update({ deleted_at: deletedAt }).eq("shift_id", data.shiftId).is("deleted_at", null);
     if (e2) throw new Error(e2.message);
     const { error: e3 } = await supabaseAdmin
-      .from("expedientes").delete().eq("id", data.shiftId);
+      .from("expedientes").update({ deleted_at: deletedAt }).eq("id", data.shiftId).is("deleted_at", null);
     if (e3) throw new Error(e3.message);
     return { ok: true as const };
   });
@@ -624,6 +627,7 @@ export const adminListMapServices = createServerFn({ method: "POST" })
       .select(
         "id,created_at,team_id,lat,lng,viable,is_negotiation,service_type_name,negotiated_value,registration_number",
       )
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(Math.min(Number(data.limit) || 500, 2000));
     if (data.teamId) q = q.eq("team_id", data.teamId);
@@ -651,8 +655,9 @@ export const adminDeleteMapService = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("vinculos_complementos").delete().eq("service_id", data.id);
-    const { error } = await supabaseAdmin.from("servicos").delete().eq("id", data.id);
+    const deletedAt = new Date().toISOString();
+    await supabaseAdmin.from("vinculos_complementos").update({ deleted_at: deletedAt }).eq("service_id", data.id).is("deleted_at", null);
+    const { error } = await supabaseAdmin.from("servicos").update({ deleted_at: deletedAt }).eq("id", data.id).is("deleted_at", null);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
@@ -673,12 +678,14 @@ export const adminDeleteMapServicesRange = createServerFn({ method: "POST" })
     if (data.teamId) q = q.eq("team_id", data.teamId);
     if (data.startISO) q = q.gte("created_at", data.startISO);
     if (data.endISO) q = q.lt("created_at", data.endISO);
+    q = q.is("deleted_at", null);
     const { data: rows, error: e1 } = await q;
     if (e1) throw new Error(e1.message);
     const ids = (rows ?? []).map((r) => r.id);
     if (!ids.length) return { ok: true as const, deleted: 0 };
-    await supabaseAdmin.from("vinculos_complementos").delete().in("service_id", ids);
-    const { error } = await supabaseAdmin.from("servicos").delete().in("id", ids);
+    const deletedAt = new Date().toISOString();
+    await supabaseAdmin.from("vinculos_complementos").update({ deleted_at: deletedAt }).in("service_id", ids).is("deleted_at", null);
+    const { error } = await supabaseAdmin.from("servicos").update({ deleted_at: deletedAt }).in("id", ids).is("deleted_at", null);
     if (error) throw new Error(error.message);
     return { ok: true as const, deleted: ids.length };
   });
@@ -754,5 +761,83 @@ export const adminSignOutDevice = createServerFn({ method: "POST" })
     } catch {
       /* best-effort */
     }
+    return { ok: true as const };
+  });
+
+// ============= Lixeira (soft-delete) =============
+
+export type TrashShiftRow = {
+  id: string;
+  team_id: string;
+  team_name: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  report_text: string | null;
+  deleted_at: string;
+  service_count: number;
+};
+
+export const adminListTrashShifts = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; limit?: number }) => data)
+  .handler(async ({ data }): Promise<TrashShiftRow[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("expedientes")
+      .select("id,team_id,started_at,ended_at,status,report_text,deleted_at")
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false })
+      .limit(Math.min(Number(data.limit) || 200, 500));
+    if (error) throw new Error(error.message);
+    const list = rows ?? [];
+    if (!list.length) return [];
+    const shiftIds = list.map((r) => r.id);
+    const teamIds = Array.from(new Set(list.map((r) => r.team_id).filter(Boolean)));
+    const [{ data: svc }, { data: teams }] = await Promise.all([
+      supabaseAdmin.from("servicos").select("shift_id").in("shift_id", shiftIds),
+      supabaseAdmin.from("equipes").select("id,team_name").in("id", teamIds),
+    ]);
+    const svcCount = new Map<string, number>();
+    for (const s of svc ?? []) {
+      const k = (s as { shift_id: string | null }).shift_id;
+      if (!k) continue;
+      svcCount.set(k, (svcCount.get(k) ?? 0) + 1);
+    }
+    const teamMap = new Map((teams ?? []).map((t) => [t.id, t.team_name]));
+    return list.map((r) => ({
+      ...r,
+      deleted_at: r.deleted_at as string,
+      team_name: teamMap.get(r.team_id) ?? "—",
+      service_count: svcCount.get(r.id) ?? 0,
+    })) as TrashShiftRow[];
+  });
+
+export const adminRestoreShift = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; shiftId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Restaura expediente + serviços + vínculos + impactos vinculados
+    const { error: e1 } = await supabaseAdmin
+      .from("expedientes").update({ deleted_at: null }).eq("id", data.shiftId);
+    if (e1) throw new Error(e1.message);
+    await supabaseAdmin.from("servicos").update({ deleted_at: null }).eq("shift_id", data.shiftId);
+    await supabaseAdmin.from("vinculos_complementos").update({ deleted_at: null }).eq("shift_id", data.shiftId);
+    await supabaseAdmin.from("impactos_expediente").update({ deleted_at: null }).eq("shift_id", data.shiftId);
+    return { ok: true as const };
+  });
+
+export const adminPurgeShift = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; shiftId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Apagar definitivo — ordem inversa das FKs
+    await supabaseAdmin.from("vinculos_complementos").delete().eq("shift_id", data.shiftId);
+    await supabaseAdmin.from("servicos").delete().eq("shift_id", data.shiftId);
+    await supabaseAdmin.from("impactos_expediente").delete().eq("shift_id", data.shiftId);
+    const { error } = await supabaseAdmin.from("expedientes").delete().eq("id", data.shiftId);
+    if (error) throw new Error(error.message);
     return { ok: true as const };
   });

@@ -162,12 +162,15 @@ export function LeaderMapSection() {
   }, [filtered, teamName]);
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("servicos").delete().eq("id", id);
+    const { error } = await supabase
+      .from("servicos")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) {
       toast.error("Não foi possível apagar", { description: error.message });
       throw error;
     }
-    toast.success("Registro apagado");
+    toast.success("Registro enviado à Lixeira do admin");
     queryClient.invalidateQueries({ queryKey: ["leader-services", userId] });
   };
 

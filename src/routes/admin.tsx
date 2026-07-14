@@ -12,7 +12,7 @@ import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
   Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
-  Smartphone,
+  Smartphone, Trash, RotateCcw,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
@@ -42,6 +42,9 @@ import {
   adminDeleteSetor,
   adminListDevices,
   adminSignOutDevice,
+  adminListTrashShifts,
+  adminRestoreShift,
+  adminPurgeShift,
 } from "@/lib/admin.functions";
 import {
   adminGetGoogleFormSettings,
@@ -74,6 +77,7 @@ type SectionId =
   | "test_account"
   | "map_services"
   | "devices"
+  | "trash"
   | "audit";
 
 type SectionMeta = {
@@ -96,6 +100,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
   devices: { id: "devices", label: "Dispositivos", description: "Sessões ativas e logout remoto", icon: Smartphone },
+  trash: { id: "trash", label: "Lixeira", description: "Relatórios excluídos — restaurar ou apagar", icon: Trash },
   audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
 };
 
@@ -112,7 +117,7 @@ const SECTION_GROUPS: SectionGroup[] = [
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
-    items: ["variable", "map_services", "google_form", "test_account", "devices", "audit"] },
+    items: ["variable", "map_services", "google_form", "test_account", "devices", "trash", "audit"] },
 ];
 
 function groupOf(id: SectionId): SectionGroup | undefined {
@@ -314,6 +319,8 @@ function AdminPage() {
             <MapServicesSection adminPw={adminPw} />
           ) : section === "devices" ? (
             <DevicesSection adminPw={adminPw} />
+          ) : section === "trash" ? (
+            <TrashSection adminPw={adminPw} />
           ) : section === "audit" ? (
             <AuditSection adminPw={adminPw} />
           ) : (
@@ -2000,6 +2007,105 @@ function DevicesSection({ adminPw }: { adminPw: string }) {
               </li>
             );
           })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TrashSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListTrashShifts);
+  const restoreFn = useServerFn(adminRestoreShift);
+  const purgeFn = useServerFn(adminPurgeShift);
+  const trash = useQuery({
+    queryKey: ["admin-trash-shifts"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+  });
+  const restoreMut = useMutation({
+    mutationFn: (shiftId: string) => restoreFn({ data: { adminPassword: adminPw, shiftId } }),
+    onSuccess: () => {
+      toast.success("Relatório restaurado.");
+      qc.invalidateQueries({ queryKey: ["admin-trash-shifts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const purgeMut = useMutation({
+    mutationFn: (shiftId: string) => purgeFn({ data: { adminPassword: adminPw, shiftId } }),
+    onSuccess: () => {
+      toast.success("Relatório apagado definitivamente.");
+      qc.invalidateQueries({ queryKey: ["admin-trash-shifts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rows = trash.data ?? [];
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Lixeira — Relatórios excluídos</h2>
+          <p className="text-xs text-muted-foreground">
+            {rows.length} relatório(s) na lixeira. Restaurar traz de volta o expediente e todos os serviços vinculados.
+          </p>
+        </div>
+        <Button variant="outline" className="h-9" onClick={() => trash.refetch()} disabled={trash.isFetching}>
+          {trash.isFetching ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
+        </Button>
+      </div>
+
+      {trash.isLoading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          Nenhum relatório na lixeira.
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((r) => (
+            <li key={r.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                  <Trash className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-foreground">
+                    {r.team_name} — {formatDateBR(r.started_at)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.service_count} serviço(s) · status: {r.status}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    Excluído em {formatDateBR(r.deleted_at)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  variant="outline"
+                  className="h-9"
+                  onClick={() => restoreMut.mutate(r.id)}
+                  disabled={restoreMut.isPending}
+                >
+                  <RotateCcw className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-9 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={async () => {
+                    if (await confirmDelete({
+                      description: `Apagar definitivamente o relatório de ${r.team_name} de ${formatDateBR(r.started_at)}? Esta ação é irreversível.`,
+                    })) {
+                      purgeMut.mutate(r.id);
+                    }
+                  }}
+                  disabled={purgeMut.isPending}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </div>
