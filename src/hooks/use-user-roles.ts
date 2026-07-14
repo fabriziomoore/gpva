@@ -42,6 +42,7 @@ function writeCachedRoles(userId: string, roles: string[]): void {
 
 function readRolesFromCurrentSession(userId: string | null): string[] | undefined {
   if (!userId) return undefined;
+  if (typeof localStorage === "undefined") return undefined;
   try {
     const rawSession = Object.keys(localStorage)
       .filter((key) => key.startsWith("sb-") && key.endsWith("-auth-token"))
