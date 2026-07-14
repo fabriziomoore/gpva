@@ -12,7 +12,7 @@ import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
   Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
-  Smartphone,
+  Smartphone, Trash, RotateCcw,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
@@ -42,6 +42,9 @@ import {
   adminDeleteSetor,
   adminListDevices,
   adminSignOutDevice,
+  adminListTrashShifts,
+  adminRestoreShift,
+  adminPurgeShift,
 } from "@/lib/admin.functions";
 import {
   adminGetGoogleFormSettings,
@@ -74,6 +77,7 @@ type SectionId =
   | "test_account"
   | "map_services"
   | "devices"
+  | "trash"
   | "audit";
 
 type SectionMeta = {
@@ -96,6 +100,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
   devices: { id: "devices", label: "Dispositivos", description: "Sessões ativas e logout remoto", icon: Smartphone },
+  trash: { id: "trash", label: "Lixeira", description: "Relatórios excluídos — restaurar ou apagar", icon: Trash },
   audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
 };
 
@@ -112,7 +117,7 @@ const SECTION_GROUPS: SectionGroup[] = [
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
-    items: ["variable", "map_services", "google_form", "test_account", "devices", "audit"] },
+    items: ["variable", "map_services", "google_form", "test_account", "devices", "trash", "audit"] },
 ];
 
 function groupOf(id: SectionId): SectionGroup | undefined {
@@ -314,6 +319,8 @@ function AdminPage() {
             <MapServicesSection adminPw={adminPw} />
           ) : section === "devices" ? (
             <DevicesSection adminPw={adminPw} />
+          ) : section === "trash" ? (
+            <TrashSection adminPw={adminPw} />
           ) : section === "audit" ? (
             <AuditSection adminPw={adminPw} />
           ) : (
