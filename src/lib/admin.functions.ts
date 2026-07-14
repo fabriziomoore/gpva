@@ -682,3 +682,77 @@ export const adminDeleteMapServicesRange = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const, deleted: ids.length };
   });
+
+// ============= Devices (sessões ativas) =============
+
+export type DeviceRow = {
+  user_id: string;
+  session_id: string;
+  user_agent: string | null;
+  last_seen_at: string;
+  updated_at: string;
+  account_label: string;
+  account_kind: "admin" | "leader" | "team" | "unknown";
+};
+
+export const adminListDevices = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }): Promise<DeviceRow[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: sessions, error } = await supabaseAdmin
+      .from("active_sessions")
+      .select("user_id,session_id,user_agent,last_seen_at,updated_at")
+      .order("last_seen_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const rows = sessions ?? [];
+    if (!rows.length) return [];
+    const ids = rows.map((r) => r.user_id);
+    const [{ data: teams }, { data: roles }, usersList] = await Promise.all([
+      supabaseAdmin.from("equipes").select("id,team_name").in("id", ids),
+      supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", ids),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ]);
+    const teamMap = new Map((teams ?? []).map((t) => [t.id, t.team_name]));
+    const roleMap = new Map<string, string>();
+    for (const r of roles ?? []) roleMap.set(r.user_id, r.role);
+    const userMap = new Map<string, string>();
+    if (!usersList.error) {
+      for (const u of usersList.data.users) userMap.set(u.id, u.email ?? "");
+    }
+    return rows.map((r) => {
+      const role = roleMap.get(r.user_id);
+      let account_kind: DeviceRow["account_kind"] = "unknown";
+      let account_label = teamMap.get(r.user_id) ?? "";
+      if (role === "admin") { account_kind = "admin"; account_label = "Administrador"; }
+      else if (role === "leader") {
+        account_kind = "leader";
+        const email = userMap.get(r.user_id) ?? "";
+        account_label = `Líder — ${email.split("@")[0].toUpperCase()}`;
+      } else if (account_label) {
+        account_kind = "team";
+      } else {
+        account_label = userMap.get(r.user_id) ?? r.user_id.slice(0, 8);
+      }
+      return { ...r, account_label, account_kind };
+    });
+  });
+
+export const adminSignOutDevice = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; userId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("active_sessions")
+      .delete()
+      .eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    // Também revoga os refresh tokens do usuário — força re-login em todas as abas.
+    try {
+      await supabaseAdmin.auth.admin.signOut(data.userId, "global");
+    } catch {
+      /* best-effort */
+    }
+    return { ok: true as const };
+  });
