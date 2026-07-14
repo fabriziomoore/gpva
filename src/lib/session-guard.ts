@@ -306,7 +306,7 @@ function startPerUserWatchers(userId: string): void {
         if (!mine) return;
         // Admin removeu a sessão deste dispositivo → força logout imediato.
         if (isDelete && row.session_id === mine) {
-          void forceSignOut("taken_over");
+          void forceSignOut("admin_disconnect");
           return;
         }
         if (row.session_id === mine) return;
