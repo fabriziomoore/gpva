@@ -67,3 +67,15 @@ export type MapServiceRow = {
 export const adminListMapServices = call<MapServiceRow[]>("adminListMapServices");
 export const adminDeleteMapService = call<{ ok: true }>("adminDeleteMapService");
 export const adminDeleteMapServicesRange = call<{ ok: true; deleted: number }>("adminDeleteMapServicesRange");
+
+export type DeviceRow = {
+  user_id: string;
+  session_id: string;
+  user_agent: string | null;
+  last_seen_at: string;
+  updated_at: string;
+  account_label: string;
+  account_kind: "admin" | "leader" | "team" | "unknown";
+};
+export const adminListDevices = call<DeviceRow[]>("adminListDevices");
+export const adminSignOutDevice = call<{ ok: true }>("adminSignOutDevice");
