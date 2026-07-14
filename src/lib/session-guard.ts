@@ -357,12 +357,19 @@ export function startSessionGuard(): void {
   })();
 
   supabase.auth.onAuthStateChange((event, session) => {
-    if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+    if (event === "SIGNED_IN" && session?.user) {
+      // Login manual (transição de auth). Sempre re-claima para este device
+      // se tornar o ativo — ignora qualquer sessionId antigo em localStorage
+      // (lixo de logon anterior no mesmo browser, ou takeover feito por outro
+      // device enquanto este estava offline). Sem isso, o próprio novo login
+      // é expulso pelo guard antes de `signInTeam` chamar `claimCurrentSession`.
+      setLoginTs(Date.now());
+      void attachSessionForUser(session.user.id, { claim: true });
+    } else if (event === "INITIAL_SESSION" && session?.user) {
+      // Reidratação (refresh de página / retomada de foco). Preserva o
+      // sessionId local — se este device ainda é o ativo no DB, segue; se
+      // outro device tomou a sessão, verifyActiveSession() faz o logout.
       if (!getLoginTs()) setLoginTs(Date.now());
-      // SIGNED_IN também pode disparar ao reidratar/focar a sessão. O login
-      // manual toma a sessão via signInTeam() -> claimCurrentSession(); aqui
-      // apenas religamos a vigilância e validamos se este dispositivo ainda é
-      // o ativo, sem uma sessão antiga conseguir tomar a sessão de volta.
       void attachSessionForUser(session.user.id, { claim: false });
     } else if (event === "SIGNED_OUT") {
       stopPerUserWatchers();
