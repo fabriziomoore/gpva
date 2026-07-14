@@ -450,6 +450,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       // args: { teamId?: string, startISO?: string, endISO?: string, limit?: number }
       let q = sb.from("servicos")
         .select("id,created_at,team_id,lat,lng,viable,is_negotiation,service_type_name,negotiated_value,registration_number")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(Math.min(Number(args.limit) || 500, 2000));
       if (args.teamId) q = q.eq("team_id", args.teamId);
@@ -467,15 +468,16 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       return (data ?? []).map((r: any) => ({ ...r, team_name: teamMap.get(r.team_id) ?? "—" }));
     }
     case "adminDeleteMapService": {
-      // Remove vínculos primeiro (não há CASCADE garantido).
-      await sb.from("vinculos_complementos").delete().eq("service_id", args.id);
-      const { error } = await sb.from("servicos").delete().eq("id", args.id);
+      // Soft-delete — vai para a Lixeira do admin
+      const deletedAt = new Date().toISOString();
+      await sb.from("vinculos_complementos").update({ deleted_at: deletedAt }).eq("service_id", args.id).is("deleted_at", null);
+      const { error } = await sb.from("servicos").update({ deleted_at: deletedAt }).eq("id", args.id).is("deleted_at", null);
       if (error) throw new Error(error.message);
       return { ok: true };
     }
     case "adminDeleteMapServicesRange": {
-      // args: { teamId?, startISO?, endISO? }  → deleta todos que casam
-      let q = sb.from("servicos").select("id");
+      // Soft-delete em massa
+      let q = sb.from("servicos").select("id").is("deleted_at", null);
       if (args.teamId) q = q.eq("team_id", args.teamId);
       if (args.startISO) q = q.gte("created_at", args.startISO);
       if (args.endISO) q = q.lt("created_at", args.endISO);
@@ -483,8 +485,9 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (e1) throw new Error(e1.message);
       const ids = (rows ?? []).map((r: any) => r.id);
       if (!ids.length) return { ok: true, deleted: 0 };
-      await sb.from("vinculos_complementos").delete().in("service_id", ids);
-      const { error } = await sb.from("servicos").delete().in("id", ids);
+      const deletedAt = new Date().toISOString();
+      await sb.from("vinculos_complementos").update({ deleted_at: deletedAt }).in("service_id", ids).is("deleted_at", null);
+      const { error } = await sb.from("servicos").update({ deleted_at: deletedAt }).in("id", ids).is("deleted_at", null);
       if (error) throw new Error(error.message);
       return { ok: true, deleted: ids.length };
     }
