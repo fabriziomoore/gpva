@@ -29,6 +29,32 @@ let lastActiveCheckAt = 0;
 let activeCheckPromise: Promise<boolean> | null = null;
 const CLAIM_GRACE_MS = 10_000;
 
+type EjectReason = "expired" | "taken_over" | "admin_disconnect";
+
+function getEjected(): EjectReason | null {
+  try {
+    return (localStorage.getItem(EJECTED_KEY) as EjectReason | null) || null;
+  } catch {
+    return null;
+  }
+}
+
+function setEjected(reason: EjectReason): void {
+  try {
+    localStorage.setItem(EJECTED_KEY, reason);
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearEjected(): void {
+  try {
+    localStorage.removeItem(EJECTED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 function localSessionId(): string | null {
   try {
     return localStorage.getItem(SESSION_ID_KEY);
