@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { AppShell } from "@/components/layout/AppShell";
@@ -94,6 +94,42 @@ function QuantityTooltip({ active, payload, label }: QuantityTooltipProps) {
 function ProdPage() {
   const { userId } = useAuthSession();
   const [historyLimit, setHistoryLimit] = useState(5);
+  const queryClient = useQueryClient();
+
+  // Realtime: quando o admin apagar/alterar um expediente ou serviço da equipe
+  // (ou o próprio operador em outro dispositivo), invalida as queries do painel
+  // para os KPIs refletirem sem precisar reabrir o app.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase.channel(`productivity-${userId}`);
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "servicos", filter: `team_id=eq.${userId}` },
+      () => queryClient.invalidateQueries({ queryKey: ["all-services", userId] }),
+    );
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "expedientes", filter: `team_id=eq.${userId}` },
+      () => queryClient.invalidateQueries({ queryKey: ["all-shifts", userId] }),
+    );
+    channel.subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
+
+  // Mobile/APK: refetch ao voltar do background (visibilitychange é mais
+  // confiável que refetchOnWindowFocus em WebView).
+  useEffect(() => {
+    if (!userId) return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      queryClient.invalidateQueries({ queryKey: ["all-services", userId] });
+      queryClient.invalidateQueries({ queryKey: ["all-shifts", userId] });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [userId, queryClient]);
 
   const all = useQuery({
     queryKey: ["all-services", userId],
