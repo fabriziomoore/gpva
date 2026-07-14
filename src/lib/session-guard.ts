@@ -25,6 +25,9 @@ let currentUserId: string | null = null;
 let watchedUserId: string | null = null;
 let signingOut = false;
 let claimedAt = 0;
+let claimStartedAt = 0;
+let claimInProgress = false;
+let claimTail: Promise<void> = Promise.resolve();
 let lastActiveCheckAt = 0;
 let activeCheckPromise: Promise<boolean> | null = null;
 const CLAIM_GRACE_MS = 10_000;
@@ -192,6 +195,15 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
       return true;
     }
 
+    // Durante o login podem existir duas fontes legítimas tentando reivindicar
+    // a sessão ao mesmo tempo: o evento SIGNED_IN do SDK e o submit do login.
+    // Enquanto essa gravação ainda está em andamento, não comparar contra a
+    // linha antiga do banco — isso expulsava principalmente contas de líder
+    // antes da role e do painel terminarem de carregar.
+    if (claimInProgress && Date.now() - claimStartedAt < CLAIM_GRACE_MS) {
+      return true;
+    }
+
     const result = await withAuthProbeTimeout(
       supabase
         .from("active_sessions")
@@ -257,6 +269,23 @@ export async function assertActiveSession(): Promise<void> {
 }
 
 async function claimSession(userId: string): Promise<void> {
+  const run = claimTail
+    .catch(() => undefined)
+    .then(async () => {
+      claimInProgress = true;
+      claimStartedAt = Date.now();
+      try {
+        await claimSessionInternal(userId);
+      } finally {
+        claimInProgress = false;
+      }
+    });
+
+  claimTail = run;
+  return run;
+}
+
+async function claimSessionInternal(userId: string): Promise<void> {
   const sessionId = newId();
   setLocalSessionId(sessionId);
   setLoginTs(Date.now());
@@ -284,6 +313,7 @@ export async function claimCurrentSession(): Promise<void> {
   if (typeof window === "undefined") return;
   const userId = await getAuthUserIdOfflineSafe();
   if (!userId) return;
+  clearEjected();
   await claimSession(userId);
 }
 

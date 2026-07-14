@@ -105,12 +105,16 @@ function AuthPage() {
         await handleOfflineLogin();
         return;
       }
-      await withLoginTimeout(signInTeam(team, password));
+      const authResult = await withLoginTimeout(signInTeam(team, password));
       sessionStorage.removeItem("gpva.forceSignedOut");
       // A credencial local já foi persistida dentro de signInTeam().
       if (team.trim().toLowerCase() === "adm") {
         sessionStorage.setItem("gpva-admin-pw", "137889");
         await navigate({ to: "/admin", replace: true });
+        return;
+      }
+      if (authResult.user?.user_metadata?.is_leader === true) {
+        await navigate({ to: "/leader", replace: true });
         return;
       }
       await navigate({ to: "/", replace: true });
