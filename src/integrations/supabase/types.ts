@@ -36,15 +36,7 @@ export type Database = {
           user_agent?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "active_sessions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "equipes"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       audit_reports: {
         Row: {
