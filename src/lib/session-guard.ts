@@ -219,7 +219,13 @@ async function claimSession(userId: string): Promise<void> {
   const { error } = await supabase
     .from("active_sessions")
     .upsert(
-      { user_id: userId, session_id: sessionId, updated_at: new Date().toISOString() },
+      {
+        user_id: userId,
+        session_id: sessionId,
+        updated_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : null,
+      },
       { onConflict: "user_id" },
     );
   if (error) console.warn("[session-guard] claim failed", error);
