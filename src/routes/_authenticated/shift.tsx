@@ -168,35 +168,14 @@ function ShiftPage() {
         </>
       )}
 
-      <AlertDialog
-        open={pendingForms !== null}
-        onOpenChange={(v) => {
-          if (!v) setPendingForms(null);
+      <PendingFormsDialog
+        pending={pendingForms}
+        onClose={() => setPendingForms(null)}
+        onFinishAnyway={() => {
+          setPendingForms(null);
+          setFinishOpen(true);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Forms pendente de envio</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingForms && pendingForms.length > 1
-                ? `Existem ${pendingForms.length} negociações com o Forms ainda não enviado. Deseja enviar a primeira agora ou finalizar assim mesmo?`
-                : "Há uma negociação com o Forms ainda não enviado. Deseja enviar agora ou finalizar assim mesmo?"}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPendingForms(null);
-                setFinishOpen(true);
-              }}
-            >
-              Finalizar mesmo assim
-            </Button>
-            <Button onClick={() => void sendFirstPending()}>Enviar</Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </AppShell>
   );
 }
