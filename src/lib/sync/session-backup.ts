@@ -8,6 +8,7 @@ import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 
 const KEY = "gpva.supabase.session.v1";
+const EJECTED_KEY = "gpva.ejected";
 const FORCE_SIGNED_OUT_KEY = "gpva.forceSignedOut";
 const AUTH_TIMEOUT_MS = 1_500;
 
@@ -77,7 +78,7 @@ function writeSessionDirectly(session: StoredSession): boolean {
 function hasForcedSignOut(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.sessionStorage.getItem(FORCE_SIGNED_OUT_KEY) === "1";
+    return window.sessionStorage.getItem(FORCE_SIGNED_OUT_KEY) === "1" || !!window.localStorage.getItem(EJECTED_KEY);
   } catch {
     return false;
   }
@@ -90,6 +91,10 @@ function isNative(): boolean {
 
 export async function backupSession(): Promise<void> {
   if (!isNative()) return;
+  if (hasForcedSignOut()) {
+    try { await Preferences.remove({ key: KEY }); } catch { /* ignore */ }
+    return;
+  }
   const session = readStoredAuthSession() ?? (await withTimeout(supabase.auth.getSession()))?.data.session ?? null;
   try {
     if (session) {
@@ -150,6 +155,7 @@ export async function clearSessionBackup(): Promise<void> {
  */
 export async function hydrateLocalStorageFromBackup(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  if (hasForcedSignOut()) return false;
   if (readStoredAuthSession()) return true;
   if (!isNative()) return false;
   let value: string | null = null;
