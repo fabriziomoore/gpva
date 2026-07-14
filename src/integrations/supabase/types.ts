@@ -16,18 +16,24 @@ export type Database = {
     Tables: {
       active_sessions: {
         Row: {
+          last_seen_at: string
           session_id: string
           updated_at: string
+          user_agent: string | null
           user_id: string
         }
         Insert: {
+          last_seen_at?: string
           session_id: string
           updated_at?: string
+          user_agent?: string | null
           user_id: string
         }
         Update: {
+          last_seen_at?: string
           session_id?: string
           updated_at?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: [

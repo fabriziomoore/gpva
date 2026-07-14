@@ -12,6 +12,7 @@ import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
   Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
+  Smartphone,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
@@ -39,6 +40,8 @@ import {
   adminCreateSetor,
   adminUpdateSetor,
   adminDeleteSetor,
+  adminListDevices,
+  adminSignOutDevice,
 } from "@/lib/admin.functions";
 import {
   adminGetGoogleFormSettings,
@@ -70,6 +73,7 @@ type SectionId =
   | "google_form"
   | "test_account"
   | "map_services"
+  | "devices"
   | "audit";
 
 type SectionMeta = {
@@ -91,6 +95,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   map_services: { id: "map_services", label: "Serviços no Mapa", description: "Marcações registradas — remoção seletiva", icon: MapPin },
   google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
+  devices: { id: "devices", label: "Dispositivos", description: "Sessões ativas e logout remoto", icon: Smartphone },
   audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
 };
 
@@ -107,7 +112,7 @@ const SECTION_GROUPS: SectionGroup[] = [
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
-    items: ["variable", "map_services", "google_form", "test_account", "audit"] },
+    items: ["variable", "map_services", "google_form", "test_account", "devices", "audit"] },
 ];
 
 function groupOf(id: SectionId): SectionGroup | undefined {
@@ -303,6 +308,8 @@ function AdminPage() {
             <TestAccountSection adminPw={adminPw} />
           ) : section === "map_services" ? (
             <MapServicesSection adminPw={adminPw} />
+          ) : section === "devices" ? (
+            <DevicesSection adminPw={adminPw} />
           ) : section === "audit" ? (
             <AuditSection adminPw={adminPw} />
           ) : (
@@ -1872,6 +1879,125 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+    </div>
+  );
+}
+
+function describeUserAgent(ua: string | null): string {
+  if (!ua) return "Dispositivo desconhecido";
+  const s = ua;
+  let os = "";
+  if (/Android/i.test(s)) {
+    const m = s.match(/Android\s+([\d.]+)/);
+    os = `Android${m ? ` ${m[1]}` : ""}`;
+  } else if (/iPhone|iPad|iPod/i.test(s)) {
+    os = /iPad/i.test(s) ? "iPad" : "iPhone";
+  } else if (/Windows NT/i.test(s)) os = "Windows";
+  else if (/Mac OS X/i.test(s)) os = "macOS";
+  else if (/Linux/i.test(s)) os = "Linux";
+  let browser = "";
+  if (/Edg\//.test(s)) browser = "Edge";
+  else if (/Chrome\//.test(s) && !/Edg\//.test(s)) browser = "Chrome";
+  else if (/Firefox\//.test(s)) browser = "Firefox";
+  else if (/Safari\//.test(s) && !/Chrome\//.test(s)) browser = "Safari";
+  const parts = [os, browser].filter(Boolean);
+  return parts.length ? parts.join(" · ") : s.slice(0, 60);
+}
+
+function DevicesSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListDevices);
+  const signOutFn = useServerFn(adminSignOutDevice);
+  const devices = useQuery({
+    queryKey: ["admin-devices"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+    refetchInterval: 15_000,
+  });
+  const signOutMut = useMutation({
+    mutationFn: (userId: string) => signOutFn({ data: { adminPassword: adminPw, userId } }),
+    onSuccess: () => {
+      toast.success("Dispositivo deslogado.");
+      qc.invalidateQueries({ queryKey: ["admin-devices"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rows = devices.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Dispositivos conectados</h2>
+          <p className="text-xs text-muted-foreground">
+            {rows.length} sessão(ões) ativa(s). Atualiza automaticamente.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="h-9"
+          onClick={() => devices.refetch()}
+          disabled={devices.isFetching}
+        >
+          {devices.isFetching ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
+        </Button>
+      </div>
+
+      {devices.isLoading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          Nenhum dispositivo conectado no momento.
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((d) => {
+            const seen = new Date(d.last_seen_at);
+            const mins = Math.max(0, Math.round((Date.now() - seen.getTime()) / 60000));
+            const seenLabel =
+              mins < 1 ? "agora" : mins < 60 ? `há ${mins} min` : `há ${Math.round(mins / 60)}h`;
+            return (
+              <li
+                key={d.user_id + d.session_id}
+                className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-3"
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                    <Smartphone className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {d.account_label}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {describeUserAgent(d.user_agent)}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                      Último sinal {seenLabel} · {formatDateBR(d.last_seen_at)}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  className="h-9 shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={async () => {
+                    if (
+                      await confirmDelete({
+                        description: `Deslogar "${d.account_label}"? O usuário precisará entrar de novo.`,
+                      })
+                    ) {
+                      signOutMut.mutate(d.user_id);
+                    }
+                  }}
+                  disabled={signOutMut.isPending}
+                >
+                  <LogOut className="size-4" />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

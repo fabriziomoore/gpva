@@ -172,7 +172,14 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
     if (!result) return true;
     const { data, error } = result;
     if (error || !data) return true;
-    if (data.session_id === mine) return true;
+    if (data.session_id === mine) {
+      // touch last_seen_at — barato e útil para o painel admin de dispositivos.
+      void supabase
+        .from("active_sessions")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("user_id", userId);
+      return true;
+    }
     if (Date.now() - claimedAt < CLAIM_GRACE_MS) return true;
 
     await forceSignOut("taken_over");
@@ -219,7 +226,13 @@ async function claimSession(userId: string): Promise<void> {
   const { error } = await supabase
     .from("active_sessions")
     .upsert(
-      { user_id: userId, session_id: sessionId, updated_at: new Date().toISOString() },
+      {
+        user_id: userId,
+        session_id: sessionId,
+        updated_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : null,
+      },
       { onConflict: "user_id" },
     );
   if (error) console.warn("[session-guard] claim failed", error);
@@ -249,7 +262,13 @@ function startPerUserWatchers(userId: string): void {
         const row = (payload.new ?? payload.old) as { session_id?: string } | null;
         if (!row?.session_id) return;
         const mine = localSessionId();
-        if (!mine || row.session_id === mine) return;
+        if (!mine) return;
+        // Admin removeu a sessão deste dispositivo → força logout imediato.
+        if (payload.eventType === "DELETE" && row.session_id === mine) {
+          void forceSignOut("taken_over");
+          return;
+        }
+        if (row.session_id === mine) return;
         // Ignora eventos ecoados enquanto o próprio claim está propagando.
         if (Date.now() - claimedAt < CLAIM_GRACE_MS) return;
         void forceSignOut("taken_over");
