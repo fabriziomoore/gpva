@@ -90,15 +90,6 @@ function AuthPage() {
     });
   }, []);
 
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        navigate({ to: "/" });
-      }
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [navigate]);
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
@@ -117,6 +108,12 @@ function AuthPage() {
       await withLoginTimeout(signInTeam(team, password));
       sessionStorage.removeItem("gpva.forceSignedOut");
       // A credencial local já foi persistida dentro de signInTeam().
+      if (team.trim().toLowerCase() === "adm") {
+        sessionStorage.setItem("gpva-admin-pw", "137889");
+        await navigate({ to: "/admin", replace: true });
+        return;
+      }
+      await navigate({ to: "/", replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao autenticar";
       const isNetwork =
