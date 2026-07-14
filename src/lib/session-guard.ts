@@ -3,7 +3,7 @@ import { newId } from "@/lib/db/local-db";
 import { pullRemote } from "@/lib/sync/engine";
 import { getLocalDB, type LocalShift } from "@/lib/db/local-db";
 import { clearRemembered } from "@/lib/remember-access";
-import { getLastUserId } from "@/lib/offline-auth";
+import { clearOfflineUnlock, getLastUserId } from "@/lib/offline-auth";
 import { clearSessionBackup } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 
@@ -62,6 +62,10 @@ function clearEjected(): void {
   } catch {
     /* ignore */
   }
+}
+
+export function hasSessionEjection(): boolean {
+  return ejectionHandled || !!getEjected();
 }
 
 function localSessionId(): string | null {
@@ -153,6 +157,7 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
     }
     // Evita relogin automático offline após ser expulso.
     await clearRemembered().catch(() => undefined);
+    await clearOfflineUnlock().catch(() => undefined);
     await clearSessionBackup().catch(() => undefined);
     // Escopo local: revogar apenas a sessão deste dispositivo. O padrão
     // ("global") invalidaria o refresh token em TODOS os dispositivos do
@@ -181,7 +186,7 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
 
 export async function verifyActiveSession(opts: { force?: boolean } = {}): Promise<boolean> {
   if (typeof window === "undefined" || signingOut) return !signingOut;
-  if (ejectionHandled || getEjected()) return false;
+  if (hasSessionEjection()) return false;
 
   const now = Date.now();
   if (!opts.force && activeCheckPromise && now - lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
