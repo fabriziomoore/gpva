@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -16,12 +16,29 @@ import {
   CartesianGrid,
 } from "recharts";
 import { formatBRL } from "@/lib/format";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarIcon } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/variable")({
   head: () => ({ meta: [{ title: "Variável" }] }),
   component: VariablePage,
 });
+
+const MONTHS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
 
 function VariablePage() {
   const { userId } = useAuthSession();
@@ -95,6 +112,52 @@ function VariablePage() {
     return Array.from(m, ([date, value]) => ({ date, value })).reverse();
   }, [neg.data]);
 
+  // Consulta período específico
+  const now = new Date();
+  const [customMode, setCustomMode] = useState<"day" | "month" | "year">("month");
+  const [customDay, setCustomDay] = useState<Date | undefined>(undefined);
+  const [customMonth, setCustomMonth] = useState<number>(now.getMonth());
+  const [customYear, setCustomYear] = useState<number>(now.getFullYear());
+
+  const years = useMemo(() => {
+    const set = new Set<number>();
+    for (const r of neg.data ?? []) set.add(new Date(r.created_at).getFullYear());
+    set.add(now.getFullYear());
+    return Array.from(set).sort((a, b) => b - a);
+  }, [neg.data, now]);
+
+  const custom = useMemo(() => {
+    let start: Date;
+    let end: Date;
+    let label: string;
+    if (customMode === "day") {
+      if (!customDay) return null;
+      start = new Date(customDay);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      label = start.toLocaleDateString("pt-BR");
+    } else if (customMode === "month") {
+      start = new Date(customYear, customMonth, 1);
+      end = new Date(customYear, customMonth + 1, 1);
+      label = `${MONTHS[customMonth]} / ${customYear}`;
+    } else {
+      start = new Date(customYear, 0, 1);
+      end = new Date(customYear + 1, 0, 1);
+      label = String(customYear);
+    }
+    let count = 0;
+    let total = 0;
+    for (const r of neg.data ?? []) {
+      const t = new Date(r.created_at);
+      if (t >= start && t < end) {
+        count++;
+        total += Number(r.negotiated_value) || 0;
+      }
+    }
+    return { label, count, total };
+  }, [customMode, customDay, customMonth, customYear, neg.data]);
+
   return (
     <AppShell title="Variável" right={<ShiftMeta />}>
       {neg.isLoading ? (
@@ -121,6 +184,94 @@ function VariablePage() {
                 </p>
               </div>
             ))}
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-3">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Consultar período específico
+            </p>
+            <Tabs value={customMode} onValueChange={(v) => setCustomMode(v as typeof customMode)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="day">Dia</TabsTrigger>
+                <TabsTrigger value="month">Mês</TabsTrigger>
+                <TabsTrigger value="year">Ano</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="day" className="mt-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !customDay && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 size-4" />
+                      {customDay ? customDay.toLocaleDateString("pt-BR") : "Selecionar dia"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customDay}
+                      onSelect={setCustomDay}
+                      disabled={(d) => d > new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </TabsContent>
+
+              <TabsContent value="month" className="mt-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={String(customMonth)} onValueChange={(v) => setCustomMonth(Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Mês" /></SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m, i) => (
+                        <SelectItem key={m} value={String(i)}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(customYear)} onValueChange={(v) => setCustomYear(Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Ano" /></SelectTrigger>
+                    <SelectContent>
+                      {years.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="year" className="mt-3">
+                <Select value={String(customYear)} onValueChange={(v) => setCustomYear(Number(v))}>
+                  <SelectTrigger><SelectValue placeholder="Ano" /></SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </TabsContent>
+            </Tabs>
+
+            <div className="mt-3 rounded-xl border border-border bg-background p-3">
+              {custom ? (
+                <>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {custom.label}
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-primary">
+                    {formatBRL(custom.count * rate)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {custom.count} negoc. • {formatBRL(custom.total)}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">Selecione uma data.</p>
+              )}
+            </div>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-3">
