@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin } from "lucide-react";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
-import { PendingFormsDialog } from "@/components/shift/PendingFormsDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatBRL } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -16,6 +15,14 @@ import type { LocalService } from "@/lib/db/local-db";
 import { useFormsStatus, getFailedPayload, setFormsStatus } from "@/lib/forms-status";
 import { submitNegotiationToGoogleForm } from "@/lib/google-form";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
 import { getFormsStatus } from "@/lib/forms-status";
 
 export const Route = createFileRoute("/_authenticated/shift")({
@@ -89,6 +96,35 @@ function ShiftPage() {
       return;
     }
     setFinishOpen(true);
+  }
+
+  async function sendFirstPending() {
+    const first = pendingForms?.[0];
+    if (!first) return;
+    const payload = getFailedPayload(first.id);
+    if (!payload) {
+      toast.error("Dados do Forms não encontrados neste dispositivo.");
+      return;
+    }
+    const online = typeof navigator === "undefined" ? true : navigator.onLine;
+    if (!online) {
+      toast.warning("Sem conexão — tente novamente quando estiver online.");
+      return;
+    }
+    try {
+      const opened = await submitNegotiationToGoogleForm(payload);
+      if (opened) {
+        setFormsStatus(first.id, "sent");
+        toast.success("Forms aberto para envio manual.");
+        setPendingForms(null);
+      } else {
+        toast.error("Permita pop-ups para abrir o Forms.");
+      }
+    } catch (err) {
+      toast.error(
+        `Falha ao abrir Forms: ${err instanceof Error ? err.message : "erro desconhecido"}`,
+      );
+    }
   }
 
   if (loading) {
