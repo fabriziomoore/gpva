@@ -171,7 +171,14 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
     // Se estiver sem rede ou a leitura falhar, não bloqueia o modo offline.
     if (!result) return true;
     const { data, error } = result;
-    if (error || !data) return true;
+    if (error) return true;
+    if (!data) {
+      // Linha sumiu do DB (admin deslogou). Só age se este device já
+      // reivindicou a sessão — dentro do grace do próprio claim, ignora.
+      if (Date.now() - claimedAt < CLAIM_GRACE_MS) return true;
+      await forceSignOut("taken_over");
+      return false;
+    }
     if (data.session_id === mine) {
       // touch last_seen_at — barato e útil para o painel admin de dispositivos.
       void supabase
@@ -259,12 +266,14 @@ function startPerUserWatchers(userId: string): void {
       "postgres_changes",
       { event: "*", schema: "public", table: "active_sessions", filter: `user_id=eq.${userId}` },
       (payload) => {
-        const row = (payload.new ?? payload.old) as { session_id?: string } | null;
+        const isDelete = payload.eventType === "DELETE";
+        const rowSrc = isDelete ? payload.old : (payload.new ?? payload.old);
+        const row = rowSrc as { session_id?: string } | null;
         if (!row?.session_id) return;
         const mine = localSessionId();
         if (!mine) return;
         // Admin removeu a sessão deste dispositivo → força logout imediato.
-        if (payload.eventType === "DELETE" && row.session_id === mine) {
+        if (isDelete && row.session_id === mine) {
           void forceSignOut("taken_over");
           return;
         }
