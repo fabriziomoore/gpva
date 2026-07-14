@@ -571,7 +571,7 @@ export function AddServiceSheet({
                       }}
                       className="h-14 w-full text-base font-semibold"
                     >
-                      {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms (print manual)"}
+                      {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms"}
                     </Button>
                   </div>
                 );
