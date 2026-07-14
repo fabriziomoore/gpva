@@ -535,6 +535,51 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       return { ok: true };
     }
 
+    // ---------- Lixeira (soft-delete) ----------
+    case "adminListTrashShifts": {
+      const { data: rows, error } = await sb.from("expedientes")
+        .select("id,team_id,started_at,ended_at,status,report_text,deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+        .limit(Math.min(Number(args.limit) || 200, 500));
+      if (error) throw new Error(error.message);
+      const list = rows ?? [];
+      if (!list.length) return [];
+      const shiftIds = list.map((r: any) => r.id);
+      const teamIds = Array.from(new Set(list.map((r: any) => r.team_id).filter(Boolean)));
+      const [svcRes, teamsRes] = await Promise.all([
+        sb.from("servicos").select("shift_id").in("shift_id", shiftIds),
+        sb.from("equipes").select("id,team_name").in("id", teamIds),
+      ]);
+      const svcCount = new Map<string, number>();
+      for (const s of svcRes.data ?? []) {
+        const k = (s as any).shift_id; if (!k) continue;
+        svcCount.set(k, (svcCount.get(k) ?? 0) + 1);
+      }
+      const teamMap = new Map((teamsRes.data ?? []).map((t: any) => [t.id, t.team_name]));
+      return list.map((r: any) => ({
+        ...r,
+        team_name: teamMap.get(r.team_id) ?? "—",
+        service_count: svcCount.get(r.id) ?? 0,
+      }));
+    }
+    case "adminRestoreShift": {
+      const { error: e1 } = await sb.from("expedientes").update({ deleted_at: null }).eq("id", args.shiftId);
+      if (e1) throw new Error(e1.message);
+      await sb.from("servicos").update({ deleted_at: null }).eq("shift_id", args.shiftId);
+      await sb.from("vinculos_complementos").update({ deleted_at: null }).eq("shift_id", args.shiftId);
+      await sb.from("impactos_expediente").update({ deleted_at: null }).eq("shift_id", args.shiftId);
+      return { ok: true };
+    }
+    case "adminPurgeShift": {
+      await sb.from("vinculos_complementos").delete().eq("shift_id", args.shiftId);
+      await sb.from("servicos").delete().eq("shift_id", args.shiftId);
+      await sb.from("impactos_expediente").delete().eq("shift_id", args.shiftId);
+      const { error } = await sb.from("expedientes").delete().eq("id", args.shiftId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
     default: throw new Error(`Operação desconhecida: ${op}`);
   }
 }
