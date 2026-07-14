@@ -73,6 +73,7 @@ type SectionId =
   | "google_form"
   | "test_account"
   | "map_services"
+  | "devices"
   | "audit";
 
 type SectionMeta = {
@@ -94,6 +95,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   map_services: { id: "map_services", label: "Serviços no Mapa", description: "Marcações registradas — remoção seletiva", icon: MapPin },
   google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
+  devices: { id: "devices", label: "Dispositivos", description: "Sessões ativas e logout remoto", icon: Smartphone },
   audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
 };
 
@@ -110,7 +112,7 @@ const SECTION_GROUPS: SectionGroup[] = [
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
-    items: ["variable", "map_services", "google_form", "test_account", "audit"] },
+    items: ["variable", "map_services", "google_form", "test_account", "devices", "audit"] },
 ];
 
 function groupOf(id: SectionId): SectionGroup | undefined {
