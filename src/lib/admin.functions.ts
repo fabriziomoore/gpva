@@ -626,6 +626,7 @@ export const adminListMapServices = createServerFn({ method: "POST" })
       .select(
         "id,created_at,team_id,lat,lng,viable,is_negotiation,service_type_name,negotiated_value,registration_number",
       )
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(Math.min(Number(data.limit) || 500, 2000));
     if (data.teamId) q = q.eq("team_id", data.teamId);
@@ -653,8 +654,9 @@ export const adminDeleteMapService = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("vinculos_complementos").delete().eq("service_id", data.id);
-    const { error } = await supabaseAdmin.from("servicos").delete().eq("id", data.id);
+    const deletedAt = new Date().toISOString();
+    await supabaseAdmin.from("vinculos_complementos").update({ deleted_at: deletedAt }).eq("service_id", data.id).is("deleted_at", null);
+    const { error } = await supabaseAdmin.from("servicos").update({ deleted_at: deletedAt }).eq("id", data.id).is("deleted_at", null);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
@@ -675,12 +677,14 @@ export const adminDeleteMapServicesRange = createServerFn({ method: "POST" })
     if (data.teamId) q = q.eq("team_id", data.teamId);
     if (data.startISO) q = q.gte("created_at", data.startISO);
     if (data.endISO) q = q.lt("created_at", data.endISO);
+    q = q.is("deleted_at", null);
     const { data: rows, error: e1 } = await q;
     if (e1) throw new Error(e1.message);
     const ids = (rows ?? []).map((r) => r.id);
     if (!ids.length) return { ok: true as const, deleted: 0 };
-    await supabaseAdmin.from("vinculos_complementos").delete().in("service_id", ids);
-    const { error } = await supabaseAdmin.from("servicos").delete().in("id", ids);
+    const deletedAt = new Date().toISOString();
+    await supabaseAdmin.from("vinculos_complementos").update({ deleted_at: deletedAt }).in("service_id", ids).is("deleted_at", null);
+    const { error } = await supabaseAdmin.from("servicos").update({ deleted_at: deletedAt }).in("id", ids).is("deleted_at", null);
     if (error) throw new Error(error.message);
     return { ok: true as const, deleted: ids.length };
   });
