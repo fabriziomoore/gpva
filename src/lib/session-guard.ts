@@ -172,7 +172,14 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
     if (!result) return true;
     const { data, error } = result;
     if (error || !data) return true;
-    if (data.session_id === mine) return true;
+    if (data.session_id === mine) {
+      // touch last_seen_at — barato e útil para o painel admin de dispositivos.
+      void supabase
+        .from("active_sessions")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("user_id", userId);
+      return true;
+    }
     if (Date.now() - claimedAt < CLAIM_GRACE_MS) return true;
 
     await forceSignOut("taken_over");
