@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { verifyActiveSession } from "@/lib/session-guard";
+import { hasSessionEjection, verifyActiveSession } from "@/lib/session-guard";
 import { readStoredAuthSession } from "@/lib/sync/session-backup";
 import { hasValidOfflineUnlock } from "@/lib/offline-auth";
 
@@ -25,6 +25,10 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     bootLog("beforeLoad:start");
+    if (hasSessionEjection()) {
+      bootLog("beforeLoad:ejected->/auth");
+      throw redirect({ to: "/auth" });
+    }
     // 1) Fast path: sessão Supabase já viva na memória / storage do SDK.
     const localSession = readStoredAuthSession();
     bootLog("beforeLoad:readStoredAuthSession", { hasUser: !!localSession?.user });

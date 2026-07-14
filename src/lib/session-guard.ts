@@ -3,12 +3,14 @@ import { newId } from "@/lib/db/local-db";
 import { pullRemote } from "@/lib/sync/engine";
 import { getLocalDB, type LocalShift } from "@/lib/db/local-db";
 import { clearRemembered } from "@/lib/remember-access";
-import { getLastUserId } from "@/lib/offline-auth";
+import { clearOfflineUnlock, getLastUserId } from "@/lib/offline-auth";
+import { clearSessionBackup } from "@/lib/sync/session-backup";
 import { toast } from "sonner";
 
 const LOGIN_TS_KEY = "gpva.loginAt";
 const SESSION_ID_KEY = "gpva.sessionId";
 const EJECTED_KEY = "gpva.ejected";
+const FORCE_SIGNED_OUT_KEY = "gpva.forceSignedOut";
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
 const EXPIRY_CHECK_MS = 5 * 60 * 1000; // 5 min
 const HEARTBEAT_MS = 60 * 1000; // 60 s — realtime cobre takeover instantâneo
@@ -31,6 +33,7 @@ let claimTail: Promise<void> = Promise.resolve();
 let lastActiveCheckAt = 0;
 let activeCheckPromise: Promise<boolean> | null = null;
 const CLAIM_GRACE_MS = 10_000;
+let ejectionHandled = false;
 
 type EjectReason = "expired" | "taken_over" | "admin_disconnect";
 
@@ -43,19 +46,26 @@ function getEjected(): EjectReason | null {
 }
 
 function setEjected(reason: EjectReason): void {
+  ejectionHandled = true;
   try {
     localStorage.setItem(EJECTED_KEY, reason);
+    sessionStorage.setItem(FORCE_SIGNED_OUT_KEY, "1");
   } catch {
     /* ignore */
   }
 }
 
 function clearEjected(): void {
+  ejectionHandled = false;
   try {
     localStorage.removeItem(EJECTED_KEY);
   } catch {
     /* ignore */
   }
+}
+
+export function hasSessionEjection(): boolean {
+  return ejectionHandled || !!getEjected();
 }
 
 function localSessionId(): string | null {
@@ -134,7 +144,8 @@ async function getAuthUserIdOfflineSafe(): Promise<string | null> {
 
 async function forceSignOut(reason: EjectReason): Promise<void> {
   if (signingOut) return;
-  if (getEjected()) return;
+  if (ejectionHandled || getEjected()) return;
+  setEjected(reason);
   signingOut = true;
   try {
     stopPerUserWatchers();
@@ -144,20 +155,21 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
     } catch {
       /* ignore */
     }
-    setEjected(reason);
     // Evita relogin automático offline após ser expulso.
     await clearRemembered().catch(() => undefined);
+    await clearOfflineUnlock().catch(() => undefined);
+    await clearSessionBackup().catch(() => undefined);
     // Escopo local: revogar apenas a sessão deste dispositivo. O padrão
     // ("global") invalidaria o refresh token em TODOS os dispositivos do
     // usuário — inclusive o novo device que acabou de logar — deixando-o
     // travado sem conseguir autenticar requisições.
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     if (reason === "expired") {
-      toast.error("Sessão expirada. Faça login novamente.");
+      toast.error("Sessão expirada. Faça login novamente.", { id: "gpva-session-ejected" });
     } else if (reason === "admin_disconnect") {
-      toast.error("Sua sessão foi desconectada");
+      toast.error("Sua sessão foi desconectada", { id: "gpva-session-ejected" });
     } else {
-      toast.error("Sua conta foi acessada em outro dispositivo.");
+      toast.error("Sua conta foi acessada em outro dispositivo.", { id: "gpva-session-ejected" });
     }
     if (typeof window !== "undefined" && window.location.pathname !== "/auth") {
       const event = new CustomEvent("gpva:force-auth", {
@@ -174,7 +186,7 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
 
 export async function verifyActiveSession(opts: { force?: boolean } = {}): Promise<boolean> {
   if (typeof window === "undefined" || signingOut) return !signingOut;
-  if (getEjected()) return false;
+  if (hasSessionEjection()) return false;
 
   const now = Date.now();
   if (!opts.force && activeCheckPromise && now - lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
@@ -220,7 +232,7 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
       // Linha sumiu do DB (admin deslogou). Só age se este device já
       // reivindicou a sessão — dentro do grace do próprio claim, ignora.
       if (Date.now() - claimedAt < CLAIM_GRACE_MS) return true;
-      await forceSignOut("taken_over");
+      await forceSignOut("admin_disconnect");
       return false;
     }
     if (data.session_id === mine) {
