@@ -313,6 +313,7 @@ export async function claimCurrentSession(): Promise<void> {
   if (typeof window === "undefined") return;
   const userId = await getAuthUserIdOfflineSafe();
   if (!userId) return;
+  clearEjected();
   await claimSession(userId);
 }
 
