@@ -16,6 +16,7 @@ import {
   LineChart,
   Line,
   CartesianGrid,
+  Legend,
 } from "recharts";
 import { formatDateBR } from "@/lib/format";
 import { Loader2, FileText } from "lucide-react";
@@ -41,6 +42,9 @@ type QuantityTooltipProps = {
   active?: boolean;
   label?: string;
   payload?: Array<{
+    name?: string;
+    dataKey?: string;
+    color?: string;
     value?: number | string;
     payload?: { name?: string; date?: string; qty?: number };
   }>;
@@ -79,14 +83,17 @@ function serviceCountLabel(qty: number) {
 
 function QuantityTooltip({ active, payload, label }: QuantityTooltipProps) {
   if (!active || !payload?.length) return null;
-  const item = payload[0];
-  const qty = Number(item.payload?.qty ?? item.value ?? 0);
-  const title = item.payload?.name ?? item.payload?.date ?? label;
+  const first = payload[0];
+  const title = first.payload?.name ?? first.payload?.date ?? label;
 
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-xl">
       {title && <p className="mb-1 font-semibold text-foreground">{title}</p>}
-      <p className="font-mono text-primary">QTD: {formatQty(qty)}</p>
+      {payload.map((item, i) => (
+        <p key={i} className="font-mono" style={{ color: item.color }}>
+          {(item.name ?? "QTD").toUpperCase()}: {formatQty(Number(item.value ?? 0))}
+        </p>
+      ))}
     </div>
   );
 }
@@ -255,8 +262,8 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
   }, [viableRows]);
 
   const evolution = useMemo(() => {
-    const m = new Map<string, { date: string; qty: number; sort: number }>();
-    for (const r of viableRows) {
+    const m = new Map<string, { date: string; viaveis: number; inviaveis: number; sort: number }>();
+    for (const r of filtered) {
       const d = new Date(r.created_at);
       const key =
         period === "day"
@@ -276,14 +283,15 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
           : period === "year"
             ? new Date(d.getFullYear(), d.getMonth(), 1).getTime()
             : new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-      const current = m.get(key);
-      if (current) current.qty += 1;
-      else m.set(key, { date: label, qty: 1, sort });
+      const current = m.get(key) ?? { date: label, viaveis: 0, inviaveis: 0, sort };
+      if (r.viable) current.viaveis += 1;
+      else current.inviaveis += 1;
+      m.set(key, current);
     }
     return Array.from(m.values())
       .sort((a, b) => a.sort - b.sort)
-      .map(({ date, qty }) => ({ date, qty }));
-  }, [period, viableRows]);
+      .map(({ date, viaveis, inviaveis }) => ({ date, viaveis, inviaveis }));
+  }, [period, filtered]);
 
   return (
     <div className="space-y-4">
@@ -300,7 +308,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
         <div className="h-48">
           {evolution.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Sem serviços viáveis no período.
+              Sem serviços no período.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -309,10 +317,21 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
                 <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={10} />
                 <YAxis stroke="var(--color-muted-foreground)" fontSize={10} allowDecimals={false} />
                 <Tooltip content={<QuantityTooltip />} />
+                <Legend wrapperStyle={{ fontSize: 10 }} iconType="line" />
                 <Line
+                  name="Viáveis"
                   type="monotone"
-                  dataKey="qty"
-                  stroke="var(--color-chart-1)"
+                  dataKey="viaveis"
+                  stroke="var(--color-success)"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+                <Line
+                  name="Inviáveis"
+                  type="monotone"
+                  dataKey="inviaveis"
+                  stroke="var(--color-destructive)"
                   strokeWidth={2}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}
