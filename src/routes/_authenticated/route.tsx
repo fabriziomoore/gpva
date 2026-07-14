@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_authenticated")({
     //    Supabase — a revalidação online ocorre em background quando a
     //    Internet retornar.
     bootLog("beforeLoad:hasValidOfflineUnlock:awaiting");
-    const offlineOk = await hasValidOfflineUnlock();
+    const offlineOk = await withAuthRouteTimeout(hasValidOfflineUnlock());
     bootLog("beforeLoad:hasValidOfflineUnlock:resolved", { offlineOk });
     if (offlineOk) {
       void verifyActiveSession();
