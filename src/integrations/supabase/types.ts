@@ -98,6 +98,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           sort_order: number
@@ -106,6 +107,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           sort_order?: number
@@ -114,6 +116,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           sort_order?: number
@@ -177,6 +180,7 @@ export type Database = {
       expedientes: {
         Row: {
           created_at: string
+          deleted_at: string | null
           ended_at: string | null
           id: string
           report_text: string | null
@@ -187,6 +191,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           ended_at?: string | null
           id?: string
           report_text?: string | null
@@ -197,6 +202,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           ended_at?: string | null
           id?: string
           report_text?: string | null
@@ -279,6 +285,7 @@ export type Database = {
       }
       impactos_expediente: {
         Row: {
+          deleted_at: string | null
           id: string
           impact_id: string | null
           impact_name: string
@@ -286,6 +293,7 @@ export type Database = {
           team_id: string
         }
         Insert: {
+          deleted_at?: string | null
           id?: string
           impact_id?: string | null
           impact_name: string
@@ -293,6 +301,7 @@ export type Database = {
           team_id: string
         }
         Update: {
+          deleted_at?: string | null
           id?: string
           impact_id?: string | null
           impact_name?: string
@@ -360,6 +369,7 @@ export type Database = {
           accuracy_m: number | null
           captured_at: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           is_negotiation: boolean
           lat: number | null
@@ -378,6 +388,7 @@ export type Database = {
           accuracy_m?: number | null
           captured_at?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_negotiation?: boolean
           lat?: number | null
@@ -396,6 +407,7 @@ export type Database = {
           accuracy_m?: number | null
           captured_at?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_negotiation?: boolean
           lat?: number | null
@@ -532,6 +544,7 @@ export type Database = {
           complement_id: string | null
           complement_name: string
           created_at: string
+          deleted_at: string | null
           id: string
           service_id: string
           shift_id: string
@@ -541,6 +554,7 @@ export type Database = {
           complement_id?: string | null
           complement_name: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           service_id: string
           shift_id: string
@@ -550,6 +564,7 @@ export type Database = {
           complement_id?: string | null
           complement_name?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           service_id?: string
           shift_id?: string
