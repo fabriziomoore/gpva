@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 const LOGIN_TS_KEY = "gpva.loginAt";
 const SESSION_ID_KEY = "gpva.sessionId";
+const EJECTED_KEY = "gpva.ejected";
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
 const EXPIRY_CHECK_MS = 5 * 60 * 1000; // 5 min
 const HEARTBEAT_MS = 60 * 1000; // 60 s — realtime cobre takeover instantâneo
