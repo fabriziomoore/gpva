@@ -262,6 +262,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         const { data: rows, error } = await sb.from("servicos")
           .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
           .gte("created_at", start).lt("created_at", end)
+          .is("deleted_at", null)
           .range(from, from + pageSize - 1);
         if (error) throw new Error(error.message);
         if (!rows?.length) break;
@@ -290,16 +291,18 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
     case "adminListShifts": {
       const { data, error } = await sb.from("expedientes")
         .select("id,started_at,ended_at,status,report_text")
-        .eq("team_id", args.teamId).order("started_at", { ascending: false }).limit(200);
+        .eq("team_id", args.teamId).is("deleted_at", null).order("started_at", { ascending: false }).limit(200);
       if (error) throw new Error(error.message);
       return data ?? [];
     }
     case "adminDeleteShift": {
+      // Soft-delete: envia para a Lixeira (restaurável pelo admin)
+      const deletedAt = new Date().toISOString();
       for (const [t, col] of [
         ["vinculos_complementos", "shift_id"], ["servicos", "shift_id"],
         ["impactos_expediente", "shift_id"], ["expedientes", "id"],
       ] as const) {
-        const { error } = await sb.from(t).delete().eq(col, args.shiftId);
+        const { error } = await sb.from(t).update({ deleted_at: deletedAt }).eq(col, args.shiftId).is("deleted_at", null);
         if (error) throw new Error(error.message);
       }
       return { ok: true };
