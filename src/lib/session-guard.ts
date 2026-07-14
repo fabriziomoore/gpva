@@ -259,12 +259,14 @@ function startPerUserWatchers(userId: string): void {
       "postgres_changes",
       { event: "*", schema: "public", table: "active_sessions", filter: `user_id=eq.${userId}` },
       (payload) => {
-        const row = (payload.new ?? payload.old) as { session_id?: string } | null;
+        const isDelete = payload.eventType === "DELETE";
+        const rowSrc = isDelete ? payload.old : (payload.new ?? payload.old);
+        const row = rowSrc as { session_id?: string } | null;
         if (!row?.session_id) return;
         const mine = localSessionId();
         if (!mine) return;
         // Admin removeu a sessão deste dispositivo → força logout imediato.
-        if (payload.eventType === "DELETE" && row.session_id === mine) {
+        if (isDelete && row.session_id === mine) {
           void forceSignOut("taken_over");
           return;
         }
