@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ROLE_CACHE_PREFIX = "gpva.userRoles.";
 const ROLE_QUERY_TIMEOUT_MS = 2_500;
+const LEADER_META_FLAG = "is_leader";
+const ADMIN_META_FLAG = "is_admin";
 
 type RoleRow = { role: string };
 type RoleResponse = { data: RoleRow[] | null; error: { message: string } | null };
@@ -38,6 +40,29 @@ function writeCachedRoles(userId: string, roles: string[]): void {
   }
 }
 
+function readRolesFromCurrentSession(userId: string | null): string[] | undefined {
+  if (!userId) return undefined;
+  if (typeof localStorage === "undefined") return undefined;
+  try {
+    const rawSession = Object.keys(localStorage)
+      .filter((key) => key.startsWith("sb-") && key.endsWith("-auth-token"))
+      .map((key) => localStorage.getItem(key))
+      .find((value): value is string => !!value);
+    if (!rawSession) return undefined;
+    const parsed = JSON.parse(rawSession) as {
+      user?: { id?: string; user_metadata?: Record<string, unknown> };
+    };
+    if (parsed.user?.id !== userId) return undefined;
+    const metadata = parsed.user.user_metadata ?? {};
+    const roles: string[] = [];
+    if (metadata[LEADER_META_FLAG] === true) roles.push("leader");
+    if (metadata[ADMIN_META_FLAG] === true) roles.push("admin");
+    return roles.length ? roles : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -60,10 +85,11 @@ export function useUserRoles(userId: string | null) {
     retry: false,
     networkMode: "always",
     refetchOnWindowFocus: false,
-    initialData: () => readCachedRoles(userId),
+    initialData: () => readCachedRoles(userId) ?? readRolesFromCurrentSession(userId),
     queryFn: async () => {
       const cached = readCachedRoles(userId);
-      if (!userId || isOffline()) return cached ?? [];
+      const metadataRoles = readRolesFromCurrentSession(userId);
+      if (!userId || isOffline()) return cached ?? metadataRoles ?? [];
       try {
         const { data, error } = await withTimeout<RoleResponse>(
           supabase
@@ -78,6 +104,7 @@ export function useUserRoles(userId: string | null) {
         return roles;
       } catch (error) {
         if (cached) return cached;
+        if (metadataRoles) return metadataRoles;
         return [];
       }
     },
