@@ -129,8 +129,9 @@ async function getAuthUserIdOfflineSafe(): Promise<string | null> {
   }
 }
 
-async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
+async function forceSignOut(reason: EjectReason): Promise<void> {
   if (signingOut) return;
+  if (getEjected()) return;
   signingOut = true;
   try {
     stopPerUserWatchers();
@@ -140,6 +141,7 @@ async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
     } catch {
       /* ignore */
     }
+    setEjected(reason);
     // Evita relogin automático offline após ser expulso.
     await clearRemembered().catch(() => undefined);
     // Escopo local: revogar apenas a sessão deste dispositivo. O padrão
@@ -149,6 +151,8 @@ async function forceSignOut(reason: "expired" | "taken_over"): Promise<void> {
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     if (reason === "expired") {
       toast.error("Sessão expirada. Faça login novamente.");
+    } else if (reason === "admin_disconnect") {
+      toast.error("Sua sessão foi desconectada");
     } else {
       toast.error("Sua conta foi acessada em outro dispositivo.");
     }
