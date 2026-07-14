@@ -350,6 +350,7 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
         .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
         .gte("created_at", start)
         .lt("created_at", end)
+        .is("deleted_at", null)
         .range(from, from + pageSize - 1);
       if (error) throw new Error(error.message);
       if (!rows?.length) break;
