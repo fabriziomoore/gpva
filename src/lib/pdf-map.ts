@@ -60,8 +60,8 @@ export async function renderReportMapPng(opts: {
   const W = Math.round(opts.width);
   const H = Math.round(opts.height);
   const points = opts.points ?? [];
-  const center = opts.center ?? (points.length > 0 ? getBoundsCenter(points) : MARICA_CENTER);
   const zoom = opts.zoom ?? (points.length > 0 ? getOptimalZoom(points, W, H) : 12);
+  const center = opts.center ?? (points.length > 0 ? getBoundsCenter(points) : MARICA_CENTER);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -167,8 +167,9 @@ function getBoundsCenter(pts: PdfMapPoint[]): { lat: number; lng: number } {
 }
 
 function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
+  if (pts.length === 0) return 12;
   // Always include the operational base in bounds calculation
-  const allPts = [...pts, { ...OPERATIONAL_BASE, viable: true }];
+  const allPts = pts;
   if (allPts.length < 2) return 13;
   let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
   allPts.forEach(p => {
@@ -178,8 +179,8 @@ function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
   
   const latDiff = maxLat - minLat;
   const lngDiff = maxLng - minLng;
-  // Aumentamos o diff para dar margem (padding)
-  const maxDiff = Math.max(latDiff * 1.5, lngDiff * 1.2) || 0.05;
+  // Aumentamos o diff para dar uma pequena margem (padding)
+  const maxDiff = Math.max(latDiff * 1.15, lngDiff * 1.05) || 0.05;
   
   // Fórmula de zoom para Tiles 256px
   let z = Math.floor(Math.log2(360 / maxDiff));
