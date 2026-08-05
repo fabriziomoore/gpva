@@ -501,7 +501,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Legenda de constância
   {
     const lgH = 15;
-    const lgY = invTblY + maxRowsPerCol * invRowH + 5; 
+    const lgY = invTblY + maxRowsPerCol * invRowH + 10; 
     
     setFill(C.white); setStroke(C.border);
     pdf.roundedRect(M, lgY, CW, lgH, 1.5, 1.5, "FD");
