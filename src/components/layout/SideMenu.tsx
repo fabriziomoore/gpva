@@ -281,7 +281,7 @@ export function SideMenu() {
                   Mapa de Rede
                 </div>
                 <p className="text-[11px] leading-snug text-muted-foreground">
-                  Consulta e Extensão de Rede de Água.
+                  Consulta ao Mapa de Rede de Água
                 </p>
               </div>
             </button>
