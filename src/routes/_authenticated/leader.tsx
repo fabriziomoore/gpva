@@ -62,6 +62,7 @@ type SvcRow = {
   is_negotiation: boolean;
   viable: boolean;
   reason_name: string | null;
+  registration_number: string | null;
   negotiated_value: number | null;
   created_at: string;
   lat?: number | null;
@@ -161,7 +162,7 @@ function LeaderPage() {
       while (true) {
         const { data, error } = await supabase
           .from("servicos")
-          .select("id,team_id,shift_id,service_type_name,is_negotiation,viable,reason_name,negotiated_value,created_at,lat,lng")
+          .select("id,team_id,shift_id,service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value,created_at,lat,lng")
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
