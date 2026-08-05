@@ -121,14 +121,24 @@ export async function renderReportMapPng(opts: {
     ctx.stroke();
   }
 
-  // Selo do centro (Maricá).
-  ctx.beginPath();
-  ctx.arc(W / 2, H / 2, 4, 0, Math.PI * 2);
-  ctx.fillStyle = "#1e3a8a";
-  ctx.fill();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  // Selo da base operacional (Inoã).
+  const bpx = lngToPx(OPERATIONAL_BASE.lng, zoom) - topLeftPxX;
+  const bpy = latToPx(OPERATIONAL_BASE.lat, zoom) - topLeftPxY;
+  if (bpx > 0 && bpx < W && bpy > 0 && bpy < H) {
+    ctx.beginPath();
+    ctx.arc(bpx, bpy, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#1e3a8a";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Pequena letra "B" ou ícone de casa
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("B", bpx, bpy);
+  }
 
   // Créditos OSM (obrigatório).
   ctx.font = "10px sans-serif";
@@ -157,18 +167,21 @@ function getBoundsCenter(pts: PdfMapPoint[]): { lat: number; lng: number } {
 }
 
 function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
-  if (pts.length < 2) return 13;
+  // Always include the operational base in bounds calculation
+  const allPts = [...pts, { ...OPERATIONAL_BASE, viable: true }];
+  if (allPts.length < 2) return 13;
   let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-  pts.forEach(p => {
+  allPts.forEach(p => {
     minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
     minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
   });
   
   const latDiff = maxLat - minLat;
   const lngDiff = maxLng - minLng;
-  const maxDiff = Math.max(latDiff, lngDiff * 0.8) || 0.01;
+  // Aumentamos o diff para dar margem (padding)
+  const maxDiff = Math.max(latDiff * 1.5, lngDiff * 1.2) || 0.05;
   
-  // Ajuste empírico de zoom baseado na dispersão
-  let z = Math.floor(Math.log2(360 / maxDiff)) - 1;
-  return Math.min(18, Math.max(2, z));
+  // Fórmula de zoom para Tiles 256px
+  let z = Math.floor(Math.log2(360 / maxDiff));
+  return Math.min(18, Math.max(8, z));
 }

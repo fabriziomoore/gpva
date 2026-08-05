@@ -549,7 +549,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const geoPageNumber = hasTeams ? 5 : 4;
     pageTitle(pdf, "ANÁLISE GEOGRÁFICA — LEITURA DO MAPA", input.scope_label, periodStr);
 
-    const geo = await buildGeoAnalysis(input.map_points ?? [], MARICA_CENTER);
+    const geo = await buildGeoAnalysis(input.map_points ?? [], OPERATIONAL_BASE);
 
     const blocksGeo = [
       { title: "Distribuição geral", body: geo.overall },
@@ -978,8 +978,8 @@ async function buildGeoAnalysis(
     const dLng = cLng - center.lng;
     const ns = dLat >= 0 ? "norte" : "sul";
     const ew = dLng >= 0 ? "leste" : "oeste";
-    if (Math.abs(dLat) < 0.005 && Math.abs(dLng) < 0.005) return "praticamente sobre o centro";
-    return `a ${distToRef.toFixed(1)} km ${ns}-${ew} do centro de Maricá`;
+    if (Math.abs(dLat) < 0.005 && Math.abs(dLng) < 0.005) return "praticamente sobre a base";
+    return `a ${distToRef.toFixed(1)} km ${ns}-${ew} da base (Inoã)`;
   })();
 
   // Dispersão: distância média ao centróide + máxima
@@ -990,7 +990,7 @@ async function buildGeoAnalysis(
   const farIdx = dists.indexOf(maxD);
   const far = pts[farIdx];
 
-  // Quadrantes relativos ao centro de Maricá (NE, NO, SE, SO)
+  // Quadrantes relativos à base operacional (NE, NO, SE, SO)
   type Q = "NE" | "NO" | "SE" | "SO";
   const qLabel: Record<Q, string> = { NE: "Nordeste", NO: "Noroeste", SE: "Sudeste", SO: "Sudoeste" };
   const buckets: Record<Q, { total: number; viable: number }> = {
@@ -1077,7 +1077,7 @@ async function buildGeoAnalysis(
 
   const overall =
     `Foram plotados ${total} pontos com coordenadas válidas (${viable.length} viáveis / ${unviable.length} inviáveis, ${pctV}% de viabilidade territorial). ` +
-    `A cobertura alcançou ${covered} de 4 quadrantes${empty.length ? ` (sem atendimento em ${empty.join(", ")})` : ""}.`;
+    `A cobertura alcançou ${covered} de 4 quadrantes a partir da base operacional em Inoã.`;
 
   const centroidLoc = centroidGeo?.label || `${cLat.toFixed(4)}, ${cLng.toFixed(4)}`;
   const centroidTxt =
