@@ -746,12 +746,31 @@ function PeriodView({
           viable: s.viable,
         }));
 
+      // Constância: inviáveis do período anterior (mesma matrícula + motivo)
+      const prevRangeCalc = previousRange(period, cur.start);
+      const prevKeys = new Set(
+        services
+          .filter((s) => !s.viable && inRange(s.created_at, prevRangeCalc))
+          .map(
+            (s) =>
+              `${(s.registration_number || "").trim().toUpperCase()}|${(s.reason_name || "").trim().toLowerCase()}`,
+          ),
+      );
+      const shiftById = new Map(shifts.map((s) => [s.id, s.started_at]));
       const allUnviable = curServices
-        .filter(s => !s.viable)
-        .map(s => ({
-          name: s.reason_name || "Motivo não especificado",
-          registration: s.registration_number || "S/M"
-        }));
+        .filter((s) => !s.viable)
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .map((s) => {
+          const ref = shiftById.get(s.shift_id) ?? s.created_at;
+          const reg = (s.registration_number || "").trim().toUpperCase();
+          const key = `${reg}|${(s.reason_name || "").trim().toLowerCase()}`;
+          return {
+            name: s.reason_name || "Motivo não especificado",
+            registration: s.registration_number || "S/M",
+            day: new Date(ref).getDate(),
+            repeat_prev: reg.length > 0 && prevKeys.has(key),
+          };
+        });
       const blob = await renderLeaderPdfBlob({
         period,
         scope_label: meta.team_name,
