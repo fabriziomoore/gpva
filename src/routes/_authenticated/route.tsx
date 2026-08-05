@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authenticated")({
       bootLog("beforeLoad:ejected->/auth");
       throw redirect({ to: "/auth" });
     }
+    
     // 1) Fast path: sessão Supabase já viva na memória / storage do SDK.
     const localSession = readStoredAuthSession();
     bootLog("beforeLoad:readStoredAuthSession", { hasUser: !!localSession?.user });
@@ -38,14 +39,16 @@ export const Route = createFileRoute("/_authenticated")({
     }
 
     // 2) Unlock offline: acesso autorizado por validação local de
-    //    credencial (Capacitor Preferences). Não depende de sessão
-    //    Supabase — a revalidação online ocorre em background quando a
-    //    Internet retornar.
+    //    credencial (Capacitor Preferences).
     bootLog("beforeLoad:hasValidOfflineUnlock:awaiting");
     const offlineOk = await withAuthRouteTimeout(hasValidOfflineUnlock());
     bootLog("beforeLoad:hasValidOfflineUnlock:resolved", { offlineOk });
     if (offlineOk) {
-      void verifyActiveSession();
+      // Offline, não chamamos verifyActiveSession que poderia falhar e ejetar.
+      // O heartbeat do guard cuidará disso quando a rede voltar.
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        void verifyActiveSession();
+      }
       return { user: null };
     }
 
@@ -60,6 +63,19 @@ export const Route = createFileRoute("/_authenticated")({
         return { user: result.data.user };
       }
     }
+    
+    // Se chegamos aqui sem sessão e estamos offline, permitimos a entrada
+    // se houver o backup persistente no Preferences, mesmo sem "unlock" formal.
+    // Isso evita o spinner/deslogue falso durante quedas momentâneas.
+    if (!online) {
+      const { restoreSession } = await import("@/lib/sync/session-backup");
+      const restored = await restoreSession();
+      if (restored) {
+        bootLog("beforeLoad:restoredFromBackup");
+        return { user: null };
+      }
+    }
+
     bootLog("beforeLoad:redirect->/auth");
     throw redirect({ to: "/auth" });
   },
