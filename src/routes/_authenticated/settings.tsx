@@ -124,7 +124,13 @@ function SettingsPage() {
   async function saveTeam() {
     setSaving(true);
     try {
-      const patch: { supervisor: string; leader: string; team_name?: string } = { supervisor, leader };
+      const patch: Partial<Team> = { 
+        supervisor, 
+        leader,
+        collaborator1: collab1.trim() || null,
+        collaborator2: collab2.trim() || null
+      };
+      
       if (isTestAccount) {
         const trimmed = teamName.trim();
         if (!trimmed) {
@@ -134,11 +140,12 @@ function SettingsPage() {
         }
         patch.team_name = trimmed;
       }
-      await repoUpdateTeam(userId!, patch);
+      
+      await repoUpdateTeam(userId!, patch as any);
       qc.setQueryData<Team | null>(["team", userId], (old) =>
         old ? { ...old, ...patch } : old,
       );
-      toast.success("Equipe atualizada");
+      toast.success("Dados atualizados");
     } catch (err) {
       toast.error(translateAuthError(err, "Erro ao salvar equipe"));
     } finally {
