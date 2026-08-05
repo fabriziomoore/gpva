@@ -407,16 +407,16 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   input.all_unviable.forEach((inv, i) => {
     const colIdx = Math.floor(i / maxRowsPerCol);
-    if (colIdx >= numCols) return; // Limita a 3 colunas para garantir que caiba em uma folha
+    if (colIdx >= numCols) return;
 
     const rowIdx = i % maxRowsPerCol;
-    const xBase = M + colIdx * (colW + colGap);
+    const xBase = M + colIdx * (invColW + invColGap);
     const yBase = invTblY + rowIdx * invRowH;
 
     // Fundo zebra
     if (i % 2 === 0) setFill(C.white); else setFill(C.bgAlt);
-    rect(xBase, yBase, colW, invRowH, 0, true, false);
-    setStroke(C.border); hline(xBase, yBase + invRowH, xBase + colW, yBase + invRowH, 0.1);
+    rect(xBase, yBase, invColW, invRowH, 0, true, false);
+    setStroke(C.border); hline(xBase, yBase + invRowH, xBase + invColW, yBase + invRowH, 0.1);
 
     // Indicador azul
     setFill(C.primary); pdf.circle(xBase + 4, yBase + invRowH / 2, 2.2, "F");
@@ -427,7 +427,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     font(7.5, "bold"); setText(C.ink);
     text(inv.registration || "-", xBase + 8, yBase + 4.2);
     font(7, "normal"); setText(C.sub);
-    text(inv.name || "-", xBase + 28, yBase + 4.2, { maxWidth: colW - 30 });
+    text(inv.name || "-", xBase + 28, yBase + 4.2, { maxWidth: invColW - 30 });
   });
 
   footer(3, totalPages);
