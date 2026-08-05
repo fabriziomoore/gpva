@@ -527,7 +527,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     text(
       `Reincidentes: ${dupRegs} matrícula(s)   ·   Constância entre períodos: ${prevRepeats}`,
       PW - M - 4,
-      lgY + 12,
+      lgY + 11.5,
       { align: "right" },
     );
   }
