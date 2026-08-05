@@ -856,7 +856,7 @@ function PeriodView({
       {stats.bestDay && (
         <div className="rounded-xl border border-border bg-card p-3">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Melhor dia do período</p>
-          <p className="text-sm font-semibold">{stats.bestDay.date} — {stats.bestDay.qty} viáveis</p>
+          <p className="truncate text-sm font-semibold">{stats.bestDay.date} — {stats.bestDay.qty} viáveis</p>
         </div>
       )}
 
