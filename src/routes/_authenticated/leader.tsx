@@ -62,6 +62,7 @@ type SvcRow = {
   is_negotiation: boolean;
   viable: boolean;
   reason_name: string | null;
+  registration_number: string | null;
   negotiated_value: number | null;
   created_at: string;
   lat?: number | null;
@@ -161,7 +162,7 @@ function LeaderPage() {
       while (true) {
         const { data, error } = await supabase
           .from("servicos")
-          .select("id,team_id,shift_id,service_type_name,is_negotiation,viable,reason_name,negotiated_value,created_at,lat,lng")
+          .select("id,team_id,shift_id,service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value,created_at,lat,lng")
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
@@ -613,7 +614,9 @@ function PeriodView({
     };
 
     const byType = bucket(curSvc.filter((s) => s.viable), (s) => s.service_type_name);
-    const topReasons = bucket(curSvc.filter((s) => !s.viable && s.reason_name), (s) => s.reason_name!);
+    const topReasons = bucket(curSvc.filter((s) => !s.viable && s.reason_name), (s) => 
+      s.registration_number ? `${s.registration_number} - ${s.reason_name}` : s.reason_name!
+    );
     const topImpacts = bucket(curImpacts, (i) => i.impact_name);
     const topComps = bucket(curComps, (c) => c.complement_name);
 
@@ -976,7 +979,9 @@ function RankList({ title, items, empty }: { title: string; items: { name: strin
           {top.map((t) => (
             <li key={t.name} className="space-y-1">
               <div className="flex items-baseline justify-between text-xs">
-                <span className="truncate pr-2 font-medium">{t.name}</span>
+                <span className="truncate pr-2 font-medium" title={t.name}>
+                  {t.name}
+                </span>
                 <span className="tabular-nums text-muted-foreground">{fmtQty(t.qty)}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-muted">
