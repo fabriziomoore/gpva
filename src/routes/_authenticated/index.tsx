@@ -222,19 +222,21 @@ function HomePage() {
             )}
           </div>
           <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
-            <div>
-              <p className="truncate text-lg font-bold leading-none tracking-tight">{team?.team_name}</p>
+            <div className="space-y-2">
+              <p className="truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
               {(team?.collaborator1 || team?.collaborator2) && (
-                <p className="mt-1.5 truncate text-xs font-medium text-foreground leading-none">
+                <p className="truncate text-xs font-medium text-foreground leading-tight">
                   {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
                 </p>
               )}
             </div>
             {team?.supervisor && (
-              <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-                <p className="truncate">Supervisor: <span className="font-semibold text-foreground">{team.supervisor}</span></p>
-                <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
-                <p className="mt-1 font-medium">{today}</p>
+              <div className="text-[11px] leading-tight text-muted-foreground space-y-1.5">
+                <div className="space-y-0.5">
+                  <p className="truncate">Supervisor: <span className="font-semibold text-foreground">{team.supervisor}</span></p>
+                  <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
+                </div>
+                <p className="font-medium">{today}</p>
               </div>
             )}
           </div>
