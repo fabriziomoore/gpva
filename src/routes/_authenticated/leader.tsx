@@ -790,14 +790,14 @@ function PeriodView({
         <div className="rounded-2xl border border-border bg-card p-4">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{projectionLabel(period)}</p>
           <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
-              <p className="text-xs text-white/80">Serviços</p>
-              <p className="text-2xl font-bold text-white">{stats.projected.total}</p>
+            <div className="flex min-w-0 flex-col justify-center rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
+              <p className="truncate text-xs text-white/80">Serviços</p>
+              <p className="truncate text-xl font-bold text-white md:text-2xl" title={String(stats.projected.total)}>{stats.projected.total}</p>
               <ProjectionDelta projected={stats.projected.total} previous={stats.previous.total} />
             </div>
-            <div className="rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
-              <p className="text-xs text-white/80">Negociado</p>
-              <p className="text-2xl font-bold text-white">{formatBRL(stats.projected.negotiated_value)}</p>
+            <div className="flex min-w-0 flex-col justify-center rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
+              <p className="truncate text-xs text-white/80">Negociado</p>
+              <p className="truncate text-xl font-bold text-white md:text-2xl" title={formatBRL(stats.projected.negotiated_value)}>{formatBRL(stats.projected.negotiated_value)}</p>
               <ProjectionDelta projected={stats.projected.negotiated_value} previous={stats.previous.negotiated_value} currency />
             </div>
           </div>
@@ -856,7 +856,7 @@ function PeriodView({
       {stats.bestDay && (
         <div className="rounded-xl border border-border bg-card p-3">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Melhor dia do período</p>
-          <p className="text-sm font-semibold">{stats.bestDay.date} — {stats.bestDay.qty} viáveis</p>
+          <p className="truncate text-sm font-semibold">{stats.bestDay.date} — {stats.bestDay.qty} viáveis</p>
         </div>
       )}
 
@@ -934,7 +934,7 @@ function ProjectionDelta({ projected, previous, currency }: { projected: number;
   const Icon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;
   const sign = diff > 0 ? "+" : "";
   return (
-    <p className={`mt-1 flex items-center gap-1 text-[11px] ${tone}`}>
+    <p className={cn("mt-1 flex items-center gap-1 truncate text-[11px]", tone)}>
       <Icon className="size-3" />
       {sign}
       {currency ? formatBRL(diff) : diff}
@@ -948,9 +948,9 @@ function Kpi({ label, value, delta, hint, tone, small }: { label: string; value:
   const dTone = delta === null || delta === undefined ? "text-muted-foreground" : delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground";
   const Icon = delta === null || delta === undefined ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={(small ? "text-base" : "text-xl") + " font-bold " + color}>{value}</p>
+    <div className="flex min-w-0 flex-col rounded-xl border border-border bg-card p-3">
+      <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("truncate font-bold", small ? "text-sm md:text-base" : "text-lg md:text-xl", color)} title={value}>{value}</p>
       {delta !== undefined && delta !== null && (
         <p className={`mt-0.5 flex items-center gap-1 text-[10px] ${dTone}`}>
           <Icon className="size-3" />
