@@ -179,10 +179,10 @@ function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
   
   const latDiff = maxLat - minLat;
   const lngDiff = maxLng - minLng;
-  // Aumentamos o diff para dar uma pequena margem (padding)
-  const maxDiff = Math.max(latDiff * 1.15, lngDiff * 1.05) || 0.05;
+  // Reduzimos drasticamente a margem para focar exatamente nos pontos
+  const maxDiff = Math.max(latDiff * 1.02, lngDiff * 1.02) || 0.005;
   
   // Fórmula de zoom para Tiles 256px
   let z = Math.floor(Math.log2(360 / maxDiff));
-  return Math.min(18, Math.max(8, z));
+  return Math.min(18, Math.max(10, z));
 }
