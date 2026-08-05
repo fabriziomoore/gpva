@@ -68,7 +68,14 @@ export type LeaderPdfInput = {
   variable_estimated: number;
   by_type: { name: string; qty: number }[];
   top_reasons: { name: string; qty: number }[];
-  all_unviable: { name: string; registration: string }[];
+  all_unviable: {
+    name: string;
+    registration: string;
+    /** Dia do mês do expediente em que a inviabilidade foi registrada. */
+    day?: number;
+    /** Mesma matrícula + mesmo motivo já inviável no período anterior. */
+    repeat_prev?: boolean;
+  }[];
   top_impacts: { name: string; qty: number }[];
   top_complements: { name: string; qty: number }[];
   best_day: { date: string; qty: number } | null;
