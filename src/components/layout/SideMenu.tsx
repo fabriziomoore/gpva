@@ -194,7 +194,7 @@ export function SideMenu() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[9998] bg-background/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
-          className="fixed inset-y-0 left-0 z-[9999] flex h-[100dvh] w-72 max-w-[80vw] flex-col border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-hidden"
+          className="fixed inset-y-0 left-0 z-[9999] flex h-[100dvh] w-72 max-w-[80vw] flex-col border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
         >
           <Dialog.Title className="sr-only">Menu</Dialog.Title>
           <div className="flex items-center justify-between px-4 py-4">
@@ -287,7 +287,7 @@ export function SideMenu() {
             </button>
 
           </nav>
-          <div className="shrink-0 border-t border-border bg-destructive">
+          <div className="mt-auto shrink-0 border-t border-border bg-destructive">
             <button
               type="button"
               onClick={requestSignOut}
