@@ -73,7 +73,7 @@ export function buildReport(s: ShiftInput): string {
     lines.push("");
     lines.push(`*Inviáveis:*`);
     for (const inv of inviaveisList) {
-      lines.push(`${inv.registration_number ?? "-"} - ${inv.reason_name ?? "-"}`);
+      lines.push(`${inv.registration_number || "-"} - ${inv.reason_name || "-"}`);
     }
   }
 
