@@ -613,8 +613,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   input.all_unviable.forEach((inv, i) => {
     // Zebra striping
     if (i % 2 === 0) setFill(C.white); else setFill(C.bgAlt);
-    rect(M, invCurY, CW, rowH, 0, true, false);
-    setStroke(C.border); hline(M, invCurY + rowH, PW - M, invCurY + rowH, 0.1);
+    rect(M, invCurY, CW, invRowH, 0, true, false);
+    setStroke(C.border); hline(M, invCurY + invRowH, PW - M, invCurY + invRowH, 0.1);
 
     font(8, "normal"); setText(C.ink);
     // Círculo azul para o index (estilo do rank)
@@ -626,7 +626,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     text(inv.registration || "-", M + 14, invCurY + 5.2);
     text(inv.name || "-", M + 54, invCurY + 5.2, { maxWidth: CW - 58 });
 
-    invCurY += rowH;
+    invCurY += invRowH;
 
     // Se ultrapassar a página (limite seguro 190mm)
     if (invCurY > PH - 25 && i < input.all_unviable.length - 1) {
