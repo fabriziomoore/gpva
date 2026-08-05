@@ -181,10 +181,20 @@ function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
   if (latDiff === 0 && lngDiff === 0) return 15;
 
   // Calculamos o zoom baseado no tamanho do canvas (W e H) em relação à dispersão real
-  const latZoom = Math.log2((h * 360) / (latDiff * TILE * 1.1));
-  const lngZoom = Math.log2((w * 360) / (lngDiff * TILE * 1.1));
+  // Reduzimos a margem para 1.02 (2%) para forçar o preenchimento total das laterais
+  const latZoom = Math.log2((h * 360) / (latDiff * TILE * 1.02));
+  const lngZoom = Math.log2((w * 360) / (lngDiff * TILE * 1.02));
   
+  // Usamos o maior zoom que caiba ao menos um dos eixos (geralmente o que tem mais pontos dispersos)
+  // mas garantindo que o outro eixo não corte pontos importantes.
+  // Para eliminar sobra lateral, o zoom deve ser guiado pelo eixo que preenche o container.
   let z = Math.floor(Math.min(latZoom, lngZoom));
   
+  // Se houver muita sobra lateral, tentamos arredondar para cima se a diferença for pequena
+  const fractionalZoom = Math.min(latZoom, lngZoom);
+  if (fractionalZoom % 1 > 0.7) {
+    z = Math.ceil(fractionalZoom);
+  }
+
   return Math.min(18, Math.max(10, z));
 }
