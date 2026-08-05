@@ -948,9 +948,9 @@ function Kpi({ label, value, delta, hint, tone, small }: { label: string; value:
   const dTone = delta === null || delta === undefined ? "text-muted-foreground" : delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground";
   const Icon = delta === null || delta === undefined ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={(small ? "text-base" : "text-xl") + " font-bold " + color}>{value}</p>
+    <div className="flex min-w-0 flex-col rounded-xl border border-border bg-card p-3">
+      <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("truncate font-bold", small ? "text-sm md:text-base" : "text-lg md:text-xl", color)} title={value}>{value}</p>
       {delta !== undefined && delta !== null && (
         <p className={`mt-0.5 flex items-center gap-1 text-[10px] ${dTone}`}>
           <Icon className="size-3" />
