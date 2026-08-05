@@ -233,6 +233,24 @@ function SettingsPage() {
               />
             </div>
             <div>
+              <Label>Colaborador 1</Label>
+              <Input
+                value={collab1}
+                onChange={(e) => setCollab1(e.target.value)}
+                placeholder="Nome do primeiro colaborador"
+                className="h-11"
+              />
+            </div>
+            <div>
+              <Label>Colaborador 2</Label>
+              <Input
+                value={collab2}
+                onChange={(e) => setCollab2(e.target.value)}
+                placeholder="Nome do segundo colaborador"
+                className="h-11"
+              />
+            </div>
+            <div>
               <Label htmlFor="sup">Supervisor</Label>
               <Input
                 id="sup"
@@ -252,11 +270,9 @@ function SettingsPage() {
                 className="h-11"
               />
             </div>
-            {isTestAccount && (
-              <Button onClick={saveTeam} disabled={saving} className="h-11 w-full">
-                {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
-              </Button>
-            )}
+            <Button onClick={saveTeam} disabled={saving} className="h-11 w-full">
+              {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar alterações"}
+            </Button>
           </div>
 
           <div className="space-y-3 border-t border-border pt-6">
