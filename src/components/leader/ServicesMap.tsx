@@ -8,7 +8,6 @@ if (typeof window !== "undefined") {
   require("leaflet/dist/leaflet.css");
 }
 
-
 export type MapPoint = {
   id: string;
   lat: number;
@@ -20,6 +19,7 @@ export type MapPoint = {
 };
 
 function coloredIcon(color: string) {
+  if (!L) return null;
   const html = `<div style="
     width:18px;height:18px;border-radius:9999px;
     background:${color};border:2px solid #fff;
@@ -27,9 +27,6 @@ function coloredIcon(color: string) {
   "></div>`;
   return L.divIcon({ html, className: "", iconSize: [18, 18], iconAnchor: [9, 9] });
 }
-
-const GREEN = coloredIcon("#16a34a");
-const RED = coloredIcon("#dc2626");
 
 type LeafletContainer = HTMLDivElement & {
   _leaflet_id?: number | null;
@@ -90,15 +87,18 @@ export function ServicesMap({
   hideLegend?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.LayerGroup | null>(null);
+  const mapRef = useRef<import("leaflet").Map | null>(null);
+  const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const onDeleteRef = useRef(onDelete);
   const [containerKey, setContainerKey] = useState(() => `leader-map-${++globalMapInstanceId}`);
   const [disposedForSignOut, setDisposedForSignOut] = useState(false);
   onDeleteRef.current = onDelete;
 
+  const GREEN = useMemo(() => coloredIcon("#16a34a"), []);
+  const RED = useMemo(() => coloredIcon("#dc2626"), []);
+
   useEffect(() => {
-    if (disposedForSignOut) return;
+    if (disposedForSignOut || !L) return;
     const container = containerRef.current;
     if (!container || mapRef.current) return;
     resetLeafletContainer(container);
@@ -155,14 +155,18 @@ export function ServicesMap({
   const spread = useMemo(() => spreadOverlaps(points), [points]);
 
   useEffect(() => {
+    if (!L) return;
     const map = mapRef.current;
     const layer = layerRef.current;
     if (!map || !layer) return;
     layer.clearLayers();
     if (spread.length === 0) return;
-    const latlngs: L.LatLngExpression[] = [];
+    const latlngs: import("leaflet").LatLngExpression[] = [];
     for (const p of spread) {
-      const m = L.marker([p._dlat, p._dlng], { icon: p.viable ? GREEN : RED });
+      const icon = p.viable ? GREEN : RED;
+      if (!icon) continue;
+      
+      const m = L.marker([p._dlat, p._dlng], { icon });
       const delBtn = onDeleteRef.current
         ? `<button data-del="${p.id}" style="margin-top:6px;padding:4px 8px;background:#dc2626;color:#fff;border:0;border-radius:4px;font-size:11px;cursor:pointer">Apagar registro</button>`
         : "";
@@ -204,7 +208,7 @@ export function ServicesMap({
     } catch {
       /* ignore */
     }
-  }, [spread]);
+  }, [spread, GREEN, RED]);
 
   return (
     <div className={hideLegend ? "relative z-0" : "relative z-0 overflow-hidden rounded-xl border border-border"}>
