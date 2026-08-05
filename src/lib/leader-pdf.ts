@@ -609,7 +609,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   // Linhas
   let invCurY = invTblY + 8;
-  const rowH = 8;
+  const invRowH = 8;
   input.all_unviable.forEach((inv, i) => {
     // Zebra striping
     if (i % 2 === 0) setFill(C.white); else setFill(C.bgAlt);
