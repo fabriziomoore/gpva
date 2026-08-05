@@ -613,7 +613,9 @@ function PeriodView({
     };
 
     const byType = bucket(curSvc.filter((s) => s.viable), (s) => s.service_type_name);
-    const topReasons = bucket(curSvc.filter((s) => !s.viable && s.reason_name), (s) => s.reason_name!);
+    const topReasons = bucket(curSvc.filter((s) => !s.viable && s.reason_name), (s) => 
+      s.registration_number ? `${s.registration_number} - ${s.reason_name}` : s.reason_name!
+    );
     const topImpacts = bucket(curImpacts, (i) => i.impact_name);
     const topComps = bucket(curComps, (c) => c.complement_name);
 
