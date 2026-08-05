@@ -413,7 +413,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const invColGap = 5;
   const invColW = (CW - (invColGap * (numCols - 1))) / numCols;
   const invRowH = 6.5;
-  const maxRowsPerCol = 22; // Ajustado para caber na folha
+  const maxRowsPerCol = 20; // Reduzido para dar mais espaço à legenda e manter margens
 
   // --- Constância: matrículas repetidas ganham a MESMA cor de fundo --------
   const dupPalette: RGB[] = [
