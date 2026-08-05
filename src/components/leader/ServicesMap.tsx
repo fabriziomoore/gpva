@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+
+// Leaflet requires 'window' to be present. In TanStack Start SSR environment,
+// we must ensure it only loads on the client side.
+let L: typeof import("leaflet") | null = null;
+if (typeof window !== "undefined") {
+  L = require("leaflet");
+  require("leaflet/dist/leaflet.css");
+}
+
 
 export type MapPoint = {
   id: string;
