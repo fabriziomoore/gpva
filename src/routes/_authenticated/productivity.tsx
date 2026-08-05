@@ -52,23 +52,6 @@ type QuantityTooltipProps = {
 
 const SERVICE_PAGE_SIZE = 1000;
 
-function startOf(period: Period): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  if (period === "day") return d;
-  if (period === "week") {
-    const day = d.getDay();
-    d.setDate(d.getDate() - day);
-    return d;
-  }
-  if (period === "month") {
-    d.setDate(1);
-    return d;
-  }
-  d.setMonth(0, 1);
-  return d;
-}
-
 function cleanServiceName(name: string | null | undefined) {
   return name?.trim().replace(/\s+/g, " ") || "Sem tipo";
 }
