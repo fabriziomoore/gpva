@@ -392,6 +392,48 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   footer(2, totalPages);
 
   // =========================================================================
+  // PAGE EXTRA — Detalhamento de Inviáveis (3 colunas, antes do mapa)
+  // =========================================================================
+  pdf.addPage("a4", "landscape");
+  const invPageNumber = hasTeams ? 3 : 3; // Mantém a numeração coerente
+  pageTitle(pdf, "INVIÁVEIS DETALHADAS (PERÍODO)", input.scope_label, periodStr);
+
+  const invTblY = M + 18;
+  const numCols = 3;
+  const colGap = 5;
+  const colW = (CW - (colGap * (numCols - 1))) / numCols;
+  const invRowH = 6.5;
+  const maxRowsPerCol = 22; // Ajustado para caber na folha
+
+  input.all_unviable.forEach((inv, i) => {
+    const colIdx = Math.floor(i / maxRowsPerCol);
+    if (colIdx >= numCols) return; // Limita a 3 colunas para garantir que caiba em uma folha
+
+    const rowIdx = i % maxRowsPerCol;
+    const xBase = M + colIdx * (colW + colGap);
+    const yBase = invTblY + rowIdx * invRowH;
+
+    // Fundo zebra
+    if (i % 2 === 0) setFill(C.white); else setFill(C.bgAlt);
+    rect(xBase, yBase, colW, invRowH, 0, true, false);
+    setStroke(C.border); hline(xBase, yBase + invRowH, xBase + colW, yBase + invRowH, 0.1);
+
+    // Indicador azul
+    setFill(C.primary); pdf.circle(xBase + 4, yBase + invRowH / 2, 2.2, "F");
+    font(6, "bold"); setText(C.white);
+    text(String(i + 1), xBase + 4, yBase + invRowH / 2 + 0.8, { align: "center" });
+
+    // Matrícula e Motivo
+    font(7.5, "bold"); setText(C.ink);
+    text(inv.registration || "-", xBase + 8, yBase + 4.2);
+    font(7, "normal"); setText(C.sub);
+    text(inv.name || "-", xBase + 28, yBase + 4.2, { maxWidth: colW - 30 });
+  });
+
+  footer(3, totalPages);
+
+
+  // =========================================================================
   // PAGE 3 (opcional) — Detalhamento por equipe
   // =========================================================================
   if (hasTeams) {
