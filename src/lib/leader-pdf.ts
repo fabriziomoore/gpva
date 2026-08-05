@@ -86,6 +86,8 @@ export type LeaderPdfInput = {
   generated_by?: string;
   collaborators_count?: number | null;
   map_points?: PdfMapPoint[];
+  /** Data de referência para o rótulo do período (ex: se filtrado para Julho, passar uma data em Julho) */
+  reference_date?: Date;
 };
 
 function periodTitle(p: Period): string {
@@ -130,9 +132,10 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const M = 15;
   const CW = PW - M * 2; // 267
   const now = new Date();
+  const refDate = input.reference_date ?? now;
   const company = input.company ?? "GPVA";
   const generatedBy = input.generated_by ?? input.leader ?? "-";
-  const periodStr = periodPeriodLabel(input.period, now);
+  const periodStr = periodPeriodLabel(input.period, refDate);
 
   // Low-level helpers --------------------------------------------------------
   const setFill = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
