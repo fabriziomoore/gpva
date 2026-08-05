@@ -32,6 +32,8 @@ function SettingsPage() {
 
   const [supervisor, setSupervisor] = useState("");
   const [leader, setLeader] = useState("");
+  const [collab1, setCollab1] = useState("");
+  const [collab2, setCollab2] = useState("");
   const [teamName, setTeamName] = useState("");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
