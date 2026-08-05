@@ -500,9 +500,11 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   // Legenda de constância
   {
-    const lgY = invTblY + maxRowsPerCol * invRowH + 6;
+    const lgH = 15;
+    const lgY = PH - M - 9 - lgH; // Posiciona a legenda respeitando a margem inferior (rodapé começa em PH-9)
+    
     setFill(C.white); setStroke(C.border);
-    pdf.roundedRect(M, lgY, CW, 15, 1.5, 1.5, "FD");
+    pdf.roundedRect(M, lgY, CW, lgH, 1.5, 1.5, "FD");
     let lx = M + 4;
     setFill(C.primary); pdf.circle(lx + 2, lgY + 4.5, 2.2, "F");
     font(6, "bold"); setText(C.white); text("07", lx + 2, lgY + 5.3, { align: "center" });
@@ -527,7 +529,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     text(
       `Reincidentes: ${dupRegs} matrícula(s)   ·   Constância entre períodos: ${prevRepeats}`,
       PW - M - 4,
-      lgY + 11.5,
+      lgY + 12,
       { align: "right" },
     );
   }
