@@ -501,7 +501,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Legenda de constância
   {
     const lgH = 15;
-    const lgY = PH - M - 9 - lgH; // Posiciona a legenda respeitando a margem inferior (rodapé começa em PH-9)
+    const lgY = invTblY + maxRowsPerCol * invRowH + 5; 
     
     setFill(C.white); setStroke(C.border);
     pdf.roundedRect(M, lgY, CW, lgH, 1.5, 1.5, "FD");
