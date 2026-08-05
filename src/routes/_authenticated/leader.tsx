@@ -794,6 +794,7 @@ function PeriodView({
         best_day: stats.bestDay,
         teams: teamsBreakdown,
         map_points: mapPoints,
+        reference_date: cur.start,
       });
       const filename = `relatorio-${slugFilename(meta.team_name)}-${period}.pdf`;
       const saved = await downloadOrShare(blob, filename);
