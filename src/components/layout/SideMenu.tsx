@@ -14,9 +14,13 @@ const ARCGIS_URL =
 const ARCGIS_RISK_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=28bf0795832f47bf946e07822552c06d";
 
+const FELT_MAP_URL =
+  "https://felt.com/map/Consulta-e-Extensao-de-Rede-de-Agua-tDhFyP9AKS9CWk4u68rhICCB?loc=-22.95892,-42.97073,15.51z";
+
 type CapacitorWindow = Window & {
   Capacitor?: {
     isNativePlatform?: () => boolean;
+
   };
 };
 
@@ -173,7 +177,13 @@ export function SideMenu() {
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     );
   }
+  function openFeltMap() {
+    setOpen(false);
+    openArcgisUrl(FELT_MAP_URL, "Mapa de Rede", setArcgisTitle, setArcgisEmbedUrl);
+  }
+
   return (
+
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
         aria-label="Abrir menu"
@@ -260,6 +270,22 @@ export function SideMenu() {
                 </p>
               </div>
             </button>
+            <button
+              type="button"
+              onClick={openFeltMap}
+              className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left transition-colors hover:bg-muted"
+            >
+              <Map className="size-5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Mapa de Rede
+                </div>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Consulta e Extensão de Rede de Água.
+                </p>
+              </div>
+            </button>
+
           </nav>
           <button
             type="button"
