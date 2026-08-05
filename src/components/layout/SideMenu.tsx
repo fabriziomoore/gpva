@@ -287,7 +287,7 @@ export function SideMenu() {
             </button>
 
           </nav>
-          <div className="shrink-0 border-t border-border bg-destructive">
+          <div className="mt-auto shrink-0 border-t border-border bg-destructive">
             <button
               type="button"
               onClick={requestSignOut}
