@@ -412,10 +412,39 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const invRowH = 6.5;
   const maxRowsPerCol = 22; // Ajustado para caber na folha
 
+  // --- Constância: matrículas repetidas ganham a MESMA cor de fundo --------
+  const dupPalette: RGB[] = [
+    [254, 226, 226], // vermelho claro
+    [254, 243, 199], // âmbar claro
+    [219, 234, 254], // azul claro
+    [220, 252, 231], // verde claro
+    [237, 233, 254], // roxo claro
+    [255, 228, 230], // rosa claro
+    [204, 251, 241], // teal claro
+    [255, 237, 213], // laranja claro
+  ];
+  const regCount = new Map<string, number>();
+  for (const inv of input.all_unviable) {
+    const k = (inv.registration || "").trim().toUpperCase();
+    if (!k || k === "S/M" || k === "-") continue;
+    regCount.set(k, (regCount.get(k) ?? 0) + 1);
+  }
+  const regColor = new Map<string, RGB>();
+  let paletteIdx = 0;
+  for (const [k, n] of regCount) {
+    if (n > 1) {
+      regColor.set(k, dupPalette[paletteIdx % dupPalette.length]);
+      paletteIdx += 1;
+    }
+  }
+  const dupRegs = regColor.size;
+  const prevRepeats = input.all_unviable.filter((i) => i.repeat_prev).length;
+
   // Cabeçalho das colunas (Matrícula e Motivo)
   font(7, "bold"); setText(C.muted);
   for (let c = 0; c < numCols; c++) {
     const xBase = M + c * (invColW + invColGap);
+    text("DIA", xBase + 4, invTblY - 2, { align: "center" });
     text("MATRÍCULA", xBase + 8, invTblY - 2);
     text("MOTIVO", xBase + 28, invTblY - 2);
   }
@@ -428,22 +457,77 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const xBase = M + colIdx * (invColW + invColGap);
     const yBase = invTblY + rowIdx * invRowH;
 
-    // Fundo zebra
-    if (i % 2 === 0) setFill(C.white); else setFill(C.bgAlt);
+    const regKey = (inv.registration || "").trim().toUpperCase();
+    const dupColor = regColor.get(regKey);
+    const times = regCount.get(regKey) ?? 1;
+
+    // Fundo: matrículas repetidas compartilham a mesma cor; demais em zebra
+    if (dupColor) setFill(dupColor);
+    else if (i % 2 === 0) setFill(C.white);
+    else setFill(C.bgAlt);
     rect(xBase, yBase, invColW, invRowH, 0, true, false);
     setStroke(C.border); hline(xBase, yBase + invRowH, xBase + invColW, yBase + invRowH, 0.1);
 
-    // Indicador azul
-    setFill(C.primary); pdf.circle(xBase + 4, yBase + invRowH / 2, 2.2, "F");
+    // Indicador: número = dia do expediente
+    setFill(dupColor ? C.danger : C.primary);
+    pdf.circle(xBase + 4, yBase + invRowH / 2, 2.2, "F");
     font(6, "bold"); setText(C.white);
-    text(String(i + 1), xBase + 4, yBase + invRowH / 2 + 0.8, { align: "center" });
+    text(inv.day ? String(inv.day).padStart(2, "0") : "--", xBase + 4, yBase + invRowH / 2 + 0.8, { align: "center" });
+
+    // Marcadores de constância (símbolos + números, à direita da linha)
+    let markX = xBase + invColW - 3;
+    if (inv.repeat_prev) {
+      setFill(C.danger);
+      pdf.triangle(markX - 2, yBase + invRowH - 1.8, markX + 2, yBase + invRowH - 1.8, markX, yBase + 1.6, "F");
+      markX -= 6;
+    }
+    if (times > 1) {
+      font(6.5, "bold"); setText(C.danger);
+      text(`x${times}`, markX, yBase + 4.2, { align: "right" });
+      markX -= 8;
+    }
+    const motivoW = Math.max(10, markX - (xBase + 28));
 
     // Matrícula e Motivo
     font(7.5, "bold"); setText(C.ink);
     text(inv.registration || "-", xBase + 8, yBase + 4.2);
     font(7, "normal"); setText(C.sub);
-    text(inv.name || "-", xBase + 28, yBase + 4.2, { maxWidth: invColW - 30 });
+    text(inv.name || "-", xBase + 28, yBase + 4.2, { maxWidth: motivoW });
   });
+
+  // Legenda de constância
+  {
+    const lgY = invTblY + maxRowsPerCol * invRowH + 6;
+    setFill(C.white); setStroke(C.border);
+    pdf.roundedRect(M, lgY, CW, 9, 1.5, 1.5, "FD");
+    let lx = M + 4;
+    setFill(C.primary); pdf.circle(lx + 2, lgY + 4.5, 2.2, "F");
+    font(6, "bold"); setText(C.white); text("07", lx + 2, lgY + 5.3, { align: "center" });
+    font(7, "normal"); setText(C.ink);
+    text("= dia do expediente", lx + 6, lgY + 5.6);
+    lx += 48;
+    setFill(dupPalette[0]); setStroke(C.border);
+    pdf.roundedRect(lx, lgY + 2.2, 8, 4.5, 1, 1, "FD");
+    text("mesma cor = mesma matrícula reincidente", lx + 10, lgY + 5.6);
+    lx += 100;
+    font(7, "bold"); setText(C.danger);
+    text("x2", lx, lgY + 5.6);
+    font(7, "normal"); setText(C.ink);
+    text("= vezes no período", lx + 6, lgY + 5.6);
+    lx += 44;
+    setFill(C.danger);
+    pdf.triangle(lx - 2, lgY + 6.5, lx + 2, lgY + 6.5, lx, lgY + 2.5, "F");
+    setText(C.ink);
+    text("= mesmo motivo no período anterior", lx + 4, lgY + 5.6);
+
+    font(7, "bold"); setText(C.danger);
+    text(
+      `Reincidentes: ${dupRegs} matrícula(s)   ·   Constância entre períodos: ${prevRepeats}`,
+      PW - M,
+      lgY + 14,
+      { align: "right" },
+    );
+  }
 
   footer(3, totalPages);
 
