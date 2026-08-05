@@ -543,10 +543,6 @@ function PeriodTabs({
     </div>
   );
 }
-      )}
-    </AppShell>
-  );
-}
 
 
 function cleanName(name: string | null | undefined) {
