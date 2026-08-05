@@ -60,8 +60,8 @@ export async function renderReportMapPng(opts: {
   const W = Math.round(opts.width);
   const H = Math.round(opts.height);
   const points = opts.points ?? [];
-  const center = opts.center ?? (points.length > 0 ? getBoundsCenter(points) : MARICA_CENTER);
   const zoom = opts.zoom ?? (points.length > 0 ? getOptimalZoom(points, W, H) : 12);
+  const center = opts.center ?? (points.length > 0 ? getBoundsCenter(points) : MARICA_CENTER);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
