@@ -25,7 +25,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     Keyboard: {
-      resize: "body",
+      resize: "native",
       resizeOnFullScreen: true,
     },
     SplashScreen: {
