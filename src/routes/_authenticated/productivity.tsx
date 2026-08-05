@@ -209,14 +209,164 @@ function ProdPage() {
   );
 }
 
-function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
-  const startTime = useMemo(() => startOf(period).getTime(), [period]);
-  const filtered = useMemo(
-    () => rows.filter((r) => new Date(r.created_at).getTime() >= startTime),
-    [rows, startTime],
+function PeriodSelector({ rows }: { rows: SvcRow[] }) {
+  const [mode, setMode] = useState<Period>("month");
+  const now = useMemo(() => new Date(), []);
+  const [year, setYear] = useState<number>(now.getFullYear());
+  const [month, setMonth] = useState<number>(now.getMonth() + 1);
+  const [day, setDay] = useState<number>(now.getDate());
+
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  ];
+  const years = useMemo(() => {
+    const arr: number[] = [];
+    for (let y = now.getFullYear(); y >= now.getFullYear() - 4; y--) arr.push(y);
+    return arr;
+  }, [now]);
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const daysArr = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const weeks = useMemo(() => {
+    const y = year;
+    const m = month - 1;
+    const first = new Date(y, m, 1);
+    const dow = (first.getDay() + 6) % 7; // 0 = seg
+    const start = new Date(y, m, 1 - dow);
+    const list: { start: Date; end: Date; label: string }[] = [];
+    const cur = new Date(start);
+    for (let i = 0; i < 6; i++) {
+      const s = new Date(cur);
+      const e = new Date(cur);
+      e.setDate(e.getDate() + 6);
+      if (s.getMonth() === m || e.getMonth() === m) {
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        list.push({
+          start: s,
+          end: e,
+          label: `${pad(s.getDate())}/${pad(s.getMonth() + 1)} – ${pad(e.getDate())}/${pad(e.getMonth() + 1)}`,
+        });
+      }
+      cur.setDate(cur.getDate() + 7);
+    }
+    return list;
+  }, [year, month]);
+
+  const [weekIdx, setWeekIdx] = useState<number>(0);
+  useEffect(() => {
+    const idx = weeks.findIndex(
+      (w) => now >= w.start && now <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59),
+    );
+    setWeekIdx(idx >= 0 ? idx : 0);
+  }, [weeks, now]);
+
+  const customRange = useMemo(() => {
+    if (mode === "day") {
+      const start = new Date(year, month - 1, day, 0, 0, 0);
+      const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (mode === "week") {
+      const w = weeks[weekIdx];
+      if (!w) return null;
+      const start = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate(), 0, 0, 0);
+      const end = new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (mode === "month") {
+      const start = new Date(year, month - 1, 1, 0, 0, 0);
+      const end = new Date(year, month, 0, 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (mode === "year") {
+      const start = new Date(year, 0, 1, 0, 0, 0);
+      const end = new Date(year, 11, 31, 23, 59, 59, 999);
+      return { start, end };
+    }
+    return null;
+  }, [mode, year, month, day, weeks, weekIdx]);
+
+  const filtered = useMemo(() => {
+    if (!customRange) return [];
+    const s = customRange.start.getTime();
+    const e = customRange.end.getTime();
+    return rows.filter((r) => {
+      const t = new Date(r.created_at).getTime();
+      return t >= s && t <= e;
+    });
+  }, [rows, customRange]);
+
+  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
+
+  return (
+    <div className="space-y-4">
+      <Tabs value={mode} onValueChange={(v) => setMode(v as Period)}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="day">Dia</TabsTrigger>
+          <TabsTrigger value="week">Semana</TabsTrigger>
+          <TabsTrigger value="month">Mês</TabsTrigger>
+          <TabsTrigger value="year">Ano</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <div className="flex flex-wrap gap-2">
+        {mode === "day" && (
+          <select
+            value={day}
+            onChange={(e) => setDay(Number(e.target.value))}
+            className={`${selectCls} w-20 shrink-0`}
+          >
+            {daysArr.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        )}
+
+        {mode === "week" && (
+          <select
+            value={weekIdx}
+            onChange={(e) => setWeekIdx(Number(e.target.value))}
+            className={`${selectCls} min-w-0 flex-1`}
+          >
+            {weeks.map((w, i) => (
+              <option key={i} value={i}>{w.label}</option>
+            ))}
+          </select>
+        )}
+
+        {mode !== "year" && (
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className={`${selectCls} min-w-0 flex-1`}
+          >
+            {monthNames.map((n, i) => (
+              <option key={i} value={i + 1}>{n}</option>
+            ))}
+          </select>
+        )}
+
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className={`${selectCls} w-24 shrink-0`}
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      <PeriodView rows={filtered} period={mode} />
+    </div>
   );
-  const viableRows = useMemo(() => filtered.filter((r) => r.viable), [filtered]);
-  const total = filtered.length;
+}
+
+function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
+  const viableRows = useMemo(() => rows.filter((r) => r.viable), [rows]);
+  const total = rows.length;
   const viaveis = viableRows.length;
   const inviaveis = total - viaveis;
   const pctV = total ? Math.round((viaveis / total) * 100) : 0;
@@ -236,7 +386,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
 
   const evolution = useMemo(() => {
     const m = new Map<string, { date: string; viaveis: number; inviaveis: number; sort: number }>();
-    for (const r of filtered) {
+    for (const r of rows) {
       const d = new Date(r.created_at);
       const key =
         period === "day"
@@ -264,7 +414,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
     return Array.from(m.values())
       .sort((a, b) => a.sort - b.sort)
       .map(({ date, viaveis, inviaveis }) => ({ date, viaveis, inviaveis }));
-  }, [period, filtered]);
+  }, [period, rows]);
 
   return (
     <div className="space-y-4">
@@ -342,12 +492,12 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-border bg-card p-3">
             <p className="text-xs uppercase text-muted-foreground">Mais executado</p>
-            <p className="text-sm font-semibold">{byType[0]?.name}</p>
+            <p className="text-sm font-semibold truncate">{byType[0]?.name}</p>
             <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[0]?.qty ?? 0)}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-3">
             <p className="text-xs uppercase text-muted-foreground">Menos executado</p>
-            <p className="text-sm font-semibold">{byType[byType.length - 1]?.name}</p>
+            <p className="text-sm font-semibold truncate">{byType[byType.length - 1]?.name}</p>
             <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[byType.length - 1]?.qty ?? 0)}</p>
           </div>
         </div>
