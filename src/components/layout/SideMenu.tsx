@@ -306,7 +306,15 @@ export function SideMenu() {
           <Dialog.Overlay className="fixed inset-0 z-[9998] bg-background/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <Dialog.Content className="fixed inset-0 z-[9999] flex h-full w-full flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
             <Dialog.Title className="sr-only">Consulta ArcGIS Aegea</Dialog.Title>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-card px-3 py-2 sm:px-4">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-card px-3 py-2 sm:px-4">
+              <div className="flex shrink-0 items-center gap-2">
+                <Dialog.Close
+                  aria-label="Fechar"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
+                >
+                  <X className="size-5" />
+                </Dialog.Close>
+              </div>
               <div className="flex min-w-0 items-center gap-2">
                 <button
                   type="button"
@@ -320,6 +328,18 @@ export function SideMenu() {
                 <span className="min-w-0 truncate text-sm font-semibold">{arcgisTitle}</span>
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = arcgisEmbedUrl;
+                    setArcgisEmbedUrl(null);
+                    setTimeout(() => setArcgisEmbedUrl(current), 10);
+                  }}
+                  aria-label="Atualizar página"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
+                >
+                  <RotateCcw className="size-4" />
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -340,12 +360,6 @@ export function SideMenu() {
                 >
                   <ExternalLink className="size-4" />
                 </button>
-                <Dialog.Close
-                  aria-label="Fechar"
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
-                >
-                  <X className="size-5" />
-                </Dialog.Close>
               </div>
             </div>
             {arcgisEmbedUrl && (
