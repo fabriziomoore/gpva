@@ -167,7 +167,8 @@ function ProdPage() {
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <PeriodSelector rows={all.data ?? []} />
+        <>
+          <PeriodSelector rows={all.data ?? []} />
 
           <div className="mt-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -202,7 +203,7 @@ function ProdPage() {
               )}
             </div>
           </div>
-        </Tabs>
+        </>
       )}
     </AppShell>
   );
