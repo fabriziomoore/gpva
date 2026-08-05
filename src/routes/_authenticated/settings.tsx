@@ -32,6 +32,8 @@ function SettingsPage() {
 
   const [supervisor, setSupervisor] = useState("");
   const [leader, setLeader] = useState("");
+  const [collab1, setCollab1] = useState("");
+  const [collab2, setCollab2] = useState("");
   const [teamName, setTeamName] = useState("");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
@@ -113,6 +115,8 @@ function SettingsPage() {
     if (team) {
       setSupervisor(team.supervisor);
       setLeader(team.leader);
+      setCollab1(team.collaborator1 || "");
+      setCollab2(team.collaborator2 || "");
       setTeamName(team.team_name);
     }
   }, [team]);
@@ -120,7 +124,13 @@ function SettingsPage() {
   async function saveTeam() {
     setSaving(true);
     try {
-      const patch: { supervisor: string; leader: string; team_name?: string } = { supervisor, leader };
+      const patch: Partial<Team> = { 
+        supervisor, 
+        leader,
+        collaborator1: collab1.trim() || null,
+        collaborator2: collab2.trim() || null
+      };
+      
       if (isTestAccount) {
         const trimmed = teamName.trim();
         if (!trimmed) {
@@ -130,11 +140,12 @@ function SettingsPage() {
         }
         patch.team_name = trimmed;
       }
-      await repoUpdateTeam(userId!, patch);
+      
+      await repoUpdateTeam(userId!, patch as any);
       qc.setQueryData<Team | null>(["team", userId], (old) =>
         old ? { ...old, ...patch } : old,
       );
-      toast.success("Equipe atualizada");
+      toast.success("Dados atualizados");
     } catch (err) {
       toast.error(translateAuthError(err, "Erro ao salvar equipe"));
     } finally {
@@ -222,6 +233,24 @@ function SettingsPage() {
               />
             </div>
             <div>
+              <Label>Colaborador 1</Label>
+              <Input
+                value={collab1}
+                onChange={(e) => setCollab1(e.target.value)}
+                placeholder="Nome do primeiro colaborador"
+                className="h-11"
+              />
+            </div>
+            <div>
+              <Label>Colaborador 2</Label>
+              <Input
+                value={collab2}
+                onChange={(e) => setCollab2(e.target.value)}
+                placeholder="Nome do segundo colaborador"
+                className="h-11"
+              />
+            </div>
+            <div>
               <Label htmlFor="sup">Supervisor</Label>
               <Input
                 id="sup"
@@ -241,11 +270,9 @@ function SettingsPage() {
                 className="h-11"
               />
             </div>
-            {isTestAccount && (
-              <Button onClick={saveTeam} disabled={saving} className="h-11 w-full">
-                {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
-              </Button>
-            )}
+            <Button onClick={saveTeam} disabled={saving} className="h-11 w-full">
+              {saving ? <Loader2 className="size-4 animate-spin" /> : "Salvar alterações"}
+            </Button>
           </div>
 
           <div className="space-y-3 border-t border-border pt-6">
