@@ -654,8 +654,8 @@ function PeriodView({
     for (const s of curSvc) {
       const d = new Date(s.created_at);
       const key =
-        period === "day"
-          ? String(d.getHours()).padStart(2, "0")
+        period === "day" || period === "week"
+          ? d.toISOString().slice(0, 13) // Inclui hora para garantir unicidade no dia se necessário, ou só data
           : period === "year"
             ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
             : d.toISOString().slice(0, 10);
