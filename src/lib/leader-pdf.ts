@@ -398,12 +398,20 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const invPageNumber = hasTeams ? 3 : 3; // Mantém a numeração coerente
   pageTitle(pdf, "INVIÁVEIS DETALHADAS (PERÍODO)", input.scope_label, periodStr);
 
-  const invTblY = M + 18;
+  const invTblY = M + 24; // Aumentado para dar espaço ao cabeçalho da tabela
   const numCols = 3;
   const invColGap = 5;
   const invColW = (CW - (invColGap * (numCols - 1))) / numCols;
   const invRowH = 6.5;
   const maxRowsPerCol = 22; // Ajustado para caber na folha
+
+  // Cabeçalho das colunas (Matrícula e Motivo)
+  font(7, "bold"); setText(C.muted);
+  for (let c = 0; c < numCols; c++) {
+    const xBase = M + c * (invColW + invColGap);
+    text("MATRÍCULA", xBase + 8, invTblY - 2);
+    text("MOTIVO", xBase + 28, invTblY - 2);
+  }
 
   input.all_unviable.forEach((inv, i) => {
     const colIdx = Math.floor(i / maxRowsPerCol);
