@@ -194,10 +194,10 @@ export function SideMenu() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[9998] bg-background/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
-          className="fixed inset-y-0 left-0 z-[9999] flex h-full w-72 max-w-[80vw] flex-col border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className="fixed inset-y-0 left-0 z-[9999] flex h-[100dvh] w-72 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
         >
           <Dialog.Title className="sr-only">Menu</Dialog.Title>
-          <div className="flex items-center justify-between px-4 py-4">
+          <header className="flex shrink-0 items-center justify-between px-4 py-4">
             <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Menu
             </span>
@@ -207,8 +207,8 @@ export function SideMenu() {
             >
               <X className="size-5" />
             </Dialog.Close>
-          </div>
-          <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          </header>
+          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ul className="space-y-1">
               {items.map(({ to, label, icon: Icon, exact }) => (
                 <li key={to}>
@@ -286,8 +286,8 @@ export function SideMenu() {
               </div>
             </button>
 
-          </nav>
-          <div className="shrink-0 border-t border-border bg-destructive">
+          </main>
+          <footer className="shrink-0 border-t border-border bg-destructive">
             <button
               type="button"
               onClick={requestSignOut}
@@ -296,7 +296,7 @@ export function SideMenu() {
               <LogOut className="size-5" />
               <span>Sair</span>
             </button>
-          </div>
+          </footer>
         </Dialog.Content>
       </Dialog.Portal>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
