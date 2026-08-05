@@ -213,30 +213,29 @@ function HomePage() {
     <AppShell title={titleNode} showBack={false}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
-          <div className="size-24 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
+        <div className="flex items-stretch gap-4 rounded-2xl border border-border bg-card p-4 overflow-hidden">
+          <div className="w-1/3 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center aspect-square">
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
             ) : (
               <UserRound className="size-8 text-muted-foreground" />
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">Equipe</p>
-            <p className="mt-0.5 truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
-            {(team?.collaborator1 || team?.collaborator2) && (
-              <p className="mt-1 truncate text-xs text-muted-foreground">
-                <span className="text-foreground">
+          <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
+            <div>
+              <p className="truncate text-lg font-bold leading-none tracking-tight">{team?.team_name}</p>
+              {(team?.collaborator1 || team?.collaborator2) && (
+                <p className="mt-1.5 truncate text-xs font-medium text-foreground leading-none">
                   {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
-                </span>
-              </p>
-            )}
+                </p>
+              )}
+            </div>
             {team?.supervisor && (
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                <span className="block truncate">Supervisor: <span className="text-foreground">{team.supervisor}</span></span>
-                <span className="block truncate">Líder: <span className="text-foreground">{team.leader}</span></span>
-                <span className="mt-0.5 block truncate">{today}</span>
-              </p>
+              <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+                <p className="truncate">Supervisor: <span className="font-semibold text-foreground">{team.supervisor}</span></p>
+                <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
+                <p className="mt-1 font-medium">{today}</p>
+              </div>
             )}
           </div>
         </div>
