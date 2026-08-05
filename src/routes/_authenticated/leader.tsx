@@ -47,27 +47,6 @@ import { downloadOrShare, openSavedFile, slugFilename, type SavedFile } from "@/
 import { FileDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function rangeFor(p: Period, ref: Date): { start: Date; end: Date } {
-  const y = ref.getFullYear();
-  const m = ref.getMonth();
-  const d = ref.getDate();
-  if (p === "day") {
-    return { start: new Date(y, m, d, 0, 0, 0), end: new Date(y, m, d + 1, 0, 0, 0) };
-  }
-  if (p === "month") {
-    return { start: new Date(y, m, 1), end: new Date(y, m + 1, 1) };
-  }
-  if (p === "year") {
-    return { start: new Date(y, 0, 1), end: new Date(y + 1, 0, 1) };
-  }
-  // week: segunda a domingo contendo `ref`
-  const day = ref.getDay(); // 0=dom
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const start = new Date(y, m, d + diffToMonday, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
-  return { start, end };
-}
 
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
@@ -348,32 +327,199 @@ function LeaderPage() {
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <Tabs defaultValue="month">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="day">Dia</TabsTrigger>
-            <TabsTrigger value="week">Semana</TabsTrigger>
-            <TabsTrigger value="month">Mês</TabsTrigger>
-            <TabsTrigger value="year">Ano</TabsTrigger>
-          </TabsList>
-          {(["day", "week", "month", "year"] as const).map((p) => (
-            <TabsContent key={p} value={p} className="mt-4">
-              <PeriodView
-                period={p}
-                services={filteredSvc}
-                shifts={filteredShifts}
-                impacts={filteredImpacts}
-                complements={filteredComps}
-                meta={scopeMeta}
-                allTeams={teamList}
-                allServices={services.data ?? []}
-                allShifts={shifts.data ?? []}
-                scopeIsAll={scope === ALL}
-              />
-            </TabsContent>
-          ))}
-        </Tabs>
+        <PeriodTabs
+          filteredSvc={filteredSvc}
+          filteredShifts={filteredShifts}
+          filteredImpacts={filteredImpacts}
+          filteredComps={filteredComps}
+          scopeMeta={scopeMeta}
+          teamList={teamList}
+          servicesData={services.data ?? []}
+          shiftsData={shifts.data ?? []}
+          scope={scope}
+          ALL={ALL}
+        />
       )}
     </AppShell>
+  );
+}
+
+function PeriodTabs({
+  filteredSvc,
+  filteredShifts,
+  filteredImpacts,
+  filteredComps,
+  scopeMeta,
+  teamList,
+  servicesData,
+  shiftsData,
+  scope,
+  ALL,
+}: {
+  filteredSvc: SvcRow[];
+  filteredShifts: ShiftRow[];
+  filteredImpacts: ImpactRow[];
+  filteredComps: CompRow[];
+  scopeMeta: ScopeMeta;
+  teamList: TeamRow[];
+  servicesData: SvcRow[];
+  shiftsData: ShiftRow[];
+  scope: string;
+  ALL: string;
+}) {
+  const [mode, setMode] = useState<Period>("month");
+  const now = useMemo(() => new Date(), []);
+  const [year, setYear] = useState<number>(now.getFullYear());
+  const [month, setMonth] = useState<number>(now.getMonth() + 1);
+  const [day, setDay] = useState<number>(now.getDate());
+
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  ];
+  const years = useMemo(() => {
+    const arr: number[] = [];
+    for (let y = now.getFullYear(); y >= now.getFullYear() - 4; y--) arr.push(y);
+    return arr;
+  }, [now]);
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const weeks = useMemo(() => {
+    const y = year;
+    const m = month - 1;
+    const first = new Date(y, m, 1);
+    const dow = (first.getDay() + 6) % 7; // 0 = seg
+    const start = new Date(y, m, 1 - dow);
+    const list: { start: Date; end: Date; label: string }[] = [];
+    const cur = new Date(start);
+    for (let i = 0; i < 6; i++) {
+      const s = new Date(cur);
+      const e = new Date(cur);
+      e.setDate(e.getDate() + 6);
+      if (s.getMonth() === m || e.getMonth() === m) {
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        list.push({
+          start: s,
+          end: e,
+          label: `${pad(s.getDate())}/${pad(s.getMonth() + 1)} – ${pad(e.getDate())}/${pad(e.getMonth() + 1)}`,
+        });
+      }
+      cur.setDate(cur.getDate() + 7);
+    }
+    return list;
+  }, [year, month]);
+
+  const [weekIdx, setWeekIdx] = useState<number>(0);
+  useEffect(() => {
+    const idx = weeks.findIndex(
+      (w) => now >= w.start && now <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59),
+    );
+    setWeekIdx(idx >= 0 ? idx : 0);
+  }, [weeks, now]);
+
+  const customRange = useMemo(() => {
+    if (mode === "day") {
+      const start = new Date(year, month - 1, day, 0, 0, 0);
+      const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (mode === "week") {
+      const w = weeks[weekIdx];
+      if (!w) return null;
+      const start = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate(), 0, 0, 0);
+      const end = new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (mode === "month") {
+      const start = new Date(year, month - 1, 1, 0, 0, 0);
+      const end = new Date(year, month, 0, 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (mode === "year") {
+      const start = new Date(year, 0, 1, 0, 0, 0);
+      const end = new Date(year, 11, 31, 23, 59, 59, 999);
+      return { start, end };
+    }
+    return null;
+  }, [mode, year, month, day, weeks, weekIdx]);
+
+  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
+
+  return (
+    <div className="space-y-4">
+      <Tabs value={mode} onValueChange={(v) => setMode(v as Period)}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="day">Dia</TabsTrigger>
+          <TabsTrigger value="week">Semana</TabsTrigger>
+          <TabsTrigger value="month">Mês</TabsTrigger>
+          <TabsTrigger value="year">Ano</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <div className="flex flex-wrap gap-2">
+        {mode === "day" && (
+          <select
+            value={day}
+            onChange={(e) => setDay(Number(e.target.value))}
+            className={`${selectCls} w-20 shrink-0`}
+          >
+            {days.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        )}
+
+        {mode === "week" && (
+          <select
+            value={weekIdx}
+            onChange={(e) => setWeekIdx(Number(e.target.value))}
+            className={`${selectCls} min-w-0 flex-1`}
+          >
+            {weeks.map((w, i) => (
+              <option key={i} value={i}>{w.label}</option>
+            ))}
+          </select>
+        )}
+
+        {mode !== "year" && (
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className={`${selectCls} min-w-0 flex-1`}
+          >
+            {monthNames.map((n, i) => (
+              <option key={i} value={i + 1}>{n}</option>
+            ))}
+          </select>
+        )}
+
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className={`${selectCls} w-24 shrink-0`}
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      <PeriodView
+        period={mode}
+        customRange={customRange}
+        services={filteredSvc}
+        shifts={filteredShifts}
+        impacts={filteredImpacts}
+        complements={filteredComps}
+        meta={scopeMeta}
+        allTeams={teamList}
+        allServices={servicesData}
+        allShifts={shiftsData}
+        scopeIsAll={scope === ALL}
+      />
+    </div>
   );
 }
 
@@ -395,6 +541,7 @@ type ScopeMeta = {
 
 function PeriodView({
   period,
+  customRange,
   services,
   shifts,
   impacts,
@@ -406,6 +553,7 @@ function PeriodView({
   scopeIsAll,
 }: {
   period: Period;
+  customRange: { start: Date; end: Date } | null;
   services: SvcRow[];
   shifts: ShiftRow[];
   impacts: ImpactRow[];
@@ -418,8 +566,8 @@ function PeriodView({
 }) {
   const { session } = useAuthSession();
   const stats = useMemo(() => {
-    const cur = periodRange(period);
-    const prev = previousRange(period);
+    const cur = customRange || periodRange(period);
+    const prev = previousRange(period, cur.start);
     const curSvc = services.filter((s) => inRange(s.created_at, cur));
     const prevSvc = services.filter((s) => inRange(s.created_at, prev));
     const curShifts = shifts.filter((s) => inRange(s.started_at, cur));
@@ -485,8 +633,8 @@ function PeriodView({
     for (const s of curSvc) {
       const d = new Date(s.created_at);
       const key =
-        period === "day"
-          ? String(d.getHours()).padStart(2, "0")
+        period === "day" || period === "week"
+          ? d.toISOString().slice(0, 13) // Inclui hora para garantir unicidade no dia se necessário, ou só data
           : period === "year"
             ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
             : d.toISOString().slice(0, 10);
@@ -525,7 +673,7 @@ function PeriodView({
     const avgPerShift = current.shifts ? +(current.total / current.shifts).toFixed(1) : 0;
 
     return { current, previous, projected, variable, byType, topReasons, topImpacts, topComps, bestDay, evolution, compareBars, pctV, pctVPrev, avgPerShift };
-  }, [period, services, shifts, impacts, complements, meta.rate]);
+  }, [period, customRange, services, shifts, impacts, complements, meta.rate]);
 
   const buildText = () =>
     buildPeriodReport({
@@ -546,8 +694,8 @@ function PeriodView({
 
   const teamsBreakdown = useMemo<TeamBreakdown[]>(() => {
     if (!scopeIsAll) return [];
-    const cur = periodRange(period);
-    const prev = previousRange(period);
+    const cur = customRange || periodRange(period);
+    const prev = previousRange(period, cur.start);
     return allTeams
       .map((t) => {
         const svcCur = allServices.filter((s) => s.team_id === t.id && inRange(s.created_at, cur));
@@ -577,7 +725,7 @@ function PeriodView({
         } as TeamBreakdown;
       })
       .sort((a, b) => b.current.total - a.current.total);
-  }, [scopeIsAll, period, allTeams, allServices, allShifts]);
+  }, [scopeIsAll, period, customRange, allTeams, allServices, allShifts]);
 
   const [pdfLoading, setPdfLoading] = useState(false);
   const [savedReport, setSavedReport] = useState<SavedFile | null>(null);
@@ -586,7 +734,7 @@ function PeriodView({
     setPdfLoading(true);
     try {
       // Pontos de mapa: apenas do período atual e com GPS registrado.
-      const cur = periodRange(period);
+      const cur = customRange || periodRange(period);
       const mapPoints = services
         .filter((s) => inRange(s.created_at, cur))
         .filter((s) => s.lat != null && s.lng != null)
