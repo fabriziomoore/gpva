@@ -303,10 +303,8 @@ function LeaderPage() {
 
   return (
     <AppShell title="Painel" right={<LeaderMeta />} showSync={false} wide>
-      <div className="mb-4 md:max-w-sm">
-        <label htmlFor="leader-team-scope" className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          Equipe
-        </label>
+      <div className="mb-4 md:max-w-sm -mt-2">
+
         <select
           id="leader-team-scope"
           value={effectiveScope}
