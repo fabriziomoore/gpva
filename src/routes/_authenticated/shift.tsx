@@ -384,7 +384,7 @@ function ServiceRow({
                 );
               })()
             ) : (
-              `${s.registration_number ?? "-"} • ${s.reason_name ?? ""}`
+              s.reason_name ?? ""
             )}
           </p>
         </div>

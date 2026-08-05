@@ -976,7 +976,9 @@ function RankList({ title, items, empty }: { title: string; items: { name: strin
           {top.map((t) => (
             <li key={t.name} className="space-y-1">
               <div className="flex items-baseline justify-between text-xs">
-                <span className="truncate pr-2 font-medium">{t.name}</span>
+                <span className="truncate pr-2 font-medium" title={t.name}>
+                  {t.name}
+                </span>
                 <span className="tabular-nums text-muted-foreground">{fmtQty(t.qty)}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-muted">
