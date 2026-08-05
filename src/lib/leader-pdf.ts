@@ -10,7 +10,7 @@ import {
 // Android (o path absoluto do asset remoto não resolve em capacitor://localhost).
 import bundledLogoUrl from "@/assets/gpva-logo-bundled.jpg?url";
 import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
-import { renderReportMapPng, MARICA_CENTER, type PdfMapPoint } from "./pdf-map";
+import { renderReportMapPng, OPERATIONAL_BASE, type PdfMapPoint } from "./pdf-map";
 import { reverseGeocode, type ReverseGeoInfo } from "./reverse-geocode";
 
 const logoCandidates: string[] = [bundledLogoUrl, logoAsset.url];
