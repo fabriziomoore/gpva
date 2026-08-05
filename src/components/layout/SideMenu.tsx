@@ -287,14 +287,16 @@ export function SideMenu() {
             </button>
 
           </nav>
-          <button
-            type="button"
-            onClick={requestSignOut}
-            className="flex w-full items-center gap-3 border-t border-border bg-destructive px-5 py-4 text-left text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
-          >
-            <LogOut className="size-5" />
-            <span>Sair</span>
-          </button>
+          <div className="shrink-0 border-t border-border bg-destructive">
+            <button
+              type="button"
+              onClick={requestSignOut}
+              className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
+            >
+              <LogOut className="size-5" />
+              <span>Sair</span>
+            </button>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmSignOut} />
