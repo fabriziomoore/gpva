@@ -207,11 +207,16 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
       return true;
     }
 
+    // Se estivermos offline (browser indica ou falha de rede), não validamos
+    // contra o banco. Presumimos que a sessão local ainda é válida até
+    // recuperarmos a rede e o heartbeat/realtime confirmar o contrário.
+    // Isso evita o deslogue "taken_over" falso por erro 401/timeout.
+    if (isOffline()) return true;
+
     // Durante o login podem existir duas fontes legítimas tentando reivindicar
     // a sessão ao mesmo tempo: o evento SIGNED_IN do SDK e o submit do login.
     // Enquanto essa gravação ainda está em andamento, não comparar contra a
-    // linha antiga do banco — isso expulsava principalmente contas de líder
-    // antes da role e do painel terminarem de carregar.
+    // linha antiga do banco.
     if (claimInProgress && Date.now() - claimStartedAt < CLAIM_GRACE_MS) {
       return true;
     }
@@ -224,10 +229,11 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
         .maybeSingle(),
     );
 
-    // Se estiver sem rede ou a leitura falhar, não bloqueia o modo offline.
-    if (!result) return true;
-    const { data, error } = result;
-    if (error) return true;
+    // Se a consulta falhou por rede (result === null via timeout ou erro),
+    // NÃO deslogamos. Manter a sessão viva no modo offline é prioridade.
+    if (!result || result.error) return true;
+
+    const { data } = result;
     if (!data) {
       // Linha sumiu do DB (admin deslogou). Só age se este device já
       // reivindicou a sessão — dentro do grace do próprio claim, ignora.
