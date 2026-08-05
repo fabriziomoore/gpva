@@ -584,6 +584,72 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   }
 
   // =========================================================================
+  // PAGE EXTRA — Detalhamento de Inviáveis (Todas do Período)
+  // =========================================================================
+  pdf.addPage("a4", "landscape");
+  const invPageNumber = totalPages - 1;
+  pageTitle(pdf, "INVIÁVEIS DETALHADAS (PERÍODO)", input.scope_label, periodStr);
+
+  const invTblY = M + 18;
+  const invCols = [
+    { label: "#", w: 10 },
+    { label: "Matrícula", w: 40 },
+    { label: "Motivo da Inviabilidade", w: CW - 50 },
+  ];
+
+  // Header da tabela
+  setFill(C.bgHead); setStroke(C.border);
+  rect(M, invTblY, CW, 8, 1.5, true, true);
+  font(8, "bold"); setText(C.primaryDark);
+  let curX = M + 4;
+  invCols.forEach((c) => {
+    text(c.label.toUpperCase(), curX, invTblY + 5.5);
+    curX += c.w;
+  });
+
+  // Linhas
+  let invCurY = invTblY + 8;
+  const rowH = 8;
+  input.all_unviable.forEach((inv, i) => {
+    // Zebra striping
+    if (i % 2 === 0) setFill(C.white); else setFill(C.bgAlt);
+    rect(M, invCurY, CW, rowH, 0, true, false);
+    setStroke(C.border); hline(M, invCurY + rowH, PW - M, invCurY + rowH, 0.1);
+
+    font(8, "normal"); setText(C.ink);
+    // Círculo azul para o index (estilo do rank)
+    setFill(C.primary); pdf.circle(M + 5, invCurY + 4, 2.5, "F");
+    font(7, "bold"); setText(C.white);
+    text(String(i + 1), M + 5, invCurY + 5.4, { align: "center" });
+
+    font(8.5, "normal"); setText(C.ink);
+    text(inv.registration || "-", M + 14, invCurY + 5.2);
+    text(inv.name || "-", M + 54, invCurY + 5.2, { maxWidth: CW - 58 });
+
+    invCurY += rowH;
+
+    // Se ultrapassar a página (limite seguro 190mm)
+    if (invCurY > PH - 25 && i < input.all_unviable.length - 1) {
+      footer(invPageNumber, totalPages);
+      pdf.addPage("a4", "landscape");
+      pageTitle(pdf, "INVIÁVEIS DETALHADAS (CONT.)", input.scope_label, periodStr);
+      invCurY = M + 18;
+      // Repete header na nova página
+      setFill(C.bgHead); setStroke(C.border);
+      rect(M, invCurY, CW, 8, 1.5, true, true);
+      font(8, "bold"); setText(C.primaryDark);
+      let cx = M + 4;
+      invCols.forEach((c) => {
+        text(c.label.toUpperCase(), cx, invCurY + 5.5);
+        cx += c.w;
+      });
+      invCurY += 8;
+    }
+  });
+
+  footer(invPageNumber, totalPages);
+
+  // =========================================================================
   // PAGE FINAL — Resumo Executivo
   // =========================================================================
   pdf.addPage("a4", "landscape");
