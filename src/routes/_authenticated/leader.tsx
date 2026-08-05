@@ -694,7 +694,7 @@ function PeriodView({
     const avgPerShift = current.shifts ? +(current.total / current.shifts).toFixed(1) : 0;
 
     return { current, previous, projected, variable, byType, topReasons, topImpacts, topComps, bestDay, evolution, compareBars, pctV, pctVPrev, avgPerShift };
-  }, [period, services, shifts, impacts, complements, meta.rate]);
+  }, [period, customRange, services, shifts, impacts, complements, meta.rate]);
 
   const buildText = () =>
     buildPeriodReport({
@@ -715,8 +715,8 @@ function PeriodView({
 
   const teamsBreakdown = useMemo<TeamBreakdown[]>(() => {
     if (!scopeIsAll) return [];
-    const cur = periodRange(period);
-    const prev = previousRange(period);
+    const cur = customRange || periodRange(period);
+    const prev = previousRange(period, cur.start);
     return allTeams
       .map((t) => {
         const svcCur = allServices.filter((s) => s.team_id === t.id && inRange(s.created_at, cur));
@@ -746,7 +746,7 @@ function PeriodView({
         } as TeamBreakdown;
       })
       .sort((a, b) => b.current.total - a.current.total);
-  }, [scopeIsAll, period, allTeams, allServices, allShifts]);
+  }, [scopeIsAll, period, customRange, allTeams, allServices, allShifts]);
 
   const [pdfLoading, setPdfLoading] = useState(false);
   const [savedReport, setSavedReport] = useState<SavedFile | null>(null);
@@ -755,7 +755,7 @@ function PeriodView({
     setPdfLoading(true);
     try {
       // Pontos de mapa: apenas do período atual e com GPS registrado.
-      const cur = periodRange(period);
+      const cur = customRange || periodRange(period);
       const mapPoints = services
         .filter((s) => inRange(s.created_at, cur))
         .filter((s) => s.lat != null && s.lng != null)
