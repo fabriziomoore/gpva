@@ -934,7 +934,7 @@ function ProjectionDelta({ projected, previous, currency }: { projected: number;
   const Icon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;
   const sign = diff > 0 ? "+" : "";
   return (
-    <p className={`mt-1 flex items-center gap-1 text-[11px] ${tone}`}>
+    <p className={cn("mt-1 flex items-center gap-1 truncate text-[11px]", tone)}>
       <Icon className="size-3" />
       {sign}
       {currency ? formatBRL(diff) : diff}
