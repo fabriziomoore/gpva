@@ -6,7 +6,8 @@
 export type PdfMapPoint = { lat: number; lng: number; viable: boolean };
 
 // Maricá — praça central aproximada.
-export const MARICA_CENTER = { lat: -22.9192, lng: -42.8186 };
+export const OPERATIONAL_BASE = { lat: -22.911101, lng: -42.943486 };
+export const MARICA_CENTER = OPERATIONAL_BASE;
 
 const TILE = 256;
 const OSM_TEMPLATE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -58,9 +59,9 @@ export async function renderReportMapPng(opts: {
   if (typeof document === "undefined") return null;
   const W = Math.round(opts.width);
   const H = Math.round(opts.height);
-  const center = opts.center ?? MARICA_CENTER;
-  const zoom = opts.zoom ?? 12;
   const points = opts.points ?? [];
+  const center = opts.center ?? (points.length > 0 ? getBoundsCenter(points) : MARICA_CENTER);
+  const zoom = opts.zoom ?? (points.length > 0 ? getOptimalZoom(points, W, H) : 12);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -144,4 +145,30 @@ export async function renderReportMapPng(opts: {
   } catch {
     return null;
   }
+}
+
+function getBoundsCenter(pts: PdfMapPoint[]): { lat: number; lng: number } {
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  pts.forEach(p => {
+    minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+    minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
+  });
+  return { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
+}
+
+function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
+  if (pts.length < 2) return 13;
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  pts.forEach(p => {
+    minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+    minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
+  });
+  
+  const latDiff = maxLat - minLat;
+  const lngDiff = maxLng - minLng;
+  const maxDiff = Math.max(latDiff, lngDiff * 0.8) || 0.01;
+  
+  // Ajuste empírico de zoom baseado na dispersão
+  let z = Math.floor(Math.log2(360 / maxDiff)) - 1;
+  return Math.min(18, Math.max(2, z));
 }

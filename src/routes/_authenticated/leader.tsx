@@ -736,13 +736,21 @@ function PeriodView({
     try {
       // Pontos de mapa: apenas do período atual e com GPS registrado.
       const cur = customRange || periodRange(period);
-      const mapPoints = services
-        .filter((s) => inRange(s.created_at, cur))
+      const curServices = services.filter((s) => inRange(s.created_at, cur));
+      
+      const mapPoints = curServices
         .filter((s) => s.lat != null && s.lng != null)
         .map((s) => ({
           lat: Number(s.lat),
           lng: Number(s.lng),
           viable: s.viable,
+        }));
+
+      const allUnviable = curServices
+        .filter(s => !s.viable)
+        .map(s => ({
+          name: s.reason_name || "Motivo não especificado",
+          registration: s.registration_number || "S/M"
         }));
       const blob = await renderLeaderPdfBlob({
         period,
@@ -756,6 +764,7 @@ function PeriodView({
         variable_estimated: stats.variable,
         by_type: stats.byType,
         top_reasons: stats.topReasons,
+        all_unviable: allUnviable,
         top_impacts: stats.topImpacts,
         top_complements: stats.topComps,
         compare_bars: stats.compareBars,
