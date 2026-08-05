@@ -400,8 +400,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
 
   const invTblY = M + 18;
   const numCols = 3;
-  const colGap = 5;
-  const colW = (CW - (colGap * (numCols - 1))) / numCols;
+  const invColGap = 5;
+  const invColW = (CW - (invColGap * (numCols - 1))) / numCols;
   const invRowH = 6.5;
   const maxRowsPerCol = 22; // Ajustado para caber na folha
 
