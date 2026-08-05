@@ -66,7 +66,7 @@ async function openArcgisInNativeWebView(url: string, title: string): Promise<vo
       backgroundColor: BackgroundColor.WHITE,
       visibleTitle: true,
       showArrow: false,
-      showReloadButton: false,
+      showReloadButton: true, // Habilitado para resolver problemas de carregamento
       activeNativeNavigationForWebview: true,
       isPresentAfterPageLoad: false,
       isAnimated: true,
