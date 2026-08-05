@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -95,13 +95,36 @@ export function SideMenu() {
   const isLeader = useIsLeader(userId);
   const [open, setOpen] = useState(false);
   const [fixedHeight, setFixedHeight] = useState<string | null>(null);
+  const [orientation, setOrientation] = useState(0);
+
+  const captureHeight = () => {
+    const height = document.documentElement.clientHeight;
+    setFixedHeight(`${height}px`);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      const newOrientation = window.screen?.orientation?.angle ?? (window.orientation as number) ?? 0;
+      if (newOrientation !== orientation) {
+        setOrientation(newOrientation);
+        if (open) {
+          captureHeight();
+        }
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, [open, orientation]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
-      // Captura a altura física estável antes do teclado abrir
-      const height = document.documentElement.clientHeight;
-      setFixedHeight(`${height}px`);
+      captureHeight();
     } else {
       setFixedHeight(null);
     }
