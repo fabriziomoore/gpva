@@ -115,6 +115,8 @@ function SettingsPage() {
     if (team) {
       setSupervisor(team.supervisor);
       setLeader(team.leader);
+      setCollab1(team.collaborator1 || "");
+      setCollab2(team.collaborator2 || "");
       setTeamName(team.team_name);
     }
   }, [team]);
