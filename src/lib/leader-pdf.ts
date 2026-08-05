@@ -10,7 +10,7 @@ import {
 // Android (o path absoluto do asset remoto não resolve em capacitor://localhost).
 import bundledLogoUrl from "@/assets/gpva-logo-bundled.jpg?url";
 import logoAsset from "@/assets/gpva-logo.jpg.asset.json";
-import { renderReportMapPng, MARICA_CENTER, type PdfMapPoint } from "./pdf-map";
+import { renderReportMapPng, OPERATIONAL_BASE, type PdfMapPoint } from "./pdf-map";
 import { reverseGeocode, type ReverseGeoInfo } from "./reverse-geocode";
 
 const logoCandidates: string[] = [bundledLogoUrl, logoAsset.url];
@@ -68,6 +68,7 @@ export type LeaderPdfInput = {
   variable_estimated: number;
   by_type: { name: string; qty: number }[];
   top_reasons: { name: string; qty: number }[];
+  all_unviable: { name: string; registration: string }[];
   top_impacts: { name: string; qty: number }[];
   top_complements: { name: string; qty: number }[];
   best_day: { date: string; qty: number } | null;
@@ -372,7 +373,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const blkH = 74;
   const blkW = (CW - 5) / 2;
   drawRankBlock(pdf, M, blkY, blkW, blkH, "Top serviços (viáveis)", input.by_type);
-  drawRankBlock(pdf, M + blkW + 5, blkY, blkW, blkH, "Principais motivos de inviabilidade", input.top_reasons);
+  drawRankBlock(pdf, M + blkW + 5, blkY, blkW, blkH, "Inviáveis detalhadas (Período)", input.all_unviable.map(x => ({ name: `${x.registration} - ${x.name}`, qty: 1 })), true);
   drawRankBlock(pdf, M, blkY + blkH + 4, blkW, blkH, "Complementos mais usados", input.top_complements);
   drawRankBlock(pdf, M + blkW + 5, blkY + blkH + 4, blkW, blkH, "Impactos recorrentes", input.top_impacts);
 
@@ -504,8 +505,8 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const dataUrl = await renderReportMapPng({
       width: Math.round(mapW * pxPerMm),
       height: Math.round(mapH * pxPerMm),
-      center: MARICA_CENTER,
-      zoom: 12,
+      center: undefined, // Automatic calculation based on points
+      zoom: undefined,   // Automatic calculation based on points
       points: input.map_points ?? [],
     });
     if (dataUrl) {
@@ -528,13 +529,15 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const viaPts = (input.map_points ?? []).filter((p) => p.viable).length;
     const invPts = totalPts - viaPts;
     setFill(C.white); setStroke(C.border);
-    pdf.roundedRect(M, PH - M - 8, 90, 6, 1.5, 1.5, "FD");
-    setFill([22, 163, 74]); pdf.circle(M + 4, PH - M - 5, 1.6, "F");
+    pdf.roundedRect(M, PH - M - 10, 110, 8, 1.5, 1.5, "FD");
+    setFill([22, 163, 74]); pdf.circle(M + 4, PH - M - 6, 1.6, "F");
     font(7.5, "normal"); setText(C.ink);
-    text(`Viáveis: ${viaPts}`, M + 8, PH - M - 4);
-    setFill([220, 38, 38]); pdf.circle(M + 34, PH - M - 5, 1.6, "F");
-    text(`Inviáveis: ${invPts}`, M + 38, PH - M - 4);
-    text(`Total plotado: ${totalPts}`, M + 70, PH - M - 4);
+    text(`Viáveis: ${viaPts}`, M + 8, PH - M - 5);
+    setFill([220, 38, 38]); pdf.circle(M + 34, PH - M - 6, 1.6, "F");
+    text(`Inviáveis: ${invPts}`, M + 38, PH - M - 5);
+    font(7.5, "bold");
+    text(`Total plotado: ${totalPts}`, M + 75, PH - M - 5);
+    font(7.5, "normal");
     footer(mapPageNumber, totalPages);
   }
 
@@ -546,7 +549,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     const geoPageNumber = hasTeams ? 5 : 4;
     pageTitle(pdf, "ANÁLISE GEOGRÁFICA — LEITURA DO MAPA", input.scope_label, periodStr);
 
-    const geo = await buildGeoAnalysis(input.map_points ?? [], MARICA_CENTER);
+    const geo = await buildGeoAnalysis(input.map_points ?? [], OPERATIONAL_BASE);
 
     const blocksGeo = [
       { title: "Distribuição geral", body: geo.overall },
@@ -644,6 +647,7 @@ function drawRankBlock(
   x: number, y: number, w: number, h: number,
   title: string,
   rows: { name: string; qty: number }[],
+  hideBar = false,
 ) {
   pdf.setFillColor(255, 255, 255);
   pdf.setDrawColor(C.border[0], C.border[1], C.border[2]);
@@ -681,22 +685,26 @@ function drawRankBlock(
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8.5);
     pdf.setTextColor(C.ink[0], C.ink[1], C.ink[2]);
-    const nameStr = truncate(pdf, r.name, w * 0.5);
+    const nameStr = truncate(pdf, r.name, hideBar ? w - 18 : w * 0.5);
     pdf.text(nameStr, x + 10, yy + rowH / 2 - 1);
     // qty
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
-    pdf.setTextColor(C.primaryDark[0], C.primaryDark[1], C.primaryDark[2]);
-    pdf.text(String(r.qty), x + w - 4, yy + rowH / 2 - 1, { align: "right" });
+    if (!hideBar) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.setTextColor(C.primaryDark[0], C.primaryDark[1], C.primaryDark[2]);
+      pdf.text(String(r.qty), x + w - 4, yy + rowH / 2 - 1, { align: "right" });
+    }
     // bar
-    const bx = x + 10;
-    const bw = w - 22;
-    const bh = 2;
-    const by = yy + rowH / 2 + 1;
-    pdf.setFillColor(C.border[0], C.border[1], C.border[2]);
-    pdf.roundedRect(bx, by, bw, bh, 1, 1, "F");
-    pdf.setFillColor(C.primary[0], C.primary[1], C.primary[2]);
-    pdf.roundedRect(bx, by, Math.max(2, bw * (r.qty / max)), bh, 1, 1, "F");
+    if (!hideBar) {
+      const bx = x + 10;
+      const bw = w - 22;
+      const bh = 2;
+      const by = yy + rowH / 2 + 1;
+      pdf.setFillColor(C.border[0], C.border[1], C.border[2]);
+      pdf.roundedRect(bx, by, bw, bh, 1, 1, "F");
+      pdf.setFillColor(C.primary[0], C.primary[1], C.primary[2]);
+      pdf.roundedRect(bx, by, Math.max(2, bw * (r.qty / max)), bh, 1, 1, "F");
+    }
   });
 }
 
@@ -970,8 +978,8 @@ async function buildGeoAnalysis(
     const dLng = cLng - center.lng;
     const ns = dLat >= 0 ? "norte" : "sul";
     const ew = dLng >= 0 ? "leste" : "oeste";
-    if (Math.abs(dLat) < 0.005 && Math.abs(dLng) < 0.005) return "praticamente sobre o centro";
-    return `a ${distToRef.toFixed(1)} km ${ns}-${ew} do centro de Maricá`;
+    if (Math.abs(dLat) < 0.005 && Math.abs(dLng) < 0.005) return "praticamente sobre a base";
+    return `a ${distToRef.toFixed(1)} km ${ns}-${ew} da base (Inoã)`;
   })();
 
   // Dispersão: distância média ao centróide + máxima
@@ -982,7 +990,7 @@ async function buildGeoAnalysis(
   const farIdx = dists.indexOf(maxD);
   const far = pts[farIdx];
 
-  // Quadrantes relativos ao centro de Maricá (NE, NO, SE, SO)
+  // Quadrantes relativos à base operacional (NE, NO, SE, SO)
   type Q = "NE" | "NO" | "SE" | "SO";
   const qLabel: Record<Q, string> = { NE: "Nordeste", NO: "Noroeste", SE: "Sudeste", SO: "Sudoeste" };
   const buckets: Record<Q, { total: number; viable: number }> = {
@@ -1069,7 +1077,7 @@ async function buildGeoAnalysis(
 
   const overall =
     `Foram plotados ${total} pontos com coordenadas válidas (${viable.length} viáveis / ${unviable.length} inviáveis, ${pctV}% de viabilidade territorial). ` +
-    `A cobertura alcançou ${covered} de 4 quadrantes${empty.length ? ` (sem atendimento em ${empty.join(", ")})` : ""}.`;
+    `A cobertura alcançou ${covered} de 4 quadrantes a partir da base operacional em Inoã.`;
 
   const centroidLoc = centroidGeo?.label || `${cLat.toFixed(4)}, ${cLng.toFixed(4)}`;
   const centroidTxt =

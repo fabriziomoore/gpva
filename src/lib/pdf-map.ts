@@ -6,7 +6,8 @@
 export type PdfMapPoint = { lat: number; lng: number; viable: boolean };
 
 // Maricá — praça central aproximada.
-export const MARICA_CENTER = { lat: -22.9192, lng: -42.8186 };
+export const OPERATIONAL_BASE = { lat: -22.911101, lng: -42.943486 };
+export const MARICA_CENTER = OPERATIONAL_BASE;
 
 const TILE = 256;
 const OSM_TEMPLATE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -58,9 +59,9 @@ export async function renderReportMapPng(opts: {
   if (typeof document === "undefined") return null;
   const W = Math.round(opts.width);
   const H = Math.round(opts.height);
-  const center = opts.center ?? MARICA_CENTER;
-  const zoom = opts.zoom ?? 12;
   const points = opts.points ?? [];
+  const center = opts.center ?? (points.length > 0 ? getBoundsCenter(points) : MARICA_CENTER);
+  const zoom = opts.zoom ?? (points.length > 0 ? getOptimalZoom(points, W, H) : 12);
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -120,14 +121,24 @@ export async function renderReportMapPng(opts: {
     ctx.stroke();
   }
 
-  // Selo do centro (Maricá).
-  ctx.beginPath();
-  ctx.arc(W / 2, H / 2, 4, 0, Math.PI * 2);
-  ctx.fillStyle = "#1e3a8a";
-  ctx.fill();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  // Selo da base operacional (Inoã).
+  const bpx = lngToPx(OPERATIONAL_BASE.lng, zoom) - topLeftPxX;
+  const bpy = latToPx(OPERATIONAL_BASE.lat, zoom) - topLeftPxY;
+  if (bpx > 0 && bpx < W && bpy > 0 && bpy < H) {
+    ctx.beginPath();
+    ctx.arc(bpx, bpy, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#1e3a8a";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Pequena letra "B" ou ícone de casa
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("B", bpx, bpy);
+  }
 
   // Créditos OSM (obrigatório).
   ctx.font = "10px sans-serif";
@@ -144,4 +155,33 @@ export async function renderReportMapPng(opts: {
   } catch {
     return null;
   }
+}
+
+function getBoundsCenter(pts: PdfMapPoint[]): { lat: number; lng: number } {
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  pts.forEach(p => {
+    minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+    minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
+  });
+  return { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
+}
+
+function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
+  // Always include the operational base in bounds calculation
+  const allPts = [...pts, { ...OPERATIONAL_BASE, viable: true }];
+  if (allPts.length < 2) return 13;
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  allPts.forEach(p => {
+    minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+    minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
+  });
+  
+  const latDiff = maxLat - minLat;
+  const lngDiff = maxLng - minLng;
+  // Aumentamos o diff para dar margem (padding)
+  const maxDiff = Math.max(latDiff * 1.5, lngDiff * 1.2) || 0.05;
+  
+  // Fórmula de zoom para Tiles 256px
+  let z = Math.floor(Math.log2(360 / maxDiff));
+  return Math.min(18, Math.max(8, z));
 }
