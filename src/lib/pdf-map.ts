@@ -168,21 +168,23 @@ function getBoundsCenter(pts: PdfMapPoint[]): { lat: number; lng: number } {
 
 function getOptimalZoom(pts: PdfMapPoint[], w: number, h: number): number {
   if (pts.length === 0) return 12;
-  // Always include the operational base in bounds calculation
-  const allPts = pts;
-  if (allPts.length < 2) return 13;
+  
   let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-  allPts.forEach(p => {
+  pts.forEach(p => {
     minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
     minLng = Math.min(minLng, p.lng); maxLng = Math.max(maxLng, p.lng);
   });
   
   const latDiff = maxLat - minLat;
   const lngDiff = maxLng - minLng;
-  // Margem mínima absoluta para garantir que os pontos toquem as bordas
-  const maxDiff = Math.max(latDiff * 1.01, lngDiff * 1.01) || 0.001;
   
-  // Fórmula de zoom para Tiles 256px
-  let z = Math.ceil(Math.log2(360 / maxDiff));
+  if (latDiff === 0 && lngDiff === 0) return 15;
+
+  // Calculamos o zoom baseado no tamanho do canvas (W e H) em relação à dispersão real
+  const latZoom = Math.log2((h * 360) / (latDiff * TILE * 1.1));
+  const lngZoom = Math.log2((w * 360) / (lngDiff * TILE * 1.1));
+  
+  let z = Math.floor(Math.min(latZoom, lngZoom));
+  
   return Math.min(18, Math.max(10, z));
 }
