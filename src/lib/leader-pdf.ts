@@ -373,7 +373,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const blkH = 74;
   const blkW = (CW - 5) / 2;
   drawRankBlock(pdf, M, blkY, blkW, blkH, "Top serviços (viáveis)", input.by_type);
-  drawRankBlock(pdf, M + blkW + 5, blkY, blkW, blkH, "Inviáveis detalhadas (Período)", input.all_unviable.map(x => ({ name: `${x.registration} - ${x.name}`, qty: 1 })), true);
+  drawRankBlock(pdf, M + blkW + 5, blkY, blkW, blkH, "Top motivos de inviabilidade", input.top_reasons);
   drawRankBlock(pdf, M, blkY + blkH + 4, blkW, blkH, "Complementos mais usados", input.top_complements);
   drawRankBlock(pdf, M + blkW + 5, blkY + blkH + 4, blkW, blkH, "Impactos recorrentes", input.top_impacts);
 
