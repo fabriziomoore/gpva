@@ -413,7 +413,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const invColGap = 5;
   const invColW = (CW - (invColGap * (numCols - 1))) / numCols;
   const invRowH = 6.5;
-  const maxRowsPerCol = 22; // Ajustado para caber na folha
+  const maxRowsPerCol = 20; // Reduzido para dar mais espaço à legenda e manter margens
 
   // --- Constância: matrículas repetidas ganham a MESMA cor de fundo --------
   const dupPalette: RGB[] = [
@@ -501,7 +501,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Legenda de constância
   {
     const lgH = 15;
-    const lgY = PH - M - 9 - lgH; // Posiciona a legenda respeitando a margem inferior (rodapé começa em PH-9)
+    const lgY = invTblY + maxRowsPerCol * invRowH + 5; 
     
     setFill(C.white); setStroke(C.border);
     pdf.roundedRect(M, lgY, CW, lgH, 1.5, 1.5, "FD");
