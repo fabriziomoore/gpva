@@ -356,7 +356,7 @@ function LeaderPage() {
           scopeMeta={scopeMeta}
           teamList={teamList}
           servicesData={services.data ?? []}
-          shiftsData={shiftsData}
+          shiftsData={shifts.data ?? []}
           scope={scope}
           ALL={ALL}
         />
@@ -562,6 +562,7 @@ type ScopeMeta = {
 
 function PeriodView({
   period,
+  customRange,
   services,
   shifts,
   impacts,
@@ -573,6 +574,7 @@ function PeriodView({
   scopeIsAll,
 }: {
   period: Period;
+  customRange: { start: Date; end: Date } | null;
   services: SvcRow[];
   shifts: ShiftRow[];
   impacts: ImpactRow[];
@@ -585,8 +587,8 @@ function PeriodView({
 }) {
   const { session } = useAuthSession();
   const stats = useMemo(() => {
-    const cur = periodRange(period);
-    const prev = previousRange(period);
+    const cur = customRange || periodRange(period);
+    const prev = previousRange(period, cur.start);
     const curSvc = services.filter((s) => inRange(s.created_at, cur));
     const prevSvc = services.filter((s) => inRange(s.created_at, prev));
     const curShifts = shifts.filter((s) => inRange(s.started_at, cur));
