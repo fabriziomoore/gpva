@@ -167,18 +167,7 @@ function ProdPage() {
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <Tabs defaultValue="month">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="day">Dia</TabsTrigger>
-            <TabsTrigger value="week">Semana</TabsTrigger>
-            <TabsTrigger value="month">Mês</TabsTrigger>
-            <TabsTrigger value="year">Ano</TabsTrigger>
-          </TabsList>
-          {(["day", "week", "month", "year"] as const).map((p) => (
-            <TabsContent key={p} value={p} className="mt-4">
-              <PeriodView rows={all.data ?? []} period={p} />
-            </TabsContent>
-          ))}
+        <PeriodSelector rows={all.data ?? []} />
 
           <div className="mt-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
