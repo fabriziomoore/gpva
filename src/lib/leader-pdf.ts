@@ -203,7 +203,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const avgPerShiftPrev = input.previous.shifts ? +(input.previous.total / input.previous.shifts).toFixed(1) : 0;
   const hasTeams = input.teams.length > 0;
   const hasMap = (input.map_points?.length ?? 0) > 0;
-  const totalPages = 3 + (hasTeams ? 1 : 0) + (hasMap ? 2 : 0);
+  const totalPages = 4 + (hasTeams ? 1 : 0) + (hasMap ? 2 : 0);
 
   // =========================================================================
   // PAGE 1 — Cabeçalho, KPIs, Projeção, Gráficos
@@ -373,7 +373,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const blkH = 74;
   const blkW = (CW - 5) / 2;
   drawRankBlock(pdf, M, blkY, blkW, blkH, "Top serviços (viáveis)", input.by_type);
-  drawRankBlock(pdf, M + blkW + 5, blkY, blkW, blkH, "Inviáveis detalhadas (Período)", input.all_unviable.map(x => ({ name: `${x.registration} - ${x.name}`, qty: 1 })), true);
+  drawRankBlock(pdf, M + blkW + 5, blkY, blkW, blkH, "Top motivos de inviabilidade", input.top_reasons);
   drawRankBlock(pdf, M, blkY + blkH + 4, blkW, blkH, "Complementos mais usados", input.top_complements);
   drawRankBlock(pdf, M + blkW + 5, blkY + blkH + 4, blkW, blkH, "Impactos recorrentes", input.top_impacts);
 
@@ -582,6 +582,72 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     });
     footer(geoPageNumber, totalPages);
   }
+
+  // =========================================================================
+  // PAGE EXTRA — Detalhamento de Inviáveis (Todas do Período)
+  // =========================================================================
+  pdf.addPage("a4", "landscape");
+  const invPageNumber = totalPages - 1;
+  pageTitle(pdf, "INVIÁVEIS DETALHADAS (PERÍODO)", input.scope_label, periodStr);
+
+  const invTblY = M + 18;
+  const invCols = [
+    { label: "#", w: 10 },
+    { label: "Matrícula", w: 40 },
+    { label: "Motivo da Inviabilidade", w: CW - 50 },
+  ];
+
+  // Header da tabela
+  setFill(C.bgHead); setStroke(C.border);
+  rect(M, invTblY, CW, 8, 1.5, true, true);
+  font(8, "bold"); setText(C.primaryDark);
+  let curX = M + 4;
+  invCols.forEach((c) => {
+    text(c.label.toUpperCase(), curX, invTblY + 5.5);
+    curX += c.w;
+  });
+
+  // Linhas
+  let invCurY = invTblY + 8;
+  const invRowH = 8;
+  input.all_unviable.forEach((inv, i) => {
+    // Zebra striping
+    if (i % 2 === 0) setFill(C.white); else setFill(C.bgAlt);
+    rect(M, invCurY, CW, invRowH, 0, true, false);
+    setStroke(C.border); hline(M, invCurY + invRowH, PW - M, invCurY + invRowH, 0.1);
+
+    font(8, "normal"); setText(C.ink);
+    // Círculo azul para o index (estilo do rank)
+    setFill(C.primary); pdf.circle(M + 5, invCurY + 4, 2.5, "F");
+    font(7, "bold"); setText(C.white);
+    text(String(i + 1), M + 5, invCurY + 5.4, { align: "center" });
+
+    font(8.5, "normal"); setText(C.ink);
+    text(inv.registration || "-", M + 14, invCurY + 5.2);
+    text(inv.name || "-", M + 54, invCurY + 5.2, { maxWidth: CW - 58 });
+
+    invCurY += invRowH;
+
+    // Se ultrapassar a página (limite seguro 190mm)
+    if (invCurY > PH - 25 && i < input.all_unviable.length - 1) {
+      footer(invPageNumber, totalPages);
+      pdf.addPage("a4", "landscape");
+      pageTitle(pdf, "INVIÁVEIS DETALHADAS (CONT.)", input.scope_label, periodStr);
+      invCurY = M + 18;
+      // Repete header na nova página
+      setFill(C.bgHead); setStroke(C.border);
+      rect(M, invCurY, CW, 8, 1.5, true, true);
+      font(8, "bold"); setText(C.primaryDark);
+      let cx = M + 4;
+      invCols.forEach((c) => {
+        text(c.label.toUpperCase(), cx, invCurY + 5.5);
+        cx += c.w;
+      });
+      invCurY += 8;
+    }
+  });
+
+  footer(invPageNumber, totalPages);
 
   // =========================================================================
   // PAGE FINAL — Resumo Executivo
