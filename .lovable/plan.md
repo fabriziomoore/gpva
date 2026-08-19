@@ -1,60 +1,62 @@
-# Plano de Correção: Fase 1A - Procedimentos Operacionais (Revisado)
+# Plano de Correção: Fase 1A - Procedimentos Operacionais (Final)
 
-Este plano detalha as correções obrigatórias para a biblioteca de procedimentos, focando em integridade de dados, validação de árvores e fluxos de versionamento no backend.
+Este plano detalha as especificações técnicas e de segurança para a biblioteca de procedimentos, com foco em imutabilidade, versionamento controlado e integridade no backend.
 
 ## 🏗️ Arquitetura e Mudanças
 
 ### Arquivos que serão Alterados
 - `src/lib/procedures/tree-validation.ts`: Implementação da validação completa (DFS).
-- `src/components/procedures/ProcedureForm.tsx`: Correção do submit, novos metadados e lógica de UI para draft/published.
-- `src/routes/_authenticated/leader-procedures.tsx`: Fluxos de gestão, transições de status e nova versão.
-- `src/components/procedures/DecisionTreeEditor.tsx`: (Se necessário para exibir erros de validação específicos).
+- `src/components/procedures/ProcedureForm.tsx`: Correção do submit, novos metadados e lógica de imutabilidade na UI.
+- `src/routes/_authenticated/leader-procedures.tsx`: Fluxos de gestão, transições de status e lógica de "Criar Nova Versão".
 
 ### Arquivos que serão Criados
-- `supabase/migrations/20260820_fix_procedures_integrity.sql`: Migration corretiva com triggers, RPC e constraints.
+- `supabase/migrations/20260820_fix_procedures_final.sql`: Migration corretiva com triggers, RPC e constraints.
 
-### 🗄️ Backend e Integridade (Migration Corretiva)
+### 🗄️ Backend e Integridade (Migration)
 1. **RPC Atômico `create_procedure_with_version`**:
-   - Cria `procedimentos` e `procedimento_versoes` na mesma transação.
-   - Valida `auth.uid()` via `has_role(auth.uid(), 'leader')` ou `'admin'`.
-   - Sem `service_role`, respeitando o `search_path`.
-2. **Restrições de Deletar**:
-   - Alterar `ON DELETE CASCADE` para `ON DELETE RESTRICT` na FK de `procedimento_id`.
-   - Impedir DELETE físico de qualquer versão que não seja `draft`.
-3. **Imutabilidade**:
-   - Reforçar trigger para impedir alteração de conteúdo (título, árvore, etc.) em versões `published`, `suspended` ou `archived`.
-4. **Versionamento e substitui_versao_id**:
-   - Constraint: `substitui_versao_id != id`.
-   - Trigger: Validar que `substitui_versao_id` pertence ao mesmo `procedimento_id`.
-   - Impedir sobreposição de vigência: Duas versões `published` do mesmo procedimento não podem ter datas vigentes simultâneas.
-5. **Transições de Status**:
-   - Permitidos: `draft → published`, `published → suspended`, `published → archived`, `suspended → archived`.
-   - Rejeitados: `suspended → published`, `archived → *`, `published → draft`.
+   - Cria `procedimentos` + primeira versão `draft` na mesma transação.
+   - Restrito a roles `leader` ou `admin` (sistema atual).
+   - Sem `service_role`, com `search_path` seguro.
+2. **Nova Versão (Operação de INSERT)**:
+   - Ação "Criar nova versão" executa obrigatoriamente um `INSERT`.
+   - v1 `published` permanece preservada. Nova v2 nasce como `draft`.
+   - `versao = anterior + 1`, `substitui_versao_id = id_anterior`.
+   - Copia: título, categoria, descrição, setor, fonte, árvore e vigência inicial.
+   - **Proibido** usar `UPDATE` para versionar registros publicados.
+3. **Imutabilidade Pós-Draft**:
+   - Trigger impede alteração de: `procedimento_id`, `versao`, `substitui_versao_id`, `titulo`, `categoria`, `descricao`, `setor`, `vigencia_inicio`, `vigencia_fim`, `fonte`, `arvore_decisao`, `criado_por_id`, `published_at`, `publicado_por_id`.
+   - Transição de status (`suspended`/`archived`) altera **apenas** campos de status e auditoria.
+4. **Segurança e Deletes**:
+   - `ON DELETE RESTRICT` na FK de `procedimento_id`.
+   - Bloqueio de DELETE físico para versões não-`draft`.
+   - `substitui_versao_id` validado para pertencer ao mesmo procedimento.
+5. **Vigências Sobrepostas**:
+   - Backend impede a publicação de duas versões do mesmo procedimento com intervalos de vigência simultâneos.
 
 ## 🛡️ Zona Protegida (NÃO ALTERAR)
 **Arquivos da Zona Protegida Alterados = NENHUM.**
 - `src/lib/sync/**`, `src/lib/offline-auth.ts`, `src/lib/sync/session-backup.ts`, `src/lib/db/local-db.ts`, `src/lib/db/repos.ts`, `src/lib/db/catalogs.ts`.
 - `NetworkService`, `src/components/layout/SyncIndicator.tsx`, diagnósticos de conectividade, alertas online/offline.
-- Autenticação atual, outbox, `capacitor.config.ts`, `mobile/**`, `android/**`.
-- Fluxo iniciar/continuar expediente e tabelas operacionais existentes (RLS mantida).
+- Autenticação atual, outbox, `capacitor.config.ts`.
+- **Fluxo Mobile/Android Congelado**: `mobile/src/route-tree.ts`, `mobile/**`, `android/**`. Rota `/leader-procedures` NÃO será registrada no mobile.
 
-## 🧪 40 Testes Individuais Obrigatórios
+## 🧪 41 Testes Individuais Obrigatórios
 1. Árvore válida permite salvar rascunho.
 2. Árvore inválida impede salvar/publicar.
 3. Ciclo A→B→A é rejeitado na validação.
 4. `nextNodeId` inexistente é rejeitado.
 5. Caminho sem resultado é rejeitado.
-6. Categoria é persistida corretamente a partir do formulário.
+6. Categoria é persistida corretamente.
 7. Setor é persistido corretamente.
 8. Fonte é persistida corretamente.
-9. Botão Gerenciar funciona (abre opções de rascunho/publicação).
+9. Botão Gerenciar funciona.
 10. `draft` pode ser editado.
 11. `draft` pode ser publicado.
 12. Publicação exige confirmação/revisão na UI.
-13. Versão publicada não permite editar conteúdo (título, árvore, etc.).
+13. Versão publicada não permite editar conteúdo.
 14. "Criar nova versão" preserva versão anterior integralmente.
 15. Nova versão possui número incrementado (`versao + 1`).
-16. `substitui_versao_id` aponta corretamente para a versão anterior.
+16. `substitui_versao_id` aponta para a versão anterior.
 17. Autorreferência em `substitui_versao_id` é rejeitada no banco.
 18. Substituição entre procedimentos diferentes é rejeitada no banco.
 19. Transição `published → suspended` funciona.
@@ -62,13 +64,13 @@ Este plano detalha as correções obrigatórias para a biblioteca de procediment
 21. Transição `suspended → archived` funciona.
 22. Transição `suspended → published` é rejeitada.
 23. Transição `archived → published` é rejeitada.
-24. `vigencia_fim` publicada não pode ser alterada diretamente via UPDATE.
-25. DELETE de versão publicada/suspensa/arquivada é bloqueado.
-26. Exclusão do procedimento pai (identity) é bloqueada se houver versões (`RESTRICT`).
-27. Líder acessa gestão de procedimentos.
-28. Admin acessa gestão de procedimentos.
-29. Equipe não acessa gestão (negado via hook e RLS).
-30. RLS continua habilitada em todas as tabelas.
+24. `vigencia_fim` publicada não pode ser alterada diretamente.
+25. DELETE de versão publicada continua bloqueado.
+26. Exclusão do procedimento pai não remove histórico (`RESTRICT`).
+27. Líder acessa gestão.
+28. Admin acessa gestão.
+29. Equipe não acessa gestão.
+30. RLS continua habilitada.
 31. Login de equipe online permanece funcional.
 32. Login offline permanece funcional.
 33. Dexie permanece sem alterações.
@@ -78,6 +80,5 @@ Este plano detalha as correções obrigatórias para a biblioteca de procediment
 37. Alertas online/offline permanecem sem alterações.
 38. Nenhum arquivo de `mobile/**` alterado.
 39. Nenhum arquivo de `android/**` alterado.
-40. Build web conclui sem erros.
-
-**Nota:** Nenhuma funcionalidade da Fase 2 ou Assistente de IA será implementada agora.
+40. Build web conclui sem erro.
+41. **Tentativa de publicar versão com vigência sobreposta é rejeitada pelo backend.**
