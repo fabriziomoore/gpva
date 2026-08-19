@@ -364,6 +364,114 @@ export type Database = {
           },
         ]
       }
+      procedimento_versoes: {
+        Row: {
+          arvore_decisao: Json
+          categoria: string
+          created_at: string | null
+          criado_por_id: string
+          descricao: string | null
+          fonte: string | null
+          id: string
+          procedimento_id: string
+          publicado_por_id: string | null
+          published_at: string | null
+          setor: string | null
+          status: Database["public"]["Enums"]["procedimento_status"]
+          status_alterado_por_id: string | null
+          status_updated_at: string | null
+          substitui_versao_id: string | null
+          titulo: string
+          updated_at: string | null
+          versao: number
+          vigencia_fim: string | null
+          vigencia_inicio: string
+        }
+        Insert: {
+          arvore_decisao: Json
+          categoria: string
+          created_at?: string | null
+          criado_por_id: string
+          descricao?: string | null
+          fonte?: string | null
+          id?: string
+          procedimento_id: string
+          publicado_por_id?: string | null
+          published_at?: string | null
+          setor?: string | null
+          status?: Database["public"]["Enums"]["procedimento_status"]
+          status_alterado_por_id?: string | null
+          status_updated_at?: string | null
+          substitui_versao_id?: string | null
+          titulo: string
+          updated_at?: string | null
+          versao: number
+          vigencia_fim?: string | null
+          vigencia_inicio: string
+        }
+        Update: {
+          arvore_decisao?: Json
+          categoria?: string
+          created_at?: string | null
+          criado_por_id?: string
+          descricao?: string | null
+          fonte?: string | null
+          id?: string
+          procedimento_id?: string
+          publicado_por_id?: string | null
+          published_at?: string | null
+          setor?: string | null
+          status?: Database["public"]["Enums"]["procedimento_status"]
+          status_alterado_por_id?: string | null
+          status_updated_at?: string | null
+          substitui_versao_id?: string | null
+          titulo?: string
+          updated_at?: string | null
+          versao?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedimento_versoes_procedimento_id_fkey"
+            columns: ["procedimento_id"]
+            isOneToOne: false
+            referencedRelation: "procedimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedimento_versoes_substitui_versao_id_fkey"
+            columns: ["substitui_versao_id"]
+            isOneToOne: false
+            referencedRelation: "procedimento_versoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procedimentos: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome_logico: string
+          responsavel_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome_logico: string
+          responsavel_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome_logico?: string
+          responsavel_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       servicos: {
         Row: {
           accuracy_m: number | null
@@ -597,6 +705,7 @@ export type Database = {
     }
     Enums: {
       app_role: "leader" | "admin" | "supervisor"
+      procedimento_status: "draft" | "published" | "suspended" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -725,6 +834,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["leader", "admin", "supervisor"],
+      procedimento_status: ["draft", "published", "suspended", "archived"],
     },
   },
 } as const

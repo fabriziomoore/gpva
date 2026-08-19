@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, FileText, CheckCircle2, AlertCircle, Archive, ArrowRight, User } from "lucide-react";
+import { Plus, Search, FileText, AlertCircle, ArrowRight, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -30,9 +30,7 @@ function LeaderProceduresPage() {
         .from("procedimento_versoes")
         .select(`
           *,
-          procedimento:procedimentos(nome_logico),
-          criado_por:profiles!criado_por_id(full_name),
-          publicado_por:profiles!publicado_por_id(full_name)
+          procedimento:procedimentos(nome_logico)
         `)
         .order("created_at", { ascending: false });
 
@@ -143,7 +141,7 @@ function LeaderProceduresPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {procedures?.map((proc) => (
+          {procedures?.map((proc: any) => (
             <Card key={proc.id} className="group overflow-hidden border-primary/10 hover:border-primary/30 transition-all hover:shadow-md bg-card/40 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start gap-2 mb-2">
@@ -161,7 +159,7 @@ function LeaderProceduresPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
                     <User className="size-3.5 shrink-0" />
-                    <span className="truncate">Resp: {proc.publicado_por?.full_name || proc.criado_por?.full_name || "N/A"}</span>
+                    <span className="truncate">Versão: {proc.versao}</span>
                   </div>
                   
                   <div className="flex flex-col gap-1.5 pt-2">
