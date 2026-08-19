@@ -92,7 +92,8 @@ function LeaderProceduresPage() {
           arvore_decisao: versionData.arvore_decisao,
           vigencia_inicio: metadata.vigencia_inicio,
           vigencia_fim: metadata.vigencia_fim || null,
-          created_by: userId,
+          criado_por_id: userId,
+          categoria: "Geral", // Valor padrão obrigatório
         });
 
       if (verError) throw verError;
