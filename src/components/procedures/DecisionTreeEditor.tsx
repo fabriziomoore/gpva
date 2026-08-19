@@ -9,9 +9,10 @@ import { Plus, Trash2, ArrowRight, HelpCircle, CheckCircle } from "lucide-react"
 interface DecisionTreeEditorProps {
   value: DecisionTree;
   onChange: (value: DecisionTree) => void;
+  isReadOnly?: boolean;
 }
 
-export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps) {
+export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTreeEditorProps) {
   const [activeNodeId, setActiveNodeId] = useState<string | null>(value.startNodeId);
 
   const addNode = (type: "question" | "result") => {
@@ -53,14 +54,16 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
       <div className="md:col-span-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Estrutura</h3>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => addNode("question")} title="Nova Pergunta">
-              <HelpCircle className="size-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => addNode("result")} title="Novo Resultado">
-              <CheckCircle className="size-4" />
-            </Button>
-          </div>
+          {!isReadOnly && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => addNode("question")} title="Nova Pergunta">
+                <HelpCircle className="size-4" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => addNode("result")} title="Novo Resultado">
+                <CheckCircle className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
         
         <div className="space-y-2 overflow-y-auto max-h-[600px] pr-2">
@@ -94,7 +97,7 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
           <Card className="h-full border-primary/20 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between py-4">
               <CardTitle className="text-base">Editar {activeNode.type === "question" ? "Pergunta" : "Resultado"}</CardTitle>
-              {activeNode.id !== value.startNodeId && (
+              {activeNode.id !== value.startNodeId && !isReadOnly && (
                 <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeNode(activeNode.id)}>
                   <Trash2 className="size-4" />
                 </Button>
@@ -114,6 +117,7 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
                       value={activeNode.text} 
                       onChange={(e) => updateNode(activeNode.id, { text: e.target.value })}
                       placeholder="Ex: O HD é interno?"
+                      disabled={isReadOnly}
                     />
                   </div>
 
@@ -130,6 +134,7 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
                               updateNode(activeNode.id, { answers: newAns });
                             }}
                             placeholder="Rótulo (ex: Sim)"
+                            disabled={isReadOnly}
                           />
                           <select 
                             className="w-full flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -139,6 +144,7 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
                               newAns[idx].nextNodeId = e.target.value;
                               updateNode(activeNode.id, { answers: newAns });
                             }}
+                            disabled={isReadOnly}
                           >
                             <option value="">Selecione o próximo nó...</option>
                             {value.nodes.filter(n => n.id !== activeNode.id).map(n => (
@@ -156,23 +162,25 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
                             const newAns = activeNode.answers.filter((_, i) => i !== idx);
                             updateNode(activeNode.id, { answers: newAns });
                           }}
-                          disabled={activeNode.answers.length <= 1}
+                          disabled={activeNode.answers.length <= 1 || isReadOnly}
                         >
                           <Trash2 className="size-4" />
                         </Button>
                       </div>
                     ))}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full dashed border-dashed"
-                      onClick={() => {
-                        const newAns = [...activeNode.answers, { label: "", nextNodeId: "" }];
-                        updateNode(activeNode.id, { answers: newAns });
-                      }}
-                    >
-                      <Plus className="size-4 mr-2" /> Adicionar Resposta
-                    </Button>
+                    {!isReadOnly && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full dashed border-dashed"
+                        onClick={() => {
+                          const newAns = [...activeNode.answers, { label: "", nextNodeId: "" }];
+                          updateNode(activeNode.id, { answers: newAns });
+                        }}
+                      >
+                        <Plus className="size-4 mr-2" /> Adicionar Resposta
+                      </Button>
+                    )}
                   </div>
                 </>
               ) : (
@@ -183,6 +191,7 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
                       value={activeNode.title} 
                       onChange={(e) => updateNode(activeNode.id, { title: e.target.value })}
                       placeholder="Ex: Procedimento Indicado"
+                      disabled={isReadOnly}
                     />
                   </div>
                   <div className="space-y-2">
@@ -192,6 +201,7 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
                       onChange={(e) => updateNode(activeNode.id, { instruction: e.target.value })}
                       placeholder="Descreva o passo a passo..."
                       className="min-h-[150px]"
+                      disabled={isReadOnly}
                     />
                   </div>
                   <div className="space-y-2">
@@ -200,6 +210,7 @@ export function DecisionTreeEditor({ value, onChange }: DecisionTreeEditorProps)
                       value={activeNode.reason || ""} 
                       onChange={(e) => updateNode(activeNode.id, { reason: e.target.value })}
                       placeholder="Por que seguir este caminho?"
+                      disabled={isReadOnly}
                     />
                   </div>
                 </>
