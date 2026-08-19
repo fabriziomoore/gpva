@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, FileText, AlertCircle, ArrowRight, User } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Plus, Search, FileText, AlertCircle, ArrowRight, User, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { format } from "date-fns";
@@ -12,6 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useAuthSession } from "@/hooks/use-auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ProcedureForm } from "@/components/procedures/ProcedureForm";
+import { toast } from "sonner";
+import { newId } from "@/lib/db/local-db";
 
 export const Route = createFileRoute("/_authenticated/leader-procedures")({
   component: LeaderProceduresPage,
