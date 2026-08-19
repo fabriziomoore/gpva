@@ -1,4 +1,4 @@
-# Plano de Implementação — FASE 1: Biblioteca de Procedimentos Operacionais (Revisado)
+# Plano de Implementação — FASE 1: Biblioteca de Procedimentos Operacionais (Revisado Final)
 
 Este plano estabelece a infraestrutura inicial para o módulo de Procedimentos, permitindo que líderes gerenciem árvores de decisão determinísticas com versionamento imutável e auditoria completa.
 
@@ -14,81 +14,101 @@ Os seguintes componentes e sistemas estão fora do escopo desta fase e não sofr
 - Sistema atual de autenticação e `capacitor.config.ts`
 - Pastas `mobile/**` e `android/**`
 - Outbox atual e fluxos de expediente (iniciar/continuar)
-- Tabelas operacionais: `servicos`, `expedientes`, `equipes`, etc.
+- Tabelas operacionais: `servicos`, `expedientes`, `equipes`, `vinculos_complementos`, `impactos_expediente`, `active_sessions`, `catalog_order`.
 
-## 2. Modelo de Dados e Imutabilidade
-O sistema será dividido entre identidade lógica e conteúdo operacional.
-- **procedimentos**: Armazena a identidade (título, categoria, setor).
-- **procedimento_versoes**: Armazena o conteúdo operacional versionado (JSONB da árvore, vigência, status).
+## 2. Modelo de Dados e Preservação Histórica
+O sistema será dividido entre identidade lógica e conteúdo operacional versionado.
 
-### Regras de Imutabilidade e Histórico:
-- Versões com status `published` são **IMUTÁVEIS**. Não permitem edição de árvore, vigência ou conteúdo.
-- Mudanças operacionais exigem a criação de uma **NOVA VERSÃO**.
-- **DELETE físico proibido** para versões publicadas. Uso de status `suspended` ou `archived` para histórico.
-- **Auditoria**: Cada versão registra `created_by_id`, `updated_at`, `published_by_id` e `published_at`.
+### Tabelas (Supabase):
+- **procedimentos**: Identidade lógica estável.
+- **procedimento_versoes**: Metadados versionáveis e conteúdo operacional (JSONB). Toda informação que define o significado da orientação é armazenada aqui.
 
-## 3. Estrutura de Banco de Dados (Supabase)
+### Regras de Imutabilidade e Transições:
+- **Campos Operacionais Imutáveis** (após `published`): `procedimento_id`, `versao`, `titulo`, `categoria`, `descricao`, `setor`, `vigencia_inicio`, `fonte`, `arvore_decisao`. Bloqueio via Trigger no Postgres.
+- **Transições de Estado**: Permitidas apenas `published` → `suspended`, `published` → `archived`, `suspended` → `archived`.
+- **Auditoria**: Registros de quem criou, quem publicou e quem alterou o estado (com timestamps).
+- **Delete Físico**: Proibido para qualquer versão publicada.
+
 ```sql
-CREATE TYPE public.procedimento_status AS ENUM ('draft', 'published', 'suspended', 'archived');
-
-CREATE TABLE public.procedimentos (
+CREATE TABLE public.procedimento_versoes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    titulo TEXT NOT NULL,
+    procedimento_id UUID REFERENCES public.procedimentos(id) NOT NULL,
+    versao INTEGER NOT NULL,
+    titulo TEXT NOT NULL, -- Metadados versionados
     categoria TEXT NOT NULL,
     descricao TEXT,
     setor TEXT,
-    responsavel_id UUID REFERENCES auth.users(id) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE public.procedimento_versoes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    procedimento_id UUID REFERENCES public.procedimentos(id) ON DELETE RESTRICT NOT NULL,
-    versao INTEGER NOT NULL,
     status public.procedimento_status NOT NULL DEFAULT 'draft',
     vigencia_inicio TIMESTAMPTZ NOT NULL,
     vigencia_fim TIMESTAMPTZ,
     fonte TEXT,
     arvore_decisao JSONB NOT NULL,
-    substitui_versao_id UUID REFERENCES public.procedimento_versoes(id),
     criado_por_id UUID REFERENCES auth.users(id) NOT NULL,
     publicado_por_id UUID REFERENCES auth.users(id),
+    status_alterado_por_id UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
     published_at TIMESTAMPTZ,
-    UNIQUE(procedimento_id, versao)
+    status_updated_at TIMESTAMPTZ
 );
 ```
 
-## 4. Segurança e RLS
+## 3. Segurança e RLS
 Integração com o sistema de papéis existente:
-- **EQUIPE**: `SELECT` apenas de versões `published` e vigentes. `INSERT/UPDATE/DELETE` bloqueados.
-- **LÍDER**: `SELECT` amplo; `INSERT` de novos procedimentos e rascunhos; `UPDATE` restrito a rascunhos; Proibição de `UPDATE/DELETE` em versões `published` via RLS/Triggers.
-- **ADMIN**: Gestão administrativa preservando histórico.
+- **EQUIPE**: `SELECT` apenas de versões `published` e vigentes. Bloqueio total de `INSERT/UPDATE/DELETE`.
+- **LÍDER**: Gestão de rascunhos e publicação. Bloqueio de `UPDATE/DELETE` em conteúdo publicado via Trigger.
+- **ADMIN**: Gestão administrativa total respeitando imutabilidade operacional.
 
-## 5. Validação da Árvore de Decisão
-Antes da publicação, o sistema validará:
-- Existência de `startNodeId` único.
-- Integridade de `nextNodeId` (sempre aponta para nó existente).
-- Perguntas com opções e Resultados com instruções.
-- Ausência de caminhos sem saída ou ciclos infinitos inválidos.
-- Garantia de que todo caminho leva a um nó `result`.
+## 4. Validação da Árvore
+Validação rigorosa antes da publicação:
+- `startNodeId` válido e IDs únicos.
+- Referências íntegras para `nextNodeId`.
+- Perguntas com respostas e Resultados com instruções.
+- Garantia de terminação (caminhos alcançáveis levam a um nó `result`).
 
-## 6. Interface do Líder
-- **Nova Rota**: `src/routes/_authenticated/leader-procedures.tsx`.
-- **Componentes**: `ProcedureList` (filtros por status), `ProcedureForm`, `DecisionTreeEditor`.
-- **SideMenu**: Inclusão do link "Procedimentos" visível apenas para líderes.
+## 5. Interface do Líder
+- Rota: `src/routes/_authenticated/leader-procedures.tsx`.
+- Componentes: `ProcedureList` (filtros), `ProcedureForm`, `DecisionTreeEditor`.
+- SideMenu: Link visível apenas para líderes.
 
-## 7. Testes OBRIGATÓRIOS de Não Regressão
-1. Login de equipe (online/offline).
-2. Integridade da Home da equipe e fluxos de expediente.
-3. Lançamento de serviços e funcionamento da Outbox.
-4. Status de conectividade e `SyncIndicator`.
-5. Isolamento RLS (Equipe não edita/Líder não sobrescreve publicado).
-6. Criação/Edição de rascunhos e Publicação de novas versões.
-7. Preservação de versões anteriores e histórico.
+## 6. Testes OBRIGATÓRIOS de Não Regressão
+1. Login de equipe online.
+2. Login de equipe offline.
+3. Restauração da sessão offline.
+4. Home da equipe permanece intacta.
+5. Iniciar expediente.
+6. Continuar expediente.
+7. Lançar serviço.
+8. Finalizar serviço.
+9. Funcionamento da Dexie atual.
+10. Outbox permanece intacta.
+11. Itens pendentes continuam sincronizando.
+12. NetworkService permanece intacto.
+13. Detecção online continua funcionando.
+14. Detecção offline continua funcionando.
+15. backendReachable continua funcionando.
+16. Alerta visual de offline continua funcionando.
+17. Alerta de retorno online continua funcionando.
+18. SyncIndicator continua funcionando.
+19. Nenhuma alteração em capacitor.config.ts.
+20. Nenhum arquivo de mobile/** alterado.
+21. Nenhum arquivo de android/** alterado.
+22. Equipe não visualiza gestão de Procedimentos.
+23. Líder visualiza gestão de Procedimentos.
+24. Líder cria rascunho.
+25. Líder edita rascunho.
+26. Líder publica rascunho válido.
+27. Árvore inválida não pode ser publicada.
+28. Versão publicada não pode ter conteúdo sobrescrito.
+29. Alteração operacional gera nova versão.
+30. Versão anterior permanece íntegra.
+31. Equipe não consegue INSERT.
+32. Equipe não consegue UPDATE.
+33. Equipe não consegue DELETE.
+34. Equipe consegue SELECT somente do que estiver publicado e vigente.
+35. Líder respeita as regras de RLS.
+36. RLS está habilitado nas novas tabelas.
+37. Transição de published para suspended não altera conteúdo.
+38. Histórico continua íntegro depois da suspensão/arquivamento.
 
-## 8. Escopo da Fase 1
-Exclusivamente infraestrutura e gestão por líderes. **NÃO** implementar assistente na home, integração com OS, cache offline de procedimentos ou IA nesta fase.
-
+## 7. Escopo da Fase 1
+Exclusivamente infraestrutura e gestão. **NÃO** implementar assistente na home, integração com OS, cache offline ou IA.
