@@ -32,6 +32,8 @@ function LeaderProceduresPage() {
   const isLeader = useIsLeader(userId);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: procedures, isLoading, error: queryError } = useQuery({
     queryKey: ["leader-procedures", activeTab, searchTerm],
@@ -60,6 +62,50 @@ function LeaderProceduresPage() {
       return data;
     },
     enabled: !!userId && !!isLeader.data,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async ({ metadata, versionData }: { metadata: any; versionData: any }) => {
+      if (!userId) throw new Error("Usuário não autenticado");
+
+      // 1. Criar a identidade lógica (procedimento)
+      const procId = newId();
+      const { error: procError } = await supabase
+        .from("procedimentos")
+        .insert({
+          id: procId,
+          nome_logico: metadata.titulo.toLowerCase().replace(/\s+/g, "_"),
+          created_by: userId,
+        });
+
+      if (procError) throw procError;
+
+      // 2. Criar a primeira versão
+      const { error: verError } = await supabase
+        .from("procedimento_versoes")
+        .insert({
+          procedimento_id: procId,
+          titulo: metadata.titulo,
+          descricao: metadata.descricao,
+          versao: 1,
+          status: "draft",
+          arvore_decisao: versionData.arvore_decisao,
+          vigencia_inicio: metadata.vigencia_inicio,
+          vigencia_fim: metadata.vigencia_fim || null,
+          created_by: userId,
+        });
+
+      if (verError) throw verError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
+      toast.success("Procedimento criado com sucesso!");
+      setIsCreateDialogOpen(false);
+    },
+    onError: (error: any) => {
+      console.error("Erro ao criar procedimento:", error);
+      toast.error(`Falha ao criar procedimento: ${error.message}`);
+    },
   });
 
   if (!isLeader.data && !isLeader.isLoading) {
@@ -107,11 +153,35 @@ function LeaderProceduresPage() {
             Gestão da biblioteca de procedimentos operacionais.
           </p>
         </div>
-        <Button size="lg" className="shrink-0 gap-2 shadow-lg hover:shadow-xl transition-all">
+        <Button 
+          size="lg" 
+          className="shrink-0 gap-2 shadow-lg hover:shadow-xl transition-all"
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
           <Plus className="size-5" />
           Novo Procedimento
         </Button>
       </div>
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Novo Procedimento Operacional</DialogTitle>
+            <DialogDescription>
+              Defina os metadados e o fluxograma de decisão para a primeira versão.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <ProcedureForm 
+              onSubmit={async (metadata, versionData) => {
+                await createMutation.mutateAsync({ metadata, versionData });
+              }}
+              isSubmitting={createMutation.isPending}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+...
 
       <Card className="mb-8 border-primary/10 shadow-sm bg-card/50 backdrop-blur-sm">
         <CardContent className="pt-6">
