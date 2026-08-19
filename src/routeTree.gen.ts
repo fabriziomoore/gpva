@@ -19,6 +19,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedLeaderRankingRouteImport } from './routes/_authenticated/leader-ranking'
+import { Route as AuthenticatedLeaderProceduresRouteImport } from './routes/_authenticated/leader-procedures'
 import { Route as AuthenticatedLeaderMapRouteImport } from './routes/_authenticated/leader-map'
 import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
 import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
@@ -75,6 +76,12 @@ const AuthenticatedLeaderRankingRoute =
     path: '/leader-ranking',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedLeaderProceduresRoute =
+  AuthenticatedLeaderProceduresRouteImport.update({
+    id: '/leader-procedures',
+    path: '/leader-procedures',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLeaderMapRoute = AuthenticatedLeaderMapRouteImport.update({
   id: '/leader-map',
   path: '/leader-map',
@@ -105,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/leader': typeof AuthenticatedLeaderRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/leader-map': typeof AuthenticatedLeaderMapRoute
+  '/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
   '/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
   '/leader': typeof AuthenticatedLeaderRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/leader-map': typeof AuthenticatedLeaderMapRoute
+  '/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
   '/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/productivity': typeof AuthenticatedProductivityRoute
@@ -136,6 +145,7 @@ export interface FileRoutesById {
   '/_authenticated/leader': typeof AuthenticatedLeaderRoute
   '/_authenticated/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/_authenticated/leader-map': typeof AuthenticatedLeaderMapRoute
+  '/_authenticated/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
   '/_authenticated/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/leader'
     | '/leader-config'
     | '/leader-map'
+    | '/leader-procedures'
     | '/leader-ranking'
     | '/onboarding'
     | '/productivity'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/leader'
     | '/leader-config'
     | '/leader-map'
+    | '/leader-procedures'
     | '/leader-ranking'
     | '/onboarding'
     | '/productivity'
@@ -184,6 +196,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leader'
     | '/_authenticated/leader-config'
     | '/_authenticated/leader-map'
+    | '/_authenticated/leader-procedures'
     | '/_authenticated/leader-ranking'
     | '/_authenticated/onboarding'
     | '/_authenticated/productivity'
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeaderRankingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leader-procedures': {
+      id: '/_authenticated/leader-procedures'
+      path: '/leader-procedures'
+      fullPath: '/leader-procedures'
+      preLoaderRoute: typeof AuthenticatedLeaderProceduresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leader-map': {
       id: '/_authenticated/leader-map'
       path: '/leader-map'
@@ -307,6 +327,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeaderRoute: typeof AuthenticatedLeaderRoute
   AuthenticatedLeaderConfigRoute: typeof AuthenticatedLeaderConfigRoute
   AuthenticatedLeaderMapRoute: typeof AuthenticatedLeaderMapRoute
+  AuthenticatedLeaderProceduresRoute: typeof AuthenticatedLeaderProceduresRoute
   AuthenticatedLeaderRankingRoute: typeof AuthenticatedLeaderRankingRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
@@ -321,6 +342,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLeaderRoute: AuthenticatedLeaderRoute,
   AuthenticatedLeaderConfigRoute: AuthenticatedLeaderConfigRoute,
   AuthenticatedLeaderMapRoute: AuthenticatedLeaderMapRoute,
+  AuthenticatedLeaderProceduresRoute: AuthenticatedLeaderProceduresRoute,
   AuthenticatedLeaderRankingRoute: AuthenticatedLeaderRankingRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
