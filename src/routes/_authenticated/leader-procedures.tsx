@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, FileText, AlertCircle, ArrowRight, User, X } from "lucide-react";
+import { Plus, Search, FileText, AlertCircle, ArrowRight, User } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -18,7 +18,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/DialogHeader";
 import { ProcedureForm } from "@/components/procedures/ProcedureForm";
 import { toast } from "sonner";
 import { newId } from "@/lib/db/local-db";
@@ -93,7 +93,7 @@ function LeaderProceduresPage() {
           vigencia_inicio: metadata.vigencia_inicio,
           vigencia_fim: metadata.vigencia_fim || null,
           criado_por_id: userId,
-          categoria: "Geral", // Valor padrão obrigatório
+          categoria: "Geral",
         });
 
       if (verError) throw verError;
@@ -182,7 +182,6 @@ function LeaderProceduresPage() {
           </div>
         </DialogContent>
       </Dialog>
-...
 
       <Card className="mb-8 border-primary/10 shadow-sm bg-card/50 backdrop-blur-sm">
         <CardContent className="pt-6">
