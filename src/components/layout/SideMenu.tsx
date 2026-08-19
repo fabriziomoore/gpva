@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
@@ -87,6 +87,7 @@ const leaderItems = [
   { to: "/leader" as const, label: "Painel", icon: BarChart3, exact: true },
   { to: "/leader-ranking" as const, label: "Ranking & Perfis", icon: Trophy, exact: true },
   { to: "/leader-map" as const, label: "Mapa", icon: Map, exact: true },
+  { to: "/leader-procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
   { to: "/leader-config" as const, label: "Configuração", icon: Settings, exact: false },
 ];
 
