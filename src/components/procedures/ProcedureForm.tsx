@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -256,7 +256,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
 
         {!isReadOnly && (
           <div className="flex justify-end gap-4 pt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => window.history.back()}>
+            <Button type="button" variant="outline" onClick={() => onSubmit(null, null, false)}>
               Cancelar
             </Button>
             
