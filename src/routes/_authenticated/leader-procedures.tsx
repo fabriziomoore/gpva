@@ -35,7 +35,7 @@ function LeaderProceduresPage() {
         .order("created_at", { ascending: false });
 
       if (activeTab !== "all") {
-        query = query.eq("status", activeTab);
+        query = query.eq("status", activeTab as any);
       }
 
       if (searchTerm) {
