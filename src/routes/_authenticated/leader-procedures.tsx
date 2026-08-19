@@ -28,8 +28,11 @@ export const Route = createFileRoute("/_authenticated/leader-procedures")({
 });
 
 function LeaderProceduresPage() {
-  const { userId } = useAuthSession();
-  const isLeader = useIsLeader(userId);
+  const { userId, session } = useAuthSession();
+  const userRoles = useUserRoles(userId);
+  const isLeaderOrAdmin = userRoles.data?.some(r => r === 'leader' || r === 'admin') || 
+    session?.user.user_metadata?.is_leader === true ||
+    session?.user.user_metadata?.is_admin === true;
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -61,7 +64,7 @@ function LeaderProceduresPage() {
       }
       return data;
     },
-    enabled: !!userId && !!isLeader.data,
+    enabled: !!userId && isLeaderOrAdmin,
   });
 
   const createMutation = useMutation({
@@ -109,7 +112,7 @@ function LeaderProceduresPage() {
     },
   });
 
-  if (!isLeader.data && !isLeader.isLoading) {
+  if (!isLeaderOrAdmin && !userRoles.isLoading) {
     return (
       <div className="flex h-[80vh] items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
@@ -174,8 +177,8 @@ function LeaderProceduresPage() {
           </DialogHeader>
           <div className="py-4">
             <ProcedureForm 
-              onSubmit={async (metadata, versionData) => {
-                await createMutation.mutateAsync({ metadata, versionData });
+              onSubmit={async (metadata, versionData, isPublishing) => {
+                await createMutation.mutateAsync({ metadata, versionData, isPublishing });
               }}
               isSubmitting={createMutation.isPending}
             />
@@ -217,7 +220,7 @@ function LeaderProceduresPage() {
         </Card>
       )}
 
-      {isLoading || isLeader.isLoading ? (
+      {isLoading || userRoles.isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse h-48 border-primary/5 bg-muted/20" />
