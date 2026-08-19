@@ -261,18 +261,6 @@ export function SideMenu() {
                   </Link>
                 </li>
               ))}
-              {isLeader.data === true && (
-                <li>
-                  <Link
-                    to="/leader-procedures"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:text-primary"
-                  >
-                    <FileText className="size-5" />
-                    <span>Procedimentos</span>
-                  </Link>
-                </li>
-              )}
             </ul>
             <div className="mt-4 rounded-xl border border-border bg-muted/40 p-3">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
