@@ -75,7 +75,7 @@ function LeaderProceduresPage() {
         .insert({
           id: procId,
           nome_logico: metadata.titulo.toLowerCase().replace(/\s+/g, "_"),
-          created_by: userId,
+          responsavel_id: userId,
         });
 
       if (procError) throw procError;
