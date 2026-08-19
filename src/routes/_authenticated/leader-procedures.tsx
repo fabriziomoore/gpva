@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, FileText, AlertCircle, ArrowRight, User } from "lucide-react";
+import { Plus, Search, FileText, AlertCircle, ArrowRight, User, MoreVertical, Archive, PauseCircle, PlayCircle, History, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useIsLeader } from "@/hooks/use-is-leader";
+import { useUserRoles } from "@/hooks/use-user-roles";
 import { useAuthSession } from "@/hooks/use-auth";
 import {
   Dialog,
@@ -18,7 +18,15 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { ProcedureForm } from "@/components/procedures/ProcedureForm";
 import { toast } from "sonner";
 import { newId } from "@/lib/db/local-db";
@@ -30,12 +38,16 @@ export const Route = createFileRoute("/_authenticated/leader-procedures")({
 function LeaderProceduresPage() {
   const { userId, session } = useAuthSession();
   const userRoles = useUserRoles(userId);
-  const isLeaderOrAdmin = userRoles.data?.some(r => r === 'leader' || r === 'admin') || 
+  const isLeaderOrAdmin = userRoles.data?.some((r: string) => r === 'leader' || r === 'admin') || 
     session?.user.user_metadata?.is_leader === true ||
     session?.user.user_metadata?.is_admin === true;
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingProcedure, setEditingProcedure] = useState<any>(null);
+  const [confirmPublish, setConfirmPublish] = useState<any>(null);
+  
   const queryClient = useQueryClient();
 
   const { data: procedures, isLoading, error: queryError } = useQuery({
@@ -68,38 +80,49 @@ function LeaderProceduresPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async ({ metadata, versionData }: { metadata: any; versionData: any }) => {
+    mutationFn: async ({ metadata, versionData, isPublishing }: { metadata: any; versionData: any; isPublishing: boolean }) => {
       if (!userId) throw new Error("Usuário não autenticado");
 
-      // 1. Criar a identidade lógica (procedimento)
-      const procId = newId();
-      const { error: procError } = await supabase
-        .from("procedimentos")
-        .insert({
-          id: procId,
-          nome_logico: metadata.titulo.toLowerCase().replace(/\s+/g, "_"),
-          responsavel_id: userId,
-        });
+      // 1. Usar RPC para criação atômica
+      const { data: procId, error: rpcError } = await supabase.rpc('create_procedure_with_version', {
+        p_titulo: metadata.titulo,
+        p_categoria: metadata.categoria,
+        p_descricao: metadata.descricao || null,
+        p_setor: metadata.setor,
+        p_fonte: metadata.fonte || null,
+        p_vigencia_inicio: metadata.vigencia_inicio,
+        p_vigencia_fim: metadata.vigencia_fim || null,
+        p_arvore_decisao: versionData.arvore_decisao
+      });
 
-      if (procError) throw procError;
+      if (rpcError) throw rpcError;
 
-      // 2. Criar a primeira versão
-      const { error: verError } = await supabase
-        .from("procedimento_versoes")
-        .insert({
-          procedimento_id: procId,
-          titulo: metadata.titulo,
-          descricao: metadata.descricao,
-          versao: 1,
-          status: "draft",
-          arvore_decisao: versionData.arvore_decisao,
-          vigencia_inicio: metadata.vigencia_inicio,
-          vigencia_fim: metadata.vigencia_fim || null,
-          criado_por_id: userId,
-          categoria: "Geral",
-        });
+      // 2. Se for para publicar, atualizar o status da versão recém-criada
+      if (isPublishing && procId) {
+        const { data: versions } = await supabase
+          .from("procedimento_versoes")
+          .select("id")
+          .eq("procedimento_id", procId)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        
+        const versionId = versions?.[0]?.id;
+        
+        if (versionId) {
+          const { error: pubError } = await supabase
+            .from("procedimento_versoes")
+            .update({ 
+              status: "published",
+              published_at: new Date().toISOString(),
+              publicado_por_id: userId
+            })
+            .eq("id", versionId);
+          
+          if (pubError) throw pubError;
+        }
+      }
 
-      if (verError) throw verError;
+      return procId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
@@ -109,6 +132,120 @@ function LeaderProceduresPage() {
     onError: (error: any) => {
       console.error("Erro ao criar procedimento:", error);
       toast.error(`Falha ao criar procedimento: ${error.message}`);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, metadata, versionData, isPublishing }: { id: string; metadata: any; versionData: any; isPublishing: boolean }) => {
+      if (!userId) throw new Error("Usuário não autenticado");
+
+      const updates: any = {
+        titulo: metadata.titulo,
+        categoria: metadata.categoria,
+        descricao: metadata.descricao || null,
+        setor: metadata.setor,
+        fonte: metadata.fonte || null,
+        vigencia_inicio: metadata.vigencia_inicio,
+        vigencia_fim: metadata.vigencia_fim || null,
+        arvore_decisao: versionData.arvore_decisao,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (isPublishing) {
+        updates.status = "published";
+        updates.published_at = new Date().toISOString();
+        updates.publicado_por_id = userId;
+      }
+
+      const { error } = await supabase
+        .from("procedimento_versoes")
+        .update(updates)
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
+      toast.success("Alterações salvas com sucesso!");
+      setEditingProcedure(null);
+    },
+    onError: (error: any) => {
+      toast.error(`Falha ao salvar: ${error.message}`);
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase
+        .from("procedimento_versoes")
+        .update({ 
+          status: status as any,
+          status_updated_at: new Date().toISOString(),
+          status_alterado_por_id: userId
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
+      toast.success("Status atualizado!");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
+
+  const newVersionMutation = useMutation({
+    mutationFn: async (prevVersion: any) => {
+      if (!userId) throw new Error("Usuário não autenticado");
+      
+      const { data, error } = await supabase
+        .from("procedimento_versoes")
+        .insert({
+          procedimento_id: prevVersion.procedimento_id,
+          titulo: prevVersion.titulo,
+          categoria: prevVersion.categoria,
+          descricao: prevVersion.descricao,
+          setor: prevVersion.setor,
+          fonte: prevVersion.fonte,
+          versao: prevVersion.versao + 1,
+          status: "draft",
+          arvore_decisao: prevVersion.arvore_decisao,
+          vigencia_inicio: new Date().toISOString().split('T')[0],
+          substitui_versao_id: prevVersion.id,
+          criado_por_id: userId,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
+      toast.success("Nova versão draft criada!");
+      setEditingProcedure(data);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
+
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("procedimento_versoes")
+        .delete()
+        .eq("id", id)
+        .eq("status", "draft");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
+      toast.success("Rascunho excluído.");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro: ${error.message}`);
     },
   });
 
@@ -138,7 +275,7 @@ function LeaderProceduresPage() {
       case "draft":
         return <Badge variant="secondary">Rascunho</Badge>;
       case "published":
-        return <Badge className="bg-green-500 hover:bg-green-600">Publicado</Badge>;
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white">Publicado</Badge>;
       case "suspended":
         return <Badge variant="destructive">Suspenso</Badge>;
       case "archived":
@@ -167,6 +304,7 @@ function LeaderProceduresPage() {
         </Button>
       </div>
 
+      {/* Dialog para Novo Procedimento */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -178,11 +316,81 @@ function LeaderProceduresPage() {
           <div className="py-4">
             <ProcedureForm 
               onSubmit={async (metadata, versionData, isPublishing) => {
-                await createMutation.mutateAsync({ metadata, versionData, isPublishing });
+                if (isPublishing) {
+                  setConfirmPublish({ metadata, versionData, isNew: true });
+                } else {
+                  await createMutation.mutateAsync({ metadata, versionData, isPublishing: false });
+                }
               }}
               isSubmitting={createMutation.isPending}
             />
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Edição / Visualização */}
+      <Dialog open={!!editingProcedure} onOpenChange={(open) => !open && setEditingProcedure(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProcedure?.status === 'draft' ? 'Editar Rascunho' : 'Visualizar Procedimento'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingProcedure?.status === 'draft' 
+                ? 'Altere o conteúdo do rascunho antes de publicar.' 
+                : 'Versões publicadas são imutáveis. Crie uma nova versão para fazer alterações.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <ProcedureForm 
+              initialData={editingProcedure}
+              isReadOnly={editingProcedure?.status !== 'draft'}
+              onSubmit={async (metadata, versionData, isPublishing) => {
+                if (isPublishing) {
+                  setConfirmPublish({ id: editingProcedure.id, metadata, versionData, isNew: false });
+                } else {
+                  await updateMutation.mutateAsync({ 
+                    id: editingProcedure.id, 
+                    metadata, 
+                    versionData, 
+                    isPublishing: false 
+                  });
+                }
+              }}
+              isSubmitting={updateMutation.isPending}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Publicação */}
+      <Dialog open={!!confirmPublish} onOpenChange={(open) => !open && setConfirmPublish(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Publicação</DialogTitle>
+            <DialogDescription>
+              Você está prestes a publicar esta versão. Uma vez publicada, o conteúdo será imutável e ficará disponível para as equipes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmPublish(null)}>
+              Revisar mais
+            </Button>
+            <Button 
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={async () => {
+                const { id, metadata, versionData, isNew } = confirmPublish;
+                setConfirmPublish(null);
+                if (isNew) {
+                  await createMutation.mutateAsync({ metadata, versionData, isPublishing: true });
+                } else {
+                  await updateMutation.mutateAsync({ id, metadata, versionData, isPublishing: true });
+                }
+              }}
+            >
+              Confirmar e Publicar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -240,34 +448,112 @@ function LeaderProceduresPage() {
             <Card key={proc.id} className="group overflow-hidden border-primary/10 hover:border-primary/30 transition-all hover:shadow-md bg-card/40 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start gap-2 mb-2">
-                  {getStatusBadge(proc.status)}
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                    v{proc.versao}
-                  </span>
+                  <div className="flex gap-2 items-center">
+                    {getStatusBadge(proc.status)}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                      v{proc.versao}
+                    </span>
+                  </div>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditingProcedure(proc)}>
+                        {proc.status === 'draft' ? (
+                          <>
+                            <ArrowRight className="size-4 mr-2" />
+                            Editar Rascunho
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="size-4 mr-2" />
+                            Visualizar
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      
+                      {proc.status === 'published' && (
+                        <>
+                          <DropdownMenuItem onClick={() => newVersionMutation.mutate(proc)}>
+                            <History className="size-4 mr-2" />
+                            Criar nova versão
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-amber-600"
+                            onClick={() => statusMutation.mutate({ id: proc.id, status: 'suspended' })}
+                          >
+                            <PauseCircle className="size-4 mr-2" />
+                            Suspender
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => statusMutation.mutate({ id: proc.id, status: 'archived' })}
+                          >
+                            <Archive className="size-4 mr-2" />
+                            Arquivar
+                          </DropdownMenuItem>
+                        </>
+                      )}
+
+                      {proc.status === 'suspended' && (
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => statusMutation.mutate({ id: proc.id, status: 'archived' })}
+                        >
+                          <Archive className="size-4 mr-2" />
+                          Arquivar
+                        </DropdownMenuItem>
+                      )}
+
+                      {proc.status === 'draft' && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => {
+                              if (confirm("Tem certeza que deseja excluir este rascunho?")) {
+                                deleteDraftMutation.mutate(proc.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="size-4 mr-2" />
+                            Excluir Rascunho
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors">{proc.titulo}</CardTitle>
-                <CardDescription className="line-clamp-2 min-h-[2.5rem] mt-1">
+                <CardDescription className="line-clamp-2 min-h-[2.5rem] mt-1 text-xs">
                   {proc.descricao || "Sem descrição informada."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
-                    <User className="size-3.5 shrink-0" />
-                    <span className="truncate">Versão: {proc.versao}</span>
-                  </div>
-                  
-                  <div className="flex flex-col gap-1.5 pt-2">
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
-                      <span>Vigência</span>
-                      <span className="font-semibold text-foreground/80">
-                        {format(new Date(proc.vigencia_inicio), "dd/MM/yy", { locale: ptBR })}
-                        {proc.vigencia_fim && ` — ${format(new Date(proc.vigencia_fim), "dd/MM/yy", { locale: ptBR })}`}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
+                    <span>Vigência</span>
+                    <span className="font-semibold text-foreground/80">
+                      {format(new Date(proc.vigencia_inicio), "dd/MM/yy", { locale: ptBR })}
+                      {proc.vigencia_fim && ` — ${format(new Date(proc.vigencia_fim), "dd/MM/yy", { locale: ptBR })}`}
+                    </span>
                   </div>
 
-                  <Button variant="secondary" className="w-full mt-2 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className="text-[9px] font-normal">{proc.categoria}</Badge>
+                    <Badge variant="outline" className="text-[9px] font-normal truncate">{proc.setor}</Badge>
+                  </div>
+
+                  <Button 
+                    variant="secondary" 
+                    className="w-full mt-2 group-hover:bg-primary group-hover:text-primary-foreground transition-all"
+                    onClick={() => setEditingProcedure(proc)}
+                  >
                     Gerenciar
                     <ArrowRight className="size-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
