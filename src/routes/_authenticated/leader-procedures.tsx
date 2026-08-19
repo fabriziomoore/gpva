@@ -23,7 +23,7 @@ function LeaderProceduresPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
 
-  const { data: procedures, isLoading } = useQuery({
+  const { data: procedures, isLoading, error: queryError } = useQuery({
     queryKey: ["leader-procedures", activeTab, searchTerm],
     queryFn: async () => {
       let query = supabase
@@ -43,13 +43,16 @@ function LeaderProceduresPage() {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching procedures:", error);
+        throw error;
+      }
       return data;
     },
-    enabled: !!userId,
+    enabled: !!userId && !!isLeader.data,
   });
 
-  if (!isLeader.data) {
+  if (!isLeader.data && !isLeader.isLoading) {
     return (
       <div className="flex h-[80vh] items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
@@ -125,7 +128,16 @@ function LeaderProceduresPage() {
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {queryError && (
+        <Card className="mb-8 border-destructive/20 bg-destructive/5">
+          <CardContent className="pt-6 text-destructive flex items-center gap-3">
+            <AlertCircle className="size-5" />
+            <p>Erro ao carregar dados: {(queryError as any).message || "Erro desconhecido"}. Verifique se as tabelas foram criadas no banco.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading || isLeader.isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse h-48 border-primary/5 bg-muted/20" />
