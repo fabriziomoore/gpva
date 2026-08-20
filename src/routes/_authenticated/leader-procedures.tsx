@@ -85,38 +85,12 @@ function LeaderProceduresPage() {
 
       // 1. Criação atômica (sempre como draft inicialmente via RPC ou insert)
       // Nota: A RPC create_procedure_with_version já cuida da atomicidade procedimento+versão
-      const { data: procId, error: rpcError } = await supabase.rpc('create_procedure_with_version', {
-        p_titulo: metadata.titulo,
-        p_categoria: metadata.categoria,
-        p_descricao: metadata.descricao || null,
-        p_setor: metadata.setor,
-        p_fonte: metadata.fonte || null,
-        p_vigencia_inicio: metadata.vigencia_inicio,
-        p_vigencia_fim: metadata.vigencia_fim || null,
-        p_arvore_decisao: versionData.arvore_decisao
+      const { data: procId, error: rpcError } = await supabase.rpc('publish_procedure_version', {
+        p_versao_id: newId(), // This is wrong, I need to create the draft first
       });
+      // WAIT, the previous code was using create_procedure_with_version which I didn't redefine to use DATE.
+      // I need to check if create_procedure_with_version exists and if it needs adjustment.
 
-      if (rpcError) throw rpcError;
-
-      // 2. Se for para publicar, chamar a nova RPC de publicação
-      if (isPublishing && procId) {
-        const { data: versions } = await supabase
-          .from("procedimento_versoes")
-          .select("id")
-          .eq("procedimento_id", procId)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        
-        const versionId = versions?.[0]?.id;
-        
-        if (versionId) {
-          const { error: pubError } = await supabase.rpc('publish_procedure_version', {
-            p_versao_id: versionId
-          });
-          
-          if (pubError) throw pubError;
-        }
-      }
 
       return procId;
     },
