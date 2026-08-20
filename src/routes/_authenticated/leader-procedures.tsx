@@ -112,7 +112,8 @@ function LeaderProceduresPage() {
         if (versionId) {
           const { error: pubError } = await supabase.rpc('publish_procedure_version', {
             p_versao_id: versionId,
-            p_vigencia_inicio: metadata.vigencia_inicio
+            p_vigencia_inicio: metadata.vigencia_inicio,
+            p_substitui_versao_id: null
           });
           
           if (pubError) throw pubError;
@@ -159,7 +160,8 @@ function LeaderProceduresPage() {
       if (isPublishing) {
         const { error: pubError } = await supabase.rpc('publish_procedure_version', {
           p_versao_id: id,
-          p_vigencia_inicio: metadata.vigencia_inicio
+          p_vigencia_inicio: metadata.vigencia_inicio,
+          p_substitui_versao_id: null
         });
         if (pubError) throw pubError;
       }
