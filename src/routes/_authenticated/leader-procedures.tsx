@@ -111,12 +111,14 @@ function LeaderProceduresPage() {
         
         if (versionId) {
           const { error: pubError } = await supabase.rpc('publish_procedure_version', {
-            p_versao_id: versionId
+            p_versao_id: versionId,
+            p_vigencia_inicio: metadata.vigencia_inicio
           });
           
           if (pubError) throw pubError;
         }
       }
+
 
       return procId;
     },
@@ -156,7 +158,8 @@ function LeaderProceduresPage() {
       // Se for para publicar, chama a RPC
       if (isPublishing) {
         const { error: pubError } = await supabase.rpc('publish_procedure_version', {
-          p_versao_id: id
+          p_versao_id: id,
+          p_vigencia_inicio: metadata.vigencia_inicio
         });
         if (pubError) throw pubError;
       }
