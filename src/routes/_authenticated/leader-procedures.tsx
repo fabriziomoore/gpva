@@ -112,7 +112,8 @@ function LeaderProceduresPage() {
         if (versionId) {
           const { error: pubError } = await supabase.rpc('publish_procedure_version', {
             p_versao_id: versionId,
-            p_vigencia_inicio: metadata.vigencia_inicio
+            p_vigencia_inicio: metadata.vigencia_inicio,
+            p_substitui_versao_id: undefined as any // Suporte à nova assinatura
           });
           
           if (pubError) throw pubError;
@@ -159,7 +160,8 @@ function LeaderProceduresPage() {
       if (isPublishing) {
         const { error: pubError } = await supabase.rpc('publish_procedure_version', {
           p_versao_id: id,
-          p_vigencia_inicio: metadata.vigencia_inicio
+          p_vigencia_inicio: metadata.vigencia_inicio,
+          p_substitui_versao_id: undefined as any
         });
         if (pubError) throw pubError;
       }
@@ -551,8 +553,8 @@ function LeaderProceduresPage() {
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
                     <span>Vigência</span>
                     <span className="font-semibold text-foreground/80">
-                      {format(new Date(proc.vigencia_inicio), "dd/MM/yy", { locale: ptBR })}
-                      {proc.vigencia_fim && ` — ${format(new Date(proc.vigencia_fim), "dd/MM/yy", { locale: ptBR })}`}
+                      {proc.vigencia_inicio.split('-').reverse().join('/')}
+                      {proc.vigencia_fim && ` — ${proc.vigencia_fim.split('-').reverse().join('/')}`}
                     </span>
                   </div>
 
