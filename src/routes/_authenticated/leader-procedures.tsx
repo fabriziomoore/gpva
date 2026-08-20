@@ -83,7 +83,8 @@ function LeaderProceduresPage() {
     mutationFn: async ({ metadata, versionData, isPublishing }: { metadata: any; versionData: any; isPublishing: boolean }) => {
       if (!userId) throw new Error("Usuário não autenticado");
 
-      // 1. Usar RPC para criação atômica
+      // 1. Criação atômica (sempre como draft inicialmente via RPC ou insert)
+      // Nota: A RPC create_procedure_with_version já cuida da atomicidade procedimento+versão
       const { data: procId, error: rpcError } = await supabase.rpc('create_procedure_with_version', {
         p_titulo: metadata.titulo,
         p_categoria: metadata.categoria,
@@ -97,7 +98,7 @@ function LeaderProceduresPage() {
 
       if (rpcError) throw rpcError;
 
-      // 2. Se for para publicar, atualizar o status da versão recém-criada
+      // 2. Se for para publicar, chamar a nova RPC de publicação
       if (isPublishing && procId) {
         const { data: versions } = await supabase
           .from("procedimento_versoes")
@@ -109,14 +110,9 @@ function LeaderProceduresPage() {
         const versionId = versions?.[0]?.id;
         
         if (versionId) {
-          const { error: pubError } = await supabase
-            .from("procedimento_versoes")
-            .update({ 
-              status: "published",
-              published_at: new Date().toISOString(),
-              publicado_por_id: userId
-            })
-            .eq("id", versionId);
+          const { error: pubError } = await supabase.rpc('publish_procedure_version', {
+            p_versao_id: versionId
+          });
           
           if (pubError) throw pubError;
         }
@@ -139,30 +135,31 @@ function LeaderProceduresPage() {
     mutationFn: async ({ id, metadata, versionData, isPublishing }: { id: string; metadata: any; versionData: any; isPublishing: boolean }) => {
       if (!userId) throw new Error("Usuário não autenticado");
 
-      const updates: any = {
-        titulo: metadata.titulo,
-        categoria: metadata.categoria,
-        descricao: metadata.descricao || null,
-        setor: metadata.setor,
-        fonte: metadata.fonte || null,
-        vigencia_inicio: metadata.vigencia_inicio,
-        vigencia_fim: metadata.vigencia_fim || null,
-        arvore_decisao: versionData.arvore_decisao,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (isPublishing) {
-        updates.status = "published";
-        updates.published_at = new Date().toISOString();
-        updates.publicado_por_id = userId;
-      }
-
+      // Atualiza o rascunho
       const { error } = await supabase
         .from("procedimento_versoes")
-        .update(updates)
-        .eq("id", id);
+        .update({
+          titulo: metadata.titulo,
+          categoria: metadata.categoria,
+          descricao: metadata.descricao || null,
+          setor: metadata.setor,
+          fonte: metadata.fonte || null,
+          vigencia_inicio: metadata.vigencia_inicio,
+          vigencia_fim: metadata.vigencia_fim || null,
+          arvore_decisao: versionData.arvore_decisao,
+        })
+        .eq("id", id)
+        .eq("status", "draft");
 
       if (error) throw error;
+
+      // Se for para publicar, chama a RPC
+      if (isPublishing) {
+        const { error: pubError } = await supabase.rpc('publish_procedure_version', {
+          p_versao_id: id
+        });
+        if (pubError) throw pubError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
@@ -176,12 +173,14 @@ function LeaderProceduresPage() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      // Bloqueia mudança para published via update direto
+      if (status === 'published') {
+        throw new Error("Publicação deve ser feita através da ação específica.");
+      }
       const { error } = await supabase
         .from("procedimento_versoes")
         .update({ 
-          status: status as any,
-          status_updated_at: new Date().toISOString(),
-          status_alterado_por_id: userId
+          status: status as any
         })
         .eq("id", id);
       if (error) throw error;
@@ -211,7 +210,7 @@ function LeaderProceduresPage() {
           versao: prevVersion.versao + 1,
           status: "draft",
           arvore_decisao: prevVersion.arvore_decisao,
-          vigencia_inicio: new Date().toISOString().split('T')[0],
+          vigencia_inicio: prevVersion.vigencia_inicio, // Mantém a da anterior para revisão
           substitui_versao_id: prevVersion.id,
           criado_por_id: userId,
         })
