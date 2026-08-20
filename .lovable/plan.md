@@ -53,29 +53,4 @@ Remover nominalmente todas as legadas. Manter apenas estas 6:
 - **Frontend**: Ajustar `leader-procedures.tsx` para formatar `YYYY-MM-DD` sem deslocamento de timezone (ex: 2026-09-15 -> 15/09/2026).
 
 ## 8. Testes Bloqueantes
-PRESERVAR A-BG. Listar individualmente:
-BH. Única assinatura RPC publish.
-BI. Sem RPC legada (uuid).
-BJ. Sem app.internal_mutation.
-BK. Sem set_config.
-BL. Sem current_setting.
-BM. RPC sem SET ROLE/RESET ROLE.
-BN. RPC OWNER = internal_proc_executor.
-BO. Trigger SECURITY INVOKER.
-BP. Trigger enxerga internal_proc_executor na RPC.
-BQ. Trigger não enxerga role interna em UPDATE normal.
-BR. Único trigger canônico.
-BS. Sem policy legada "Líderes podem editar rascunhos".
-BT. Sem draft -> published direto via RLS.
-BU. IDs duplicados JSONB rejeitados.
-BV. Publicação não muda vigencia_inicio.
-BW. Sucessão usa ID persistido no draft.
-BX. Predecessor fecha exatamente em sucessor.
-BY. Frontend sem timezone em DATE.
-BZ. Role interna sem membership de anon/auth/authenticator/service_role/leader/admin.
-CA. RPC funciona sem membership de postgres.
-CB. Types sem assinatura obsoleta.
-CC. Zona protegida intacta.
-
-## 9. Parada Obrigatória
-Se não for possível atingir o estado de OWNER/SECURITY DEFINER sem membership permanente ou GUCs: ABORTAR. NÃO IMPROVISAR.
+BH-CC: Unicidade de assinatura RPC, ausência de GUCs, Owner canônico, Whitelist de triggers (Casos A e B), Unicidade de nodes JSONB, Sucessão exata, Integridade da Zona Protegida, Membership correto, Sem timezone em DATE.
