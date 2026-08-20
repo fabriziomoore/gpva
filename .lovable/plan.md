@@ -9,7 +9,7 @@ Implementar a identidade interna dedicada com BYPASSRLS, consolidar a integridad
 - **Isolamento**: Sem membership e sem capacidade de `SET ROLE` para: `PUBLIC`, `anon`, `authenticated`, `authenticator`, `service_role`, `leader`, `admin` ou qualquer outro papel de cliente/API.
 
 ## 2. Privilégios Mínimos
-- ** internal_proc_executor**:
+- **internal_proc_executor**:
   - `GRANT SELECT, UPDATE ON public.procedimento_versoes`.
   - `GRANT SELECT ON public.procedimentos`.
   - `USAGE/EXECUTE` apenas em funções/schemas indispensáveis para `auth.uid()` e `public.has_role(...)`.
@@ -18,7 +18,7 @@ Implementar a identidade interna dedicada com BYPASSRLS, consolidar a integridad
 ## 3. Matriz de Imutabilidade (Triggers)
 - **Trilha Interna** (`current_user = 'internal_proc_executor'`):
   - **Caso A (Publicação)**: `OLD.status = draft` -> `NEW.status = published`. Somente mudam: `status`, `published_at`, `publicado_por_id`, `status_updated_at`, `status_alterado_por_id`.
-  - **Caso B (Sucessão)**: `OLD.status = published` -> `NEW.status = published`. Somente mudam: `vigencia_fim`, `status_updated_at`, `status_alterado_por_id`.
+  - **Caso B (Sucessão)**: `OLD.status = published` -> `NEW.status = published`. **ÚNICO campo que pode mudar: `vigencia_fim`**. Não alterar `status`, `status_updated_at`, `status_alterado_por_id`, `published_at`, `publicado_por_id` ou conteúdo.
 - **Trilha Normal** (`current_user != 'internal_proc_executor'`):
   - Permite `published -> suspended`, `published -> archived`, `suspended -> archived`.
   - Somente mudam: `status`, `status_updated_at`, `status_alterado_por_id`.
@@ -28,7 +28,7 @@ Implementar a identidade interna dedicada com BYPASSRLS, consolidar a integridad
 - **Migração**: Converter `vigencia_inicio` e `vigencia_fim` para `DATE`.
 - **Conversão**: Usar `AT TIME ZONE 'America/Sao_Paulo'` para preservar a data civil.
 - **Consultas**: Usar `CURRENT_DATE`.
-- **Sucessão**: `V1.vigencia_fim = V2.vigencia_inicio`.
+- **Sucessão**: `V1.vigencia_fim = V2.vigencia_inicio`. (Ex: V1 encerra em 2026-09-15, V2 inicia em 2026-09-15).
 - **Frontend**: Tratar `YYYY-MM-DD` diretamente sem conversão UTC.
 
 ## 5. Zona Protegida (PROIBIDO ALTERAR)
@@ -88,6 +88,10 @@ Implementar a identidade interna dedicada com BYPASSRLS, consolidar a integridad
 - **AX.** V2 ativa em 2026-09-15.
 - **AY.** Sucessão não cria lacuna entre V1 e V2.
 - **AZ.** Frontend não usa conversão UTC para campos DATE de Procedimentos.
+- **BA.** Durante sucessão V1 published → V1 published com fechamento de vigencia_fim, somente vigencia_fim é alterado; status_updated_at e status_alterado_por_id permanecem exatamente iguais.
 
 ## Nota de Execução
-Caso existam limitações no ambiente para a criação da ROLE, BYPASSRLS ou conversão segura para DATE, a execução será interrompida e reportada.
+- **OWNER da RPC** = `internal_proc_executor`.
+- Se o ambiente impedir esse ownership, a execução será interrompida e reportada.
+- Criar somente **NOVA migration**; não editar migrations aplicadas.
+- Não improvisar.
