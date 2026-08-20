@@ -47,7 +47,10 @@ Após a migration, a conformidade deve ser verificada via consultas de metadados
 -   `has_table_privilege('internal_proc_executor', 'public.procedimento_versoes', 'INSERT')` deve ser `false`.
 -   `has_table_privilege('internal_proc_executor', 'public.procedimento_versoes', 'DELETE')` deve ser `false`.
 -   `has_column_privilege('internal_proc_executor', 'public.procedimentos', 'id', 'UPDATE')` deve ser `true`.
--   `has_column_privilege('internal_proc_executor', 'public.procedimentos', 'team_id', 'UPDATE')` deve ser `false` (ou qualquer outra coluna que não seja `id`).
+-   `has_column_privilege('internal_proc_executor', 'public.procedimentos', 'nome_logico', 'UPDATE')` deve ser `false`.
+-   `has_column_privilege('internal_proc_executor', 'public.procedimentos', 'responsavel_id', 'UPDATE')` deve ser `false`.
+-   `has_column_privilege('internal_proc_executor', 'public.procedimentos', 'created_at', 'UPDATE')` deve ser `false`.
+-   `has_column_privilege('internal_proc_executor', 'public.procedimentos', 'updated_at', 'UPDATE')` deve ser `false`.
 
 ---
 **ESTADO: AGUARDANDO APROVAÇÃO**
