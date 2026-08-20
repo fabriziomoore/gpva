@@ -1,52 +1,83 @@
-# Plano de Correção Cirúrgica — Fase 1A (Reforço de Integridade)
+# Plano de Correção Cirúrgica — Fase 1A (Reforço de Integridade e Segurança)
 
 ## Objetivo
-Corrigir falhas estruturais de segurança e integridade na implementação da Biblioteca de Procedimentos, eliminando o uso de flags de sessão (GUC) para autorização, fechando brechas na RLS e garantindo validações rigorosas no backend via RPC e Triggers.
+Reforçar a integridade do sistema de procedimentos, eliminando vulnerabilidades de autorização baseadas em GUC, corrigindo falhas na RLS e garantindo sucessão cronológica perfeita via backend.
 
-## 1. Segurança e Autorização (Remoção de GUC)
-- **Eliminar `app.internal_mutation`**: Remover qualquer dependência de `set_config` ou `current_setting` para autorizar alterações.
-- **Autorização Estrutural**: A exceção para permitir que o backend feche a `vigencia_fim` de uma versão substituída será feita através de um mecanismo PostgreSQL interno (trigger que verifica se a operação é originada de uma função SECURITY DEFINER específica ou contexto de transação protegido).
-- **Hardening da RPC**:
-  - `REVOKE ALL ON FUNCTION publish_procedure_version FROM PUBLIC, anon;`
-  - `GRANT EXECUTE ON FUNCTION publish_procedure_version TO authenticated;`
-  - Verificação interna de role (`leader` ou `admin`) via `public.has_role(auth.uid(), ...)`.
+## 1. Autorização Interna Estrutural
+- **Mecanismo de Segurança**: Criar um papel interno PostgreSQL `internal_proc_executor` sem permissão de LOGIN.
+- **Isolamento**: As permissões de `authenticated` e `anon` serão explicitamente negadas para este papel (`NOINHERIT`). Ninguém poderá fazer `SET ROLE internal_proc_executor` exceto através do contexto de execução da RPC `SECURITY DEFINER`.
+- **Implementação**:
+  - A RPC `publish_procedure_version` será `SECURITY DEFINER` e pertencerá a um superuser ou ao owner da tabela, executando com o contexto necessário.
+  - O trigger de imutabilidade verificará `SESSION_USER` vs `CURRENT_USER`. Se `CURRENT_USER` for o owner do banco/papel interno e `SESSION_USER` for o usuário logado, o trigger permitirá a alteração EXCLUSIVA do campo `vigencia_fim` durante a sucessão.
+  - **Proibição Absoluta**: Sem `set_config`, `current_setting`, ou qualquer flag de sessão.
 
 ## 2. RLS e Controle de Status
-- **Consolidação de Políticas**: Remover políticas duplicadas. Criar uma política única e canônica para `procedimento_versoes`:
-  - `SELECT`: Líderes, Admins e Equipes (para versões publicadas).
-  - `INSERT`: Líderes e Admins (somente rascunhos).
-  - `UPDATE`: Líderes e Admins, restringindo `OLD.status = 'draft'` e `NEW.status = 'draft'`.
-  - `DELETE`: Líderes e Admins, somente se `status = 'draft'`.
-- **Bloqueio de Publicação Direta**: A política de UPDATE impedirá a mudança manual de `status` de 'draft' para qualquer outro valor. A publicação ocorrerá EXCLUSIVAMENTE via RPC.
+- **Políticas de SELECT**:
+  - **Equipe**: `USING (status = 'published' AND vigencia_inicio <= now() AND (vigencia_fim IS NULL OR vigencia_fim > now()))`.
+  - **Leader/Admin**: `USING (public.has_role(auth.uid(), 'leader') OR public.has_role(auth.uid(), 'admin'))` (Permite ver drafts, suspended, archived).
+- **Políticas de UPDATE**:
+  - **Edição de Draft**: `USING (leader/admin AND status = 'draft') WITH CHECK (leader/admin AND status = 'draft')`. (Bloqueia `draft -> published` via cliente).
+  - **Alteração de Status Não-Draft**: `USING (leader/admin AND status IN ('published', 'suspended')) WITH CHECK (leader/admin AND status IN ('suspended', 'archived'))`.
+- **Validação de Matriz de Status (Trigger)**:
+  - `published -> suspended`: OK.
+  - `published -> archived`: OK.
+  - `suspended -> archived`: OK.
+  - **Restrição**: Durante estas transições, o trigger falhará se qualquer campo operacional for alterado simultaneamente com o status.
 
-## 3. Integridade do Backend (RPC e Triggers)
-- **Validação de Árvore no PostgreSQL**: Implementar validação JSONB dentro da RPC `publish_procedure_version` para garantir:
-  - Presença de `nodes` e `startNodeId`.
-  - Consistência de links (`nextNodeId` aponta para nó existente).
-  - Presença de pelo menos um nó de resultado com instrução.
-  - Perguntas com pelo menos uma resposta.
-- **Lock Concorrente**: Utilizar `SELECT FOR UPDATE` na tabela `public.procedimentos` para serializar publicações de diferentes versões do mesmo procedimento lógico, evitando condições de corrida.
-- **Transições de Status**: Trigger para validar transições permitidas (ex: `archived` é terminal; `suspended` pode ir para `archived`).
-- **Imutabilidade**: Trigger canônico que bloqueia alterações em campos operacionais para versões não-draft, com exceção única para `vigencia_fim` via fluxo de sucessão controlado.
+## 3. Sucessão Cronológica e Vigência
+- **Sincronia Perfeita**: Ao publicar a Versão 2 (V2), se ela substituir a Versão 1 (V1), `V1.vigencia_fim` será definida exatamente como `V2.vigencia_inicio`.
+- **Sem Lacunas**: Isso garante que V1 vale até o milissegundo anterior ao início de V2.
+- **Validação**: A publicação será rejeitada se `V2.vigencia_inicio <= V1.vigencia_inicio`.
 
-## 4. Frontend (Ajustes Mínimos)
-- Preservar a lógica de criação de nova versão via `INSERT`.
-- Garantir que `statusMutation` envie apenas o campo `status` para transições permitidas (suspender/arquivar).
+## 4. Lock e Atomicidade (RPC)
+A RPC `publish_procedure_version` seguirá rigorosamente:
+1. Validar `auth.uid()` e papel `leader/admin`.
+2. Obter `procedimento_id` da versão alvo.
+3. **Lock Serializado**: `SELECT 1 FROM public.procedimentos WHERE id = v_proc_id FOR UPDATE`.
+4. Reler o estado da versão após o lock.
+5. Validar estado (`draft`) e versão substituída.
+6. Executar fechamento da versão anterior (V1.vigencia_fim = V2.vigencia_inicio).
+7. Publicar nova versão (`status = 'published'`, `published_at = now()`).
+8. Commit.
 
-## 5. Zona Protegida (NÃO ALTERAR)
-- `src/lib/sync/**`, `src/lib/offline-auth.ts`, `capacitor.config.ts`, `mobile/**`, `android/**`, tabelas operacionais existentes e suas RLS.
+## 5. Validação Backend da Árvore (JSONB)
+A RPC validará a estrutura `arvore_decisao`:
+- `jsonb_typeof(arvore_decisao) = 'object'`.
+- `nodes` existe e é `array` não vazio.
+- IDs dos nodes não vazios e únicos.
+- `startNodeId` não vazio e presente em `nodes`.
+- Pelo menos um nó com `type = 'result'`.
+- Todo nó `result` tem `instruction` não vazia.
+- Toda `question` tem `answers` array não vazio.
+- Toda `answer` tem `nextNodeId` não vazio e apontando para um nó existente na árvore.
 
-## Detalhes Técnicos (Migration 20260820_fase1a_reforco_final.sql)
-1. **Trigger de Deletar**: Reintroduzir proteção contra `DELETE` para versões `published`, `suspended` e `archived`.
-2. **Trigger de Imutabilidade**: Unificar lógica para impedir alteração de conteúdo em versões publicadas.
-3. **RPC `publish_procedure_version`**:
-   - Lock no procedimento pai.
-   - Validação da árvore.
-   - Fechamento da versão anterior (`vigencia_fim = now()`).
-   - Ativação da nova versão (`status = 'published'`, `published_at = now()`).
+## 6. Zona Protegida (PROIBIDO ALTERAR)
+- `src/lib/sync/**`, `src/lib/offline-auth.ts`, `src/lib/sync/session-backup.ts`, `src/lib/db/local-db.ts`, `src/lib/db/repos.ts`, `src/lib/db/catalogs.ts`, `src/components/layout/SyncIndicator.tsx`, `NetworkService`, stores de conectividade, diagnósticos, alertas online/offline, autenticação atual, outbox, `capacitor.config.ts`, `mobile/**`, `android/**`, Home da equipe, iniciar/continuar expediente, serviços existentes, tabelas operacionais existentes e RLS das mesmas.
 
-## Testes Bloqueantes (42–78 + Novos A-U)
-(Lista completa de testes conforme solicitado pelo usuário para garantir 100% de conformidade).
-- A. UPDATE direto draft -> published rejeitado.
-- B. RPC publica corretamente.
-- ... (demais testes da lista do usuário)
+## 7. Testes Bloqueantes
+- **A.** UPDATE direto draft -> published é rejeitado pela RLS.
+- **B.** publish_procedure_version publica draft corretamente.
+- **C.** published -> suspended funciona.
+- **D.** published -> archived funciona.
+- **E.** suspended -> archived funciona.
+- **F.** Conteúdo + mudança de status no mesmo UPDATE é rejeitado.
+- **G.** UPDATE normal de published.vigencia_fim é rejeitado.
+- **H.** Tentativa de manipular GUC não concede bypass.
+- **I.** Autorização não depende de GUC.
+- **J.** startNodeId inexistente é rejeitado no backend.
+- **K.** result sem instruction é rejeitado no backend.
+- **L.** answer sem nextNodeId é rejeitada no backend.
+- **M.** nextNodeId apontando para node inexistente é rejeitado.
+- **N.** Publicações simultâneas serializadas pelo lock no procedimento.
+- **O.** DELETE de published é rejeitado pelo trigger.
+- **P.** DELETE de suspended é rejeitado pelo trigger.
+- **Q.** DELETE de archived é rejeitado pelo trigger.
+- **R.** PUBLIC não executa RPC.
+- **S.** anon não executa RPC.
+- **T.** authenticated executa RPC, mas valida leader/admin internamente.
+- **U.** Zona protegida intacta.
+- **V.** V2 com vigência futura NÃO encerra V1 em now().
+- **W.** V1.vigencia_fim alinhada ao início de V2.
+- **X.** Sem lacuna de vigência na sucessão.
+- **Y.** Leader/admin enxergam drafts.
+- **Z.** Equipe não enxerga drafts/suspended/archived.
