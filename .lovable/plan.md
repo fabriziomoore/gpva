@@ -66,7 +66,10 @@ USING (
   (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'leader'))
   AND status = 'draft'
 )
-WITH CHECK (status = 'draft');
+WITH CHECK (
+  (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'leader'))
+  AND status = 'draft'
+);
 
 -- 5. Líderes e admins atualizam status histórico
 CREATE POLICY "Líderes e admins atualizam status histórico"
@@ -76,7 +79,10 @@ USING (
   (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'leader'))
   AND status IN ('published', 'suspended')
 )
-WITH CHECK (status IN ('published', 'suspended', 'archived'));
+WITH CHECK (
+  (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'leader'))
+  AND status IN ('published', 'suspended', 'archived')
+);
 
 -- 6. Líderes e admins deletam drafts
 CREATE POLICY "Líderes e admins deletam drafts"
