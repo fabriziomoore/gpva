@@ -1,42 +1,93 @@
-# Plano de Correção Cirúrgica — Fase 1A (Reforço Final e Semântica DATE)
+# Plano de Correção Cirúrgica — Fase 1A (Reforço Documental e Integridade Final)
 
 ## Objetivo
-Implementar a identidade interna dedicada com BYPASSRLS, consolidar o trigger de imutabilidade em duas trilhas (interna/API) e converter os campos de vigência de `TIMESTAMPTZ` para `DATE` para garantir precisão civil e sucessão perfeita.
+Implementar a identidade interna dedicada com BYPASSRLS, consolidar a integridade via triggers (duas trilhas) e garantir a semântica de datas civis (DATE) para vigência e sucessão perfeita de procedimentos.
 
-## 1. Identidade Interna e RPC
-- **Role Dedicada**: Criar `internal_proc_executor` com `NOLOGIN`, `NOINHERIT`, `NOSUPERUSER`, `BYPASSRLS`.
-- **Isolamento**: Sem membership para `PUBLIC`, `anon`, `authenticated`, `authenticator`, `service_role`, `leader`, `admin`.
-- **RPC `SECURITY DEFINER`**: `public.publish_procedure_version` terá `OWNER = internal_proc_executor`.
-- **BYPASSRLS**: Exclusivo para permitir a publicação (`draft -> published`) e encerramento da versão anterior ignorando a RLS restritiva de cliente.
+## 1. Role PostgreSQL Completa
+- **Identidade**: Criar ROLE `internal_proc_executor`.
+- **Configuração**: `NOLOGIN`, `NOINHERIT`, `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOREPLICATION`, `BYPASSRLS`.
+- **Isolamento**: Sem membership e sem capacidade de `SET ROLE` para: `PUBLIC`, `anon`, `authenticated`, `authenticator`, `service_role`, `leader`, `admin` ou qualquer outro papel de cliente/API.
 
-## 2. Trigger de Imutabilidade (Duas Trilhas)
+## 2. Privilégios Mínimos
+- ** internal_proc_executor**:
+  - `GRANT SELECT, UPDATE ON public.procedimento_versoes`.
+  - `GRANT SELECT ON public.procedimentos`.
+  - `USAGE/EXECUTE` apenas em funções/schemas indispensáveis para `auth.uid()` e `public.has_role(...)`.
+- **Proibição**: Sem privilégios sobre `equipes`, `expedientes`, `servicos`, `impactos_expediente`, `vinculos_complementos`, `outbox` ou qualquer outra tabela operacional.
+
+## 3. Matriz de Imutabilidade (Triggers)
 - **Trilha Interna** (`current_user = 'internal_proc_executor'`):
-  - **Caso A (Publicação)**: Permite `OLD.status = draft` -> `NEW.status = published`. Apenas campos de status e auditoria podem mudar.
-  - **Caso B (Sucessão)**: Permite `OLD.status = published` -> `NEW.status = published`. Apenas `vigencia_fim` e auditoria podem mudar.
+  - **Caso A (Publicação)**: `OLD.status = draft` -> `NEW.status = published`. Somente mudam: `status`, `published_at`, `publicado_por_id`, `status_updated_at`, `status_alterado_por_id`.
+  - **Caso B (Sucessão)**: `OLD.status = published` -> `NEW.status = published`. Somente mudam: `vigencia_fim`, `status_updated_at`, `status_alterado_por_id`.
 - **Trilha Normal** (`current_user != 'internal_proc_executor'`):
   - Permite `published -> suspended`, `published -> archived`, `suspended -> archived`.
-  - **Restrição**: Apenas `status`, `status_updated_at` e `status_alterado_por_id` podem mudar.
-- **Proibições Globais**: Qualquer outra transição ou alteração de conteúdo operacional em versões não-draft resultará em `RAISE EXCEPTION`.
+  - Somente mudam: `status`, `status_updated_at`, `status_alterado_por_id`.
+  - Backend preenche auditoria via `now()` e `auth.uid()`.
 
-## 3. Semântica Temporal (Conversão para DATE)
-- **Migração**: Converter `vigencia_inicio` e `vigencia_fim` de `TIMESTAMPTZ` para `DATE` na tabela `procedimento_versoes`.
-- **Preservação**: Usar `AT TIME ZONE 'America/Sao_Paulo'` durante a conversão para manter a data civil correta.
-- **Sucessão Perfeita**: `V1.vigencia_fim = V2.vigencia_inicio`. (Ex: V1 ativa em 14/09, V2 assume em 15/09).
-- **Consultas**: Substituir `now()` por `CURRENT_DATE` na RLS e triggers.
-- **Frontend**: Tratar `YYYY-MM-DD` diretamente, sem conversões UTC que causem deslocamento de dia.
-
-## 4. Proteções Adicionais
-- **Trigger DELETE**: Proteção física absoluta para versões `published`, `suspended` e `archived`.
-- **Lock e Validação**: Lock serializado no procedimento pai e validação JSONB completa da árvore no backend.
+## 4. Semântica DATE e Sucessão
+- **Migração**: Converter `vigencia_inicio` e `vigencia_fim` para `DATE`.
+- **Conversão**: Usar `AT TIME ZONE 'America/Sao_Paulo'` para preservar a data civil.
+- **Consultas**: Usar `CURRENT_DATE`.
+- **Sucessão**: `V1.vigencia_fim = V2.vigencia_inicio`.
+- **Frontend**: Tratar `YYYY-MM-DD` diretamente sem conversão UTC.
 
 ## 5. Zona Protegida (PROIBIDO ALTERAR)
-- `src/lib/sync/**`, `src/lib/offline-auth.ts`, `src/lib/sync/session-backup.ts`, `src/lib/db/local-db.ts`, `src/lib/db/repos.ts`, `src/lib/db/catalogs.ts`, `src/components/layout/SyncIndicator.tsx`, `NetworkService`, stores de conectividade, diagnósticos, alertas online/offline, autenticação atual, outbox, `capacitor.config.ts`, `mobile/**`, `android/**`, Home da equipe, fluxos de expediente, tabelas operacionais existentes e suas RLS.
+- `src/lib/sync/**`, `src/lib/offline-auth.ts`, `src/lib/sync/session-backup.ts`, `src/lib/db/local-db.ts`, `src/lib/db/repos.ts`, `src/lib/db/catalogs.ts`, `src/components/layout/SyncIndicator.tsx`, `NetworkService`, stores de conectividade, diagnósticos, alertas online/offline, autenticação atual, outbox, `capacitor.config.ts`, `mobile/**`, `android/**`, Home da equipe, fluxo iniciar/continuar expediente, serviços existentes, tabelas operacionais existentes e suas RLS.
+- Nenhuma Fase 1B, Fase 2, cache offline ou IA.
 
 ## 6. Testes Bloqueantes Individuais
-- **A-Z**: (RLS, RPC, Status, JSONB, Lock, Zona Protegida, Sucessão, Visibilidade).
-- **AA-AO**: (Identidade Interna, Membership, SET ROLE, Bypass RLS).
-- **AP-AS**: (Transições normais API: `published -> suspended/archived`, imutabilidade de conteúdo na API).
-- **AT-AZ**: (Campos DATE, Timezone 'America/Sao_Paulo', Sucessão sem lacuna, Frontend sem conversão UTC).
+- **A.** draft → published direto rejeitado pela RLS.
+- **B.** RPC publica draft corretamente.
+- **C.** published → suspended funciona via API.
+- **D.** published → archived funciona via API.
+- **E.** suspended → archived funciona via API.
+- **F.** status + conteúdo operacional simultâneo rejeitado no UPDATE.
+- **G.** published.vigencia_fim direto via API é rejeitado.
+- **H.** Tentativa de manipular GUC não concede bypass.
+- **I.** Nenhuma autorização depende de GUC.
+- **J.** startNodeId inválido rejeitado no backend.
+- **K.** result sem instruction rejeitado no backend.
+- **L.** answer sem nextNodeId rejeitada no backend.
+- **M.** nextNodeId inexistente rejeitado no backend.
+- **N.** Concorrência serializada pelo lock no procedimento.
+- **O.** DELETE de published bloqueado pelo trigger.
+- **P.** DELETE de suspended bloqueado pelo trigger.
+- **Q.** DELETE de archived bloqueado pelo trigger.
+- **R.** PUBLIC sem EXECUTE da RPC.
+- **S.** anon sem EXECUTE da RPC.
+- **T.** authenticated só publica se leader/admin.
+- **U.** Zona protegida intacta.
+- **V.** Vigência futura não fecha V1 em now().
+- **W.** Fim V1 = início V2.
+- **X.** Nenhuma lacuna de vigência na sucessão.
+- **Y.** Leader/admin veem drafts.
+- **Z.** Equipe não vê drafts/suspended/archived.
+- **AA.** authenticated sem membership em internal_proc_executor.
+- **AB.** anon sem membership em internal_proc_executor.
+- **AC.** authenticator sem membership/SET ROLE para internal_proc_executor.
+- **AD.** service_role sem membership/SET ROLE para internal_proc_executor.
+- **AE.** Chamada API normal não apresenta current_user = internal_proc_executor.
+- **AF.** publish_procedure_version executa como identidade interna dedicada.
+- **AG.** Identidade interna não consegue modificar conteúdo fora dos padrões autorizados (Trilha A/B).
+- **AH.** Existe exatamente um trigger de DELETE histórico.
+- **AI.** Leader/admin conseguem deletar draft.
+- **AJ.** Deleção física de published/suspended/archived rejeitada pelo trigger.
+- **AK.** internal_proc_executor possui BYPASSRLS (se suportado).
+- **AL.** internal_proc_executor possui somente privilégios mínimos em procedimentos.
+- **AM.** internal_proc_executor não possui privilégios sobre tabelas operacionais.
+- **AN.** RPC SECURITY DEFINER faz draft → published apesar da RLS.
+- **AO.** BYPASSRLS não permite violar imutabilidade do trigger.
+- **AP.** published → suspended continua funcionando com novo trigger.
+- **AQ.** published → archived continua funcionando.
+- **AR.** suspended → archived continua funcionando.
+- **AS.** Nessas três transições, somente status/auditoria podem mudar.
+- **AT.** vigencia_inicio e vigencia_fim são DATE.
+- **AU.** 2026-09-15 nunca vira 2026-09-14 por timezone.
+- **AV.** V1 ativa durante 2026-09-14.
+- **AW.** V1 inativa em 2026-09-15.
+- **AX.** V2 ativa em 2026-09-15.
+- **AY.** Sucessão não cria lacuna entre V1 e V2.
+- **AZ.** Frontend não usa conversão UTC para campos DATE de Procedimentos.
 
-## Nota Técnica
-Se houver restrições no ambiente Supabase para criação de role com `BYPASSRLS` ou ownership da RPC, a execução será interrompida imediatamente para reavaliação.
+## Nota de Execução
+Caso existam limitações no ambiente para a criação da ROLE, BYPASSRLS ou conversão segura para DATE, a execução será interrompida e reportada.
