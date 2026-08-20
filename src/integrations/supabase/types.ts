@@ -715,6 +715,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      publish_procedure_version: {
+        Args: { p_versao_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "leader" | "admin" | "supervisor"

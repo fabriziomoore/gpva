@@ -75,7 +75,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
       fonte: initialData?.fonte || "",
       vigencia_inicio: initialData?.vigencia_inicio 
         ? new Date(initialData.vigencia_inicio).toISOString().split('T')[0] 
-        : new Date().toISOString().split('T')[0],
+        : "",
       vigencia_fim: initialData?.vigencia_fim 
         ? new Date(initialData.vigencia_fim).toISOString().split('T')[0] 
         : "",
