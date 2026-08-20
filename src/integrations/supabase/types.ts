@@ -715,16 +715,15 @@ export type Database = {
         }
         Returns: boolean
       }
-      publish_procedure_version:
-        | { Args: { p_versao_id: string }; Returns: Json }
-        | {
-            Args: {
-              p_substitui_versao_id?: string
-              p_versao_id: string
-              p_vigencia_inicio: string
-            }
-            Returns: string
-          }
+      publish_procedure_version: {
+        Args: {
+          p_substitui_versao_id?: string
+          p_versao_id: string
+          p_vigencia_inicio: string
+        }
+        Returns: string
+      }
+      validate_procedure_tree: { Args: { p_tree: Json }; Returns: boolean }
     }
     Enums: {
       app_role: "leader" | "admin" | "supervisor"
