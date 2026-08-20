@@ -1,6 +1,6 @@
 # Plano de Correção Final - Fase 1A (Procedimentos)
 
-Este plano consolida as correções de segurança e integridade para a Fase 1A, focando em sucessão controlada, imutabilidade rigorosa e auditoria server-side.
+Este plano consolida as correções de segurança e integridade para a Fase 1A, focando em sucessão controlada, imutabilidade rigorosa e auditoria server-side via mecanismos internos não falsificáveis.
 
 ## Arquivos a Alterar
 - `supabase/migrations/20260820000000_fase1a_correcao_final.sql` (Nova migration)
@@ -14,18 +14,22 @@ Este plano consolida as correções de segurança e integridade para a Fase 1A, 
   - Permitir `DELETE` em `procedimento_versoes` apenas para `leader/admin` e `status = 'draft'`. Bloquear todos os demais status.
 - **Política RLS de UPDATE (Draft)**:
   - Permitir edição de conteúdo em `draft`, mas **bloquear explicitamente** a alteração manual para `status = 'published'` via API.
-- **RPC `publish_procedure_version`**:
-  - **Segurança**: Exigir `auth.uid()`, validar role `leader/admin` via `has_role`, `SECURITY DEFINER`, `SET search_path = public`, `REVOKE EXECUTE FROM PUBLIC/anon`, `GRANT EXECUTE TO authenticated`.
-  - **Locking**: `SELECT ... FOR UPDATE` no procedimento lógico para evitar concorrência.
-  - **Validação de Árvore (Backend)**: Validar estrutura JSON, `startNodeId`, existência de nós, pelo menos um `result` com `instruction`, e integridade de `answers` e `nextNodeId`.
-  - **Sucessão Cronológica**: Validar `v2.vigencia_inicio > v1.vigencia_inicio` e encerrar `v1` (`vigencia_fim = v2.vigencia_inicio - 1 dia`).
-  - **Auditoria**: Preencher `published_at`, `publicado_por_id` e auditoria usando `now()` e `auth.uid()`.
-  - **Transação**: Operação atômica com rollback em caso de erro.
-- **Trigger Canônico de Imutabilidade e Status**:
-  - **Imutabilidade**: Bloquear `UPDATE` em versões `published`, `suspended` ou `archived`.
-  - **Exceção Controlada**: Utilizar variável de configuração de sessão (ex: `SET LOCAL app.internal_mutation = 'true'`) dentro da RPC para permitir que o trigger autorize a alteração de `vigencia_fim` e auditoria apenas durante o fluxo de sucessão. Bloquear qualquer `UPDATE` direto do cliente.
-  - **Transições**: Validar `draft -> published` (via RPC), `published -> suspended/archived`, `suspended -> archived`.
-  - **Auditoria de Status**: Trigger preenche `status_updated_at` e `status_alterado_por_id`.
+- **Função Interna Privada `internal_close_superseded_version`**:
+  - Criada em schema privado (ou com restrição de acesso rigorosa).
+  - `REVOKE EXECUTE FROM PUBLIC, authenticated, anon`.
+  - Apenas altera `vigencia_fim` e campos de auditoria estritamente necessários.
+  - Bloqueia alteração de qualquer outro campo (título, árvore, vigencia_inicio, etc).
+- **RPC Pública `publish_procedure_version`**:
+  - **Segurança**: `SECURITY DEFINER`, `SET search_path = public`, exige `auth.uid()`, valida role `leader/admin`.
+  - **Acesso**: `REVOKE EXECUTE FROM PUBLIC, anon`. `GRANT EXECUTE TO authenticated`.
+  - **Locking**: `SELECT ... FOR UPDATE` no procedimento para evitar concorrência.
+  - **Validação de Árvore**: Backend valida estrutura JSON, `startNodeId`, presença de instruções e integridade de caminhos/respostas.
+  - **Sucessão**: Chama a função interna privada para encerrar a v1 e insere/atualiza a v2.
+  - **Auditoria**: Backend define `published_at`, `publicado_por_id` e auditoria de status via `now()` e `auth.uid()`.
+- **Trigger Canônico de Imutabilidade**:
+  - Bloqueia `UPDATE` em versões `published`, `suspended` ou `archived`.
+  - **Exceção Segura**: A exceção para `vigencia_fim` só é permitida se detectada através do contexto da função interna privada (usando `current_setting` em conjunto com verificação de privilégios ou call stack se disponível, ou preferencialmente via checagem de função chamadora interna). É proibido confiar apenas em flag de sessão GUC isolada.
+  - **Transições**: Valida estados permitidos (`draft -> published` via RPC, etc).
 
 ### Consolidação de Triggers
 - Remover triggers obsoletos: `trg_procedimento_versao_delete`, `trigger_prevent_versao_deletion`, `trg_procedimento_versao_immutability`, `trigger_enforce_versao_immutability`.
@@ -80,3 +84,8 @@ Este plano consolida as correções de segurança e integridade para a Fase 1A, 
 76. nenhum trigger duplicado de mesma responsabilidade permanece no banco.
 77. pergunta sem respostas é rejeitada pelo backend.
 78. nextNodeId inexistente é rejeitado pelo backend.
+79. authenticated não consegue chamar diretamente a função interna de sucessão.
+80. leader/admin não conseguem alterar vigencia_fim de published por UPDATE normal.
+81. eventual tentativa de definir manualmente contexto/flag de sessão não concede permissão de alterar versão published.
+82. publish_procedure_version consegue realizar a sucessão legítima.
+83. durante a sucessão, somente vigencia_fim/auditoria autorizada da v1 podem mudar.
