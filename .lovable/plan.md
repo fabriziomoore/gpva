@@ -26,6 +26,7 @@ Sem membership e sem capacidade de `SET ROLE` para:
 `internal_proc_executor` terá somente:
 - `SELECT`, `UPDATE` em `public.procedimento_versoes`
 - `SELECT` em `public.procedimentos`
+- **UPDATE(id)** em `public.procedimentos` (exclusivamente para permitir `SELECT FOR UPDATE`).
 - `USAGE/EXECUTE` somente nas dependências indispensáveis da RPC.
 Nenhum privilégio sobre:
 - `equipes`
@@ -203,8 +204,15 @@ Não iniciar Fase 1B, Fase 2, cache offline ou IA.
 **AY.** Sucessão não cria lacuna entre V1 e V2.
 **AZ.** Frontend não usa conversão UTC para campos DATE de Procedimentos.
 **BA.** Durante sucessão V1 published -> V1 published com fechamento de vigencia_fim, somente vigencia_fim é alterado; status_updated_at e status_alterado_por_id permanecem exatamente iguais.
+**BB.** internal_proc_executor possui SELECT em public.procedimentos.
+**BC.** internal_proc_executor possui UPDATE somente na coluna mínima necessária de public.procedimentos para permitir SELECT FOR UPDATE.
+**BD.** internal_proc_executor não possui UPDATE amplo em public.procedimentos.
+**BE.** publish_procedure_version consegue obter o lock SELECT ... FOR UPDATE em public.procedimentos sem erro de permissão.
+**BF.** publish_procedure_version nunca executa UPDATE em public.procedimentos.
+**BG.** Nenhum valor de public.procedimentos é modificado durante publicação ou sucessão.
 
 ## 13. EXECUÇÃO FUTURA
 - Criar somente NOVA migration; não editar migrations aplicadas.
 - Se o ambiente impedir `internal_proc_executor`, `BYPASSRLS`, `OWNER` da RPC ou conversão segura para `DATE`, **PARAR E REPORTAR**.
-- NÃO improvisar.
+- Se não for possível conceder privilégio de coluna suficiente para o `SELECT FOR UPDATE`, **PARAR E REPORTAR**.
+- NÃO improvisar privilégio amplo.
