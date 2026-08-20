@@ -316,6 +316,11 @@ function LeaderProceduresPage() {
           <div className="py-4">
             <ProcedureForm 
               onSubmit={async (metadata, versionData, isPublishing) => {
+                if (!metadata) {
+                  setIsCreateDialogOpen(false);
+                  return;
+                }
+
                 if (isPublishing) {
                   setConfirmPublish({ metadata, versionData, isNew: true });
                 } else {
@@ -346,6 +351,11 @@ function LeaderProceduresPage() {
               initialData={editingProcedure}
               isReadOnly={editingProcedure?.status !== 'draft'}
               onSubmit={async (metadata, versionData, isPublishing) => {
+                if (!metadata) {
+                  setEditingProcedure(null);
+                  return;
+                }
+
                 if (isPublishing) {
                   setConfirmPublish({ id: editingProcedure.id, metadata, versionData, isNew: false });
                 } else {
