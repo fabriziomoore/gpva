@@ -14,11 +14,12 @@ Remover integralmente qualquer vínculo de membership entre as roles PostgreSQL 
 
 ## 3. Implementação
 A migration executará a seguinte ação em uma única transação:
-1.  **Revogação de Membership**: Executar `REVOKE internal_proc_executor FROM postgres` para remover o vínculo onde `postgres` é membro de `internal_proc_executor`.
-2.  **Limpeza Bidirecional**: Garantir que nenhum dos papéis seja membro do outro.
+1.  **Revogação de Membership**: Executar `REVOKE internal_proc_executor FROM postgres` de forma exaustiva. Como foram identificados dois registros (um com grantor `postgres` e outro com `supabase_admin`), a migration tentará remover ambos os vínculos.
+2.  **Tratamento de Permissões**: Se o ambiente não permitir a remoção do grant originado pelo `supabase_admin`, a execução será **ABORTADA** e o erro reportado, sem tentativas de improviso ou alteração de contexto (como `SET ROLE`).
 3.  **Proibições**:
     - Não usar `SET ROLE` ou `RESET ROLE`.
     - Não criar novos memberships.
+    - Estado final obrigatório: 0 linhas em `pg_auth_members` para este par de roles.
 
 ## 4. Detalhes Técnicos (SQL)
 ```sql
