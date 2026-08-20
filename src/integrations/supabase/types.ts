@@ -695,6 +695,19 @@ export type Database = {
     Functions: {
       admin_user_ids: { Args: never; Returns: string[] }
       audit_schema_snapshot: { Args: never; Returns: Json }
+      create_procedure_with_version: {
+        Args: {
+          p_arvore_decisao: Json
+          p_categoria: string
+          p_descricao: string
+          p_fonte: string
+          p_setor: string
+          p_titulo: string
+          p_vigencia_fim: string
+          p_vigencia_inicio: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
