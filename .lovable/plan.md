@@ -23,9 +23,9 @@ A migration executará a seguinte ação em uma única transação:
 
 ## 4. Detalhes Técnicos (SQL)
 ```sql
--- Remoção de membership
-REVOKE internal_proc_executor FROM postgres;
-REVOKE postgres FROM internal_proc_executor;
+-- Remoção explícita por grantor
+REVOKE internal_proc_executor FROM postgres GRANTED BY postgres;
+REVOKE internal_proc_executor FROM postgres GRANTED BY supabase_admin;
 ```
 
 ## 5. Validação Pós-Execução
