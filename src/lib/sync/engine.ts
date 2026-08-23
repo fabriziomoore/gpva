@@ -11,6 +11,35 @@ import { useSyncStore } from "./store";
 
 let running = false;
 let scheduled = false;
+let externallyPaused = false;
+
+/**
+ * Define a barreira transacional para o motor de sincronização.
+ * Quando pausado, nenhum novo drainOutbox será iniciado.
+ * Se houver um drain em curso, esta função aguarda seu término.
+ */
+export async function pauseSyncAndWaitForIdle(): Promise<void> {
+  externallyPaused = true;
+  if (!running) return;
+
+  return new Promise((resolve) => {
+    const check = () => {
+      if (!running) {
+        resolve();
+      } else {
+        setTimeout(check, 50);
+      }
+    };
+    check();
+  });
+}
+
+/**
+ * Restaura a operação normal do motor de sincronização.
+ */
+export function resumeSync(): void {
+  externallyPaused = false;
+}
 
 export async function refreshPendingCount(): Promise<void> {
   try {
@@ -23,7 +52,7 @@ export async function refreshPendingCount(): Promise<void> {
 }
 
 export function scheduleSync(): void {
-  if (scheduled) return;
+  if (scheduled || externallyPaused) return;
   scheduled = true;
   setTimeout(() => {
     scheduled = false;
@@ -42,6 +71,10 @@ export async function drainOutbox(): Promise<void> {
     return;
   }
   running = true;
+  if (externallyPaused) {
+    running = false;
+    return;
+  }
   const store = useSyncStore.getState();
   try {
     const db = getLocalDB();

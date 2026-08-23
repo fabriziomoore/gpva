@@ -6,7 +6,8 @@ import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertT
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
+import { prepareLocalSignOut, signOutApp, finalizeSignOut } from "@/lib/auth";
+import { prepareDemoBeforeSignOut } from "@/lib/demo-reset";
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
@@ -143,19 +144,26 @@ export function SideMenu() {
   async function confirmSignOut() {
     setExitOpen(false);
     setOpen(false);
-    // Limpa qualquer trava residual deixada pelos overlays do Radix
-    // (Dialog + AlertDialog fechando em cascata podem deixar
-    // pointer-events:none no body em alguns navegadores mobile).
+    
+    // 1. Limpa resíduos visuais do Radix
     if (typeof document !== "undefined") {
       document.body.style.pointerEvents = "";
       document.body.removeAttribute("data-scroll-locked");
     }
+
+    // 2. Barreira e Reset Demo (enquanto autenticado)
+    if (userId) {
+      await prepareDemoBeforeSignOut(userId);
+    }
+
+    // 3. Limpeza local de storage
     prepareLocalSignOut();
 
-    // Usa sempre o router. No Android/Capacitor, window.location.assign pode
-    // trocar a URL sem desmontar o Leaflet, deixando apenas o mapa travado.
+    // 4. Navegação imediata para evitar travamento do mapa
     await navigate({ to: "/auth", replace: true });
-    void signOutApp(queryClient);
+
+    // 5. Finaliza sessão no Supabase e QueryClient
+    void finalizeSignOut(queryClient);
   }
   const items = useMemo(
     () => (isLeader.data === true ? leaderItems : teamItems),
