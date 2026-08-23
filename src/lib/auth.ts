@@ -6,6 +6,12 @@ import {
   clearOfflineUnlock,
   saveLastUserId,
 } from "@/lib/offline-auth";
+import { 
+  setDemoAccountInfo, 
+  isRemoteResetPending, 
+  setRemoteResetPending, 
+  prepareDemoBeforeSignOut 
+} from "./demo-reset";
 import type { QueryClient } from "@tanstack/react-query";
 
 const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
@@ -27,6 +33,38 @@ export async function signInTeam(teamName: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   await claimCurrentSession();
+
+  // Verificação de conta demo e reset pendente
+  if (data.user?.id) {
+    const userId = data.user.id;
+    try {
+      const { data: team, error: teamErr } = await supabase
+        .from("equipes")
+        .select("is_test")
+        .eq("id", userId)
+        .single();
+      
+      if (!teamErr && team) {
+        await setDemoAccountInfo(userId, {
+          is_test: !!team.is_test,
+          verified_at: new Date().toISOString()
+        });
+
+        if (team.is_test) {
+          const pending = await isRemoteResetPending(userId);
+          if (pending) {
+            const { error: rpcErr } = await supabase.rpc("reset_current_demo_session");
+            if (!rpcErr) {
+              await setRemoteResetPending(userId, false);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[auth] Failed to sync demo status", err);
+    }
+  }
+
   // Grava credencial local automaticamente para viabilizar login offline
   // permanente após este primeiro acesso online.
   await saveCredentialFromOnlineLogin(teamName, password).catch(() => undefined);
@@ -77,7 +115,10 @@ export async function signOut() {
   void clearSessionBackup; // referenciado apenas para uso condicional futuro
 }
 
-export async function signOutApp(queryClient?: QueryClient): Promise<void> {
+/**
+ * Finaliza a sessão do aplicativo, limpando estados locais e remotos (Supabase).
+ */
+export async function finalizeSignOut(queryClient?: QueryClient): Promise<void> {
   prepareLocalSignOut();
   try {
     void queryClient?.cancelQueries();
@@ -86,6 +127,17 @@ export async function signOutApp(queryClient?: QueryClient): Promise<void> {
     /* ignore */
   }
   await signOut();
+}
+
+/**
+ * Ponto de entrada coordenado para o logout.
+ * Gerencia o reset da conta demo antes de limpar a sessão.
+ */
+export async function signOutApp(queryClient?: QueryClient, userId?: string): Promise<void> {
+  if (userId) {
+    await prepareDemoBeforeSignOut(userId);
+  }
+  await finalizeSignOut(queryClient);
 }
 
 function clearBrowserAuthStorage(): void {

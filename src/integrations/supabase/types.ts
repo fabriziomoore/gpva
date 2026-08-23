@@ -823,6 +823,7 @@ export type Database = {
         }
         Returns: string
       }
+      reset_current_demo_session: { Args: never; Returns: Json }
       validate_procedure_tree: { Args: { p_tree: Json }; Returns: boolean }
     }
     Enums: {
