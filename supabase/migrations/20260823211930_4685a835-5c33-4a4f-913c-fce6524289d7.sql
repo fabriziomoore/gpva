@@ -1,0 +1,1 @@
+DROP FUNCTION private.internal_close_superseded_version(uuid, timestamp with time zone, uuid);
