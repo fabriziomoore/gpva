@@ -1,129 +1,31 @@
-# Plano: Reset Isolado da Conta Demo (Revisão Final)
+# Plano de Ação: Microetapa A3 — Carga Normalizada de Supervisor e Líder
 
-Este plano detalha a implementação técnica da autolimpeza para contas de demonstração (`is_test = true`), garantindo que dados transitórios sejam removidos ao logout, tanto no servidor quanto localmente.
+Este plano descreve a execução da carga inicial de dados estruturais para o setor "Corte e Religa", seguindo os requisitos rigorosos de integridade e não-vinculação de equipes.
 
-## 1. Banco de Dados (Supabase Migration)
-Criar a RPC `public.reset_current_demo_session()` com as seguintes especificações:
+## 🏗️ Backend (Supabase Engineer)
 
-```sql
-CREATE OR REPLACE FUNCTION public.reset_current_demo_session()
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-    v_team_id uuid;
-    v_is_test boolean;
-    v_results jsonb;
-    v_count_expedientes int;
-    v_count_servicos int;
-    v_count_vinculos int;
-    v_count_impactos int;
-    v_count_catord int;
-    v_count_complementos int;
-    v_count_impactos_cat int;
-    v_count_motivos int;
-    v_count_tipos int;
-BEGIN
-    v_team_id := auth.uid();
-    IF v_team_id IS NULL THEN
-        RAISE EXCEPTION 'Não autenticado';
-    END IF;
+1.  **Criação de Migration Única:** `operacional_normalizado_a3_carga_inicial`.
+2.  **Preflight Assertions (Fail-Closed):**
+    *   Validar existência do setor `16bbd6c9-0469-40b0-95c8-a2909e7312c1`.
+    *   Validar unicidade do UUID do supervisor `8f07f6e1-45d4-4fe1-a43f-6654d6f1f638`.
+    *   Validar que não existe supervisor com nome "Ricardo Cunha" (ignore case/trim).
+    *   Validar unicidade do UUID do líder estrutural `64df32a7-e4bc-4c17-9dfc-7893474678db`.
+    *   Validar que não existe líder estrutural para o `user_id` `6a17b5a5-6716-4af4-b567-743596b1a2c7`.
+    *   Validar existência do usuário auth `6a17b5a5-6716-4af4-b567-743596b1a2c7`.
+    *   Validar que o usuário possui role `leader` na tabela `user_roles`.
+    *   Garantir que NENHUMA equipe possua `supervisor_id` ou `leader_id` preenchido (etapa A4 ainda não iniciada).
+3.  **Inserção de Dados:**
+    *   `public.supervisores`: Inserir Ricardo Cunha com UUID fixo e `user_id = NULL`.
+    *   `public.lideres_estrutura`: Inserir Gabriel Araújo com UUID fixo, vinculado ao supervisor e ao `user_id` fornecido.
 
-    -- Lock na equipe para validar is_test
-    SELECT is_test INTO v_is_test
-    FROM public.equipes
-    WHERE id = v_team_id
-    FOR UPDATE;
+## 🔍 Verificação e Qualidade (Code Auditor)
 
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Equipe não encontrada';
-    END IF;
+1.  **Pós-check SQL:** Consultas de contagem e verificação de campos para garantir que os dados batem exatamente com o solicitado.
+2.  **Integridade Operacional:** Confirmar que `equipes.supervisor_id` e `equipes.leader_id` permanecem nulos.
+3.  **Ambiente:** Executar `npx tsc --noEmit` e `npm run build` para garantir zero regressões.
 
-    IF v_is_test IS DISTINCT FROM true THEN
-        RETURN jsonb_build_object('status', 'not_demo');
-    END IF;
+## 🛠️ Detalhes Técnicos
 
-    -- DELETEs em ordem de FK (Bottom-up)
-    DELETE FROM public.vinculos_complementos WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_vinculos = ROW_COUNT;
-
-    DELETE FROM public.impactos_expediente WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_impactos = ROW_COUNT;
-
-    DELETE FROM public.servicos WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_servicos = ROW_COUNT;
-
-    DELETE FROM public.expedientes WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_expedientes = ROW_COUNT;
-
-    DELETE FROM public.catalog_order WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_catord = ROW_COUNT;
-
-    -- Catálogos específicos da demo
-    DELETE FROM public.complementos_servico WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_complementos = ROW_COUNT;
-
-    DELETE FROM public.impactos WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_impactos_cat = ROW_COUNT;
-
-    DELETE FROM public.motivos_inviabilidade WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_motivos = ROW_COUNT;
-
-    DELETE FROM public.tipos_servico WHERE team_id = v_team_id;
-    GET DIAGNOSTICS v_count_tipos = ROW_COUNT;
-
-    RETURN jsonb_build_object(
-        'status', 'reset',
-        'expedientes', v_count_expedientes,
-        'servicos', v_count_servicos,
-        'vinculos_complementos', v_count_vinculos,
-        'impactos_expediente', v_count_impactos,
-        'catalog_order', v_count_catord,
-        'complementos_servico', v_count_complementos,
-        'impactos', v_count_impactos_cat,
-        'motivos_inviabilidade', v_count_motivos,
-        'tipos_servico', v_count_tipos
-    );
-END;
-$$;
-
--- Permissões
-REVOKE ALL ON FUNCTION public.reset_current_demo_session() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.reset_current_demo_session() FROM anon;
-GRANT EXECUTE ON FUNCTION public.reset_current_demo_session() TO authenticated;
-```
-
-## 2. Implementação Frontend
-
-### Módulo `src/lib/demo-reset.ts`
-- **KV Storage:** Usar chaves `demo:account:<userId>` para persistir `{ is_test: boolean, verified_at: string }`.
-- **Limpeza Local (Dexie):** Transação `rw` para limpar registros operacionais da demo.
-- **Limpeza Outbox:** Algoritmo exato para remover apenas itens do `team_id` demo ou vinculados a registros demo, preservando a entrada da própria `equipes`.
-- **Remote Reset Pending:** Marcador no KV `demo:remote-reset-pending:<userId>` para retentar a limpeza remota caso a RPC falhe.
-
-### Módulo `src/lib/auth.ts`
-- **Login Online:** Consultar `public.equipes.is_test` e gravar no KV via helper.
-- **`performAppSignOut`:** Nova função que coordena:
-  1. Chamada à RPC (se online).
-  2. Limpeza local via `demo-reset.ts`.
-  3. Gestão do marcador `remote-reset-pending`.
-  4. Fluxo normal de `signOutApp`.
-
-### Componente `src/components/layout/SideMenu.tsx`
-- Alteração cirúrgica no `confirmSignOut` para aguardar `performAppSignOut` enquanto a sessão ainda é válida, mantendo a desmontagem segura da tela.
-
-## 3. Estratégia de Testes
-- **Produção:** Baseline de contagem em `RIOCERLT-017` (15 exp / 205 serv). Confirmar zero alteração após logout.
-- **Demo:** Criar massa de dados (online e offline), deslogar e verificar limpeza total.
-- **Falha:** Simular falha na rede durante o logout demo e confirmar que o reset remoto é executado no próximo login online.
-
-## 4. Arquivos Impactados
-- `supabase/migrations/<timestamp>_reset_current_demo_session.sql`
-- `src/lib/demo-reset.ts` (Novo)
-- `src/lib/auth.ts`
-- `src/components/layout/SideMenu.tsx`
-
----
-**Microetapa A3 e A4 da Árvore Operacional permanecem suspensas.**
+*   **Migration:** `supabase/migrations/20260823235500_operacional_normalizado_a3_carga_inicial.sql`.
+*   **Transacionalidade:** A migration roda em bloco atômico. Falha em qualquer assertion aborta toda a carga.
+*   **Imutabilidade:** Nenhuma alteração em schema, RLS ou frontend.
