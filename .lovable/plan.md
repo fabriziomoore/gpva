@@ -1,88 +1,56 @@
+# Plano: Reset Isolado da Conta Demo (Apresentação)
+
+Este plano estabelece a implementação de um mecanismo de "autolimpeza" para a conta de demonstração do GPVA. Todo dado gerado durante uma sessão demo será apagado ao realizar logout, garantindo que cada nova apresentação comece com um estado limpo, sem afetar dados produtivos.
+
+## 🎯 Objetivos
+- Implementar limpeza atômica no servidor via RPC segura.
+- Implementar limpeza local (Dexie + Outbox) para suportar uso offline.
+- Integrar o reset ao fluxo de logout sem alterar o comportamento de contas produtivas.
+- Garantir isolamento total: nunca atingir equipes onde `is_test = false`.
+
+## 🛠️ Detalhes Técnicos
+
+### 1. Camada de Banco de Dados (Supabase)
+Será criada uma RPC `public.reset_current_demo_session()` via migration.
+
+- **Segurança:** `SECURITY DEFINER` com `search_path = public, pg_temp`.
+- **Validação:** Obtém o ID via `auth.uid()`. Valida se `equipes.is_test = true` antes de qualquer ação.
+- **Atomicidade:** Toda a operação ocorrerá dentro de uma única transação.
+- **Ordem de Exclusão (FK safe):**
+  1. `impactos_expediente`
+  2. `vinculos_complementos`
+  3. `servicos`
+  4. `expedientes`
+  5. `catalog_order`
+  6. Catálogos específicos: `tipos_servico`, `motivos_inviabilidade`, `impactos`, `complementos_servico` onde `team_id = auth.uid()`.
+- **Restrição:** `REVOKE ALL ON FUNCTION` e `GRANT EXECUTE` apenas para `authenticated`.
+
+### 2. Camada Frontend (Offline & Sync)
+Novo módulo `src/lib/demo-reset.ts` para lidar com o estado local.
+
+- **Limpeza Dexie:** Remove registros de `shifts`, `services`, `complement_links` e `shift_impacts` filtrando por `team_id`.
+- **Gestão de Outbox:** Remove operações pendentes no `outbox` que pertençam à equipe demo, impedindo que dados de uma sessão de teste sejam sincronizados após o logout.
+- **Detecção Offline:** A detecção de conta demo usará o estado da equipe persistido no banco local.
+
+### 3. Integração com Auth
+Modificação em `src/lib/auth.ts` (função `signOutApp`):
+- Antes de invalidar a sessão, verifica se a equipe atual é demo.
+- Se for demo:
+  1. Tenta chamar `reset_current_demo_session()` (online).
+  2. Executa `performDemoReset` (local/offline).
+- Continua com o logout padrão.
+
+## 📋 Plano de Testes
+- **Teste 1 (Produção):** Validar que o logout de uma conta real não remove nenhum dado e não tenta chamar a RPC de reset.
+- **Teste 2 (Demo Online):** Criar dados, deslogar e confirmar que o servidor e o local estão limpos.
+- **Teste 3 (Demo Offline):** Criar dados sem internet, deslogar e confirmar que o outbox foi limpo e os dados não "ressurgem" ao reconectar.
+- **Teste 4 (Segurança):** Tentar chamar a RPC manualmente com um token de usuário produtivo e confirmar falha silenciosa ou bloqueio (não apaga nada).
+
+## ⚠️ Garantias de Segurança
+- A RPC não aceita parâmetros de `team_id` (usa `auth.uid()`).
+- O filtro `is_test = true` é aplicado com lock (`FOR UPDATE`) na tabela `equipes`.
+- Catálogos globais (`team_id IS NULL`) são explicitamente preservados.
+- Nenhuma alteração em tabelas estruturais (`setores`, `lideres`, etc.).
+
 ---
-name: Fase Árvore Operacional - Microetapa A (Revisão Final)
-description: Fundação estrutural normalizada com RLS estrito, proteção de hierarquia em equipes e integridade cross-table.
-type: feature
----
-
-# Plano Final: Árvore Operacional Normalizada GPVA (Etapa A1)
-
-## 1. Schema e DDL (A1)
-
-```sql
--- public.supervisores
-CREATE TABLE public.supervisores (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome text NOT NULL,
-    setor_id uuid NOT NULL REFERENCES public.setores(id) ON DELETE RESTRICT,
-    user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
-);
-
--- public.lideres_estrutura
-CREATE TABLE public.lideres_estrutura (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE RESTRICT,
-    nome text NOT NULL,
-    setor_id uuid NOT NULL REFERENCES public.setores(id) ON DELETE RESTRICT,
-    supervisor_id uuid NOT NULL REFERENCES public.supervisores(id) ON DELETE RESTRICT,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
-);
-
--- Adição Aditiva em public.equipes
-ALTER TABLE public.equipes 
-ADD COLUMN supervisor_id uuid REFERENCES public.supervisores(id) ON DELETE RESTRICT,
-ADD COLUMN leader_id uuid REFERENCES public.lideres_estrutura(id) ON DELETE RESTRICT;
-
--- Índices Obrigatórios
-CREATE INDEX supervisores_setor_id_idx ON public.supervisores(setor_id);
-CREATE UNIQUE INDEX supervisores_user_id_unique_idx ON public.supervisores(user_id) WHERE user_id IS NOT NULL;
-CREATE INDEX lideres_estrutura_setor_id_idx ON public.lideres_estrutura(setor_id);
-CREATE INDEX lideres_estrutura_supervisor_id_idx ON public.lideres_estrutura(supervisor_id);
-CREATE INDEX equipes_supervisor_id_idx ON public.equipes(supervisor_id);
-CREATE INDEX equipes_leader_id_idx ON public.equipes(leader_id);
-```
-
-## 2. RLS Estrito (Admin-Only)
-
-Para `public.supervisores` e `public.lideres_estrutura`:
-- `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`
-- `CREATE POLICY admin_select ON ... FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));`
-- `CREATE POLICY admin_insert ON ... FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'admin'));`
-- `CREATE POLICY admin_update ON ... FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'admin')) WITH CHECK (public.has_role(auth.uid(), 'admin'));`
-- `CREATE POLICY admin_delete ON ... FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'));`
-
-*Nota: Sem GRANT ALL com USING. Nenhuma permissão para roles não-admin nesta fase.*
-
-## 3. Integridade e Hierarquia (Triggers BEFORE)
-
-### A. Integridade Cross-Table (Regras de Negócio)
-- **Em `lideres_estrutura`:** `supervisor.setor_id` deve ser igual a `NEW.setor_id`.
-- **Em `equipes`:** 
-    - Se `supervisor_id` preenchido: `supervisor.setor_id = NEW.setor_id`.
-    - Se `leader_id` preenchido: `leader.setor_id = NEW.setor_id` E `supervisor_id` não pode ser NULL.
-    - Se ambos preenchidos: `leader.supervisor_id = NEW.supervisor_id`.
-
-### B. Proteção de Equipes (Imutabilidade Hierárquica)
-Trigger `BEFORE UPDATE` em `public.equipes`:
-- Se `auth.uid() = OLD.id` (equipe editando a própria linha) E usuário NÃO for admin:
-    - Impedir alteração (`IS DISTINCT FROM`) em: `setor_id`, `supervisor_id`, `leader_id`.
-
-## 4. Sincronização e Legado
-- Trigger em `equipes` atualiza os campos `text` (`supervisor`, `leader`) apenas se o ID UUID correspondente for preenchido.
-- Se ID for NULL, manter o texto existente (transição progressiva).
-- Proibido recalcular IDs a partir de textos.
-
-## 5. Critérios de Aceite A1
-- Exatamente **uma migration**.
-- Equipes não conseguem alterar sua própria posição na árvore.
-- `leader_id` não pode existir sem `supervisor_id`.
-- Campos textuais legados intactos em registros com IDs nulos.
-- RLS separada por operação (SELECT/INSERT/UPDATE/DELETE).
-- Zero alterações em Procedimentos, Frontend ou Mobile.
-
-## 6. Escopo e Rollback
-- A1 é puramente estrutural: zero dados afetados.
-- Rollback via `DROP` de triggers, policies e colunas/tabelas na ordem segura enquanto dados novos forem nulos.
-- Preservar `updated_at` via triggers simples dedicados (sem reutilizar funções globais).
+**Microetapa A3 e A4 da Árvore Operacional permanecem suspensas.**
