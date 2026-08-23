@@ -41,6 +41,13 @@ export function resumeSync(): void {
   externallyPaused = false;
 }
 
+/**
+ * Verifica se o motor está pausado.
+ */
+export function isSyncPaused(): boolean {
+  return externallyPaused;
+}
+
 export async function refreshPendingCount(): Promise<void> {
   try {
     const db = getLocalDB();

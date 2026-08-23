@@ -8,7 +8,8 @@ export interface DemoAccountInfo {
 }
 
 const DEMO_ACCOUNT_PREFIX = "demo:account:";
-const PENDING_RESET_PREFIX = "demo:remote-reset-pending:";
+const LOCAL_PENDING_PREFIX = "demo:local-reset-pending:";
+const REMOTE_PENDING_PREFIX = "demo:remote-reset-pending:";
 
 /**
  * Retorna as informações de conta demo do KV local.
@@ -32,7 +33,7 @@ export async function setDemoAccountInfo(userId: string, info: DemoAccountInfo):
  */
 export async function setRemoteResetPending(userId: string, pending: boolean): Promise<void> {
   const db = getLocalDB();
-  const key = `${PENDING_RESET_PREFIX}${userId}`;
+  const key = `${REMOTE_PENDING_PREFIX}${userId}`;
   if (pending) {
     await db.kv.put({ key, value: true });
   } else {
@@ -45,7 +46,29 @@ export async function setRemoteResetPending(userId: string, pending: boolean): P
  */
 export async function isRemoteResetPending(userId: string): Promise<boolean> {
   const db = getLocalDB();
-  const row = await db.kv.get(`${PENDING_RESET_PREFIX}${userId}`);
+  const row = await db.kv.get(`${REMOTE_PENDING_PREFIX}${userId}`);
+  return row?.value === true;
+}
+
+/**
+ * Marca ou desmarca um reset local pendente.
+ */
+export async function setLocalResetPending(userId: string, pending: boolean): Promise<void> {
+  const db = getLocalDB();
+  const key = `${LOCAL_PENDING_PREFIX}${userId}`;
+  if (pending) {
+    await db.kv.put({ key, value: true });
+  } else {
+    await db.kv.delete(key);
+  }
+}
+
+/**
+ * Verifica se há um reset local pendente.
+ */
+export async function isLocalResetPending(userId: string): Promise<boolean> {
+  const db = getLocalDB();
+  const row = await db.kv.get(`${LOCAL_PENDING_PREFIX}${userId}`);
   return row?.value === true;
 }
 
@@ -127,33 +150,107 @@ export async function performLocalDemoReset(demoTeamId: string): Promise<void> {
 /**
  * Coordena o reset completo (barreira sync + local + remoto)
  */
-export async function prepareDemoBeforeSignOut(userId: string): Promise<void> {
-  const info = await getDemoAccountInfo(userId);
-  if (!info?.is_test) return;
+export async function prepareDemoBeforeSignOut(userId: string): Promise<{
+  attempted: boolean;
+  remoteReset: "reset" | "not_demo" | "failed" | "skipped";
+  localReset: "reset" | "pending" | "skipped";
+}> {
+  const result: {
+    attempted: boolean;
+    remoteReset: "reset" | "not_demo" | "failed" | "skipped";
+    localReset: "reset" | "pending" | "skipped";
+  } = {
+    attempted: false,
+    remoteReset: "skipped",
+    localReset: "skipped"
+  };
+
+  // 1. Verificação Online (Source of Truth) se possível
+  let isTest = false;
+  try {
+    const { data: team, error: teamErr } = await supabase
+      .from("equipes")
+      .select("is_test")
+      .eq("id", userId)
+      .single();
+    
+    if (!teamErr && team) {
+      isTest = !!team.is_test;
+      await setDemoAccountInfo(userId, {
+        is_test: isTest,
+        verified_at: new Date().toISOString()
+      });
+    } else {
+      // Se falhou online, usamos o marcador local
+      const info = await getDemoAccountInfo(userId);
+      if (!info) return result; // Sem marcador, não assumimos que é demo
+      isTest = info.is_test;
+      
+      // Se falhou online e não temos confirmação, FAIL CLOSED: não resetamos
+      if (teamErr) {
+        console.warn("[demo] Online verification failed, skipping destructive reset", teamErr);
+        return result;
+      }
+    }
+  } catch (err) {
+    console.error("[demo] Verification error", err);
+    return result;
+  }
+
+  if (!isTest) {
+    result.remoteReset = "not_demo";
+    return result;
+  }
+
+  result.attempted = true;
 
   try {
     // A. Quiescência do Sync Engine
     await pauseSyncAndWaitForIdle();
 
     // B. Limpeza LOCAL transacional
-    await performLocalDemoReset(userId);
+    try {
+      await performLocalDemoReset(userId);
+      result.localReset = "reset";
+      await setLocalResetPending(userId, false);
+    } catch (localErr) {
+      console.error("[demo] Local reset failed", localErr);
+      result.localReset = "pending";
+      await setLocalResetPending(userId, true);
+      // FAIL CLOSED: Se a limpeza local falhou, não chamamos a RPC para não deixar
+      // a conta limpa no servidor mas com lixo local pendente de sincronização.
+      result.remoteReset = "failed";
+      await setRemoteResetPending(userId, true);
+      return result;
+    }
 
     // C. Limpeza REMOTA (RPC)
     const { data, error } = await supabase.rpc("reset_current_demo_session");
     
+    // Casting de data para acessar status de forma segura (TanStack Start/Supabase gerado)
+    const res = data as any;
+
     if (error) {
       console.warn("[demo] Remote reset RPC failed, marking as pending", error);
+      result.remoteReset = "failed";
       await setRemoteResetPending(userId, true);
-    } else {
-      console.info("[demo] Remote reset success", data);
+    } else if (res?.status === "reset") {
+      console.info("[demo] Remote reset success", res);
+      result.remoteReset = "reset";
       await setRemoteResetPending(userId, false);
+    } else if (res?.status === "not_demo") {
+      result.remoteReset = "not_demo";
+      await setRemoteResetPending(userId, false);
+      await setDemoAccountInfo(userId, { is_test: false, verified_at: new Date().toISOString() });
+    } else {
+      result.remoteReset = "failed";
+      await setRemoteResetPending(userId, true);
     }
   } catch (err) {
     console.error("[demo] Reset flow interrupted", err);
-    // Em caso de erro crítico no fluxo, garantimos o marcador de pending se possível
+    result.remoteReset = "failed";
     await setRemoteResetPending(userId, true);
-  } finally {
-    // D. Restaurar o Sync Engine (será inofensivo pois o outbox demo está limpo)
-    resumeSync();
   }
+
+  return result;
 }
