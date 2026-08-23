@@ -54,3 +54,56 @@ Refinar e detalhar a arquitetura de publicação/sucessão de `procedimento_vers
 - Trigger/Overlap: `SECURITY INVOKER`, `VOLATILE` (integrity), sem `OVERLAPS`.
 - RLS: 6 policies, histórica sem `published` no WITH CHECK.
 - Objetos congelados e migration única confirmados.
+
+## INVARIANTES OBRIGATÓRIOS DA RPC — NÃO OMITIR NA EXECUÇÃO
+
+A função canônica permanece exatamente:
+`public.publish_procedure_version(p_versao_id uuid, p_vigencia_inicio date, p_substitui_versao_id uuid DEFAULT NULL)`
+
+Manter:
+- Owner atual;
+- SECURITY DEFINER;
+- SET search_path = public;
+- Nenhuma RPC paralela.
+
+### AUTENTICAÇÃO E AUTORIZAÇÃO
+Executar: `v_user_id := auth.uid();`. Se `v_user_id IS NULL`: ABORTAR.
+Autorizar SOMENTE se: `public.has_role(v_user_id, 'leader') OR public.has_role(v_user_id, 'admin')`. Caso contrário: ABORTAR.
+Não criar mecanismo de autenticação ou autorização paralelo.
+
+### ORDEM DE LOCK E RELEITURA
+1. Obter `procedimento_id` correspondente a `p_versao_id`.
+2. Se não existir: ABORTAR com versão não encontrada.
+3. Bloquear a linha pai: `SELECT ... FROM public.procedimentos WHERE id = v_proc_id FOR UPDATE;`.
+4. SOMENTE DEPOIS do lock do pai, reler integralmente o draft em `procedimento_versoes`.
+Todas as decisões críticas seguintes devem usar essa releitura pós-lock.
+
+### STATUS
+Exigir: `v_draft.status = 'draft'`. Qualquer outro status: ABORTAR.
+
+### SOURCE OF TRUTH — VIGÊNCIA E SUCESSÃO
+- Vigência: `v_draft.vigencia_inicio IS NOT DISTINCT FROM p_vigencia_inicio`. A RPC NÃO pode alterar `vigencia_inicio`.
+- Sucessão: `v_draft.substitui_versao_id IS NOT DISTINCT FROM p_substitui_versao_id`. A RPC NÃO pode alterar `substitui_versao_id`.
+Não utilizar UUID sentinela. Não utilizar `!=` ou `<>`.
+
+### VALIDAÇÃO DA ÁRVORE
+Antes de qualquer publicação: `IF NOT public.validate_procedure_tree(v_draft.arvore_decisao) THEN RAISE EXCEPTION ...; END IF;`.
+
+### PUBLICAÇÃO SEM PREDECESSOR
+Se `v_draft.substitui_versao_id IS NULL`, verificar explicitamente se existe outra versão do mesmo procedimento com status 'published' cujo intervalo `[start, end)` se sobreponha ao draft. Se existir conflito: ABORTAR.
+
+### PUBLICAÇÃO COM PREDECESSOR
+Aplicar integralmente as regras de predecessor já presentes no plano v3.
+
+### ATOMICIDADE
+Fechamento do predecessor (`vigencia_fim = v_draft.vigencia_inicio`) e publicação do sucessor (`status = 'published'`) devem ocorrer na MESMA execução transacional da RPC. Sem commits intermediários. Qualquer falha deve reverter a operação inteira.
+
+### REGRA TEMPORAL
+Continuar obrigatoriamente: `[start, end)` com `vigencia_fim` exclusiva.
+NUNCA: `now()`, `timestamp`, timezone conversion, `-1 day` ou `INTERVAL '1 day'` para vigência.
+
+### EXECUÇÃO CONGELADA
+Além dos objetos já listados: NÃO alterar `mem://`, memória interna, não usar `SET ROLE`, GUCs, helpers, roles ou schemas paralelos.
+
+### VALIDAÇÃO PÓS-EXECUÇÃO ADICIONAL
+Confirmar READ-ONLY: owner preservado, `auth.uid()` presente, checks de role corretos, releitura pós-lock, validação de árvore executada, imutabilidade de `vigencia_inicio`/`substitui_versao_id`, atomicidade garantida.
