@@ -12,7 +12,8 @@ import {
   setRemoteResetPending,
   isLocalResetPending,
   setLocalResetPending,
-  prepareDemoBeforeSignOut 
+  prepareDemoBeforeSignOut,
+  performLocalDemoReset
 } from "./demo-reset";
 import type { QueryClient } from "@tanstack/react-query";
 
@@ -36,7 +37,6 @@ export async function signInTeam(teamName: string, password: string) {
   if (error) throw error;
   await claimCurrentSession();
 
-  // Verificação de conta demo e reset pendente
   if (data.user?.id) {
     const userId = data.user.id;
     try {
@@ -48,10 +48,7 @@ export async function signInTeam(teamName: string, password: string) {
       
       if (!teamErr && team) {
         const isTest = !!team.is_test;
-        await setDemoAccountInfo(userId, {
-          is_test: isTest,
-          verified_at: new Date().toISOString()
-        });
+        await setDemoAccountInfo(userId, { is_test: isTest, verified_at: new Date().toISOString() });
 
         if (isTest) {
           const localPending = await isLocalResetPending(userId);
@@ -59,19 +56,20 @@ export async function signInTeam(teamName: string, password: string) {
           
           if (localPending || remotePending) {
             const { pauseSyncAndWaitForIdle, resumeSync } = await import("./sync/engine");
-            const { performLocalDemoReset, setLocalResetPending, setRemoteResetPending } = await import("./demo-reset");
-            
             try {
               await pauseSyncAndWaitForIdle();
-              
               if (localPending) {
-                await performLocalDemoReset(userId);
-                await setLocalResetPending(userId, false);
+                try {
+                  await performLocalDemoReset(userId);
+                  await setLocalResetPending(userId, false);
+                } catch (err) {
+                  // A) Se falhar no login, mantém sync pausado (bloqueia outbox demo)
+                  console.error("[auth] Reconcile local reset failed, keeping sync paused", err);
+                  return data; // Retorna com sync pausado
+                }
               }
-              
-              // Só chama RPC se local estiver limpo ou acabou de limpar
-              const { data, error: rpcErr } = await supabase.rpc("reset_current_demo_session");
-              const res = data as any;
+              const { data: rpcRes, error: rpcErr } = await supabase.rpc("reset_current_demo_session");
+              const res = rpcRes as any;
               if (!rpcErr && res?.status === "reset") {
                 await setRemoteResetPending(userId, false);
               }
@@ -80,7 +78,6 @@ export async function signInTeam(teamName: string, password: string) {
             }
           }
         } else {
-          // Se não é mais demo, limpamos marcadores pendentes se existirem
           await setLocalResetPending(userId, false);
           await setRemoteResetPending(userId, false);
         }
@@ -90,11 +87,7 @@ export async function signInTeam(teamName: string, password: string) {
     }
   }
 
-  // Grava credencial local automaticamente para viabilizar login offline
-  // permanente após este primeiro acesso online.
   await saveCredentialFromOnlineLogin(teamName, password).catch(() => undefined);
-  // Persiste o UUID em Preferences (sobrevive a signOut) para servir como
-  // fallback do userId no próximo acesso offline.
   if (data.user?.id) await saveLastUserId(data.user.id).catch(() => undefined);
   return data;
 }
@@ -119,7 +112,6 @@ export function prepareLocalSignOut(): void {
 
 export async function signOut() {
   prepareLocalSignOut();
-
   try {
     await Promise.race([
       (async () => {
@@ -129,20 +121,11 @@ export async function signOut() {
       new Promise((resolve) => setTimeout(resolve, SIGNOUT_TIMEOUT_MS)),
     ]);
   } catch {
-    /* ignore: logout must still clear local auth state offline */
+    /* ignore */
   }
-
-  // NÃO limpa a credencial offline nem o backup da sessão — o próximo
-  // acesso pode ser feito offline com a mesma senha (dentro da janela de
-  // 30 dias). Apenas invalida o "unlock" ativo para forçar reentrada com
-  // senha.
   await clearOfflineUnlock().catch(() => undefined);
-  void clearSessionBackup; // referenciado apenas para uso condicional futuro
 }
 
-/**
- * Finaliza a sessão do aplicativo, limpando estados locais e remotos (Supabase).
- */
 export async function finalizeSignOut(queryClient?: QueryClient): Promise<void> {
   prepareLocalSignOut();
   try {
@@ -155,21 +138,43 @@ export async function finalizeSignOut(queryClient?: QueryClient): Promise<void> 
 }
 
 /**
- * Ponto de entrada coordenado para o logout.
- * Gerencia o reset da conta demo antes de limpar a sessão.
+ * Novo helper centralizado para finalização segura do logout após reset demo.
  */
-export async function signOutApp(queryClient?: QueryClient, userId?: string): Promise<void> {
-  if (userId) {
+export async function finalizeSignOutAfterDemoReset(
+  queryClient: QueryClient | undefined,
+  keepSyncPaused: boolean
+): Promise<void> {
+  // 1. Limpeza/Invalidacao
+  prepareLocalSignOut();
+  
+  // 2. Supabase SignOut
+  try {
+    void queryClient?.cancelQueries();
+    queryClient?.clear();
+  } catch { /* ignore */ }
+  
+  await signOut();
+
+  // 3. Somente agora libera o sync se foi solicitado mantê-lo pausado
+  if (keepSyncPaused) {
     const { resumeSync } = await import("./sync/engine");
-    try {
-      await prepareDemoBeforeSignOut(userId);
-    } finally {
-      // Garante que o sync seja liberado após o reset (ou falha dele) 
-      // mas antes da invalidação da sessão no finalizeSignOut
+    resumeSync();
+  }
+}
+
+export async function signOutApp(queryClient?: QueryClient, userId?: string): Promise<void> {
+  let keepSyncPaused = false;
+  if (userId) {
+    const result = await prepareDemoBeforeSignOut(userId);
+    keepSyncPaused = result.keepSyncPausedUntilSignOut;
+    
+    // Se a limpeza terminou ok e não pediu pausa estendida, liberamos logo
+    if (!keepSyncPaused && result.attempted) {
+      const { resumeSync } = await import("./sync/engine");
       resumeSync();
     }
   }
-  await finalizeSignOut(queryClient);
+  await finalizeSignOutAfterDemoReset(queryClient, keepSyncPaused);
 }
 
 function clearBrowserAuthStorage(): void {
