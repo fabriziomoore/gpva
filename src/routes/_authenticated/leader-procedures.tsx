@@ -162,10 +162,13 @@ function LeaderProceduresPage() {
         const { error: pubError } = await supabase.rpc('publish_procedure_version', {
           p_versao_id: id,
           p_vigencia_inicio: metadata.vigencia_inicio,
-          p_substitui_versao_id: undefined
+          ...(editingProcedure?.substitui_versao_id
+            ? { p_substitui_versao_id: editingProcedure.substitui_versao_id }
+            : {})
         });
         if (pubError) throw pubError;
       }
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
