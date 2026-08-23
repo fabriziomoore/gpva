@@ -227,15 +227,18 @@ export async function prepareDemoBeforeSignOut(userId: string): Promise<{
     // C. Limpeza REMOTA (RPC)
     const { data, error } = await supabase.rpc("reset_current_demo_session");
     
+    // Casting de data para acessar status de forma segura (TanStack Start/Supabase gerado)
+    const res = data as any;
+
     if (error) {
       console.warn("[demo] Remote reset RPC failed, marking as pending", error);
       result.remoteReset = "failed";
       await setRemoteResetPending(userId, true);
-    } else if (data?.status === "reset") {
-      console.info("[demo] Remote reset success", data);
+    } else if (res?.status === "reset") {
+      console.info("[demo] Remote reset success", res);
       result.remoteReset = "reset";
       await setRemoteResetPending(userId, false);
-    } else if (data?.status === "not_demo") {
+    } else if (res?.status === "not_demo") {
       result.remoteReset = "not_demo";
       await setRemoteResetPending(userId, false);
       await setDemoAccountInfo(userId, { is_test: false, verified_at: new Date().toISOString() });
@@ -247,8 +250,6 @@ export async function prepareDemoBeforeSignOut(userId: string): Promise<{
     console.error("[demo] Reset flow interrupted", err);
     result.remoteReset = "failed";
     await setRemoteResetPending(userId, true);
-  } finally {
-    // Restauramos o sync apenas se não estivermos no meio de um logout crítico (auth.ts gerencia isso)
   }
 
   return result;
