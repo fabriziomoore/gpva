@@ -212,7 +212,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <FormField
                     control={form.control}
                     name="vigencia_inicio"
