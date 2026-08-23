@@ -1,12 +1,12 @@
 ---
-name: Fase Árvore Operacional - Microetapa A (Revisão 2)
-description: Fundação estrutural normalizada (Setor -> Supervisor -> Líder -> Equipe) com integridade rigorosa e RLS admin-only.
+name: Fase Árvore Operacional - Microetapa A (Revisão Final)
+description: Fundação estrutural normalizada com RLS estrito, proteção de hierarquia em equipes e integridade cross-table.
 type: feature
 ---
 
-# Plano: Árvore Operacional Normalizada GPVA
+# Plano Final: Árvore Operacional Normalizada GPVA (Etapa A1)
 
-## 1. Schema Estrutural (A1)
+## 1. Schema e DDL (A1)
 
 ```sql
 -- public.supervisores
@@ -30,70 +30,59 @@ CREATE TABLE public.lideres_estrutura (
     updated_at timestamptz DEFAULT now()
 );
 
--- public.equipes (Alterações Aditivas)
+-- Adição Aditiva em public.equipes
 ALTER TABLE public.equipes 
 ADD COLUMN supervisor_id uuid REFERENCES public.supervisores(id) ON DELETE RESTRICT,
 ADD COLUMN leader_id uuid REFERENCES public.lideres_estrutura(id) ON DELETE RESTRICT;
+
+-- Índices Obrigatórios
+CREATE INDEX supervisores_setor_id_idx ON public.supervisores(setor_id);
+CREATE UNIQUE INDEX supervisores_user_id_unique_idx ON public.supervisores(user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX lideres_estrutura_setor_id_idx ON public.lideres_estrutura(setor_id);
+CREATE INDEX lideres_estrutura_supervisor_id_idx ON public.lideres_estrutura(supervisor_id);
+CREATE INDEX equipes_supervisor_id_idx ON public.equipes(supervisor_id);
+CREATE INDEX equipes_leader_id_idx ON public.equipes(leader_id);
 ```
 
-## 2. Índices
+## 2. RLS Estrito (Admin-Only)
 
-- `INDEX supervisores(setor_id)`
-- `UNIQUE INDEX supervisores_user_id_idx ON supervisores(user_id) WHERE user_id IS NOT NULL`
-- `INDEX lideres_estrutura(setor_id)`
-- `INDEX lideres_estrutura(supervisor_id)`
-- `INDEX equipes(supervisor_id)`
-- `INDEX equipes(leader_id)`
+Para `public.supervisores` e `public.lideres_estrutura`:
+- `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`
+- `CREATE POLICY admin_select ON ... FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));`
+- `CREATE POLICY admin_insert ON ... FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'admin'));`
+- `CREATE POLICY admin_update ON ... FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'admin')) WITH CHECK (public.has_role(auth.uid(), 'admin'));`
+- `CREATE POLICY admin_delete ON ... FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'));`
 
-## 3. Segurança (RLS Admin-Only)
+*Nota: Sem GRANT ALL com USING. Nenhuma permissão para roles não-admin nesta fase.*
 
-- `ALTER TABLE public.supervisores ENABLE ROW LEVEL SECURITY;`
-- `ALTER TABLE public.lideres_estrutura ENABLE ROW LEVEL SECURITY;`
-- **Policy:** `GRANT ALL ON public.supervisores/lideres_estrutura TO authenticated USING (public.has_role(auth.uid(), 'admin'));`
-- Nenhuma permissão de `SELECT` para usuários comuns (leader/supervisor) nesta fase.
-- `public.equipes`: RLS mantido sem alterações.
+## 3. Integridade e Hierarquia (Triggers BEFORE)
 
-## 4. Integridade Cross-Table (Triggers Estruturais)
-
-Implementação de triggers `BEFORE INSERT OR UPDATE` para validar a coerência da árvore:
-
-- **Em `lideres_estrutura`:** Validar que o `supervisor_id` selecionado pertence ao mesmo `setor_id` do registro.
+### A. Integridade Cross-Table (Regras de Negócio)
+- **Em `lideres_estrutura`:** `supervisor.setor_id` deve ser igual a `NEW.setor_id`.
 - **Em `equipes`:** 
     - Se `supervisor_id` preenchido: `supervisor.setor_id = NEW.setor_id`.
-    - Se `leader_id` preenchido: `leader.setor_id = NEW.setor_id`.
+    - Se `leader_id` preenchido: `leader.setor_id = NEW.setor_id` E `supervisor_id` não pode ser NULL.
     - Se ambos preenchidos: `leader.supervisor_id = NEW.supervisor_id`.
 
-## 5. Sincronização Legada (Unidirecional)
+### B. Proteção de Equipes (Imutabilidade Hierárquica)
+Trigger `BEFORE UPDATE` em `public.equipes`:
+- Se `auth.uid() = OLD.id` (equipe editando a própria linha) E usuário NÃO for admin:
+    - Impedir alteração (`IS DISTINCT FROM`) em: `setor_id`, `supervisor_id`, `leader_id`.
 
-- Novos campos UUID tornam-se a **Source of Truth**.
-- Trigger em `equipes` atualizará `equipes.supervisor` (text) e `equipes.leader` (text) apenas quando seus respectivos IDs forem não-nulos.
-- **PROIBIDO:** Atualizar IDs a partir de alterações nos campos textuais.
+## 4. Sincronização e Legado
+- Trigger em `equipes` atualiza os campos `text` (`supervisor`, `leader`) apenas se o ID UUID correspondente for preenchido.
+- Se ID for NULL, manter o texto existente (transição progressiva).
+- Proibido recalcular IDs a partir de textos.
 
-## 6. Dados Existentes (Auditoria)
+## 5. Critérios de Aceite A1
+- Exatamente **uma migration**.
+- Equipes não conseguem alterar sua própria posição na árvore.
+- `leader_id` não pode existir sem `supervisor_id`.
+- Campos textuais legados intactos em registros com IDs nulos.
+- RLS separada por operação (SELECT/INSERT/UPDATE/DELETE).
+- Zero alterações em Procedimentos, Frontend ou Mobile.
 
-**Estado Auditado:**
-- Setor: `Corte e Religa`
-- Líder Real: `Gabriel Aráujo` (`6a17b5a5-6716-4af4-b567-743596b1a2c7`)
-- Variações Legadas (ex: `Ricardo Cunha` com espaços) não serão migradas automaticamente.
-- Carga de dados apenas via mapeamento auditado posterior à A1.
-
-## 7. Microetapas de Execução
-
-1.  **A1 — Fundação Estrutural:** Uma única migration com DDL, Triggers e RLS admin-only. Zero dados.
-2.  **A2 — Auditoria:** Geração de relatório `texto legado` -> `entidade proposta` (Read-only).
-3.  **A3 — Carga:** Inserção controlada de Supervisores e Vínculos de Líderes aprovados.
-4.  **A4 — Vinculação:** Updates determinísticos por UUID em `equipes`.
-5.  **A5 — Admin:** Interface de gerenciamento (Supervisor/Líder/Equipe) com filtros encadeados.
-6.  **A6 — Visibilidade:** Expansão das políticas de RLS para acesso operacional.
-
-## 8. Critérios de Aceite (A1)
-
-- Exatamente uma migration nova.
-- Zero alteração em `equipes.supervisor` ou `equipes.leader` existentes.
-- Triggers bloqueiam combinações de IDs de setores diferentes.
-- Procedimentos Operacionais, Offline e Mobile permanecem intactos.
-
-## 9. Plano de Rollback
-
-- **Etapa A1:** Remoção segura de triggers, políticas, colunas e tabelas (ordem inversa) enquanto os dados forem nulos.
-- **Após Carga:** Exportação de vínculos antes da remoção. Campos legados nunca são apagados.
+## 6. Escopo e Rollback
+- A1 é puramente estrutural: zero dados afetados.
+- Rollback via `DROP` de triggers, policies e colunas/tabelas na ordem segura enquanto dados novos forem nulos.
+- Preservar `updated_at` via triggers simples dedicados (sem reutilizar funções globais).
