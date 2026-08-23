@@ -56,23 +56,43 @@ export async function signInTeam(teamName: string, password: string) {
           
           if (localPending || remotePending) {
             const { pauseSyncAndWaitForIdle, resumeSync } = await import("./sync/engine");
-            try {
-              await pauseSyncAndWaitForIdle();
-              if (localPending) {
-                try {
-                  await performLocalDemoReset(userId);
-                  await setLocalResetPending(userId, false);
-                } catch (err) {
-                  // A) Se falhar no login, mantém sync pausado (bloqueia outbox demo)
-                  console.error("[auth] Reconcile local reset failed, keeping sync paused", err);
-                  return data; // Retorna com sync pausado
-                }
+            await pauseSyncAndWaitForIdle();
+
+            if (localPending) {
+              try {
+                await performLocalDemoReset(userId);
+                await setLocalResetPending(userId, false);
+              } catch (err) {
+                console.error("[auth] Reconcile local reset failed, blocking login", err);
+                await setLocalResetPending(userId, true);
+                await setRemoteResetPending(userId, true);
+                
+                // Encerra sessão enquanto sync ainda pausado
+                await signOut();
+                resumeSync();
+                
+                throw new Error(
+                  "Não foi possível preparar a conta de demonstração. Tente entrar novamente."
+                );
               }
+            }
+            
+            // Sucesso local (ou não era pendente), agora tenta RPC
+            try {
               const { data: rpcRes, error: rpcErr } = await supabase.rpc("reset_current_demo_session");
               const res = rpcRes as any;
+              
               if (!rpcErr && res?.status === "reset") {
                 await setRemoteResetPending(userId, false);
+              } else if (res?.status === "not_demo") {
+                await setRemoteResetPending(userId, false);
+                await setDemoAccountInfo(userId, { is_test: false, verified_at: new Date().toISOString() });
+              } else {
+                await setRemoteResetPending(userId, true);
               }
+            } catch (rpcEx) {
+              console.warn("[auth] Remote reset RPC failed, marking as pending", rpcEx);
+              await setRemoteResetPending(userId, true);
             } finally {
               resumeSync();
             }
@@ -82,7 +102,8 @@ export async function signInTeam(teamName: string, password: string) {
           await setRemoteResetPending(userId, false);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message?.includes("demonstração")) throw err;
       console.warn("[auth] Failed to reconcile demo status", err);
     }
   }
