@@ -6,7 +6,7 @@ import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertT
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { signOutApp } from "@/lib/auth";
+import { prepareAppSignOut, finalizePreparedSignOut } from "@/lib/auth";
 
 
 const ARCGIS_URL =
@@ -151,11 +151,17 @@ export function SideMenu() {
       document.body.removeAttribute("data-scroll-locked");
     }
 
-    // 2. Navegação imediata para evitar travamento do mapa
+    // 2. Coordenar Logout e Reset Demo (Fase A: Preparação)
+    // Isso deve ocorrer ANTES da navegação para que o reset demo receba a sessão
+    // e o gpva.forceSignedOut seja marcado no storage local.
+    const signOutContext = await prepareAppSignOut(userId ?? undefined);
+
+    // 3. Navegação para /auth
+    // Como forceSignedOut já está "1", o beforeLoad de /auth não redirecionará de volta para /.
     await navigate({ to: "/auth", replace: true });
 
-    // 3. Coordenar Logout e Reset Demo centralizado
-    await signOutApp(queryClient, userId ?? undefined);
+    // 4. Finalização (Fase B: Supabase SignOut Remoto e Cleanup)
+    await finalizePreparedSignOut(queryClient, signOutContext);
   }
   const items = useMemo(
     () => (isLeader.data === true ? leaderItems : teamItems),
