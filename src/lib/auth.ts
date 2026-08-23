@@ -159,43 +159,77 @@ export async function finalizeSignOut(queryClient?: QueryClient): Promise<void> 
 }
 
 /**
- * Novo helper centralizado para finalização segura do logout após reset demo.
+ * Estrutura de contexto para a finalização do logout.
  */
-export async function finalizeSignOutAfterDemoReset(
-  queryClient: QueryClient | undefined,
-  keepSyncPaused: boolean
-): Promise<void> {
-  // 1. Limpeza/Invalidacao
-  prepareLocalSignOut();
-  
-  // 2. Supabase SignOut
-  try {
-    void queryClient?.cancelQueries();
-    queryClient?.clear();
-  } catch { /* ignore */ }
-  
-  await signOut();
-
-  // 3. Somente agora libera o sync se foi solicitado mantê-lo pausado
-  if (keepSyncPaused) {
-    const { resumeSync } = await import("./sync/engine");
-    resumeSync();
-  }
+export interface SignOutContext {
+  keepSyncPausedUntilSignOut: boolean;
 }
 
-export async function signOutApp(queryClient?: QueryClient, userId?: string): Promise<void> {
+/**
+ * Fase A: Prepara o logout coordenado.
+ * Executa o reset demo enquanto autenticado, limpa o estado local e marca
+ * gpva.forceSignedOut para que a rota /auth aceite o usuário mesmo com sessão pendente.
+ */
+export async function prepareAppSignOut(userId?: string): Promise<SignOutContext> {
   let keepSyncPaused = false;
   if (userId) {
     const result = await prepareDemoBeforeSignOut(userId);
     keepSyncPaused = result.keepSyncPausedUntilSignOut;
     
-    // Se a limpeza terminou ok e não pediu pausa estendida, liberamos logo
+    // Se a limpeza terminou ok e não pediu pausa estendida, liberamos logo o sync
     if (!keepSyncPaused && result.attempted) {
       const { resumeSync } = await import("./sync/engine");
       resumeSync();
     }
   }
-  await finalizeSignOutAfterDemoReset(queryClient, keepSyncPaused);
+  
+  // Define gpva.forceSignedOut = "1" e limpa storage local ANTES da navegação
+  prepareLocalSignOut();
+  
+  return { keepSyncPausedUntilSignOut: keepSyncPaused };
+}
+
+/**
+ * Fase B: Finaliza o logout após a navegação ter ocorrido.
+ * Invalida a sessão no Supabase, limpa o QueryClient e libera o sync engine.
+ */
+export async function finalizePreparedSignOut(
+  queryClient: QueryClient | undefined,
+  context: SignOutContext
+): Promise<void> {
+  // 1. Limpeza do QueryClient
+  try {
+    void queryClient?.cancelQueries();
+    queryClient?.clear();
+  } catch { /* ignore */ }
+  
+  // 2. Supabase SignOut Remoto (sem chamar prepareLocalSignOut novamente)
+  try {
+    await Promise.race([
+      (async () => {
+        await supabase.removeAllChannels();
+        await supabase.auth.signOut({ scope: "local" });
+      })(),
+      new Promise((resolve) => setTimeout(resolve, SIGNOUT_TIMEOUT_MS)),
+    ]);
+  } catch {
+    /* ignore */
+  }
+  await clearOfflineUnlock().catch(() => undefined);
+
+  // 3. Libera o sync se foi mantido pausado durante o reset
+  if (context.keepSyncPausedUntilSignOut) {
+    const { resumeSync } = await import("./sync/engine");
+    resumeSync();
+  }
+}
+
+/**
+ * Mantido para compatibilidade, executando o fluxo completo de forma sequencial.
+ */
+export async function signOutApp(queryClient?: QueryClient, userId?: string): Promise<void> {
+  const context = await prepareAppSignOut(userId);
+  await finalizePreparedSignOut(queryClient, context);
 }
 
 function clearBrowserAuthStorage(): void {
