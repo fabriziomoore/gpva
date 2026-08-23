@@ -116,16 +116,24 @@ export async function performLocalDemoReset(demoTeamId: string): Promise<void> {
   });
 }
 
+export type RemoteResetStatus = "reset" | "not_demo" | "failed" | "skipped";
+export type LocalResetStatus = "reset" | "pending" | "skipped";
+
 export async function prepareDemoBeforeSignOut(userId: string): Promise<{
   attempted: boolean;
-  remoteReset: "reset" | "not_demo" | "failed" | "skipped";
-  localReset: "reset" | "pending" | "skipped";
+  remoteReset: RemoteResetStatus;
+  localReset: LocalResetStatus;
   keepSyncPausedUntilSignOut: boolean;
 }> {
-  const result = {
+  const result: {
+    attempted: boolean;
+    remoteReset: RemoteResetStatus;
+    localReset: LocalResetStatus;
+    keepSyncPausedUntilSignOut: boolean;
+  } = {
     attempted: false,
-    remoteReset: "skipped" as const,
-    localReset: "skipped" as const,
+    remoteReset: "skipped",
+    localReset: "skipped",
     keepSyncPausedUntilSignOut: false
   };
 
