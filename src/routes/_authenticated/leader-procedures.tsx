@@ -415,22 +415,22 @@ function LeaderProceduresPage() {
       <Card className="mb-8 border-primary/10 shadow-sm bg-card/50 backdrop-blur-sm">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
+            <div className="relative w-full md:flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por título..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-background/50 border-primary/20"
+                className="pl-9 bg-background/50 border-primary/20 w-full"
               />
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-              <TabsList className="bg-muted/50 border border-primary/10 p-1">
-                <TabsTrigger value="all">Todos</TabsTrigger>
-                <TabsTrigger value="draft">Rascunhos</TabsTrigger>
-                <TabsTrigger value="published">Publicados</TabsTrigger>
-                <TabsTrigger value="suspended">Suspensos</TabsTrigger>
-                <TabsTrigger value="archived">Arquivados</TabsTrigger>
+              <TabsList className="grid grid-cols-2 min-[400px]:grid-cols-3 md:flex w-full h-auto gap-1 bg-muted/50 border border-primary/10 p-1">
+                <TabsTrigger value="all" className="w-full min-w-0 text-center whitespace-normal">Todos</TabsTrigger>
+                <TabsTrigger value="draft" className="w-full min-w-0 text-center whitespace-normal">Rascunhos</TabsTrigger>
+                <TabsTrigger value="published" className="w-full min-w-0 text-center whitespace-normal">Publicados</TabsTrigger>
+                <TabsTrigger value="suspended" className="w-full min-w-0 text-center whitespace-normal">Suspensos</TabsTrigger>
+                <TabsTrigger value="archived" className="w-full min-w-0 text-center whitespace-normal">Arquivados</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
