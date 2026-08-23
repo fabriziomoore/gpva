@@ -314,7 +314,7 @@ function LeaderProceduresPage() {
 
       {/* Dialog para Novo Procedimento */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
           <DialogHeader>
             <DialogTitle>Novo Procedimento Operacional</DialogTitle>
             <DialogDescription>
@@ -343,7 +343,7 @@ function LeaderProceduresPage() {
 
       {/* Dialog para Edição / Visualização */}
       <Dialog open={!!editingProcedure} onOpenChange={(open) => !open && setEditingProcedure(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
           <DialogHeader>
             <DialogTitle>
               {editingProcedure?.status === 'draft' ? 'Editar Rascunho' : 'Visualizar Procedimento'}
