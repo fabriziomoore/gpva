@@ -6,8 +6,8 @@ import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertT
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { prepareLocalSignOut, signOutApp, finalizeSignOut } from "@/lib/auth";
-import { prepareDemoBeforeSignOut } from "@/lib/demo-reset";
+import { signOutApp } from "@/lib/auth";
+
 
 const ARCGIS_URL =
   "https://arcgis.aegea.com.br/portal/apps/webappviewer/index.html?id=0cbbe90bebaf4d7a85d07c7af12b0de0";
@@ -151,24 +151,11 @@ export function SideMenu() {
       document.body.removeAttribute("data-scroll-locked");
     }
 
-    // 2. Barreira e Reset Demo (enquanto autenticado)
-    if (userId) {
-      const { resumeSync } = await import("@/lib/sync/engine");
-      try {
-        await prepareDemoBeforeSignOut(userId);
-      } finally {
-        resumeSync();
-      }
-    }
-
-    // 3. Limpeza local de storage
-    prepareLocalSignOut();
-
-    // 4. Navegação imediata para evitar travamento do mapa
+    // 2. Navegação imediata para evitar travamento do mapa
     await navigate({ to: "/auth", replace: true });
 
-    // 5. Finaliza sessão no Supabase e QueryClient
-    void finalizeSignOut(queryClient);
+    // 3. Coordenar Logout e Reset Demo centralizado
+    await signOutApp(queryClient, userId ?? undefined);
   }
   const items = useMemo(
     () => (isLeader.data === true ? leaderItems : teamItems),
