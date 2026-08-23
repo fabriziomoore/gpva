@@ -132,10 +132,12 @@ export type Database = {
           id: string
           is_test: boolean
           leader: string
+          leader_id: string | null
           onboarded: boolean
           photo_url: string | null
           setor_id: string
           supervisor: string
+          supervisor_id: string | null
           team_name: string
           variable_rate: number
         }
@@ -146,10 +148,12 @@ export type Database = {
           id: string
           is_test?: boolean
           leader?: string
+          leader_id?: string | null
           onboarded?: boolean
           photo_url?: string | null
           setor_id: string
           supervisor?: string
+          supervisor_id?: string | null
           team_name: string
           variable_rate?: number
         }
@@ -160,19 +164,35 @@ export type Database = {
           id?: string
           is_test?: boolean
           leader?: string
+          leader_id?: string | null
           onboarded?: boolean
           photo_url?: string | null
           setor_id?: string
           supervisor?: string
+          supervisor_id?: string | null
           team_name?: string
           variable_rate?: number
         }
         Relationships: [
           {
+            foreignKeyName: "equipes_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "lideres_estrutura"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "equipes_setor_id_fkey"
             columns: ["setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipes_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "supervisores"
             referencedColumns: ["id"]
           },
         ]
@@ -328,6 +348,51 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "equipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lideres_estrutura: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          setor_id: string
+          supervisor_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          setor_id: string
+          supervisor_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          setor_id?: string
+          supervisor_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lideres_estrutura_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lideres_estrutura_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "supervisores"
             referencedColumns: ["id"]
           },
         ]
@@ -587,6 +652,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      supervisores: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          setor_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          setor_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          setor_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisores_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tipos_servico: {
         Row: {
