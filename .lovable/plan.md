@@ -63,3 +63,101 @@ const publishArgs = {
 - Triggers de integridade e overlap
 - RLS e roles (`internal_proc_executor`)
 - Funcionalidades mobile/offline e SideMenu
+
+## GARANTIAS FINAIS DE EXECUÇÃO
+
+1. SOURCE OF TRUTH DO PREDECESSOR
+
+Na publicação de draft existente:
+substituiVersaoId deve vir EXCLUSIVAMENTE de:
+editingProcedure.substitui_versao_id
+ou do mesmo objeto draft passado explicitamente à mutation.
+
+Proibido:
+- buscar última versão;
+- inferir pelo número da versão;
+- recalcular sucessão;
+- consultar outro predecessor;
+- usar estado global implícito quando o draft já possui o valor.
+
+V1:
+omitir completamente p_substitui_versao_id.
+
+V2/V3/...:
+enviar exatamente o UUID persistido no draft.
+Não enviar null.
+Não enviar undefined explicitamente.
+Não usar as any.
+Não usar as unknown.
+
+2. CONGELAMENTO COMPLETO
+
+Não alterar:
+src/integrations/supabase/types.ts
+migration 20260823215056
+public.check_procedimento_versao_integrity()
+public.check_vigencia_overlap()
+public.validate_procedure_tree(jsonb)
+public.validate_versao_substituicao()
+public.create_procedure_with_version(...)
+public.prevent_procedimento_versao_historical_delete()
+RLS
+todas as policies
+roles
+grants
+memberships
+tabelas
+colunas
+constraints
+FKs
+índices
+enums
+qualquer frontend exceto src/routes/_authenticated/leader-procedures.tsx
+mobile/**
+android/**
+auth
+offline
+sync
+Dexie
+outbox
+NetworkService
+SideMenu
+dados existentes
+mem://
+memória interna do projeto
+
+Não criar:
+helper
+nova RPC
+role
+schema
+GUC
+Não usar SET ROLE.
+
+3. MIGRATION
+
+Criar EXATAMENTE UMA nova migration.
+Ela pode alterar SOMENTE:
+public.publish_procedure_version(uuid,date,uuid)
+Não modificar a migration 20260823215056.
+Toda mudança no banco desta etapa ocorre EXCLUSIVAMENTE dentro dessa migration.
+PROIBIDO SQL avulso de escrita ou DDL antes/depois.
+Após a migration:
+somente SELECT/READ-ONLY.
+
+4. ACEITE
+
+Confirmar:
+- V1 omite p_substitui_versao_id;
+- V2 envia editingProcedure.substitui_versao_id = V1.id;
+- V3 envia editingProcedure.substitui_versao_id = V2.id;
+- nenhum as any;
+- nenhum as unknown;
+- nenhum null forçado;
+- nenhum undefined explícito;
+- types.ts intacto;
+- somente leader-procedures.tsx muda no código;
+- exatamente uma migration nova;
+- migration altera somente publish_procedure_version;
+- todos os objetos congelados permanecem intactos.
+
