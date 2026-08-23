@@ -70,8 +70,9 @@ export async function signInTeam(teamName: string, password: string) {
               }
               
               // Só chama RPC se local estiver limpo ou acabou de limpar
-              const { data: rpcRes, error: rpcErr } = await supabase.rpc("reset_current_demo_session");
-              if (!rpcErr && rpcRes?.status === "reset") {
+              const { data, error: rpcErr } = await supabase.rpc("reset_current_demo_session");
+              const res = data as any;
+              if (!rpcErr && res?.status === "reset") {
                 await setRemoteResetPending(userId, false);
               }
             } finally {
