@@ -153,7 +153,12 @@ export function SideMenu() {
 
     // 2. Barreira e Reset Demo (enquanto autenticado)
     if (userId) {
-      await prepareDemoBeforeSignOut(userId);
+      const { resumeSync } = await import("@/lib/sync/engine");
+      try {
+        await prepareDemoBeforeSignOut(userId);
+      } finally {
+        resumeSync();
+      }
     }
 
     // 3. Limpeza local de storage

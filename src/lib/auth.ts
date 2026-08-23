@@ -9,7 +9,9 @@ import {
 import { 
   setDemoAccountInfo, 
   isRemoteResetPending, 
-  setRemoteResetPending, 
+  setRemoteResetPending,
+  isLocalResetPending,
+  setLocalResetPending,
   prepareDemoBeforeSignOut 
 } from "./demo-reset";
 import type { QueryClient } from "@tanstack/react-query";
@@ -45,23 +47,45 @@ export async function signInTeam(teamName: string, password: string) {
         .single();
       
       if (!teamErr && team) {
+        const isTest = !!team.is_test;
         await setDemoAccountInfo(userId, {
-          is_test: !!team.is_test,
+          is_test: isTest,
           verified_at: new Date().toISOString()
         });
 
-        if (team.is_test) {
-          const pending = await isRemoteResetPending(userId);
-          if (pending) {
-            const { error: rpcErr } = await supabase.rpc("reset_current_demo_session");
-            if (!rpcErr) {
-              await setRemoteResetPending(userId, false);
+        if (isTest) {
+          const localPending = await isLocalResetPending(userId);
+          const remotePending = await isRemoteResetPending(userId);
+          
+          if (localPending || remotePending) {
+            const { pauseSyncAndWaitForIdle, resumeSync } = await import("./sync/engine");
+            const { performLocalDemoReset, setLocalResetPending, setRemoteResetPending } = await import("./demo-reset");
+            
+            try {
+              await pauseSyncAndWaitForIdle();
+              
+              if (localPending) {
+                await performLocalDemoReset(userId);
+                await setLocalResetPending(userId, false);
+              }
+              
+              // Só chama RPC se local estiver limpo ou acabou de limpar
+              const { data: rpcRes, error: rpcErr } = await supabase.rpc("reset_current_demo_session");
+              if (!rpcErr && rpcRes?.status === "reset") {
+                await setRemoteResetPending(userId, false);
+              }
+            } finally {
+              resumeSync();
             }
           }
+        } else {
+          // Se não é mais demo, limpamos marcadores pendentes se existirem
+          await setLocalResetPending(userId, false);
+          await setRemoteResetPending(userId, false);
         }
       }
     } catch (err) {
-      console.warn("[auth] Failed to sync demo status", err);
+      console.warn("[auth] Failed to reconcile demo status", err);
     }
   }
 
@@ -135,7 +159,14 @@ export async function finalizeSignOut(queryClient?: QueryClient): Promise<void> 
  */
 export async function signOutApp(queryClient?: QueryClient, userId?: string): Promise<void> {
   if (userId) {
-    await prepareDemoBeforeSignOut(userId);
+    const { resumeSync } = await import("./sync/engine");
+    try {
+      await prepareDemoBeforeSignOut(userId);
+    } finally {
+      // Garante que o sync seja liberado após o reset (ou falha dele) 
+      // mas antes da invalidação da sessão no finalizeSignOut
+      resumeSync();
+    }
   }
   await finalizeSignOut(queryClient);
 }
