@@ -98,7 +98,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
 
   return (
     <Form {...form}>
-      <div className="space-y-8">
+      <div className="space-y-4 sm:space-y-8 min-w-0">
         {validationErrors.length > 0 && (
           <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4">
             <AlertCircle className="h-4 w-4" />
@@ -113,16 +113,16 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
           </Alert>
         )}
 
-        <Tabs defaultValue="metadata" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="metadata">Dados Gerais</TabsTrigger>
-            <TabsTrigger value="tree">Fluxograma de Decisão</TabsTrigger>
+        <Tabs defaultValue="metadata" className="w-full min-w-0">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-auto">
+            <TabsTrigger value="metadata" className="min-w-0 whitespace-normal text-center py-2 h-auto text-xs sm:text-sm">Dados Gerais</TabsTrigger>
+            <TabsTrigger value="tree" className="min-w-0 whitespace-normal text-center py-2 h-auto text-xs sm:text-sm">Fluxograma de Decisão</TabsTrigger>
           </TabsList>
 
           <TabsContent value="metadata">
             <Card className="border-primary/10 shadow-sm">
-              <CardContent className="pt-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <FormField
                     control={form.control}
                     name="titulo"
@@ -212,7 +212,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <FormField
                     control={form.control}
                     name="vigencia_inicio"
@@ -251,8 +251,13 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
         </Tabs>
 
         {!isReadOnly && (
-          <div className="flex justify-end gap-4 pt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => onSubmit(null, null, false)}>
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-3 sm:gap-4 pt-4 border-t border-border">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onSubmit(null, null, false)}
+              className="w-full sm:w-auto"
+            >
               Cancelar
             </Button>
             
@@ -261,7 +266,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
               variant="secondary"
               disabled={isSubmitting} 
               onClick={() => handleAction(false)}
-              className="min-w-[150px]"
+              className="w-full sm:w-auto sm:min-w-[150px]"
             >
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -275,7 +280,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
               type="button"
               disabled={isSubmitting} 
               onClick={() => handleAction(true)}
-              className="min-w-[150px] shadow-lg bg-green-600 hover:bg-green-700 text-white"
+              className="w-full sm:w-auto sm:min-w-[150px] shadow-lg bg-green-600 hover:bg-green-700 text-white"
             >
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

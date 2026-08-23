@@ -50,7 +50,7 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
   const activeNode = value.nodes.find(n => n.id === activeNodeId);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[500px]">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 min-w-0 sm:min-h-[500px]">
       <div className="md:col-span-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Estrutura</h3>
@@ -66,7 +66,7 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
           )}
         </div>
         
-        <div className="space-y-2 overflow-y-auto max-h-[600px] pr-2">
+        <div className="space-y-2 overflow-y-auto max-h-[300px] sm:max-h-[600px] pr-2 w-full min-w-0">
           {value.nodes.map((node) => (
             <Button
               key={node.id}
@@ -92,10 +92,10 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
         </div>
       </div>
 
-      <div className="md:col-span-8">
+      <div className="md:col-span-8 w-full min-w-0">
         {activeNode ? (
-          <Card className="h-full border-primary/20 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between py-4">
+          <Card className="h-full border-primary/20 shadow-sm min-w-0">
+            <CardHeader className="flex flex-row items-center justify-between py-3 sm:py-4 gap-2">
               <CardTitle className="text-base">Editar {activeNode.type === "question" ? "Pergunta" : "Resultado"}</CardTitle>
               {activeNode.id !== value.startNodeId && !isReadOnly && (
                 <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeNode(activeNode.id)}>
@@ -124,7 +124,7 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
                   <div className="space-y-3">
                     <label className="text-xs font-bold uppercase text-muted-foreground">Respostas e Caminhos</label>
                     {activeNode.answers.map((ans, idx) => (
-                      <div key={idx} className="flex gap-2 items-start bg-muted/30 p-3 rounded-lg border border-border">
+                      <div key={idx} className="flex flex-col sm:flex-row gap-2 items-start bg-muted/30 p-3 rounded-lg border border-border">
                         <div className="flex-1 space-y-2">
                           <Input 
                             value={ans.label} 
@@ -157,7 +157,7 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-destructive shrink-0"
+                          className="text-destructive shrink-0 self-end sm:self-start"
                           onClick={() => {
                             const newAns = activeNode.answers.filter((_, i) => i !== idx);
                             updateNode(activeNode.id, { answers: newAns });
