@@ -1263,6 +1263,9 @@ type TeamRow = {
   collaborator2: string | null;
   variable_rate: number;
   setor_id: string | null;
+  supervisor_id: string | null;
+  leader_id: string | null;
+  supervisor: string | null;
   leader: string | null;
 };
 
