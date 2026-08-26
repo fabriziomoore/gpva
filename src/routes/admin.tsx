@@ -1281,24 +1281,17 @@ function TeamHeader({
   const qc = useQueryClient();
   const updateFn = useServerFn(adminUpdateTeam);
   const deleteFn = useServerFn(adminDeleteTeam);
-  const setoresFn = useServerFn(adminListSetores);
-  const setores = useQuery({
-    queryKey: ["admin-setores"],
-    queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
-  });
-  const leadersFn = useServerFn(adminListLeaders);
-  const leadersList = useQuery({
-    queryKey: ["admin-leaders"],
-    queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
-    staleTime: 60_000,
-  });
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(team.team_name);
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
-  const [setorId, setSetorId] = useState(team.setor_id ?? "");
-  const [leader, setLeader] = useState(team.leader ?? "");
+  const [hier, setHier] = useState({
+    setorId: team.setor_id ?? "",
+    supervisorId: team.supervisor_id ?? "",
+    leaderId: team.leader_id ?? "",
+  });
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const hierComplete = !!hier.setorId && !!hier.supervisorId && !!hier.leaderId;
 
   const updateMut = useMutation({
     mutationFn: () =>
@@ -1309,8 +1302,9 @@ function TeamHeader({
           teamName: name,
           collaborator1: c1.trim() || null,
           collaborator2: c2.trim() || null,
-          setorId: setorId || undefined,
-          leaderName: leader.trim() || undefined,
+          setorId: hier.setorId,
+          supervisorId: hier.supervisorId,
+          leaderId: hier.leaderId,
         },
       }),
     onSuccess: () => {
