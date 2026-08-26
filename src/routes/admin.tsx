@@ -655,34 +655,300 @@ function VariableSection({ adminPw }: { adminPw: string }) {
   );
 }
 
-function CreateTeamSection({ adminPw }: { adminPw: string }) {
-  const qc = useQueryClient();
-  const [teamName, setTeamName] = useState("");
-  const [password, setPassword] = useState("");
-  const [setorId, setSetorId] = useState("");
-  const [leaderName, setLeaderName] = useState("");
-  const createFn = useServerFn(adminCreateTeam);
+/**
+ * Seletores em cascata SETOR → SUPERVISOR → LÍDER.
+ * Trabalha exclusivamente com UUIDs; nenhuma inferência textual.
+ */
+function HierarchyPicker({
+  adminPw,
+  setorId,
+  supervisorId,
+  leaderId,
+  onChange,
+  requireLeader = true,
+}: {
+  adminPw: string;
+  setorId: string;
+  supervisorId: string;
+  leaderId: string;
+  onChange: (next: { setorId: string; supervisorId: string; leaderId: string }) => void;
+  requireLeader?: boolean;
+}) {
   const setoresFn = useServerFn(adminListSetores);
+  const supervisoresFn = useServerFn(adminListSupervisores);
+  const leadersFn = useServerFn(adminListLeaders);
+
   const setores = useQuery({
     queryKey: ["admin-setores"],
     queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
   });
-  const leadersFn = useServerFn(adminListLeaders);
+  const supervisores = useQuery({
+    queryKey: ["admin-supervisores"],
+    queryFn: () => supervisoresFn({ data: { adminPassword: adminPw } }),
+  });
   const leaders = useQuery({
     queryKey: ["admin-leaders"],
     queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
     staleTime: 60_000,
   });
 
+  const supervisorOptions = (supervisores.data ?? []).filter((s) => s.setor_id === setorId);
+  const leaderOptions = (leaders.data ?? []).filter(
+    (l) => l.estrutura_normalizada && l.setor_id === setorId && l.supervisor_id === supervisorId,
+  );
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label>Setor</Label>
+        <select
+          value={setorId}
+          onChange={(e) => onChange({ setorId: e.target.value, supervisorId: "", leaderId: "" })}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Selecione…</option>
+          {setores.data?.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Supervisor</Label>
+        <select
+          value={supervisorId}
+          disabled={!setorId}
+          onChange={(e) => onChange({ setorId, supervisorId: e.target.value, leaderId: "" })}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
+        >
+          <option value="">{setorId ? "Selecione…" : "Escolha o setor primeiro"}</option>
+          {supervisorOptions.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+        {setorId && supervisorOptions.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Nenhum supervisor neste setor. Cadastre em "Supervisores".
+          </p>
+        )}
+      </div>
+
+      {requireLeader && (
+        <div className="space-y-2">
+          <Label>Líder</Label>
+          <select
+            value={leaderId}
+            disabled={!supervisorId}
+            onChange={(e) => onChange({ setorId, supervisorId, leaderId: e.target.value })}
+            className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
+          >
+            <option value="">{supervisorId ? "Selecione…" : "Escolha o supervisor primeiro"}</option>
+            {leaderOptions.map((l) => (
+              <option key={l.leader_structure_id ?? l.user_id} value={l.leader_structure_id ?? ""}>
+                {l.nome || l.login}
+              </option>
+            ))}
+          </select>
+          {supervisorId && leaderOptions.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Nenhum líder normalizado sob este supervisor. Cadastre ou normalize em "Líderes".
+            </p>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function SupervisoresSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListSupervisores);
+  const setoresFn = useServerFn(adminListSetores);
+  const createFn = useServerFn(adminCreateSupervisor);
+  const updateFn = useServerFn(adminUpdateSupervisor);
+  const deleteFn = useServerFn(adminDeleteSupervisor);
+
+  const [nome, setNome] = useState("");
+  const [setorId, setSetorId] = useState("");
+
+  const rows = useQuery({
+    queryKey: ["admin-supervisores"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+  });
+  const setores = useQuery({
+    queryKey: ["admin-setores"],
+    queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin-supervisores"] });
+    qc.invalidateQueries({ queryKey: ["admin-leaders"] });
+  };
+
+  const createMut = useMutation({
+    mutationFn: () => createFn({ data: { adminPassword: adminPw, nome, setorId } }),
+    onSuccess: () => {
+      setNome("");
+      setSetorId("");
+      toast.success("Supervisor criado");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (payload: { supervisorId: string; nome?: string; setorId?: string }) =>
+      updateFn({ data: { adminPassword: adminPw, ...payload } }),
+    onSuccess: () => { toast.success("Supervisor atualizado"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (supervisorId: string) =>
+      deleteFn({ data: { adminPassword: adminPw, supervisorId } }),
+    onSuccess: () => { toast.success("Supervisor excluído"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-base font-semibold">Supervisores</h2>
+      <p className="text-xs text-muted-foreground">
+        Cada supervisor pertence a um setor. Líderes e equipes são vinculados ao supervisor
+        por identificador — nenhum nome é inferido por texto.
+      </p>
+
+      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+        <Label>Novo supervisor</Label>
+        <Input
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          placeholder="Nome do supervisor"
+          className="h-11"
+        />
+        <select
+          value={setorId}
+          onChange={(e) => setSetorId(e.target.value)}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Selecione o setor…</option>
+          {setores.data?.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+        <Button
+          onClick={() => createMut.mutate()}
+          disabled={createMut.isPending || !nome.trim() || !setorId}
+          className="h-11 w-full"
+        >
+          {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Adicionar supervisor"}
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {rows.isLoading ? (
+          <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+        ) : (rows.data ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum supervisor cadastrado.</p>
+        ) : (
+          rows.data?.map((s) => (
+            <SupervisorEditRow
+              key={s.id}
+              supervisor={s}
+              setores={setores.data ?? []}
+              saving={updateMut.isPending}
+              onSave={(patch) => updateMut.mutate({ supervisorId: s.id, ...patch })}
+              onDelete={() => {
+                void confirmDelete({
+                  title: "Excluir supervisor?",
+                  description: `O supervisor "${s.nome}" será removido. Esta ação não poderá ser desfeita.`,
+                }).then((ok) => { if (ok) deleteMut.mutate(s.id); });
+              }}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SupervisorEditRow({
+  supervisor,
+  setores,
+  onSave,
+  onDelete,
+  saving,
+}: {
+  supervisor: { id: string; nome: string; setor_id: string; setor_nome: string | null };
+  setores: Array<{ id: string; nome: string }>;
+  onSave: (patch: { nome?: string; setorId?: string }) => void;
+  onDelete: () => void;
+  saving: boolean;
+}) {
+  const [nome, setNome] = useState(supervisor.nome);
+  const [setorId, setSetorId] = useState(supervisor.setor_id);
+  const dirty = nome !== supervisor.nome || setorId !== supervisor.setor_id;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
+        <select
+          value={setorId}
+          onChange={(e) => setSetorId(e.target.value)}
+          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          {setores.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onDelete}
+          className="h-8 text-destructive hover:text-destructive"
+        >
+          <Trash2 className="mr-1 size-3.5" /> Excluir
+        </Button>
+        <Button
+          size="sm"
+          disabled={!dirty || saving || !nome.trim()}
+          onClick={() => onSave({ nome, setorId })}
+          className="h-8"
+        >
+          {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Salvar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CreateTeamSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const [teamName, setTeamName] = useState("");
+  const [password, setPassword] = useState("");
+  const [hier, setHier] = useState({ setorId: "", supervisorId: "", leaderId: "" });
+  const createFn = useServerFn(adminCreateTeam);
+
   const mut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, teamName, password, setorId, leaderName } }),
+      createFn({
+        data: {
+          adminPassword: adminPw,
+          teamName,
+          password,
+          setorId: hier.setorId,
+          supervisorId: hier.supervisorId,
+          leaderId: hier.leaderId,
+        },
+      }),
     onSuccess: () => {
       toast.success("Equipe criada");
       setTeamName("");
       setPassword("");
-      setSetorId("");
-      setLeaderName("");
+      setHier({ setorId: "", supervisorId: "", leaderId: "" });
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -691,21 +957,13 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-5">
       <h2 className="text-base font-semibold">Criar Equipe</h2>
-      <div className="space-y-2">
-        <Label>Setor</Label>
-        <select
-          value={setorId}
-          onChange={(e) => setSetorId(e.target.value)}
-          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">Selecione…</option>
-          {setores.data?.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nome}
-            </option>
-          ))}
-        </select>
-      </div>
+      <HierarchyPicker
+        adminPw={adminPw}
+        setorId={hier.setorId}
+        supervisorId={hier.supervisorId}
+        leaderId={hier.leaderId}
+        onChange={setHier}
+      />
       <div className="space-y-2">
         <Label htmlFor="tn">Nome da equipe</Label>
         <Input
@@ -715,30 +973,6 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
           autoCapitalize="characters"
           className="h-12 text-base"
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="ld">Nome do líder</Label>
-        <select
-          id="ld"
-          value={leaderName}
-          onChange={(e) => setLeaderName(e.target.value)}
-          className="h-12 w-full rounded-md border border-input bg-background px-3 text-base"
-        >
-          <option value="">Selecione um líder…</option>
-          {(leaders.data ?? []).map((l) => {
-            const label = l.display_name || l.login;
-            return (
-              <option key={l.id} value={label}>
-                {label}
-              </option>
-            );
-          })}
-        </select>
-        {(leaders.data ?? []).length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Cadastre um líder em "Líderes" antes de criar a equipe.
-          </p>
-        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="np">Senha (mín. 6)</Label>
@@ -752,7 +986,14 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
       </div>
       <Button
         onClick={() => mut.mutate()}
-        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId || !leaderName.trim()}
+        disabled={
+          mut.isPending ||
+          !teamName.trim() ||
+          password.length < 6 ||
+          !hier.setorId ||
+          !hier.supervisorId ||
+          !hier.leaderId
+        }
         className="h-12 w-full text-base font-semibold"
       >
         {mut.isPending ? <Loader2 className="size-5 animate-spin" /> : "Criar Equipe"}

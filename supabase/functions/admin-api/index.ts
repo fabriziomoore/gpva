@@ -110,6 +110,39 @@ Deno.serve(async (req) => {
   }
 });
 
+/**
+ * Validação hierárquica SETOR → SUPERVISOR → LÍDER (paridade com o backend web).
+ * Nenhum UUID é inferido por texto.
+ */
+async function assertHierarchy(
+  sb: any,
+  input: { setorId?: string | null; supervisorId?: string | null; leaderId?: string | null },
+): Promise<void> {
+  const setorId = (input.setorId ?? "").trim();
+  if (!setorId) throw new Error("Selecione um setor.");
+  const { data: setor, error: sErr } = await sb.from("setores").select("id").eq("id", setorId).maybeSingle();
+  if (sErr) throw new Error(sErr.message);
+  if (!setor) throw new Error("Setor não encontrado.");
+
+  const supervisorId = (input.supervisorId ?? "").trim() || null;
+  const leaderId = (input.leaderId ?? "").trim() || null;
+  if (leaderId && !supervisorId) throw new Error("Selecione um supervisor antes de escolher o líder.");
+
+  if (supervisorId) {
+    const { data: sup, error } = await sb.from("supervisores").select("id,setor_id").eq("id", supervisorId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!sup) throw new Error("Supervisor não encontrado.");
+    if (sup.setor_id !== setorId) throw new Error("O supervisor selecionado não pertence ao setor escolhido.");
+  }
+  if (leaderId) {
+    const { data: lid, error } = await sb.from("lideres_estrutura").select("id,setor_id,supervisor_id").eq("id", leaderId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!lid) throw new Error("Líder não encontrado na estrutura operacional.");
+    if (lid.setor_id !== setorId) throw new Error("O líder selecionado não pertence ao setor escolhido.");
+    if (lid.supervisor_id !== supervisorId) throw new Error("O líder selecionado não pertence ao supervisor escolhido.");
+  }
+}
+
 async function dispatch(sb: any, op: string, args: any): Promise<any> {
   switch (op) {
     // ---------- Bootstrap ----------
@@ -134,7 +167,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
     // ---------- Teams ----------
     case "listTeams": {
       const { data, error } = await sb.from("equipes")
-        .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
+        .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,supervisor_id,leader_id,supervisor,leader,is_test")
         .order("team_name");
       if (error) throw new Error(error.message);
       const { data: adminRoles } = await sb.from("user_roles").select("user_id").eq("role", "admin");
@@ -150,20 +183,25 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const slug = slugify(args.teamName);
       if (!slug) throw new Error("Nome de equipe inválido.");
       if (String(args.password).length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
-      if (!args.setorId) throw new Error("Selecione um setor.");
-      const leaderName = String(args.leaderName || "").trim();
-      if (!leaderName) throw new Error("Informe o nome do líder.");
+      if (!args.supervisorId) throw new Error("Selecione um supervisor.");
+      if (!args.leaderId) throw new Error("Selecione um líder.");
+      await assertHierarchy(sb, { setorId: args.setorId, supervisorId: args.supervisorId, leaderId: args.leaderId });
       const email = `${slug}@gpva.local`;
       const { data: created, error } = await sb.auth.admin.createUser({
         email, password: args.password, email_confirm: true,
         user_metadata: { team_name: args.teamName.trim() },
       });
       if (error) throw new Error(error.message);
-      if (created.user?.id) {
+      const newId = created.user?.id;
+      if (newId) {
         const { error: e2 } = await sb.from("equipes")
-          .update({ setor_id: args.setorId, leader: leaderName, onboarded: true })
-          .eq("id", created.user.id);
-        if (e2) throw new Error(e2.message);
+          .update({ setor_id: args.setorId, supervisor_id: args.supervisorId, leader_id: args.leaderId, onboarded: true })
+          .eq("id", newId);
+        if (e2) {
+          const { error: undoErr } = await sb.auth.admin.deleteUser(newId);
+          if (undoErr) throw new Error(`ERRO CRÍTICO: equipe criada (${newId}) mas a estrutura falhou (${e2.message}) e a reversão também falhou (${undoErr.message}). Intervenção manual necessária.`);
+          throw new Error(`${e2.message} (conta revertida)`);
+        }
       }
       return { ok: true };
     }
@@ -172,8 +210,12 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (args.teamName !== undefined) { const n = String(args.teamName).trim(); if (!n) throw new Error("Nome inválido."); patch.team_name = n; }
       if (args.collaborator1 !== undefined) patch.collaborator1 = String(args.collaborator1 ?? "").trim() || null;
       if (args.collaborator2 !== undefined) patch.collaborator2 = String(args.collaborator2 ?? "").trim() || null;
-      if (args.setorId !== undefined) { if (!args.setorId) throw new Error("Setor obrigatório."); patch.setor_id = args.setorId; }
-      if (args.leaderName !== undefined) { const l = String(args.leaderName).trim(); if (!l) throw new Error("Informe líder."); patch.leader = l; patch.onboarded = true; }
+      if (args.setorId !== undefined || args.supervisorId !== undefined || args.leaderId !== undefined) {
+        if (!args.setorId || !args.supervisorId || !args.leaderId) throw new Error("Informe Setor, Supervisor e Líder em conjunto.");
+        await assertHierarchy(sb, { setorId: args.setorId, supervisorId: args.supervisorId, leaderId: args.leaderId });
+        patch.setor_id = args.setorId; patch.supervisor_id = args.supervisorId; patch.leader_id = args.leaderId;
+        patch.onboarded = true;
+      }
       if (Object.keys(patch).length === 0) return { ok: true };
       const { error } = await sb.from("equipes").update(patch).eq("id", args.teamId);
       if (error) throw new Error(error.message);
@@ -318,14 +360,32 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (String(args.password).length < 6) throw new Error("Senha mínima de 6 caracteres.");
       const slug = slugify(args.login);
       if (!slug || slug.length < 3) throw new Error("Login inválido.");
+      const nome = String(args.leaderName ?? "").trim();
+      if (!nome) throw new Error("Informe o nome do líder.");
+      await assertHierarchy(sb, { setorId: args.setorId, supervisorId: args.supervisorId });
       const email = `${slug}@gpva.local`;
       const { data: created, error } = await sb.auth.admin.createUser({
         email, password: args.password, email_confirm: true,
-        user_metadata: { is_leader: true, display_name: String(args.leaderName).trim() },
+        user_metadata: { is_leader: true, display_name: nome },
       });
       if (error) throw new Error(error.message);
-      if (created.user?.id) {
-        await sb.from("user_roles").upsert({ user_id: created.user.id, role: "leader" }, { onConflict: "user_id,role" });
+      const newId = created.user?.id;
+      if (newId) {
+        try {
+          const { error: rErr } = await sb.from("user_roles").upsert({ user_id: newId, role: "leader" }, { onConflict: "user_id,role" });
+          if (rErr) throw new Error(rErr.message);
+          const { error: sErr } = await sb.from("lideres_estrutura").insert({
+            user_id: newId, nome, setor_id: args.setorId, supervisor_id: args.supervisorId,
+          });
+          if (sErr) throw new Error(sErr.message);
+        } catch (e) {
+          const original = (e as Error).message;
+          await sb.from("lideres_estrutura").delete().eq("user_id", newId);
+          await sb.from("user_roles").delete().eq("user_id", newId).eq("role", "leader");
+          const { error: undoErr } = await sb.auth.admin.deleteUser(newId);
+          if (undoErr) throw new Error(`ERRO CRÍTICO: conta de líder ${newId} incompleta (${original}) e reversão falhou (${undoErr.message}). Intervenção manual necessária.`);
+          throw new Error(`${original} (conta revertida)`);
+        }
       }
       return { ok: true, login: slug.toUpperCase() };
     }
@@ -334,19 +394,101 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (error) throw new Error(error.message);
       const ids = (roles ?? []).map((r: any) => r.user_id);
       if (!ids.length) return [];
+      const { data: estruturas, error: estErr } = await sb.from("lideres_estrutura")
+        .select("id,user_id,nome,setor_id,supervisor_id,setores(nome),supervisores(nome)")
+        .in("user_id", ids);
+      if (estErr) throw new Error(estErr.message);
+      const byUser = new Map((estruturas ?? []).map((e: any) => [e.user_id, e]));
       const list = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (list.error) throw new Error(list.error.message);
       const byId = new Map(list.data.users.map((u: any) => [u.id, u]));
       return ids.map((id: string) => {
         const u = byId.get(id); if (!u) return null;
         const display = (u.user_metadata as any)?.display_name ?? "";
-        return { id, email: u.email ?? "", login: (u.email ?? "").split("@")[0].toUpperCase(), display_name: display };
+        const est: any = byUser.get(id) ?? null;
+        return {
+          user_id: id,
+          leader_structure_id: est?.id ?? null,
+          nome: est?.nome || display,
+          email: u.email ?? "",
+          login: (u.email ?? "").split("@")[0].toUpperCase(),
+          setor_id: est?.setor_id ?? null,
+          setor_nome: est?.setores?.nome ?? null,
+          supervisor_id: est?.supervisor_id ?? null,
+          supervisor_nome: est?.supervisores?.nome ?? null,
+          estrutura_normalizada: !!est,
+        };
       }).filter(Boolean).sort((a: any, b: any) => a.login.localeCompare(b.login));
     }
-    case "adminDeleteLeader": {
-      const { error } = await sb.auth.admin.deleteUser(args.leaderId);
+    case "adminUpdateLeader": {
+      const { data: atual, error: gErr } = await sb.from("lideres_estrutura")
+        .select("id,user_id,setor_id,supervisor_id").eq("id", args.leaderStructureId).maybeSingle();
+      if (gErr) throw new Error(gErr.message);
+      if (!atual) throw new Error("Líder não encontrado na estrutura operacional.");
+      const patch: any = {};
+      if (args.nome !== undefined) { const n = String(args.nome).trim(); if (!n) throw new Error("Nome do líder obrigatório."); patch.nome = n; }
+      if (args.setorId !== undefined || args.supervisorId !== undefined) {
+        const setorId = args.setorId, supervisorId = args.supervisorId;
+        if (!setorId || !supervisorId) throw new Error("Informe Setor e Supervisor em conjunto.");
+        if (setorId !== atual.setor_id || supervisorId !== atual.supervisor_id) {
+          const { count, error: cErr } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("leader_id", atual.id);
+          if (cErr) throw new Error(cErr.message);
+          if ((count ?? 0) > 0) throw new Error("O líder possui equipes vinculadas. Desvincule ou mova as equipes antes de alterar setor/supervisor.");
+          await assertHierarchy(sb, { setorId, supervisorId });
+          patch.setor_id = setorId; patch.supervisor_id = supervisorId;
+        }
+      }
+      if (Object.keys(patch).length === 0) return { ok: true };
+      const { error } = await sb.from("lideres_estrutura").update(patch).eq("id", atual.id);
       if (error) throw new Error(error.message);
       return { ok: true };
+    }
+    case "adminNormalizeLeader": {
+      const nome = String(args.nome ?? "").trim();
+      if (!nome) throw new Error("Informe o nome do líder.");
+      const { data: role, error: rErr } = await sb.from("user_roles")
+        .select("user_id").eq("user_id", args.leaderUserId).eq("role", "leader").maybeSingle();
+      if (rErr) throw new Error(rErr.message);
+      if (!role) throw new Error("Usuário informado não possui o papel de líder.");
+      const { data: existente, error: eErr } = await sb.from("lideres_estrutura")
+        .select("id").eq("user_id", args.leaderUserId).maybeSingle();
+      if (eErr) throw new Error(eErr.message);
+      if (existente) throw new Error("Este líder já possui estrutura normalizada.");
+      await assertHierarchy(sb, { setorId: args.setorId, supervisorId: args.supervisorId });
+      const { error } = await sb.from("lideres_estrutura").insert({
+        user_id: args.leaderUserId, nome, setor_id: args.setorId, supervisor_id: args.supervisorId,
+      });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    case "adminDeleteLeader": {
+      const { data: snapshot, error: sErr } = await sb.from("lideres_estrutura")
+        .select("id,user_id,nome,setor_id,supervisor_id,created_at")
+        .eq("user_id", args.leaderUserId).maybeSingle();
+      if (sErr) throw new Error(sErr.message);
+      if (snapshot) {
+        const { count, error: cErr } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("leader_id", snapshot.id);
+        if (cErr) throw new Error(cErr.message);
+        if ((count ?? 0) > 0) throw new Error("O líder possui equipes vinculadas. Desvincule ou mova as equipes antes de excluir.");
+        const { error: dErr } = await sb.from("lideres_estrutura").delete().eq("id", snapshot.id);
+        if (dErr) throw new Error(dErr.message);
+      }
+      const { error: rmRole } = await sb.from("user_roles").delete().eq("user_id", args.leaderUserId).eq("role", "leader");
+      if (rmRole) throw new Error(rmRole.message);
+      const { error: authErr } = await sb.auth.admin.deleteUser(args.leaderUserId);
+      if (!authErr) return { ok: true };
+      const still = await sb.auth.admin.getUserById(args.leaderUserId);
+      if (still.data?.user) {
+        const { error: r1 } = await sb.from("user_roles").upsert({ user_id: args.leaderUserId, role: "leader" }, { onConflict: "user_id,role" });
+        let r2Msg: string | null = null;
+        if (snapshot) {
+          const { error: r2 } = await sb.from("lideres_estrutura").insert(snapshot);
+          r2Msg = r2?.message ?? null;
+        }
+        if (!r1 && !r2Msg) throw new Error(`Exclusão abortada (${authErr.message}). A estrutura do líder foi restaurada.`);
+        throw new Error(`ERRO CRÍTICO: exclusão falhou (${authErr.message}) e a restauração também falhou. user_id=${args.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}. Intervenção manual necessária.`);
+      }
+      throw new Error(authErr.message);
     }
 
     // ---------- Setores ----------
@@ -374,7 +516,60 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const { count, error: e1 } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("setor_id", args.setorId);
       if (e1) throw new Error(e1.message);
       if ((count ?? 0) > 0) throw new Error("Setor possui equipes vinculadas.");
+      const { count: sc, error: e2 } = await sb.from("supervisores").select("id", { count: "exact", head: true }).eq("setor_id", args.setorId);
+      if (e2) throw new Error(e2.message);
+      if ((sc ?? 0) > 0) throw new Error("Setor possui supervisores vinculados. Remova-os antes de excluir.");
       const { error } = await sb.from("setores").delete().eq("id", args.setorId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    // ---------- Supervisores ----------
+    case "adminListSupervisores": {
+      let q = sb.from("supervisores").select("id,nome,setor_id,setores(nome)").order("nome");
+      if (args.setorId) q = q.eq("setor_id", args.setorId);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r: any) => ({
+        id: r.id, nome: r.nome, setor_id: r.setor_id, setor_nome: r.setores?.nome ?? null,
+      }));
+    }
+    case "adminCreateSupervisor": {
+      const nome = String(args.nome ?? "").trim();
+      if (!nome) throw new Error("Nome do supervisor obrigatório.");
+      await assertHierarchy(sb, { setorId: args.setorId });
+      const { error } = await sb.from("supervisores").insert({ nome, setor_id: args.setorId });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    case "adminUpdateSupervisor": {
+      const { data: atual, error: gErr } = await sb.from("supervisores").select("id,setor_id").eq("id", args.supervisorId).maybeSingle();
+      if (gErr) throw new Error(gErr.message);
+      if (!atual) throw new Error("Supervisor não encontrado.");
+      const patch: any = {};
+      if (args.nome !== undefined) { const n = String(args.nome).trim(); if (!n) throw new Error("Nome do supervisor obrigatório."); patch.nome = n; }
+      if (args.setorId !== undefined && args.setorId !== atual.setor_id) {
+        const { count: lc, error: lErr } = await sb.from("lideres_estrutura").select("id", { count: "exact", head: true }).eq("supervisor_id", atual.id);
+        if (lErr) throw new Error(lErr.message);
+        const { count: tc, error: tErr } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("supervisor_id", atual.id);
+        if (tErr) throw new Error(tErr.message);
+        if ((lc ?? 0) > 0 || (tc ?? 0) > 0) throw new Error("Supervisor possui líderes ou equipes vinculados. Ajuste os vínculos antes de mudar o setor.");
+        await assertHierarchy(sb, { setorId: args.setorId });
+        patch.setor_id = args.setorId;
+      }
+      if (Object.keys(patch).length === 0) return { ok: true };
+      const { error } = await sb.from("supervisores").update(patch).eq("id", atual.id);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    case "adminDeleteSupervisor": {
+      const { count: lc, error: lErr } = await sb.from("lideres_estrutura").select("id", { count: "exact", head: true }).eq("supervisor_id", args.supervisorId);
+      if (lErr) throw new Error(lErr.message);
+      if ((lc ?? 0) > 0) throw new Error("Supervisor possui líderes vinculados. Remova-os antes de excluir.");
+      const { count: tc, error: tErr } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("supervisor_id", args.supervisorId);
+      if (tErr) throw new Error(tErr.message);
+      if ((tc ?? 0) > 0) throw new Error("Supervisor possui equipes vinculadas. Ajuste os vínculos antes de excluir.");
+      const { error } = await sb.from("supervisores").delete().eq("id", args.supervisorId);
       if (error) throw new Error(error.message);
       return { ok: true };
     }
