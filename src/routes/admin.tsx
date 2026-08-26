@@ -79,6 +79,7 @@ type SectionId =
   | "create_team"
   | "leaders"
   | "setores"
+  | "supervisores"
   | "google_form"
   | "test_account"
   | "map_services"
@@ -95,6 +96,7 @@ type SectionMeta = {
 
 const SECTION_INFO: Record<SectionId, SectionMeta> = {
   setores: { id: "setores", label: "Setores", description: "Cadastro e supervisão dos setores", icon: Building2 },
+  supervisores: { id: "supervisores", label: "Supervisores", description: "Supervisores por setor", icon: UserCog },
   create_team: { id: "create_team", label: "Equipes", description: "Criar, editar e remover equipes", icon: Users },
   leaders: { id: "leaders", label: "Líderes", description: "Contas de líderes de equipe", icon: UserCog },
   tipos_servico: { id: "tipos_servico", label: "Tipos de Serviço", description: "Catálogo dos tipos disponíveis", icon: ClipboardList },
@@ -119,7 +121,7 @@ type SectionGroup = {
 
 const SECTION_GROUPS: SectionGroup[] = [
   { id: "estrutura", label: "Estrutura", icon: Building2,
-    items: ["setores", "create_team", "leaders"] },
+    items: ["setores", "supervisores", "leaders", "create_team"] },
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
@@ -317,6 +319,8 @@ function AdminPage() {
             <LeadersSection adminPw={adminPw} />
           ) : section === "setores" ? (
             <SetoresSection adminPw={adminPw} />
+          ) : section === "supervisores" ? (
+            <SupervisoresSection adminPw={adminPw} />
           ) : section === "google_form" ? (
             <GoogleFormSection adminPw={adminPw} />
           ) : section === "test_account" ? (
