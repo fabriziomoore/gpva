@@ -1176,7 +1176,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
     const teamFull = teams.data?.find((t) => t.id === current.id);
     return (
       <div className="space-y-4">
-        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, leader: null }} onDeleted={() => setSelected(null)} />
+        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, supervisor_id: null, leader_id: null, supervisor: null, leader: null }} onDeleted={() => setSelected(null)} />
         {periodSelector("day")}
         <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
