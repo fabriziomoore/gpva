@@ -1369,50 +1369,20 @@ function TeamHeader({
             <Label className="text-xs">Colaborador 2</Label>
             <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Líder</Label>
-            <select
-              value={leader}
-              onChange={(e) => setLeader(e.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Selecione…</option>
-              {(leadersList.data ?? []).map((l) => {
-                const label = l.display_name || l.login;
-                return (
-                  <option key={l.id} value={label}>
-                    {label}
-                  </option>
-                );
-              })}
-              {leader && !(leadersList.data ?? []).some((l) => (l.display_name || l.login) === leader) && (
-                <option value={leader}>{leader} (atual)</option>
-              )}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Setor</Label>
-            <select
-              value={setorId}
-              onChange={(e) => setSetorId(e.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Selecione…</option>
-              {setores.data?.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                  {s.supervisor_nome ? ` — ${s.supervisor_nome}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <HierarchyPicker
+            adminPw={adminPw}
+            setorId={hier.setorId}
+            supervisorId={hier.supervisorId}
+            leaderId={hier.leaderId}
+            onChange={setHier}
+          />
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="h-10 flex-1" onClick={() => setEditing(false)}>
               Cancelar
             </Button>
             <Button
               className="h-10 flex-1"
-              disabled={updateMut.isPending || !name.trim() || !setorId}
+              disabled={updateMut.isPending || !name.trim() || !hierComplete}
               onClick={() => updateMut.mutate()}
             >
               {updateMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
