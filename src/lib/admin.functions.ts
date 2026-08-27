@@ -933,7 +933,7 @@ export const adminListSetores = createServerFn({ method: "POST" })
   });
 
 export const adminCreateSetor = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; nome: string; supervisorNome: string }) => data)
+  .inputValidator((data: { adminPassword: string; nome: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const nome = data.nome.trim();
@@ -941,23 +941,22 @@ export const adminCreateSetor = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("setores")
-      .insert({ nome, supervisor_nome: data.supervisorNome.trim() });
+      .insert({ nome, supervisor_nome: "" });
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
 
 export const adminUpdateSetor = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; setorId: string; nome?: string; supervisorNome?: string }) => data)
+  .inputValidator((data: { adminPassword: string; setorId: string; nome?: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: { nome?: string; supervisor_nome?: string } = {};
+    const patch: { nome?: string } = {};
     if (data.nome !== undefined) {
       const nome = data.nome.trim();
       if (!nome) throw new Error("Nome do setor obrigatório.");
       patch.nome = nome;
     }
-    if (data.supervisorNome !== undefined) patch.supervisor_nome = data.supervisorNome.trim();
     if (Object.keys(patch).length === 0) return { ok: true as const };
     const { error } = await supabaseAdmin
       .from("setores")
@@ -1002,6 +1001,7 @@ export type SupervisorRow = {
   nome: string;
   setor_id: string;
   setor_nome: string | null;
+  user_id: string | null;
 };
 
 export const adminListSupervisores = createServerFn({ method: "POST" })
@@ -1011,17 +1011,24 @@ export const adminListSupervisores = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let query = supabaseAdmin
       .from("supervisores")
-      .select("id,nome,setor_id,setores(nome)")
+      .select("id,nome,setor_id,user_id,setores(nome)")
       .order("nome");
     if (data.setorId) query = query.eq("setor_id", data.setorId);
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    type Join = { id: string; nome: string; setor_id: string; setores: { nome: string } | null };
+    type Join = {
+      id: string;
+      nome: string;
+      setor_id: string;
+      user_id: string | null;
+      setores: { nome: string } | null;
+    };
     return ((rows ?? []) as unknown as Join[]).map((r) => ({
       id: r.id,
       nome: r.nome,
       setor_id: r.setor_id,
       setor_nome: r.setores?.nome ?? null,
+      user_id: r.user_id ?? null,
     }));
   });
 

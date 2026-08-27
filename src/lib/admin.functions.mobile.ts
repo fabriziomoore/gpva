@@ -70,7 +70,7 @@ export const adminUpdateSetor = call<{ ok: true }>("adminUpdateSetor");
 export const adminDeleteSetor = call<{ ok: true }>("adminDeleteSetor");
 
 export type SupervisorRow = {
-  id: string; nome: string; setor_id: string; setor_nome: string | null;
+  id: string; nome: string; setor_id: string; setor_nome: string | null; user_id: string | null;
 };
 export const adminListSupervisores = call<SupervisorRow[]>("adminListSupervisores");
 export const adminCreateSupervisor = call<{ ok: true }>("adminCreateSupervisor");
