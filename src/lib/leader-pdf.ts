@@ -8,7 +8,7 @@ import {
 } from "./analytics";
 // Logo bundlada localmente pelo Vite — garante que apareça também no APK
 // Android (o path absoluto do asset remoto não resolve em capacitor://localhost).
-import bundledLogoUrl from "@/assets/assis-gesp-logo-bundled.jpg?url";
+import bundledLogoUrl from "@/assets/assis-gesp-logo-bundled.png?url";
 import logoAsset from "@/assets/assis-gesp-logo.png.asset.json";
 import { renderReportMapPng, OPERATIONAL_BASE, type PdfMapPoint } from "./pdf-map";
 import { reverseGeocode, type ReverseGeoInfo } from "./reverse-geocode";
