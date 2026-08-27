@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Plus, Search, FileText, AlertCircle, ArrowRight, User, MoreVertical, Archive, PauseCircle, PlayCircle, History, Trash2, X } from "lucide-react";
-import { AppShell } from "@/components/layout/AppShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -262,31 +261,33 @@ function LeaderProceduresPage() {
 
   if (!isLeaderOrAdmin && !userRoles.isLoading) {
     return (
-      <AppShell
-        title="Procedimentos"
-        right={
-          <Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => router.history.back()}>
-            <X className="size-5" />
-          </Button>
-        }
-      >
-      <div className="flex min-h-[70vh] items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center">
-          <CardHeader>
-            <AlertCircle className="size-12 text-destructive mx-auto mb-2" />
-            <CardTitle>Acesso Negado</CardTitle>
-            <CardDescription>
-              Apenas líderes e administradores podem acessar a gestão de procedimentos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link to="/">Voltar para Início</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="relative min-h-screen">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed right-2 top-2 z-50"
+          aria-label="Fechar"
+          onClick={() => router.navigate({ to: "/" })}
+        >
+          <X className="size-6" />
+        </Button>
+        <div className="flex min-h-[70vh] items-center justify-center p-4">
+          <Card className="max-w-md w-full text-center">
+            <CardHeader>
+              <AlertCircle className="size-12 text-destructive mx-auto mb-2" />
+              <CardTitle>Acesso Negado</CardTitle>
+              <CardDescription>
+                Apenas líderes e administradores podem acessar a gestão de procedimentos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full">
+                <Link to="/">Voltar para Início</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-      </AppShell>
     );
   }
 
@@ -306,228 +307,241 @@ function LeaderProceduresPage() {
   };
 
   return (
-    <AppShell
-      title="Procedimentos"
-      right={
-        <Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => router.history.back()}>
-          <X className="size-5" />
-        </Button>
-      }
-    >
-    <div className="container mx-auto p-4 md:p-8 max-w-7xl animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Procedimentos</h1>
-          <p className="text-muted-foreground mt-1">
-            Gestão da biblioteca de procedimentos operacionais.
-          </p>
+    <div className="relative min-h-screen">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="fixed right-2 top-2 z-50"
+        aria-label="Fechar"
+        onClick={() => router.navigate({ to: "/" })}
+      >
+        <X className="size-6" />
+      </Button>
+      <div className="container mx-auto p-4 pt-14 md:pt-16 md:p-8 max-w-7xl animate-in fade-in duration-500">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Procedimentos</h1>
+            <p className="text-muted-foreground mt-1">
+              Gestão da biblioteca de procedimentos operacionais.
+            </p>
+          </div>
+          <Button 
+            size="lg" 
+            className="shrink-0 gap-2 shadow-lg hover:shadow-xl transition-all"
+            onClick={() => setIsCreateDialogOpen(true)}
+          >
+            <Plus className="size-5" />
+            Novo Procedimento
+          </Button>
         </div>
-        <Button 
-          size="lg" 
-          className="shrink-0 gap-2 shadow-lg hover:shadow-xl transition-all"
-          onClick={() => setIsCreateDialogOpen(true)}
-        >
-          <Plus className="size-5" />
-          Novo Procedimento
-        </Button>
-      </div>
 
-      {/* Dialog para Novo Procedimento */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Novo Procedimento Operacional</DialogTitle>
-            <DialogDescription>
-              Defina os metadados e o fluxograma de decisão para a primeira versão.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <ProcedureForm 
-              onSubmit={async (metadata, versionData, isPublishing) => {
-                if (!metadata) {
-                  setIsCreateDialogOpen(false);
-                  return;
-                }
+        {/* Dialog para Novo Procedimento */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
+            <DialogHeader>
+              <DialogTitle>Novo Procedimento Operacional</DialogTitle>
+              <DialogDescription>
+                Defina os metadados e o fluxograma de decisão para a primeira versão.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <ProcedureForm 
+                onSubmit={async (metadata, versionData, isPublishing) => {
+                  if (!metadata) {
+                    setIsCreateDialogOpen(false);
+                    return;
+                  }
 
-                if (isPublishing) {
-                  setConfirmPublish({ metadata, versionData, isNew: true });
-                } else {
-                  await createMutation.mutateAsync({ metadata, versionData, isPublishing: false });
-                }
-              }}
-              isSubmitting={createMutation.isPending}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para Edição / Visualização */}
-      <Dialog open={!!editingProcedure} onOpenChange={(open) => !open && setEditingProcedure(null)}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>
-              {editingProcedure?.status === 'draft' ? 'Editar Rascunho' : 'Visualizar Procedimento'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingProcedure?.status === 'draft' 
-                ? 'Altere o conteúdo do rascunho antes de publicar.' 
-                : 'Versões publicadas são imutáveis. Crie uma nova versão para fazer alterações.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <ProcedureForm 
-              initialData={editingProcedure}
-              isReadOnly={editingProcedure?.status !== 'draft'}
-              onSubmit={async (metadata, versionData, isPublishing) => {
-                if (!metadata) {
-                  setEditingProcedure(null);
-                  return;
-                }
-
-                if (isPublishing) {
-                  setConfirmPublish({ id: editingProcedure.id, metadata, versionData, isNew: false });
-                } else {
-                  await updateMutation.mutateAsync({ 
-                    id: editingProcedure.id, 
-                    metadata, 
-                    versionData, 
-                    isPublishing: false 
-                  });
-                }
-              }}
-              isSubmitting={updateMutation.isPending}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de Confirmação de Publicação */}
-      <Dialog open={!!confirmPublish} onOpenChange={(open) => !open && setConfirmPublish(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Publicação</DialogTitle>
-            <DialogDescription>
-              Você está prestes a publicar esta versão. Uma vez publicada, o conteúdo será imutável e ficará disponível para as equipes.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmPublish(null)}>
-              Revisar mais
-            </Button>
-            <Button 
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={async () => {
-                const { id, metadata, versionData, isNew } = confirmPublish;
-                setConfirmPublish(null);
-                if (isNew) {
-                  await createMutation.mutateAsync({ metadata, versionData, isPublishing: true });
-                } else {
-                  await updateMutation.mutateAsync({ id, metadata, versionData, isPublishing: true });
-                }
-              }}
-            >
-              Confirmar e Publicar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Card className="mb-8 border-primary/10 shadow-sm bg-card/50 backdrop-blur-sm">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative w-full md:flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por título..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-background/50 border-primary/20 w-full"
+                  if (isPublishing) {
+                    setConfirmPublish({ metadata, versionData, isNew: true });
+                  } else {
+                    await createMutation.mutateAsync({ metadata, versionData, isPublishing: false });
+                  }
+                }}
+                isSubmitting={createMutation.isPending}
               />
             </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-              <TabsList className="grid grid-cols-2 min-[400px]:grid-cols-3 md:flex w-full h-auto gap-1 bg-muted/50 border border-primary/10 p-1">
-                <TabsTrigger value="all" className="w-full min-w-0 text-center whitespace-normal">Todos</TabsTrigger>
-                <TabsTrigger value="draft" className="w-full min-w-0 text-center whitespace-normal">Rascunhos</TabsTrigger>
-                <TabsTrigger value="published" className="w-full min-w-0 text-center whitespace-normal">Publicados</TabsTrigger>
-                <TabsTrigger value="suspended" className="w-full min-w-0 text-center whitespace-normal">Suspensos</TabsTrigger>
-                <TabsTrigger value="archived" className="w-full min-w-0 text-center whitespace-normal">Arquivados</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </CardContent>
-      </Card>
+          </DialogContent>
+        </Dialog>
 
-      {queryError && (
-        <Card className="mb-8 border-destructive/20 bg-destructive/5">
-          <CardContent className="pt-6 text-destructive flex items-center gap-3">
-            <AlertCircle className="size-5" />
-            <p>Erro ao carregar dados: {(queryError as any).message || "Erro desconhecido"}. Verifique se as tabelas foram criadas no banco.</p>
+        {/* Dialog para Edição / Visualização */}
+        <Dialog open={!!editingProcedure} onOpenChange={(open) => !open && setEditingProcedure(null)}>
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
+            <DialogHeader>
+              <DialogTitle>
+                {editingProcedure?.status === 'draft' ? 'Editar Rascunho' : 'Visualizar Procedimento'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingProcedure?.status === 'draft' 
+                  ? 'Altere o conteúdo do rascunho antes de publicar.' 
+                  : 'Versões publicadas são imutáveis. Crie uma nova versão para fazer alterações.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <ProcedureForm 
+                initialData={editingProcedure}
+                isReadOnly={editingProcedure?.status !== 'draft'}
+                onSubmit={async (metadata, versionData, isPublishing) => {
+                  if (!metadata) {
+                    setEditingProcedure(null);
+                    return;
+                  }
+
+                  if (isPublishing) {
+                    setConfirmPublish({ id: editingProcedure.id, metadata, versionData, isNew: false });
+                  } else {
+                    await updateMutation.mutateAsync({ 
+                      id: editingProcedure.id, 
+                      metadata, 
+                      versionData, 
+                      isPublishing: false 
+                    });
+                  }
+                }}
+                isSubmitting={updateMutation.isPending}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Confirmação de Publicação */}
+        <Dialog open={!!confirmPublish} onOpenChange={(open) => !open && setConfirmPublish(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirmar Publicação</DialogTitle>
+              <DialogDescription>
+                Você está prestes a publicar esta versão. Uma vez publicada, o conteúdo será imutável e ficará disponível para as equipes.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmPublish(null)}>
+                Revisar mais
+              </Button>
+              <Button 
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={async () => {
+                  const { id, metadata, versionData, isNew } = confirmPublish;
+                  setConfirmPublish(null);
+                  if (isNew) {
+                    await createMutation.mutateAsync({ metadata, versionData, isPublishing: true });
+                  } else {
+                    await updateMutation.mutateAsync({ id, metadata, versionData, isPublishing: true });
+                  }
+                }}
+              >
+                Confirmar e Publicar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Card className="mb-8 border-primary/10 shadow-sm bg-card/50 backdrop-blur-sm">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative w-full md:flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por título..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 bg-background/50 border-primary/20 w-full"
+                />
+              </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
+                <TabsList className="grid grid-cols-2 min-[400px]:grid-cols-3 md:flex w-full h-auto gap-1 bg-muted/50 border border-primary/10 p-1">
+                  <TabsTrigger value="all" className="w-full min-w-0 text-center whitespace-normal">Todos</TabsTrigger>
+                  <TabsTrigger value="draft" className="w-full min-w-0 text-center whitespace-normal">Rascunhos</TabsTrigger>
+                  <TabsTrigger value="published" className="w-full min-w-0 text-center whitespace-normal">Publicados</TabsTrigger>
+                  <TabsTrigger value="suspended" className="w-full min-w-0 text-center whitespace-normal">Suspensos</TabsTrigger>
+                  <TabsTrigger value="archived" className="w-full min-w-0 text-center whitespace-normal">Arquivados</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </CardContent>
         </Card>
-      )}
 
-      {isLoading || userRoles.isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse h-48 border-primary/5 bg-muted/20" />
-          ))}
-        </div>
-      ) : procedures?.length === 0 ? (
-        <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-2xl bg-muted/5">
-          <FileText className="size-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-          <h3 className="text-lg font-semibold text-muted-foreground">Nenhum procedimento encontrado</h3>
-          <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-            Ajuste os filtros ou crie um novo procedimento para começar.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {procedures?.map((proc: any) => (
-            <Card key={proc.id} className="group overflow-hidden border-primary/10 hover:border-primary/30 transition-all hover:shadow-md bg-card/40 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start gap-2 mb-2">
-                  <div className="flex gap-2 items-center">
-                    {getStatusBadge(proc.status)}
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                      v{proc.versao}
-                    </span>
-                  </div>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingProcedure(proc)}>
-                        {proc.status === 'draft' ? (
+        {queryError && (
+          <Card className="mb-8 border-destructive/20 bg-destructive/5">
+            <CardContent className="pt-6 text-destructive flex items-center gap-3">
+              <AlertCircle className="size-5" />
+              <p>Erro ao carregar dados: {(queryError as any).message || "Erro desconhecido"}. Verifique se as tabelas foram criadas no banco.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {isLoading || userRoles.isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse h-48 border-primary/5 bg-muted/20" />
+            ))}
+          </div>
+        ) : procedures?.length === 0 ? (
+          <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-2xl bg-muted/5">
+            <FileText className="size-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+            <h3 className="text-lg font-semibold text-muted-foreground">Nenhum procedimento encontrado</h3>
+            <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
+              Ajuste os filtros ou crie um novo procedimento para começar.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {procedures?.map((proc: any) => (
+              <Card key={proc.id} className="group overflow-hidden border-primary/10 hover:border-primary/30 transition-all hover:shadow-md bg-card/40 backdrop-blur-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start gap-2 mb-2">
+                    <div className="flex gap-2 items-center">
+                      {getStatusBadge(proc.status)}
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                        v{proc.versao}
+                      </span>
+                    </div>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingProcedure(proc)}>
+                          {proc.status === 'draft' ? (
+                            <>
+                              <ArrowRight className="size-4 mr-2" />
+                              Editar Rascunho
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="size-4 mr-2" />
+                              Visualizar
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        
+                        {proc.status === 'published' && (
                           <>
-                            <ArrowRight className="size-4 mr-2" />
-                            Editar Rascunho
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="size-4 mr-2" />
-                            Visualizar
+                            <DropdownMenuItem onClick={() => newVersionMutation.mutate(proc)}>
+                              <History className="size-4 mr-2" />
+                              Criar nova versão
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-amber-600"
+                              onClick={() => statusMutation.mutate({ id: proc.id, status: 'suspended' })}
+                            >
+                              <PauseCircle className="size-4 mr-2" />
+                              Suspender
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => statusMutation.mutate({ id: proc.id, status: 'archived' })}
+                            >
+                              <Archive className="size-4 mr-2" />
+                              Arquivar
+                            </DropdownMenuItem>
                           </>
                         )}
-                      </DropdownMenuItem>
-                      
-                      {proc.status === 'published' && (
-                        <>
-                          <DropdownMenuItem onClick={() => newVersionMutation.mutate(proc)}>
-                            <History className="size-4 mr-2" />
-                            Criar nova versão
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-amber-600"
-                            onClick={() => statusMutation.mutate({ id: proc.id, status: 'suspended' })}
-                          >
-                            <PauseCircle className="size-4 mr-2" />
-                            Suspender
-                          </DropdownMenuItem>
+
+                        {proc.status === 'suspended' && (
                           <DropdownMenuItem 
                             className="text-destructive"
                             onClick={() => statusMutation.mutate({ id: proc.id, status: 'archived' })}
@@ -535,73 +549,62 @@ function LeaderProceduresPage() {
                             <Archive className="size-4 mr-2" />
                             Arquivar
                           </DropdownMenuItem>
-                        </>
-                      )}
+                        )}
 
-                      {proc.status === 'suspended' && (
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => statusMutation.mutate({ id: proc.id, status: 'archived' })}
-                        >
-                          <Archive className="size-4 mr-2" />
-                          Arquivar
-                        </DropdownMenuItem>
-                      )}
-
-                      {proc.status === 'draft' && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => {
-                              if (confirm("Tem certeza que deseja excluir este rascunho?")) {
-                                deleteDraftMutation.mutate(proc.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="size-4 mr-2" />
-                            Excluir Rascunho
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors">{proc.titulo}</CardTitle>
-                <CardDescription className="line-clamp-2 min-h-[2.5rem] mt-1 text-xs">
-                  {proc.descricao || "Sem descrição informada."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
-                    <span>Vigência</span>
-                    <span className="font-semibold text-foreground/80">
-                      {proc.vigencia_inicio.split('-').reverse().join('/')}
-                      {proc.vigencia_fim && ` — ${proc.vigencia_fim.split('-').reverse().join('/')}`}
-                    </span>
+                        {proc.status === 'draft' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => {
+                                if (confirm("Tem certeza que deseja excluir este rascunho?")) {
+                                  deleteDraftMutation.mutate(proc.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="size-4 mr-2" />
+                              Excluir Rascunho
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
+                  <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors">{proc.titulo}</CardTitle>
+                  <CardDescription className="line-clamp-2 min-h-[2.5rem] mt-1 text-xs">
+                    {proc.descricao || "Sem descrição informada."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
+                      <span>Vigência</span>
+                      <span className="font-semibold text-foreground/80">
+                        {proc.vigencia_inicio.split('-').reverse().join('/')}
+                        {proc.vigencia_fim && ` — ${proc.vigencia_fim.split('-').reverse().join('/')}`}
+                      </span>
+                    </div>
 
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className="text-[9px] font-normal">{proc.categoria}</Badge>
-                    <Badge variant="outline" className="text-[9px] font-normal truncate">{proc.setor}</Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className="text-[9px] font-normal">{proc.categoria}</Badge>
+                      <Badge variant="outline" className="text-[9px] font-normal truncate">{proc.setor}</Badge>
+                    </div>
+
+                    <Button 
+                      variant="secondary" 
+                      className="w-full mt-2 group-hover:bg-primary group-hover:text-primary-foreground transition-all"
+                      onClick={() => setEditingProcedure(proc)}
+                    >
+                      Gerenciar
+                      <ArrowRight className="size-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </Button>
                   </div>
-
-                  <Button 
-                    variant="secondary" 
-                    className="w-full mt-2 group-hover:bg-primary group-hover:text-primary-foreground transition-all"
-                    onClick={() => setEditingProcedure(proc)}
-                  >
-                    Gerenciar
-                    <ArrowRight className="size-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
-    </AppShell>
   );
 }
