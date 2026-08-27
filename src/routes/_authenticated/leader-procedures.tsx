@@ -274,11 +274,14 @@ function LeaderProceduresPage() {
 
   if (!isLeaderOrAdmin && !userRoles.isLoading) {
     return (
-      <div className="relative min-h-screen">
+      <div
+        className="relative min-h-screen"
+        style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}
+      >
         <Button
           variant="ghost"
           size="icon"
-          className="fixed right-2 top-2 z-50 size-10 rounded-lg bg-red-500/90 hover:bg-red-600 text-white transition-colors shadow-sm"
+          className="fixed right-2 top-[calc(0.5rem+var(--safe-area-inset-top,env(safe-area-inset-top,0px)))] z-50 size-10 rounded-lg bg-red-500/90 hover:bg-red-600 text-white transition-colors shadow-sm"
           aria-label="Fechar"
           onClick={handleClose}
 
@@ -321,7 +324,10 @@ function LeaderProceduresPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div
+      className="relative min-h-screen"
+      style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}
+    >
       <div className="container mx-auto p-4 md:p-8 max-w-7xl animate-in fade-in duration-500">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
           <div className="flex-1 min-w-0">
