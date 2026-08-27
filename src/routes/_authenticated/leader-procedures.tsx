@@ -258,9 +258,19 @@ function LeaderProceduresPage() {
     },
   });
 
+  const router = useRouter();
+
   if (!isLeaderOrAdmin && !userRoles.isLoading) {
     return (
-      <div className="flex h-[80vh] items-center justify-center p-4">
+      <AppShell
+        title="Procedimentos"
+        right={
+          <Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => router.history.back()}>
+            <X className="size-5" />
+          </Button>
+        }
+      >
+      <div className="flex min-h-[70vh] items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
           <CardHeader>
             <AlertCircle className="size-12 text-destructive mx-auto mb-2" />
