@@ -17,6 +17,7 @@ import { hasSessionEjection } from "@/lib/session-guard";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { AppLogo } from "@/components/brand/AppLogo";
+import { DisclaimerBanner } from "@/components/brand/DisclaimerBanner";
 
 const LOGIN_TIMEOUT_MS = 8_000;
 
@@ -164,6 +165,9 @@ function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
+      <div className="absolute inset-x-0 top-0">
+        <DisclaimerBanner />
+      </div>
       <div className="mb-8 w-full max-w-sm px-4 flex justify-center">
         <AppLogo className="max-w-[192px]" />
       </div>
