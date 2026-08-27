@@ -9,7 +9,7 @@ import { LeaderMapSection } from "@/components/leader/MapSection";
 
 export const Route = createFileRoute("/_authenticated/leader-map")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Mapa do Líder — GPVA" }] }),
+  head: () => ({ meta: [{ title: "Mapa do Líder — ASSIS GESP" }] }),
   component: LeaderMapPage,
 });
 

@@ -18,10 +18,11 @@ import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
+import gespLogo from "@/assets/assis-gesp-logo.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Início — GPVA" }] }),
+  head: () => ({ meta: [{ title: "Início — ASSIS GESP" }] }),
   component: HomePage,
 });
 
@@ -166,21 +167,12 @@ function HomePage() {
   const teamPhoto = useTeamPhoto(userId);
 
   const titleNode = (
-    <div className="w-full min-w-0">
-      <svg
-        viewBox="0 0 300 20"
-        preserveAspectRatio="none"
-        className="block h-auto w-full"
-        role="img"
-        aria-label="GPVA - Gestão de Produtividade e Variável Autônoma"
-      >
-        <text x="0" y="15" fontSize="14" fontWeight="700" fill="currentColor" textLength="300" lengthAdjust="spacingAndGlyphs">
-          GPVA
-          <tspan fontSize="10" fontWeight="500" className="fill-muted-foreground" dx="3">
-            - GESTÃO DE PRODUTIVIDADE E VARIÁVEL AUTÔNOMA
-          </tspan>
-        </text>
-      </svg>
+    <div className="w-full min-w-0 max-w-[180px]">
+      <img
+        src={gespLogo.url}
+        alt="ASSIS GESP - Assistência em Campo e Gestão da Produtividade"
+        className="block h-auto w-full rounded-md bg-white/90 p-1"
+      />
     </div>
   );
 
