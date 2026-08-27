@@ -602,5 +602,6 @@ function LeaderProceduresPage() {
         </div>
       )}
     </div>
+    </AppShell>
   );
 }
