@@ -261,31 +261,33 @@ function LeaderProceduresPage() {
 
   if (!isLeaderOrAdmin && !userRoles.isLoading) {
     return (
-      <AppShell
-        title="Procedimentos"
-        right={
-          <Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => router.history.back()}>
-            <X className="size-5" />
-          </Button>
-        }
-      >
-      <div className="flex min-h-[70vh] items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center">
-          <CardHeader>
-            <AlertCircle className="size-12 text-destructive mx-auto mb-2" />
-            <CardTitle>Acesso Negado</CardTitle>
-            <CardDescription>
-              Apenas líderes e administradores podem acessar a gestão de procedimentos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link to="/">Voltar para Início</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="relative min-h-screen">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed right-2 top-2 z-50"
+          aria-label="Fechar"
+          onClick={() => router.navigate({ to: "/" })}
+        >
+          <X className="size-6" />
+        </Button>
+        <div className="flex min-h-[70vh] items-center justify-center p-4">
+          <Card className="max-w-md w-full text-center">
+            <CardHeader>
+              <AlertCircle className="size-12 text-destructive mx-auto mb-2" />
+              <CardTitle>Acesso Negado</CardTitle>
+              <CardDescription>
+                Apenas líderes e administradores podem acessar a gestão de procedimentos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full">
+                <Link to="/">Voltar para Início</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-      </AppShell>
     );
   }
 
