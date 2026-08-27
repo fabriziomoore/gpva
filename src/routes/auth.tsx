@@ -164,8 +164,8 @@ function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
-      <div className="mb-8 w-full max-w-sm px-4">
-        <AppLogo />
+      <div className="mb-8 w-full max-w-sm px-4 flex justify-center">
+        <AppLogo className="max-w-[192px]" />
       </div>
       <div className="w-full max-w-sm px-4">
 
