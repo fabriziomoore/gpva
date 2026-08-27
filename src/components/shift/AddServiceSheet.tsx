@@ -377,7 +377,8 @@ export function AddServiceSheet({
                 const vistaFilled = valorAVista.trim() !== "" && isFinite(nVista) && nVista > 0;
                 const invalidVista = !hasInstallment && !vistaFilled;
                 const invalidParc = hasInstallment && (!valorParcelado.trim() || !isFinite(nParc) || nParc <= 0);
-                const invalidQtd = hasInstallment && (!parcelas || nParcelas < 2);
+                // Aceita 1 parcela: crédito à vista (pagamento único no cartão).
+                const invalidQtd = hasInstallment && (!parcelas || nParcelas < 1);
                 return (
                   <>
                     {showUpfront && (
