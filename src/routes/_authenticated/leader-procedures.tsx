@@ -265,11 +265,11 @@ function LeaderProceduresPage() {
         <Button
           variant="ghost"
           size="icon"
-          className="fixed right-2 top-2 z-50"
+          className="fixed right-2 top-2 z-50 bg-red-500/90 hover:bg-red-600 text-white rounded-full shadow-sm"
           aria-label="Fechar"
           onClick={() => router.navigate({ to: "/" })}
         >
-          <X className="size-6" />
+          <X className="size-5" />
         </Button>
         <div className="flex min-h-[70vh] items-center justify-center p-4">
           <Card className="max-w-md w-full text-center">
