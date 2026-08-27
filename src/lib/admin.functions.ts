@@ -802,7 +802,7 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Resolve estrutura
+    // 1. Snapshot da estrutura
     const { data: snapshot, error: snapErr } = await supabaseAdmin
       .from("lideres_estrutura")
       .select("id,user_id,nome,setor_id,supervisor_id,created_at")
@@ -810,7 +810,7 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
       .maybeSingle();
     if (snapErr) throw new Error(snapErr.message);
 
-    // 2. Bloqueio por equipes vinculadas
+    // 2. Bloqueio por equipes vinculadas (nada é removido)
     if (snapshot) {
       const { count, error: cErr } = await supabaseAdmin
         .from("equipes")
@@ -822,7 +822,68 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
           "O líder possui equipes vinculadas. Desvincule ou mova as equipes antes de excluir.",
         );
       }
-      // 4. Remove estrutura
+    }
+
+    // 3. Snapshot do papel
+    const { data: roleRows, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("id,user_id,role,created_at")
+      .eq("user_id", data.leaderUserId)
+      .eq("role", "leader");
+    if (roleErr) throw new Error(roleErr.message);
+
+    // Restauração best-effort do estado anterior (usada em QUALQUER falha posterior)
+    const restore = async (): Promise<string[]> => {
+      const problemas: string[] = [];
+      if (snapshot) {
+        const { data: exists } = await supabaseAdmin
+          .from("lideres_estrutura")
+          .select("id")
+          .eq("id", snapshot.id)
+          .maybeSingle();
+        if (!exists) {
+          const { error } = await supabaseAdmin.from("lideres_estrutura").insert({
+            id: snapshot.id,
+            user_id: snapshot.user_id,
+            nome: snapshot.nome,
+            setor_id: snapshot.setor_id,
+            supervisor_id: snapshot.supervisor_id,
+            created_at: snapshot.created_at,
+          });
+          if (error) problemas.push(`lideres_estrutura: ${error.message}`);
+        }
+      }
+      if ((roleRows ?? []).length > 0) {
+        const { error } = await supabaseAdmin
+          .from("user_roles")
+          .upsert(
+            (roleRows ?? []).map((r) => ({
+              id: r.id,
+              user_id: r.user_id,
+              role: r.role,
+              created_at: r.created_at,
+            })),
+            { onConflict: "user_id,role" },
+          );
+        if (error) problemas.push(`user_roles: ${error.message}`);
+      }
+      return problemas;
+    };
+
+    const abort = async (motivo: string): Promise<never> => {
+      const problemas = await restore();
+      if (problemas.length === 0) {
+        throw new Error(`Exclusão abortada (${motivo}). O estado anterior do líder foi restaurado.`);
+      }
+      throw new Error(
+        `ERRO CRÍTICO: exclusão falhou (${motivo}) e a restauração também falhou [${problemas.join(" | ")}]. ` +
+          `user_id=${data.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}; setor_id=${snapshot?.setor_id ?? "—"}; ` +
+          `supervisor_id=${snapshot?.supervisor_id ?? "—"}; nome=${snapshot?.nome ?? "—"}. Intervenção manual necessária.`,
+      );
+    };
+
+    // 4. Remove estrutura
+    if (snapshot) {
       const { error: delEstErr } = await supabaseAdmin
         .from("lideres_estrutura")
         .delete()
@@ -836,48 +897,25 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
       .delete()
       .eq("user_id", data.leaderUserId)
       .eq("role", "leader");
-    if (delRoleErr) throw new Error(delRoleErr.message);
+    if (delRoleErr) await abort(delRoleErr.message);
 
     // 6. Remove conta de autenticação
     const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(data.leaderUserId);
     if (!authErr) return { ok: true as const };
 
-    // 8. Compensação best-effort
+    // 7. Falhou: se a conta ainda existe, restaurar tudo
     const still = await supabaseAdmin.auth.admin.getUserById(data.leaderUserId);
-    if (still.data?.user) {
-      const { error: r1 } = await supabaseAdmin
-        .from("user_roles")
-        .upsert({ user_id: data.leaderUserId, role: "leader" }, { onConflict: "user_id,role" });
-      let r2Msg: string | null = null;
-      if (snapshot) {
-        const { error: r2 } = await supabaseAdmin.from("lideres_estrutura").insert({
-          id: snapshot.id,
-          user_id: snapshot.user_id,
-          nome: snapshot.nome,
-          setor_id: snapshot.setor_id,
-          supervisor_id: snapshot.supervisor_id,
-          created_at: snapshot.created_at,
-        });
-        r2Msg = r2?.message ?? null;
-      }
-      if (!r1 && !r2Msg) {
-        throw new Error(
-          `Exclusão abortada (${authErr.message}). A estrutura do líder foi restaurada.`,
-        );
-      }
-      throw new Error(
-        `ERRO CRÍTICO: exclusão falhou (${authErr.message}) e a restauração também falhou. user_id=${data.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}; setor_id=${snapshot?.setor_id ?? "—"}; supervisor_id=${snapshot?.supervisor_id ?? "—"}; nome=${snapshot?.nome ?? "—"}. Intervenção manual necessária.`,
-      );
-    }
+    if (still.data?.user) await abort(authErr.message);
     throw new Error(authErr.message);
   });
+
+
 
 // ============= Setores =============
 
 export type SetorRow = {
   id: string;
   nome: string;
-  supervisor_nome: string;
 };
 
 export const adminListSetores = createServerFn({ method: "POST" })
@@ -887,14 +925,14 @@ export const adminListSetores = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("setores")
-      .select("id,nome,supervisor_nome")
+      .select("id,nome")
       .order("nome");
     if (error) throw new Error(error.message);
     return (rows ?? []) as SetorRow[];
   });
 
 export const adminCreateSetor = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; nome: string; supervisorNome: string }) => data)
+  .inputValidator((data: { adminPassword: string; nome: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const nome = data.nome.trim();
@@ -902,23 +940,22 @@ export const adminCreateSetor = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("setores")
-      .insert({ nome, supervisor_nome: data.supervisorNome.trim() });
+      .insert({ nome, supervisor_nome: "" });
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
 
 export const adminUpdateSetor = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; setorId: string; nome?: string; supervisorNome?: string }) => data)
+  .inputValidator((data: { adminPassword: string; setorId: string; nome?: string }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: { nome?: string; supervisor_nome?: string } = {};
+    const patch: { nome?: string } = {};
     if (data.nome !== undefined) {
       const nome = data.nome.trim();
       if (!nome) throw new Error("Nome do setor obrigatório.");
       patch.nome = nome;
     }
-    if (data.supervisorNome !== undefined) patch.supervisor_nome = data.supervisorNome.trim();
     if (Object.keys(patch).length === 0) return { ok: true as const };
     const { error } = await supabaseAdmin
       .from("setores")
@@ -963,6 +1000,7 @@ export type SupervisorRow = {
   nome: string;
   setor_id: string;
   setor_nome: string | null;
+  user_id: string | null;
 };
 
 export const adminListSupervisores = createServerFn({ method: "POST" })
@@ -972,17 +1010,24 @@ export const adminListSupervisores = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let query = supabaseAdmin
       .from("supervisores")
-      .select("id,nome,setor_id,setores(nome)")
+      .select("id,nome,setor_id,user_id,setores(nome)")
       .order("nome");
     if (data.setorId) query = query.eq("setor_id", data.setorId);
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    type Join = { id: string; nome: string; setor_id: string; setores: { nome: string } | null };
+    type Join = {
+      id: string;
+      nome: string;
+      setor_id: string;
+      user_id: string | null;
+      setores: { nome: string } | null;
+    };
     return ((rows ?? []) as unknown as Join[]).map((r) => ({
       id: r.id,
       nome: r.nome,
       setor_id: r.setor_id,
       setor_nome: r.setores?.nome ?? null,
+      user_id: r.user_id ?? null,
     }));
   });
 

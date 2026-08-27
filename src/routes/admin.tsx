@@ -476,7 +476,6 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
   const deleteFn = useServerFn(adminDeleteSetor);
 
   const [nome, setNome] = useState("");
-  const [supervisor, setSupervisor] = useState("");
 
   const rows = useQuery({
     queryKey: ["admin-setores"],
@@ -485,10 +484,9 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
 
   const createMut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, nome, supervisorNome: supervisor } }),
+      createFn({ data: { adminPassword: adminPw, nome } }),
     onSuccess: () => {
       setNome("");
-      setSupervisor("");
       toast.success("Setor criado");
       qc.invalidateQueries({ queryKey: ["admin-setores"] });
     },
@@ -496,7 +494,7 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
   });
 
   const updateMut = useMutation({
-    mutationFn: (payload: { setorId: string; nome?: string; supervisorNome?: string }) =>
+    mutationFn: (payload: { setorId: string; nome?: string }) =>
       updateFn({ data: { adminPassword: adminPw, ...payload } }),
     onSuccess: () => {
       toast.success("Setor atualizado");
@@ -519,8 +517,8 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
     <div className="space-y-5">
       <h2 className="text-base font-semibold">Setores</h2>
       <p className="text-xs text-muted-foreground">
-        Cada setor tem um supervisor responsável. As equipes são vinculadas a um setor
-        e herdam o supervisor no relatório executivo.
+        Os setores são o topo da árvore operacional. Supervisores e líderes são
+        vinculados ao setor na seção Supervisores.
       </p>
 
       <div className="space-y-2 rounded-lg border border-border bg-card p-3">
@@ -529,12 +527,6 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder="Nome do setor (ex.: Poda)"
-          className="h-11"
-        />
-        <Input
-          value={supervisor}
-          onChange={(e) => setSupervisor(e.target.value)}
-          placeholder="Nome do supervisor"
           className="h-11"
         />
         <Button
@@ -576,21 +568,17 @@ function SetorEditRow({
   onDelete,
   saving,
 }: {
-  setor: { id: string; nome: string; supervisor_nome: string };
-  onSave: (patch: { nome?: string; supervisorNome?: string }) => void;
+  setor: { id: string; nome: string };
+  onSave: (patch: { nome?: string }) => void;
   onDelete: () => void;
   saving: boolean;
 }) {
   const [nome, setNome] = useState(setor.nome);
-  const [supervisor, setSupervisor] = useState(setor.supervisor_nome);
-  const dirty = nome !== setor.nome || supervisor !== setor.supervisor_nome;
+  const dirty = nome !== setor.nome;
 
   return (
     <div className="space-y-2 rounded-lg border border-border bg-card p-3">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
-        <Input value={supervisor} onChange={(e) => setSupervisor(e.target.value)} className="h-10" placeholder="Supervisor" />
-      </div>
+      <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
       <div className="flex justify-end gap-2">
         <Button
           size="sm"
@@ -603,7 +591,7 @@ function SetorEditRow({
         <Button
           size="sm"
           disabled={!dirty || saving || !nome.trim()}
-          onClick={() => onSave({ nome, supervisorNome: supervisor })}
+          onClick={() => onSave({ nome })}
           className="h-8"
         >
           {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Salvar"}

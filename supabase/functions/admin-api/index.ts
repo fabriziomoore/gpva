@@ -470,43 +470,63 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         const { count, error: cErr } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("leader_id", snapshot.id);
         if (cErr) throw new Error(cErr.message);
         if ((count ?? 0) > 0) throw new Error("O líder possui equipes vinculadas. Desvincule ou mova as equipes antes de excluir.");
+      }
+      const { data: roleRows, error: roleErr } = await sb.from("user_roles")
+        .select("id,user_id,role,created_at")
+        .eq("user_id", args.leaderUserId).eq("role", "leader");
+      if (roleErr) throw new Error(roleErr.message);
+
+      // Restauração best-effort do estado anterior (qualquer falha após a remoção)
+      const restore = async (): Promise<string[]> => {
+        const problemas: string[] = [];
+        if (snapshot) {
+          const { data: exists } = await sb.from("lideres_estrutura").select("id").eq("id", snapshot.id).maybeSingle();
+          if (!exists) {
+            const { error } = await sb.from("lideres_estrutura").insert(snapshot);
+            if (error) problemas.push(`lideres_estrutura: ${error.message}`);
+          }
+        }
+        if ((roleRows ?? []).length > 0) {
+          const { error } = await sb.from("user_roles").upsert(roleRows, { onConflict: "user_id,role" });
+          if (error) problemas.push(`user_roles: ${error.message}`);
+        }
+        return problemas;
+      };
+      const abort = async (motivo: string): Promise<never> => {
+        const problemas = await restore();
+        if (problemas.length === 0) throw new Error(`Exclusão abortada (${motivo}). O estado anterior do líder foi restaurado.`);
+        throw new Error(`ERRO CRÍTICO: exclusão falhou (${motivo}) e a restauração também falhou [${problemas.join(" | ")}]. user_id=${args.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}; setor_id=${snapshot?.setor_id ?? "—"}; supervisor_id=${snapshot?.supervisor_id ?? "—"}; nome=${snapshot?.nome ?? "—"}. Intervenção manual necessária.`);
+      };
+
+      if (snapshot) {
         const { error: dErr } = await sb.from("lideres_estrutura").delete().eq("id", snapshot.id);
         if (dErr) throw new Error(dErr.message);
       }
       const { error: rmRole } = await sb.from("user_roles").delete().eq("user_id", args.leaderUserId).eq("role", "leader");
-      if (rmRole) throw new Error(rmRole.message);
+      if (rmRole) await abort(rmRole.message);
       const { error: authErr } = await sb.auth.admin.deleteUser(args.leaderUserId);
       if (!authErr) return { ok: true };
       const still = await sb.auth.admin.getUserById(args.leaderUserId);
-      if (still.data?.user) {
-        const { error: r1 } = await sb.from("user_roles").upsert({ user_id: args.leaderUserId, role: "leader" }, { onConflict: "user_id,role" });
-        let r2Msg: string | null = null;
-        if (snapshot) {
-          const { error: r2 } = await sb.from("lideres_estrutura").insert(snapshot);
-          r2Msg = r2?.message ?? null;
-        }
-        if (!r1 && !r2Msg) throw new Error(`Exclusão abortada (${authErr.message}). A estrutura do líder foi restaurada.`);
-        throw new Error(`ERRO CRÍTICO: exclusão falhou (${authErr.message}) e a restauração também falhou. user_id=${args.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}. Intervenção manual necessária.`);
-      }
+      if (still.data?.user) await abort(authErr.message);
       throw new Error(authErr.message);
     }
 
+
     // ---------- Setores ----------
     case "adminListSetores": {
-      const { data, error } = await sb.from("setores").select("id,nome,supervisor_nome").order("nome");
+      const { data, error } = await sb.from("setores").select("id,nome").order("nome");
       if (error) throw new Error(error.message);
       return data ?? [];
     }
     case "adminCreateSetor": {
       const nome = String(args.nome).trim(); if (!nome) throw new Error("Nome obrigatório.");
-      const { error } = await sb.from("setores").insert({ nome, supervisor_nome: String(args.supervisorNome ?? "").trim() });
+      const { error } = await sb.from("setores").insert({ nome, supervisor_nome: "" });
       if (error) throw new Error(error.message);
       return { ok: true };
     }
     case "adminUpdateSetor": {
       const patch: any = {};
       if (args.nome !== undefined) { const n = String(args.nome).trim(); if (!n) throw new Error("Nome obrigatório."); patch.nome = n; }
-      if (args.supervisorNome !== undefined) patch.supervisor_nome = String(args.supervisorNome).trim();
       if (Object.keys(patch).length === 0) return { ok: true };
       const { error } = await sb.from("setores").update(patch).eq("id", args.setorId);
       if (error) throw new Error(error.message);
@@ -526,14 +546,15 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
 
     // ---------- Supervisores ----------
     case "adminListSupervisores": {
-      let q = sb.from("supervisores").select("id,nome,setor_id,setores(nome)").order("nome");
+      let q = sb.from("supervisores").select("id,nome,setor_id,user_id,setores(nome)").order("nome");
       if (args.setorId) q = q.eq("setor_id", args.setorId);
       const { data, error } = await q;
       if (error) throw new Error(error.message);
       return (data ?? []).map((r: any) => ({
-        id: r.id, nome: r.nome, setor_id: r.setor_id, setor_nome: r.setores?.nome ?? null,
+        id: r.id, nome: r.nome, setor_id: r.setor_id, setor_nome: r.setores?.nome ?? null, user_id: r.user_id ?? null,
       }));
     }
+
     case "adminCreateSupervisor": {
       const nome = String(args.nome ?? "").trim();
       if (!nome) throw new Error("Nome do supervisor obrigatório.");
