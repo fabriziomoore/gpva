@@ -16,7 +16,7 @@ import { readStoredAuthSession, hydrateLocalStorageFromBackup } from "@/lib/sync
 import { hasSessionEjection } from "@/lib/session-guard";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import gpvaLogo from "@/assets/gpva-logo-wide.webp";
+import gespLogo from "@/assets/assis-gesp-logo.png.asset.json";
 
 const LOGIN_TIMEOUT_MS = 8_000;
 
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/auth")({
     ]);
     if (result?.data.session) throw redirect({ to: "/" });
   },
-  head: () => ({ meta: [{ title: "Entrar — GPVA" }] }),
+  head: () => ({ meta: [{ title: "Entrar — ASSIS GESP" }] }),
   component: AuthPage,
 });
 
@@ -165,8 +165,8 @@ function AuthPage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
       <div className="mb-8 w-full max-w-sm px-4">
-        <div className="overflow-hidden rounded-2xl bg-[oklch(0.16_0.018_250)]">
-          <img src={gpvaLogo} alt="GPVA — Gestão de Produtividade e Variável Autônoma" className="block w-full h-auto" />
+        <div className="overflow-hidden rounded-2xl bg-white p-4">
+          <img src={gespLogo.url} alt="ASSIS GESP — Assistência em Campo e Gestão da Produtividade" className="block w-full h-auto" />
         </div>
       </div>
       <div className="w-full max-w-sm px-4">
