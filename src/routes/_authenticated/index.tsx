@@ -18,7 +18,6 @@ import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
-import { useTeamPhoto } from "@/lib/team-photo";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
