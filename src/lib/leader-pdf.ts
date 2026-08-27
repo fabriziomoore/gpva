@@ -8,8 +8,8 @@ import {
 } from "./analytics";
 // Logo bundlada localmente pelo Vite — garante que apareça também no APK
 // Android (o path absoluto do asset remoto não resolve em capacitor://localhost).
-import bundledLogoUrl from "@/assets/assis-gesp-logo-bundled.png?url";
-import logoAsset from "@/assets/assis-gesp-logo.png.asset.json";
+import bundledLogoUrl from "@/assets/acp-logo-light-bundled.png?url";
+import logoAsset from "@/assets/acp-logo-light.png.asset.json";
 import { renderReportMapPng, OPERATIONAL_BASE, type PdfMapPoint } from "./pdf-map";
 import { reverseGeocode, type ReverseGeoInfo } from "./reverse-geocode";
 
@@ -226,7 +226,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   if (logoDataUrl) {
     try {
       // Logo em proporção ~2.13:1 (800x375) — largura 30, altura ~14
-      pdf.addImage(logoDataUrl, "PNG", M, M + 4, 30, 14);
+      pdf.addImage(logoDataUrl, "PNG", M, M + 2, 30, 19.5);
     } catch {
       setFill(C.primary); setStroke(C.primary);
       pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
