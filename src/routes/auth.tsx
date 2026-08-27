@@ -16,7 +16,7 @@ import { readStoredAuthSession, hydrateLocalStorageFromBackup } from "@/lib/sync
 import { hasSessionEjection } from "@/lib/session-guard";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import gespLogo from "@/assets/assis-gesp-logo.png.asset.json";
+import { AppLogo } from "@/components/brand/AppLogo";
 
 const LOGIN_TIMEOUT_MS = 8_000;
 

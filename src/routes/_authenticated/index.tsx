@@ -18,7 +18,7 @@ import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
-import gespLogo from "@/assets/assis-gesp-logo.png.asset.json";
+import { AppLogo } from "@/components/brand/AppLogo";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
