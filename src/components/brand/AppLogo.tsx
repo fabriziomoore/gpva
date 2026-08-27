@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
-import darkLogo from "@/assets/acp-logo-dark.png.asset.json";
-import lightLogo from "@/assets/acp-logo-light.png.asset.json";
+import lightLogoUrl from "@/assets/acp-logo-light-bundled.png?url";
+import darkLogoUrl from "@/assets/acp-logo-dark-bundled.png?url";
 
 export interface AppLogoProps extends React.ComponentProps<"div"> {
   /** Texto alternativo acessível da marca. */
