@@ -18,7 +18,6 @@ import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
-import { AppLogo } from "@/components/brand/AppLogo";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
@@ -166,8 +165,6 @@ function HomePage() {
   const today = useMemo(() => formatDateBR(new Date()), []);
   const teamPhoto = useTeamPhoto(userId);
 
-  const titleNode = <AppLogo className="min-w-0 max-w-[90px]" />;
-
 
   // Enquanto papel (líder/admin) ainda carrega, ou o próprio usuário indica ser
   // líder/admin, não renderizamos o home de equipe para evitar o "flash" antes
@@ -186,7 +183,7 @@ function HomePage() {
 
   if (isLoading || rolePending) {
     return (
-      <AppShell title={titleNode} showBack={false}>
+      <AppShell showBack={false}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -195,7 +192,7 @@ function HomePage() {
   }
 
   return (
-    <AppShell title={titleNode} showBack={false}>
+    <AppShell showBack={false}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
         <div className="flex items-stretch gap-4 rounded-2xl border border-border bg-card p-4 overflow-hidden">
