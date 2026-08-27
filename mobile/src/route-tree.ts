@@ -105,6 +105,12 @@ const leaderRanking = (LeaderRankingRoute as any).update({
   getParentRoute: () => authenticated,
 });
 
+const leaderProcedures = (LeaderProceduresRoute as any).update({
+  id: "/leader-procedures",
+  path: "/leader-procedures",
+  getParentRoute: () => authenticated,
+});
+
 const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   IndexRoute: index,
   OnboardingRoute: onboarding,
@@ -117,6 +123,7 @@ const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   LeaderConfigRoute: leaderConfig,
   LeaderMapRoute: leaderMap,
   LeaderRankingRoute: leaderRanking,
+  LeaderProceduresRoute: leaderProcedures,
 });
 
 export const routeTree = (rootRoute as any)._addFileChildren({
