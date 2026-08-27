@@ -306,6 +306,14 @@ function LeaderProceduresPage() {
   };
 
   return (
+    <AppShell
+      title="Procedimentos"
+      right={
+        <Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => router.history.back()}>
+          <X className="size-5" />
+        </Button>
+      }
+    >
     <div className="container mx-auto p-4 md:p-8 max-w-7xl animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
