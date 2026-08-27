@@ -13,7 +13,7 @@ export function buildLovablePrompt(report: AuditReport): string {
   if (problems.length === 0) return "Nenhum problema encontrado — nada a corrigir.";
 
   const lines: string[] = [];
-  lines.push("# Correções sugeridas pela Auditoria Inteligente ASSIS GESP");
+  lines.push("# Correções sugeridas pela Auditoria Inteligente ACP");
   lines.push("");
   lines.push(`Auditoria em ${new Date(report.finished_at).toLocaleString("pt-BR")} — Saúde geral: **${report.overall_score}%**`);
   lines.push(`Erros: ${report.counts.errors} · Avisos: ${report.counts.warnings} · Melhorias: ${report.counts.improvements}`);

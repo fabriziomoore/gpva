@@ -18,11 +18,11 @@ import { UserRound } from "lucide-react";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
-import gespLogo from "@/assets/assis-gesp-logo.png.asset.json";
+import { AppLogo } from "@/components/brand/AppLogo";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Início — ASSIS GESP" }] }),
+  head: () => ({ meta: [{ title: "Início — ACP" }] }),
   component: HomePage,
 });
 
@@ -166,15 +166,8 @@ function HomePage() {
   const today = useMemo(() => formatDateBR(new Date()), []);
   const teamPhoto = useTeamPhoto(userId);
 
-  const titleNode = (
-    <div className="w-full min-w-0 max-w-[180px]">
-      <img
-        src={gespLogo.url}
-        alt="ASSIS GESP - Assistência em Campo e Gestão da Produtividade"
-        className="block h-auto w-full"
-      />
-    </div>
-  );
+  const titleNode = <AppLogo className="min-w-0 max-w-[180px]" />;
+
 
   // Enquanto papel (líder/admin) ainda carrega, ou o próprio usuário indica ser
   // líder/admin, não renderizamos o home de equipe para evitar o "flash" antes

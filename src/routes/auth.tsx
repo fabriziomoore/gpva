@@ -16,7 +16,7 @@ import { readStoredAuthSession, hydrateLocalStorageFromBackup } from "@/lib/sync
 import { hasSessionEjection } from "@/lib/session-guard";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import gespLogo from "@/assets/assis-gesp-logo.png.asset.json";
+import { AppLogo } from "@/components/brand/AppLogo";
 
 const LOGIN_TIMEOUT_MS = 8_000;
 
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/auth")({
     ]);
     if (result?.data.session) throw redirect({ to: "/" });
   },
-  head: () => ({ meta: [{ title: "Entrar — ASSIS GESP" }] }),
+  head: () => ({ meta: [{ title: "Entrar — ACP" }] }),
   component: AuthPage,
 });
 
@@ -165,7 +165,7 @@ function AuthPage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
       <div className="mb-8 w-full max-w-sm px-4">
-        <img src={gespLogo.url} alt="ASSIS GESP — Assistência em Campo e Gestão da Produtividade" className="block w-full h-auto" />
+        <AppLogo />
       </div>
       <div className="w-full max-w-sm px-4">
 

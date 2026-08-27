@@ -8,8 +8,8 @@ import {
 } from "./analytics";
 // Logo bundlada localmente pelo Vite — garante que apareça também no APK
 // Android (o path absoluto do asset remoto não resolve em capacitor://localhost).
-import bundledLogoUrl from "@/assets/assis-gesp-logo-bundled.png?url";
-import logoAsset from "@/assets/assis-gesp-logo.png.asset.json";
+import bundledLogoUrl from "@/assets/acp-logo-light-bundled.png?url";
+import logoAsset from "@/assets/acp-logo-light.png.asset.json";
 import { renderReportMapPng, OPERATIONAL_BASE, type PdfMapPoint } from "./pdf-map";
 import { reverseGeocode, type ReverseGeoInfo } from "./reverse-geocode";
 
@@ -133,7 +133,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const CW = PW - M * 2; // 267
   const now = new Date();
   const refDate = input.reference_date ?? now;
-  const company = input.company ?? "ASSIS GESP";
+  const company = input.company ?? "ACP";
   const generatedBy = input.generated_by ?? input.leader ?? "-";
   const periodStr = periodPeriodLabel(input.period, refDate);
 
@@ -221,12 +221,12 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Header (15% ~ 31mm)
   const headerBottom = M + 26;
 
-  // Logotipo — imagem oficial ASSIS GESP (fallback para caixa colorida)
+  // Logotipo — imagem oficial ACP (fallback para caixa colorida)
   const logoDataUrl = await loadLogoDataUrl();
   if (logoDataUrl) {
     try {
       // Logo em proporção ~2.13:1 (800x375) — largura 30, altura ~14
-      pdf.addImage(logoDataUrl, "PNG", M, M + 4, 30, 14);
+      pdf.addImage(logoDataUrl, "PNG", M, M + 2, 30, 19.5);
     } catch {
       setFill(C.primary); setStroke(C.primary);
       pdf.roundedRect(M, M, 22, 22, 2, 2, "F");

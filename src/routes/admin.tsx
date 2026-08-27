@@ -66,7 +66,7 @@ import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Administração — ASSIS GESP" }] }),
+  head: () => ({ meta: [{ title: "Administração — ACP" }] }),
   component: AdminPage,
 });
 
