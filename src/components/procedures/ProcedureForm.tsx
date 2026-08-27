@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -64,6 +66,18 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
   );
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  const { data: setores, isLoading: setoresLoading } = useQuery({
+    queryKey: ["procedimentos-setores"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("id,nome")
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -170,9 +184,24 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="font-bold">Setor / Aplicabilidade</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Operação Água" {...field} disabled={isReadOnly} />
-                        </FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isReadOnly || setoresLoading}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={setoresLoading ? "Carregando setores..." : "Selecione um setor"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {setores?.map((setor) => (
+                              <SelectItem key={setor.id} value={setor.nome}>
+                                {setor.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
