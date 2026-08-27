@@ -17,6 +17,7 @@ import { Route as LeaderRoute } from "@/routes/_authenticated/leader";
 import { Route as LeaderConfigRoute } from "@/routes/_authenticated/leader-config";
 import { Route as LeaderMapRoute } from "@/routes/_authenticated/leader-map";
 import { Route as LeaderRankingRoute } from "@/routes/_authenticated/leader-ranking";
+import { Route as LeaderProceduresRoute } from "@/routes/_authenticated/leader-procedures";
 import { Route as AdminRoute } from "@/routes/admin";
 
 // Rebind parents. The original `createFileRoute("/path")` calls produce
