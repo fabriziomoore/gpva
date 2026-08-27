@@ -259,6 +259,17 @@ function LeaderProceduresPage() {
 
   const router = useRouter();
 
+  const handleClose = () => {
+    if (userRoles.data?.includes("admin")) {
+      router.navigate({ to: "/admin", replace: true });
+    } else if (userRoles.data?.includes("leader")) {
+      router.navigate({ to: "/leader", replace: true });
+    } else {
+      router.navigate({ to: "/", replace: true });
+    }
+  };
+
+
   if (!isLeaderOrAdmin && !userRoles.isLoading) {
     return (
       <div className="relative min-h-screen">
@@ -267,7 +278,8 @@ function LeaderProceduresPage() {
           size="icon"
           className="fixed right-2 top-2 z-50 size-10 rounded-lg bg-red-500/90 hover:bg-red-600 text-white transition-colors shadow-sm"
           aria-label="Fechar"
-          onClick={() => router.navigate({ to: "/" })}
+          onClick={handleClose}
+
         >
           <X className="size-6" />
         </Button>
@@ -318,7 +330,8 @@ function LeaderProceduresPage() {
                 size="icon"
                 className="shrink-0 -mr-2 -mt-1 size-10 rounded-lg bg-red-500/90 hover:bg-red-600 text-white transition-colors shadow-sm"
                 aria-label="Fechar"
-                onClick={() => router.navigate({ to: "/" })}
+                onClick={handleClose}
+
               >
                 <X className="size-6" />
               </Button>
