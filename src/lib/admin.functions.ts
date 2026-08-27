@@ -802,7 +802,7 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Resolve estrutura
+    // 1. Snapshot da estrutura
     const { data: snapshot, error: snapErr } = await supabaseAdmin
       .from("lideres_estrutura")
       .select("id,user_id,nome,setor_id,supervisor_id,created_at")
@@ -810,7 +810,7 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
       .maybeSingle();
     if (snapErr) throw new Error(snapErr.message);
 
-    // 2. Bloqueio por equipes vinculadas
+    // 2. Bloqueio por equipes vinculadas (nada é removido)
     if (snapshot) {
       const { count, error: cErr } = await supabaseAdmin
         .from("equipes")
@@ -822,7 +822,68 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
           "O líder possui equipes vinculadas. Desvincule ou mova as equipes antes de excluir.",
         );
       }
-      // 4. Remove estrutura
+    }
+
+    // 3. Snapshot do papel
+    const { data: roleRows, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("id,user_id,role,created_at")
+      .eq("user_id", data.leaderUserId)
+      .eq("role", "leader");
+    if (roleErr) throw new Error(roleErr.message);
+
+    // Restauração best-effort do estado anterior (usada em QUALQUER falha posterior)
+    const restore = async (): Promise<string[]> => {
+      const problemas: string[] = [];
+      if (snapshot) {
+        const { data: exists } = await supabaseAdmin
+          .from("lideres_estrutura")
+          .select("id")
+          .eq("id", snapshot.id)
+          .maybeSingle();
+        if (!exists) {
+          const { error } = await supabaseAdmin.from("lideres_estrutura").insert({
+            id: snapshot.id,
+            user_id: snapshot.user_id,
+            nome: snapshot.nome,
+            setor_id: snapshot.setor_id,
+            supervisor_id: snapshot.supervisor_id,
+            created_at: snapshot.created_at,
+          });
+          if (error) problemas.push(`lideres_estrutura: ${error.message}`);
+        }
+      }
+      if ((roleRows ?? []).length > 0) {
+        const { error } = await supabaseAdmin
+          .from("user_roles")
+          .upsert(
+            (roleRows ?? []).map((r) => ({
+              id: r.id,
+              user_id: r.user_id,
+              role: r.role,
+              created_at: r.created_at,
+            })),
+            { onConflict: "user_id,role" },
+          );
+        if (error) problemas.push(`user_roles: ${error.message}`);
+      }
+      return problemas;
+    };
+
+    const abort = async (motivo: string): Promise<never> => {
+      const problemas = await restore();
+      if (problemas.length === 0) {
+        throw new Error(`Exclusão abortada (${motivo}). O estado anterior do líder foi restaurado.`);
+      }
+      throw new Error(
+        `ERRO CRÍTICO: exclusão falhou (${motivo}) e a restauração também falhou [${problemas.join(" | ")}]. ` +
+          `user_id=${data.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}; setor_id=${snapshot?.setor_id ?? "—"}; ` +
+          `supervisor_id=${snapshot?.supervisor_id ?? "—"}; nome=${snapshot?.nome ?? "—"}. Intervenção manual necessária.`,
+      );
+    };
+
+    // 4. Remove estrutura
+    if (snapshot) {
       const { error: delEstErr } = await supabaseAdmin
         .from("lideres_estrutura")
         .delete()
@@ -836,41 +897,19 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
       .delete()
       .eq("user_id", data.leaderUserId)
       .eq("role", "leader");
-    if (delRoleErr) throw new Error(delRoleErr.message);
+    if (delRoleErr) await abort(delRoleErr.message);
 
     // 6. Remove conta de autenticação
     const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(data.leaderUserId);
     if (!authErr) return { ok: true as const };
 
-    // 8. Compensação best-effort
+    // 7. Falhou: se a conta ainda existe, restaurar tudo
     const still = await supabaseAdmin.auth.admin.getUserById(data.leaderUserId);
-    if (still.data?.user) {
-      const { error: r1 } = await supabaseAdmin
-        .from("user_roles")
-        .upsert({ user_id: data.leaderUserId, role: "leader" }, { onConflict: "user_id,role" });
-      let r2Msg: string | null = null;
-      if (snapshot) {
-        const { error: r2 } = await supabaseAdmin.from("lideres_estrutura").insert({
-          id: snapshot.id,
-          user_id: snapshot.user_id,
-          nome: snapshot.nome,
-          setor_id: snapshot.setor_id,
-          supervisor_id: snapshot.supervisor_id,
-          created_at: snapshot.created_at,
-        });
-        r2Msg = r2?.message ?? null;
-      }
-      if (!r1 && !r2Msg) {
-        throw new Error(
-          `Exclusão abortada (${authErr.message}). A estrutura do líder foi restaurada.`,
-        );
-      }
-      throw new Error(
-        `ERRO CRÍTICO: exclusão falhou (${authErr.message}) e a restauração também falhou. user_id=${data.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}; setor_id=${snapshot?.setor_id ?? "—"}; supervisor_id=${snapshot?.supervisor_id ?? "—"}; nome=${snapshot?.nome ?? "—"}. Intervenção manual necessária.`,
-      );
-    }
+    if (still.data?.user) await abort(authErr.message);
     throw new Error(authErr.message);
   });
+
+
 
 // ============= Setores =============
 
