@@ -8,4 +8,4 @@ Módulos independentes: offline-auth NUNCA modifica conectividade; NetworkServic
 ## Memories
 - [Change protocol](mem://rules/change-protocol) — Regra de anúncio prévio de alterações e independência de módulos (auth/network/sync).
 ## Rebrand
-App renomeado de GPVA para ACP (logo Águas do Rio). Asset CDN: src/assets/assis-gesp-logo.png.asset.json. Não restaurar marca GPVA em textos visíveis.
+App chamado ACP — Assistente de Campo e Produtividade (logo Águas do Rio). Logo via <AppLogo/> (src/components/brand/AppLogo.tsx) com arte clara/escura. Não restaurar marcas GPVA ou ASSIS GESP.
