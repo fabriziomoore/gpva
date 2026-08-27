@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, FileText, AlertCircle, ArrowRight, User, MoreVertical, Archive, PauseCircle, PlayCircle, History, Trash2 } from "lucide-react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { Plus, Search, FileText, AlertCircle, ArrowRight, User, MoreVertical, Archive, PauseCircle, PlayCircle, History, Trash2, X } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -257,9 +258,19 @@ function LeaderProceduresPage() {
     },
   });
 
+  const router = useRouter();
+
   if (!isLeaderOrAdmin && !userRoles.isLoading) {
     return (
-      <div className="flex h-[80vh] items-center justify-center p-4">
+      <AppShell
+        title="Procedimentos"
+        right={
+          <Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => router.history.back()}>
+            <X className="size-5" />
+          </Button>
+        }
+      >
+      <div className="flex min-h-[70vh] items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
           <CardHeader>
             <AlertCircle className="size-12 text-destructive mx-auto mb-2" />
@@ -275,6 +286,7 @@ function LeaderProceduresPage() {
           </CardContent>
         </Card>
       </div>
+      </AppShell>
     );
   }
 
@@ -294,6 +306,14 @@ function LeaderProceduresPage() {
   };
 
   return (
+    <AppShell
+      title="Procedimentos"
+      right={
+        <Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => router.history.back()}>
+          <X className="size-5" />
+        </Button>
+      }
+    >
     <div className="container mx-auto p-4 md:p-8 max-w-7xl animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -582,5 +602,6 @@ function LeaderProceduresPage() {
         </div>
       )}
     </div>
+    </AppShell>
   );
 }
