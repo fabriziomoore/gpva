@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "app.lovable.gpva",
-  appName: "GPVA",
+  appName: "ASSIS GESP",
   webDir: "mobile/dist",
   bundledWebRuntime: false,
   server: {

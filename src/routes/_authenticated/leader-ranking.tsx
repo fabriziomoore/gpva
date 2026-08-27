@@ -9,7 +9,7 @@ import { LeaderRankingSection } from "@/components/leader/RankingSection";
 
 export const Route = createFileRoute("/_authenticated/leader-ranking")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Ranking do Líder — GPVA" }] }),
+  head: () => ({ meta: [{ title: "Ranking do Líder — ASSIS GESP" }] }),
   component: LeaderRankingPage,
 });
 
