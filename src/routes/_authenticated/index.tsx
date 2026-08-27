@@ -22,7 +22,7 @@ import { AppLogo } from "@/components/brand/AppLogo";
 
 export const Route = createFileRoute("/_authenticated/")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Início — ASSIS GESP" }] }),
+  head: () => ({ meta: [{ title: "Início — ACP" }] }),
   component: HomePage,
 });
 

@@ -133,7 +133,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const CW = PW - M * 2; // 267
   const now = new Date();
   const refDate = input.reference_date ?? now;
-  const company = input.company ?? "ASSIS GESP";
+  const company = input.company ?? "ACP";
   const generatedBy = input.generated_by ?? input.leader ?? "-";
   const periodStr = periodPeriodLabel(input.period, refDate);
 
@@ -221,7 +221,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   // Header (15% ~ 31mm)
   const headerBottom = M + 26;
 
-  // Logotipo — imagem oficial ASSIS GESP (fallback para caixa colorida)
+  // Logotipo — imagem oficial ACP (fallback para caixa colorida)
   const logoDataUrl = await loadLogoDataUrl();
   if (logoDataUrl) {
     try {

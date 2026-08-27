@@ -1,6 +1,6 @@
 {
-  "name": "ASSIS GESP — Assistência em Campo e Gestão da Produtividade",
-  "short_name": "ASSIS GESP",
+  "name": "ACP — Assistente de Campo e Produtividade",
+  "short_name": "ACP",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

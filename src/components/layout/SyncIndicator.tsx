@@ -53,7 +53,7 @@ export function SyncIndicator() {
             ? "pending"
             : "idle";
 
-  // ASSIS GESP official gradient + per-state palettes (CSS vars for theming).
+  // ACP official gradient + per-state palettes (CSS vars for theming).
   const gradient =
     state === "offline"
       ? "linear-gradient(90deg,#7f1d1d,#ef4444,#7f1d1d)"

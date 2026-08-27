@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/leader")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Painel — ASSIS GESP" }] }),
+  head: () => ({ meta: [{ title: "Painel — ACP" }] }),
   component: LeaderPage,
 });
 
@@ -788,7 +788,7 @@ function PeriodView({
         top_complements: stats.topComps,
         compare_bars: stats.compareBars,
         evolution: stats.evolution,
-        company: "ASSIS GESP",
+        company: "ACP",
         generated_by: session?.user.email ?? meta.leader,
         collaborators_count: null,
         best_day: stats.bestDay,

@@ -94,7 +94,7 @@ function exportPdf(text: string) {
     return;
   }
   w.document.write(`
-    <html><head><title>Relatório ASSIS GESP</title>
+    <html><head><title>Relatório ACP</title>
     <style>
       body{font-family:ui-monospace,Menlo,Consolas,monospace;padding:24px;white-space:pre-wrap;line-height:1.5;font-size:13px;color:#111;}
     </style></head><body>${text.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!)}</body></html>
