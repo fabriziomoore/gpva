@@ -316,11 +316,11 @@ function LeaderProceduresPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="shrink-0 -mr-2 -mt-1 bg-red-500/90 hover:bg-red-600 text-white rounded-full shadow-sm"
+                className="shrink-0 -mr-2 -mt-1 size-10 rounded-lg bg-red-500/90 hover:bg-red-600 text-white transition-colors shadow-sm"
                 aria-label="Fechar"
                 onClick={() => router.navigate({ to: "/" })}
               >
-                <X className="size-5" />
+                <X className="size-6" />
               </Button>
             </div>
             <p className="text-muted-foreground mt-1">
