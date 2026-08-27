@@ -226,7 +226,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   if (logoDataUrl) {
     try {
       // Logo em proporção ~2.13:1 (800x375) — largura 30, altura ~14
-      pdf.addImage(logoDataUrl, "JPEG", M, M + 4, 30, 14);
+      pdf.addImage(logoDataUrl, "PNG", M, M + 4, 30, 14);
     } catch {
       setFill(C.primary); setStroke(C.primary);
       pdf.roundedRect(M, M, 22, 22, 2, 2, "F");
