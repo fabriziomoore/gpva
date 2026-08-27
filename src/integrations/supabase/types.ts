@@ -815,6 +815,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      operational_visible_team_ids: { Args: never; Returns: string[] }
       publish_procedure_version: {
         Args: {
           p_substitui_versao_id?: string
