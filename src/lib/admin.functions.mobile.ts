@@ -63,7 +63,7 @@ export const adminUpdateLeader = call<{ ok: true }>("adminUpdateLeader");
 export const adminNormalizeLeader = call<{ ok: true }>("adminNormalizeLeader");
 export const adminDeleteLeader = call<{ ok: true }>("adminDeleteLeader");
 
-export type SetorRow = { id: string; nome: string; supervisor_nome: string };
+export type SetorRow = { id: string; nome: string };
 export const adminListSetores = call<SetorRow[]>("adminListSetores");
 export const adminCreateSetor = call<{ ok: true }>("adminCreateSetor");
 export const adminUpdateSetor = call<{ ok: true }>("adminUpdateSetor");

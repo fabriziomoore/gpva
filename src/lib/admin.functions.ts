@@ -916,7 +916,6 @@ export const adminDeleteLeader = createServerFn({ method: "POST" })
 export type SetorRow = {
   id: string;
   nome: string;
-  supervisor_nome: string;
 };
 
 export const adminListSetores = createServerFn({ method: "POST" })
@@ -926,7 +925,7 @@ export const adminListSetores = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("setores")
-      .select("id,nome,supervisor_nome")
+      .select("id,nome")
       .order("nome");
     if (error) throw new Error(error.message);
     return (rows ?? []) as SetorRow[];
