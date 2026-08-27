@@ -166,7 +166,7 @@ function HomePage() {
   const today = useMemo(() => formatDateBR(new Date()), []);
   const teamPhoto = useTeamPhoto(userId);
 
-  const titleNode = <AppLogo className="min-w-0 max-w-[180px]" />;
+  const titleNode = <AppLogo className="min-w-0 max-w-[90px]" />;
 
 
   // Enquanto papel (líder/admin) ainda carrega, ou o próprio usuário indica ser
