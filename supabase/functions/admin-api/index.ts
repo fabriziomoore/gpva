@@ -493,20 +493,19 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
 
     // ---------- Setores ----------
     case "adminListSetores": {
-      const { data, error } = await sb.from("setores").select("id,nome,supervisor_nome").order("nome");
+      const { data, error } = await sb.from("setores").select("id,nome").order("nome");
       if (error) throw new Error(error.message);
       return data ?? [];
     }
     case "adminCreateSetor": {
       const nome = String(args.nome).trim(); if (!nome) throw new Error("Nome obrigatório.");
-      const { error } = await sb.from("setores").insert({ nome, supervisor_nome: String(args.supervisorNome ?? "").trim() });
+      const { error } = await sb.from("setores").insert({ nome, supervisor_nome: "" });
       if (error) throw new Error(error.message);
       return { ok: true };
     }
     case "adminUpdateSetor": {
       const patch: any = {};
       if (args.nome !== undefined) { const n = String(args.nome).trim(); if (!n) throw new Error("Nome obrigatório."); patch.nome = n; }
-      if (args.supervisorNome !== undefined) patch.supervisor_nome = String(args.supervisorNome).trim();
       if (Object.keys(patch).length === 0) return { ok: true };
       const { error } = await sb.from("setores").update(patch).eq("id", args.setorId);
       if (error) throw new Error(error.message);
@@ -526,14 +525,15 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
 
     // ---------- Supervisores ----------
     case "adminListSupervisores": {
-      let q = sb.from("supervisores").select("id,nome,setor_id,setores(nome)").order("nome");
+      let q = sb.from("supervisores").select("id,nome,setor_id,user_id,setores(nome)").order("nome");
       if (args.setorId) q = q.eq("setor_id", args.setorId);
       const { data, error } = await q;
       if (error) throw new Error(error.message);
       return (data ?? []).map((r: any) => ({
-        id: r.id, nome: r.nome, setor_id: r.setor_id, setor_nome: r.setores?.nome ?? null,
+        id: r.id, nome: r.nome, setor_id: r.setor_id, setor_nome: r.setores?.nome ?? null, user_id: r.user_id ?? null,
       }));
     }
+
     case "adminCreateSupervisor": {
       const nome = String(args.nome ?? "").trim();
       if (!nome) throw new Error("Nome do supervisor obrigatório.");
