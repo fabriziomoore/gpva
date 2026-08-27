@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { SyncIndicator } from "./SyncIndicator";
 import { SideMenu } from "./SideMenu";
-import { DisclaimerBanner } from "@/components/brand/DisclaimerBanner";
 import { cn } from "@/lib/utils";
 
 export function AppShell({
@@ -28,7 +27,6 @@ export function AppShell({
     : "mx-auto max-w-md";
   return (
     <div className="min-h-screen bg-background">
-      <DisclaimerBanner />
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className={cn("flex items-center gap-2 px-4 py-3", container)}>
           <SideMenu />
