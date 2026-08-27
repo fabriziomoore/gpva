@@ -13,11 +13,14 @@ const call = <R,>(op: string) => async <T,>(arg: Args<T>): Promise<R> => {
   return callAdminApi<R>(op, rest, adminPassword);
 };
 
-export const listTeams = call<Array<{
+export type TeamListRow = {
   id: string; team_name: string; variable_rate: number; photo_url: string | null;
   collaborator1: string | null; collaborator2: string | null; setor_id: string | null;
-  leader: string | null; is_test: boolean | null;
-}>>("listTeams");
+  supervisor_id: string | null; leader_id: string | null;
+  supervisor: string | null; leader: string | null; is_test: boolean | null;
+};
+
+export const listTeams = call<TeamListRow[]>("listTeams");
 
 export const adminListRows = call<Array<{ id: string; name: string }>>("adminListRows");
 export const adminAddRow = call<{ ok: true }>("adminAddRow");
@@ -27,11 +30,7 @@ export const adminCreateTeam = call<{ ok: true }>("adminCreateTeam");
 export const adminUpdateTeam = call<{ ok: true }>("adminUpdateTeam");
 export const adminDeleteTeam = call<{ ok: true }>("adminDeleteTeam");
 
-export const adminListTestTeams = call<Array<{
-  id: string; team_name: string; variable_rate: number; photo_url: string | null;
-  collaborator1: string | null; collaborator2: string | null; setor_id: string | null;
-  leader: string | null; is_test: boolean | null;
-}>>("adminListTestTeams");
+export const adminListTestTeams = call<TeamListRow[]>("adminListTestTeams");
 export const adminCreateTestTeam = call<{ ok: true }>("adminCreateTestTeam");
 
 export const adminTeamsRanking = call<Array<{
@@ -45,8 +44,23 @@ export const adminListShifts = call<Array<{
 export const adminDeleteShift = call<{ ok: true }>("adminDeleteShift");
 export const adminUpdateShiftReport = call<{ ok: true }>("adminUpdateShiftReport");
 
+export type LeaderRow = {
+  user_id: string;
+  leader_structure_id: string | null;
+  nome: string;
+  login: string;
+  email: string;
+  setor_id: string | null;
+  setor_nome: string | null;
+  supervisor_id: string | null;
+  supervisor_nome: string | null;
+  estrutura_normalizada: boolean;
+};
+
 export const adminCreateLeader = call<{ ok: true; login: string }>("adminCreateLeader");
-export const adminListLeaders = call<Array<{ id: string; email: string; login: string; display_name: string }>>("adminListLeaders");
+export const adminListLeaders = call<LeaderRow[]>("adminListLeaders");
+export const adminUpdateLeader = call<{ ok: true }>("adminUpdateLeader");
+export const adminNormalizeLeader = call<{ ok: true }>("adminNormalizeLeader");
 export const adminDeleteLeader = call<{ ok: true }>("adminDeleteLeader");
 
 export type SetorRow = { id: string; nome: string; supervisor_nome: string };
@@ -54,6 +68,14 @@ export const adminListSetores = call<SetorRow[]>("adminListSetores");
 export const adminCreateSetor = call<{ ok: true }>("adminCreateSetor");
 export const adminUpdateSetor = call<{ ok: true }>("adminUpdateSetor");
 export const adminDeleteSetor = call<{ ok: true }>("adminDeleteSetor");
+
+export type SupervisorRow = {
+  id: string; nome: string; setor_id: string; setor_nome: string | null;
+};
+export const adminListSupervisores = call<SupervisorRow[]>("adminListSupervisores");
+export const adminCreateSupervisor = call<{ ok: true }>("adminCreateSupervisor");
+export const adminUpdateSupervisor = call<{ ok: true }>("adminUpdateSupervisor");
+export const adminDeleteSupervisor = call<{ ok: true }>("adminDeleteSupervisor");
 
 export const adminBootstrap = call<{ ok: true; login: string }>("adminBootstrap");
 

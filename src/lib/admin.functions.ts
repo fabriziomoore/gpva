@@ -18,6 +18,66 @@ function assertAdmin(pw: string) {
 
 type CrudTable = "tipos_servico" | "motivos_inviabilidade" | "impactos" | "complementos_servico";
 
+// Cliente administrativo (service_role) — tipo derivado do módulo server-only.
+type AdminClient = typeof import("@/integrations/supabase/client.server")["supabaseAdmin"];
+
+/**
+ * Validação hierárquica server-side (SETOR → SUPERVISOR → LÍDER).
+ * Nenhum UUID é inferido por texto: todos os identificadores chegam prontos da UI
+ * e são conferidos contra as tabelas normalizadas antes de qualquer escrita.
+ */
+async function assertHierarchy(
+  sb: AdminClient,
+  input: { setorId: string; supervisorId?: string | null; leaderId?: string | null },
+): Promise<void> {
+  const setorId = input.setorId?.trim();
+  if (!setorId) throw new Error("Selecione um setor.");
+
+  const { data: setor, error: setorErr } = await sb
+    .from("setores")
+    .select("id")
+    .eq("id", setorId)
+    .maybeSingle();
+  if (setorErr) throw new Error(setorErr.message);
+  if (!setor) throw new Error("Setor não encontrado.");
+
+  const supervisorId = input.supervisorId?.trim() || null;
+  const leaderId = input.leaderId?.trim() || null;
+
+  if (leaderId && !supervisorId) {
+    throw new Error("Selecione um supervisor antes de escolher o líder.");
+  }
+
+  if (supervisorId) {
+    const { data: sup, error } = await sb
+      .from("supervisores")
+      .select("id,setor_id")
+      .eq("id", supervisorId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!sup) throw new Error("Supervisor não encontrado.");
+    if (sup.setor_id !== setorId) {
+      throw new Error("O supervisor selecionado não pertence ao setor escolhido.");
+    }
+  }
+
+  if (leaderId) {
+    const { data: lider, error } = await sb
+      .from("lideres_estrutura")
+      .select("id,setor_id,supervisor_id")
+      .eq("id", leaderId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!lider) throw new Error("Líder não encontrado na estrutura operacional.");
+    if (lider.setor_id !== setorId) {
+      throw new Error("O líder selecionado não pertence ao setor escolhido.");
+    }
+    if (lider.supervisor_id !== supervisorId) {
+      throw new Error("O líder selecionado não pertence ao supervisor escolhido.");
+    }
+  }
+}
+
 export const listTeams = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
   .handler(async ({ data }) => {
@@ -25,7 +85,7 @@ export const listTeams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,supervisor_id,leader_id,supervisor,leader,is_test")
       .order("team_name");
     if (error) throw new Error(error.message);
     // Exclui contas administrativas (usuários com role admin) da lista de equipes.
@@ -125,7 +185,16 @@ export const adminUpdateRate = createServerFn({ method: "POST" })
   });
 
 export const adminCreateTeam = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; teamName: string; password: string; setorId: string; leaderName: string }) => data)
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      teamName: string;
+      password: string;
+      setorId: string;
+      supervisorId: string;
+      leaderId: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const slug = data.teamName
@@ -135,11 +204,16 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
       .replace(/^-+|-+$/g, "");
     if (!slug) throw new Error("Nome de equipe inválido.");
     if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
-    if (!data.setorId) throw new Error("Selecione um setor.");
-    const leaderName = data.leaderName.trim();
-    if (!leaderName) throw new Error("Informe o nome do líder.");
+    if (!data.supervisorId) throw new Error("Selecione um supervisor.");
+    if (!data.leaderId) throw new Error("Selecione um líder.");
     const email = `${slug}@gpva.local`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Valida a hierarquia ANTES de criar qualquer conta.
+    await assertHierarchy(supabaseAdmin, {
+      setorId: data.setorId,
+      supervisorId: data.supervisorId,
+      leaderId: data.leaderId,
+    });
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: data.password,
@@ -147,13 +221,30 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
       user_metadata: { team_name: data.teamName.trim() },
     });
     if (error) throw new Error(error.message);
-    // The handle_new_team trigger creates the equipes row; set setor + leader + onboarded.
-    if (created.user?.id) {
-      const { error: setorErr } = await supabaseAdmin
+    // O trigger handle_new_team cria a linha em `equipes`; aqui gravamos apenas
+    // os UUIDs estruturais em um único UPDATE. Nunca escrevemos `supervisor`/`leader`
+    // (strings históricas preservadas pela A4.2).
+    const newId = created.user?.id;
+    if (newId) {
+      const { error: structErr } = await supabaseAdmin
         .from("equipes")
-        .update({ setor_id: data.setorId, leader: leaderName, onboarded: true })
-        .eq("id", created.user.id);
-      if (setorErr) throw new Error(setorErr.message);
+        .update({
+          setor_id: data.setorId,
+          supervisor_id: data.supervisorId,
+          leader_id: data.leaderId,
+          onboarded: true,
+        })
+        .eq("id", newId);
+      if (structErr) {
+        // Compensação: remove a conta recém-criada para não deixar equipe órfã.
+        const { error: undoErr } = await supabaseAdmin.auth.admin.deleteUser(newId);
+        if (undoErr) {
+          throw new Error(
+            `ERRO CRÍTICO: equipe criada (${newId}) mas a estrutura falhou (${structErr.message}) e a reversão também falhou (${undoErr.message}). Intervenção manual necessária.`,
+          );
+        }
+        throw new Error(`${structErr.message} (conta revertida)`);
+      }
     }
     return { ok: true as const };
   });
@@ -213,7 +304,8 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
       collaborator1?: string | null;
       collaborator2?: string | null;
       setorId?: string;
-      leaderName?: string;
+      supervisorId?: string;
+      leaderId?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -224,7 +316,8 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
       collaborator1?: string | null;
       collaborator2?: string | null;
       setor_id?: string;
-      leader?: string;
+      supervisor_id?: string;
+      leader_id?: string;
       onboarded?: boolean;
     } = {};
     if (data.teamName !== undefined) {
@@ -238,17 +331,24 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
     if (data.collaborator2 !== undefined) {
       patch.collaborator2 = data.collaborator2?.trim() || null;
     }
-    if (data.setorId !== undefined) {
-      if (!data.setorId) throw new Error("Setor obrigatório.");
-      patch.setor_id = data.setorId;
-    }
-    if (data.leaderName !== undefined) {
-      const l = data.leaderName.trim();
-      if (!l) throw new Error("Informe o nome do líder.");
-      patch.leader = l;
+    // O trio estrutural é sempre exigido em conjunto — nunca parcial.
+    const structuralTouched =
+      data.setorId !== undefined || data.supervisorId !== undefined || data.leaderId !== undefined;
+    if (structuralTouched) {
+      const setorId = data.setorId?.trim();
+      const supervisorId = data.supervisorId?.trim();
+      const leaderId = data.leaderId?.trim();
+      if (!setorId || !supervisorId || !leaderId) {
+        throw new Error("Informe Setor, Supervisor e Líder em conjunto.");
+      }
+      await assertHierarchy(supabaseAdmin, { setorId, supervisorId, leaderId });
+      patch.setor_id = setorId;
+      patch.supervisor_id = supervisorId;
+      patch.leader_id = leaderId;
       patch.onboarded = true;
     }
     if (Object.keys(patch).length === 0) return { ok: true as const };
+    // UPDATE único: nunca escreve `supervisor`/`leader` (strings históricas da A4.2).
     const { error } = await supabaseAdmin
       .from("equipes")
       .update(patch)
@@ -451,33 +551,85 @@ function sanitizeLogin(login: string): string {
   return slug;
 }
 
+export type LeaderRow = {
+  user_id: string;
+  leader_structure_id: string | null;
+  nome: string;
+  login: string;
+  email: string;
+  setor_id: string | null;
+  setor_nome: string | null;
+  supervisor_id: string | null;
+  supervisor_nome: string | null;
+  estrutura_normalizada: boolean;
+};
+
 export const adminCreateLeader = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; leaderName: string; login: string; password: string }) => data)
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      leaderName: string;
+      login: string;
+      password: string;
+      setorId: string;
+      supervisorId: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+    const nome = data.leaderName.trim();
+    if (!nome) throw new Error("Informe o nome do líder.");
     const slug = sanitizeLogin(data.login);
     const email = `${slug}@gpva.local`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertHierarchy(supabaseAdmin, {
+      setorId: data.setorId,
+      supervisorId: data.supervisorId,
+    });
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: data.password,
       email_confirm: true,
-      user_metadata: { is_leader: true, display_name: data.leaderName.trim() },
+      user_metadata: { is_leader: true, display_name: nome },
     });
     if (error) throw new Error(error.message);
-    // O trigger handle_new_team já grava o papel; garantia extra:
-    if (created.user?.id) {
-      await supabaseAdmin
-        .from("user_roles")
-        .upsert({ user_id: created.user.id, role: "leader" }, { onConflict: "user_id,role" });
+    const newId = created.user?.id;
+    if (newId) {
+      try {
+        const { error: roleErr } = await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: newId, role: "leader" }, { onConflict: "user_id,role" });
+        if (roleErr) throw new Error(roleErr.message);
+        const { error: structErr } = await supabaseAdmin
+          .from("lideres_estrutura")
+          .insert({
+            user_id: newId,
+            nome,
+            setor_id: data.setorId,
+            supervisor_id: data.supervisorId,
+          });
+        if (structErr) throw new Error(structErr.message);
+      } catch (e) {
+        const original = (e as Error).message;
+        // Compensação best-effort da criação parcial.
+        await supabaseAdmin.from("lideres_estrutura").delete().eq("user_id", newId);
+        await supabaseAdmin.from("user_roles").delete().eq("user_id", newId).eq("role", "leader");
+        const { error: undoErr } = await supabaseAdmin.auth.admin.deleteUser(newId);
+        if (undoErr) {
+          throw new Error(
+            `ERRO CRÍTICO: conta de líder ${newId} criada mas incompleta (${original}) e a reversão falhou (${undoErr.message}). Intervenção manual necessária.`,
+          );
+        }
+        throw new Error(`${original} (conta revertida)`);
+      }
     }
     return { ok: true as const, login: slug.toUpperCase() };
   });
 
 export const adminListLeaders = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<LeaderRow[]> => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: roles, error } = await supabaseAdmin
@@ -487,34 +639,237 @@ export const adminListLeaders = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const ids = (roles ?? []).map((r) => r.user_id);
     if (ids.length === 0) return [];
-    // Fetch emails via admin API
+
+    const { data: estruturas, error: estErr } = await supabaseAdmin
+      .from("lideres_estrutura")
+      .select("id,user_id,nome,setor_id,supervisor_id,setores(nome),supervisores(nome)")
+      .in("user_id", ids);
+    if (estErr) throw new Error(estErr.message);
+    type EstruturaJoin = {
+      id: string;
+      user_id: string;
+      nome: string;
+      setor_id: string;
+      supervisor_id: string;
+      setores: { nome: string } | null;
+      supervisores: { nome: string } | null;
+    };
+    const byUser = new Map<string, EstruturaJoin>(
+      ((estruturas ?? []) as unknown as EstruturaJoin[]).map((e) => [e.user_id, e]),
+    );
+
     const list = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (list.error) throw new Error(list.error.message);
     const byId = new Map(list.data.users.map((u) => [u.id, u]));
+
     return ids
-      .map((id) => {
+      .map((id): LeaderRow | null => {
         const u = byId.get(id);
         if (!u) return null;
         const display = (u.user_metadata as { display_name?: string } | null)?.display_name ?? "";
+        const est = byUser.get(id) ?? null;
         return {
-          id,
+          user_id: id,
+          leader_structure_id: est?.id ?? null,
+          nome: est?.nome || display,
           email: u.email ?? "",
           login: (u.email ?? "").split("@")[0].toUpperCase(),
-          display_name: display,
+          setor_id: est?.setor_id ?? null,
+          setor_nome: est?.setores?.nome ?? null,
+          supervisor_id: est?.supervisor_id ?? null,
+          supervisor_nome: est?.supervisores?.nome ?? null,
+          estrutura_normalizada: !!est,
         };
       })
-      .filter((x): x is { id: string; email: string; login: string; display_name: string } => !!x)
+      .filter((x): x is LeaderRow => !!x)
       .sort((a, b) => a.login.localeCompare(b.login));
   });
 
-export const adminDeleteLeader = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; leaderId: string }) => data)
+export const adminUpdateLeader = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      leaderStructureId: string;
+      nome?: string;
+      setorId?: string;
+      supervisorId?: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.leaderId);
+    const { data: atual, error: getErr } = await supabaseAdmin
+      .from("lideres_estrutura")
+      .select("id,user_id,setor_id,supervisor_id")
+      .eq("id", data.leaderStructureId)
+      .maybeSingle();
+    if (getErr) throw new Error(getErr.message);
+    if (!atual) throw new Error("Líder não encontrado na estrutura operacional.");
+
+    const patch: { nome?: string; setor_id?: string; supervisor_id?: string } = {};
+    if (data.nome !== undefined) {
+      const nome = data.nome.trim();
+      if (!nome) throw new Error("Nome do líder obrigatório.");
+      patch.nome = nome;
+    }
+
+    const structuralTouched = data.setorId !== undefined || data.supervisorId !== undefined;
+    if (structuralTouched) {
+      const setorId = data.setorId?.trim();
+      const supervisorId = data.supervisorId?.trim();
+      if (!setorId || !supervisorId) {
+        throw new Error("Informe Setor e Supervisor em conjunto.");
+      }
+      const changed = setorId !== atual.setor_id || supervisorId !== atual.supervisor_id;
+      if (changed) {
+        const { count, error: cErr } = await supabaseAdmin
+          .from("equipes")
+          .select("id", { count: "exact", head: true })
+          .eq("leader_id", atual.id);
+        if (cErr) throw new Error(cErr.message);
+        if ((count ?? 0) > 0) {
+          throw new Error(
+            "O líder possui equipes vinculadas. Desvincule ou mova as equipes antes de alterar setor/supervisor.",
+          );
+        }
+        await assertHierarchy(supabaseAdmin, { setorId, supervisorId });
+        patch.setor_id = setorId;
+        patch.supervisor_id = supervisorId;
+      }
+    }
+
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    // Nunca atualiza `equipes.leader` (string histórica preservada).
+    const { error } = await supabaseAdmin
+      .from("lideres_estrutura")
+      .update(patch)
+      .eq("id", atual.id);
     if (error) throw new Error(error.message);
     return { ok: true as const };
+  });
+
+export const adminNormalizeLeader = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      adminPassword: string;
+      leaderUserId: string;
+      nome: string;
+      setorId: string;
+      supervisorId: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const nome = data.nome.trim();
+    if (!nome) throw new Error("Informe o nome do líder.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: role, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", data.leaderUserId)
+      .eq("role", "leader")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!role) throw new Error("Usuário informado não possui o papel de líder.");
+
+    const { data: existente, error: exErr } = await supabaseAdmin
+      .from("lideres_estrutura")
+      .select("id")
+      .eq("user_id", data.leaderUserId)
+      .maybeSingle();
+    if (exErr) throw new Error(exErr.message);
+    if (existente) throw new Error("Este líder já possui estrutura normalizada.");
+
+    await assertHierarchy(supabaseAdmin, {
+      setorId: data.setorId,
+      supervisorId: data.supervisorId,
+    });
+
+    const { error } = await supabaseAdmin.from("lideres_estrutura").insert({
+      user_id: data.leaderUserId,
+      nome,
+      setor_id: data.setorId,
+      supervisor_id: data.supervisorId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminDeleteLeader = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; leaderUserId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Resolve estrutura
+    const { data: snapshot, error: snapErr } = await supabaseAdmin
+      .from("lideres_estrutura")
+      .select("id,user_id,nome,setor_id,supervisor_id,created_at")
+      .eq("user_id", data.leaderUserId)
+      .maybeSingle();
+    if (snapErr) throw new Error(snapErr.message);
+
+    // 2. Bloqueio por equipes vinculadas
+    if (snapshot) {
+      const { count, error: cErr } = await supabaseAdmin
+        .from("equipes")
+        .select("id", { count: "exact", head: true })
+        .eq("leader_id", snapshot.id);
+      if (cErr) throw new Error(cErr.message);
+      if ((count ?? 0) > 0) {
+        throw new Error(
+          "O líder possui equipes vinculadas. Desvincule ou mova as equipes antes de excluir.",
+        );
+      }
+      // 4. Remove estrutura
+      const { error: delEstErr } = await supabaseAdmin
+        .from("lideres_estrutura")
+        .delete()
+        .eq("id", snapshot.id);
+      if (delEstErr) throw new Error(delEstErr.message);
+    }
+
+    // 5. Remove papel
+    const { error: delRoleErr } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.leaderUserId)
+      .eq("role", "leader");
+    if (delRoleErr) throw new Error(delRoleErr.message);
+
+    // 6. Remove conta de autenticação
+    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(data.leaderUserId);
+    if (!authErr) return { ok: true as const };
+
+    // 8. Compensação best-effort
+    const still = await supabaseAdmin.auth.admin.getUserById(data.leaderUserId);
+    if (still.data?.user) {
+      const { error: r1 } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: data.leaderUserId, role: "leader" }, { onConflict: "user_id,role" });
+      let r2Msg: string | null = null;
+      if (snapshot) {
+        const { error: r2 } = await supabaseAdmin.from("lideres_estrutura").insert({
+          id: snapshot.id,
+          user_id: snapshot.user_id,
+          nome: snapshot.nome,
+          setor_id: snapshot.setor_id,
+          supervisor_id: snapshot.supervisor_id,
+          created_at: snapshot.created_at,
+        });
+        r2Msg = r2?.message ?? null;
+      }
+      if (!r1 && !r2Msg) {
+        throw new Error(
+          `Exclusão abortada (${authErr.message}). A estrutura do líder foi restaurada.`,
+        );
+      }
+      throw new Error(
+        `ERRO CRÍTICO: exclusão falhou (${authErr.message}) e a restauração também falhou. user_id=${data.leaderUserId}; leader_structure_id=${snapshot?.id ?? "—"}; setor_id=${snapshot?.setor_id ?? "—"}; supervisor_id=${snapshot?.supervisor_id ?? "—"}; nome=${snapshot?.nome ?? "—"}. Intervenção manual necessária.`,
+      );
+    }
+    throw new Error(authErr.message);
   });
 
 // ============= Setores =============
@@ -585,10 +940,141 @@ export const adminDeleteSetor = createServerFn({ method: "POST" })
       .eq("setor_id", data.setorId);
     if (countErr) throw new Error(countErr.message);
     if ((count ?? 0) > 0) throw new Error("Setor possui equipes vinculadas. Mova as equipes antes de excluir.");
+    const { count: supCount, error: supErr } = await supabaseAdmin
+      .from("supervisores")
+      .select("id", { count: "exact", head: true })
+      .eq("setor_id", data.setorId);
+    if (supErr) throw new Error(supErr.message);
+    if ((supCount ?? 0) > 0) {
+      throw new Error("Setor possui supervisores vinculados. Remova-os antes de excluir.");
+    }
     const { error } = await supabaseAdmin
       .from("setores")
       .delete()
       .eq("id", data.setorId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+// ============= Supervisores =============
+
+export type SupervisorRow = {
+  id: string;
+  nome: string;
+  setor_id: string;
+  setor_nome: string | null;
+};
+
+export const adminListSupervisores = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; setorId?: string }) => data)
+  .handler(async ({ data }): Promise<SupervisorRow[]> => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let query = supabaseAdmin
+      .from("supervisores")
+      .select("id,nome,setor_id,setores(nome)")
+      .order("nome");
+    if (data.setorId) query = query.eq("setor_id", data.setorId);
+    const { data: rows, error } = await query;
+    if (error) throw new Error(error.message);
+    type Join = { id: string; nome: string; setor_id: string; setores: { nome: string } | null };
+    return ((rows ?? []) as unknown as Join[]).map((r) => ({
+      id: r.id,
+      nome: r.nome,
+      setor_id: r.setor_id,
+      setor_nome: r.setores?.nome ?? null,
+    }));
+  });
+
+export const adminCreateSupervisor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; nome: string; setorId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const nome = data.nome.trim();
+    if (!nome) throw new Error("Nome do supervisor obrigatório.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertHierarchy(supabaseAdmin, { setorId: data.setorId });
+    const { error } = await supabaseAdmin
+      .from("supervisores")
+      .insert({ nome, setor_id: data.setorId });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminUpdateSupervisor = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { adminPassword: string; supervisorId: string; nome?: string; setorId?: string }) => data,
+  )
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: atual, error: getErr } = await supabaseAdmin
+      .from("supervisores")
+      .select("id,setor_id")
+      .eq("id", data.supervisorId)
+      .maybeSingle();
+    if (getErr) throw new Error(getErr.message);
+    if (!atual) throw new Error("Supervisor não encontrado.");
+
+    const patch: { nome?: string; setor_id?: string } = {};
+    if (data.nome !== undefined) {
+      const nome = data.nome.trim();
+      if (!nome) throw new Error("Nome do supervisor obrigatório.");
+      patch.nome = nome;
+    }
+    if (data.setorId !== undefined && data.setorId !== atual.setor_id) {
+      const { count: leadCount, error: lErr } = await supabaseAdmin
+        .from("lideres_estrutura")
+        .select("id", { count: "exact", head: true })
+        .eq("supervisor_id", atual.id);
+      if (lErr) throw new Error(lErr.message);
+      const { count: teamCount, error: tErr } = await supabaseAdmin
+        .from("equipes")
+        .select("id", { count: "exact", head: true })
+        .eq("supervisor_id", atual.id);
+      if (tErr) throw new Error(tErr.message);
+      if ((leadCount ?? 0) > 0 || (teamCount ?? 0) > 0) {
+        throw new Error(
+          "Supervisor possui líderes ou equipes vinculados. Ajuste os vínculos antes de mudar o setor.",
+        );
+      }
+      await assertHierarchy(supabaseAdmin, { setorId: data.setorId });
+      patch.setor_id = data.setorId;
+    }
+    if (Object.keys(patch).length === 0) return { ok: true as const };
+    const { error } = await supabaseAdmin
+      .from("supervisores")
+      .update(patch)
+      .eq("id", atual.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminDeleteSupervisor = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; supervisorId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { count: leadCount, error: lErr } = await supabaseAdmin
+      .from("lideres_estrutura")
+      .select("id", { count: "exact", head: true })
+      .eq("supervisor_id", data.supervisorId);
+    if (lErr) throw new Error(lErr.message);
+    if ((leadCount ?? 0) > 0) {
+      throw new Error("Supervisor possui líderes vinculados. Remova-os antes de excluir.");
+    }
+    const { count: teamCount, error: tErr } = await supabaseAdmin
+      .from("equipes")
+      .select("id", { count: "exact", head: true })
+      .eq("supervisor_id", data.supervisorId);
+    if (tErr) throw new Error(tErr.message);
+    if ((teamCount ?? 0) > 0) {
+      throw new Error("Supervisor possui equipes vinculadas. Ajuste os vínculos antes de excluir.");
+    }
+    const { error } = await supabaseAdmin
+      .from("supervisores")
+      .delete()
+      .eq("id", data.supervisorId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });

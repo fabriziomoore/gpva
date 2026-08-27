@@ -35,11 +35,17 @@ import {
   listTeams,
   adminCreateLeader,
   adminListLeaders,
+  adminUpdateLeader,
+  adminNormalizeLeader,
   adminDeleteLeader,
   adminListSetores,
   adminCreateSetor,
   adminUpdateSetor,
   adminDeleteSetor,
+  adminListSupervisores,
+  adminCreateSupervisor,
+  adminUpdateSupervisor,
+  adminDeleteSupervisor,
   adminListDevices,
   adminSignOutDevice,
   adminListTrashShifts,
@@ -73,6 +79,7 @@ type SectionId =
   | "create_team"
   | "leaders"
   | "setores"
+  | "supervisores"
   | "google_form"
   | "test_account"
   | "map_services"
@@ -89,6 +96,7 @@ type SectionMeta = {
 
 const SECTION_INFO: Record<SectionId, SectionMeta> = {
   setores: { id: "setores", label: "Setores", description: "Cadastro e supervisão dos setores", icon: Building2 },
+  supervisores: { id: "supervisores", label: "Supervisores", description: "Supervisores por setor", icon: UserCog },
   create_team: { id: "create_team", label: "Equipes", description: "Criar, editar e remover equipes", icon: Users },
   leaders: { id: "leaders", label: "Líderes", description: "Contas de líderes de equipe", icon: UserCog },
   tipos_servico: { id: "tipos_servico", label: "Tipos de Serviço", description: "Catálogo dos tipos disponíveis", icon: ClipboardList },
@@ -113,7 +121,7 @@ type SectionGroup = {
 
 const SECTION_GROUPS: SectionGroup[] = [
   { id: "estrutura", label: "Estrutura", icon: Building2,
-    items: ["setores", "create_team", "leaders"] },
+    items: ["setores", "supervisores", "leaders", "create_team"] },
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
@@ -311,6 +319,8 @@ function AdminPage() {
             <LeadersSection adminPw={adminPw} />
           ) : section === "setores" ? (
             <SetoresSection adminPw={adminPw} />
+          ) : section === "supervisores" ? (
+            <SupervisoresSection adminPw={adminPw} />
           ) : section === "google_form" ? (
             <GoogleFormSection adminPw={adminPw} />
           ) : section === "test_account" ? (
@@ -655,34 +665,300 @@ function VariableSection({ adminPw }: { adminPw: string }) {
   );
 }
 
-function CreateTeamSection({ adminPw }: { adminPw: string }) {
-  const qc = useQueryClient();
-  const [teamName, setTeamName] = useState("");
-  const [password, setPassword] = useState("");
-  const [setorId, setSetorId] = useState("");
-  const [leaderName, setLeaderName] = useState("");
-  const createFn = useServerFn(adminCreateTeam);
+/**
+ * Seletores em cascata SETOR → SUPERVISOR → LÍDER.
+ * Trabalha exclusivamente com UUIDs; nenhuma inferência textual.
+ */
+function HierarchyPicker({
+  adminPw,
+  setorId,
+  supervisorId,
+  leaderId,
+  onChange,
+  requireLeader = true,
+}: {
+  adminPw: string;
+  setorId: string;
+  supervisorId: string;
+  leaderId: string;
+  onChange: (next: { setorId: string; supervisorId: string; leaderId: string }) => void;
+  requireLeader?: boolean;
+}) {
   const setoresFn = useServerFn(adminListSetores);
+  const supervisoresFn = useServerFn(adminListSupervisores);
+  const leadersFn = useServerFn(adminListLeaders);
+
   const setores = useQuery({
     queryKey: ["admin-setores"],
     queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
   });
-  const leadersFn = useServerFn(adminListLeaders);
+  const supervisores = useQuery({
+    queryKey: ["admin-supervisores"],
+    queryFn: () => supervisoresFn({ data: { adminPassword: adminPw } }),
+  });
   const leaders = useQuery({
     queryKey: ["admin-leaders"],
     queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
     staleTime: 60_000,
   });
 
+  const supervisorOptions = (supervisores.data ?? []).filter((s) => s.setor_id === setorId);
+  const leaderOptions = (leaders.data ?? []).filter(
+    (l) => l.estrutura_normalizada && l.setor_id === setorId && l.supervisor_id === supervisorId,
+  );
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label>Setor</Label>
+        <select
+          value={setorId}
+          onChange={(e) => onChange({ setorId: e.target.value, supervisorId: "", leaderId: "" })}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Selecione…</option>
+          {setores.data?.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Supervisor</Label>
+        <select
+          value={supervisorId}
+          disabled={!setorId}
+          onChange={(e) => onChange({ setorId, supervisorId: e.target.value, leaderId: "" })}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
+        >
+          <option value="">{setorId ? "Selecione…" : "Escolha o setor primeiro"}</option>
+          {supervisorOptions.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+        {setorId && supervisorOptions.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Nenhum supervisor neste setor. Cadastre em "Supervisores".
+          </p>
+        )}
+      </div>
+
+      {requireLeader && (
+        <div className="space-y-2">
+          <Label>Líder</Label>
+          <select
+            value={leaderId}
+            disabled={!supervisorId}
+            onChange={(e) => onChange({ setorId, supervisorId, leaderId: e.target.value })}
+            className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
+          >
+            <option value="">{supervisorId ? "Selecione…" : "Escolha o supervisor primeiro"}</option>
+            {leaderOptions.map((l) => (
+              <option key={l.leader_structure_id ?? l.user_id} value={l.leader_structure_id ?? ""}>
+                {l.nome || l.login}
+              </option>
+            ))}
+          </select>
+          {supervisorId && leaderOptions.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Nenhum líder normalizado sob este supervisor. Cadastre ou normalize em "Líderes".
+            </p>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function SupervisoresSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListSupervisores);
+  const setoresFn = useServerFn(adminListSetores);
+  const createFn = useServerFn(adminCreateSupervisor);
+  const updateFn = useServerFn(adminUpdateSupervisor);
+  const deleteFn = useServerFn(adminDeleteSupervisor);
+
+  const [nome, setNome] = useState("");
+  const [setorId, setSetorId] = useState("");
+
+  const rows = useQuery({
+    queryKey: ["admin-supervisores"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+  });
+  const setores = useQuery({
+    queryKey: ["admin-setores"],
+    queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin-supervisores"] });
+    qc.invalidateQueries({ queryKey: ["admin-leaders"] });
+  };
+
+  const createMut = useMutation({
+    mutationFn: () => createFn({ data: { adminPassword: adminPw, nome, setorId } }),
+    onSuccess: () => {
+      setNome("");
+      setSetorId("");
+      toast.success("Supervisor criado");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (payload: { supervisorId: string; nome?: string; setorId?: string }) =>
+      updateFn({ data: { adminPassword: adminPw, ...payload } }),
+    onSuccess: () => { toast.success("Supervisor atualizado"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (supervisorId: string) =>
+      deleteFn({ data: { adminPassword: adminPw, supervisorId } }),
+    onSuccess: () => { toast.success("Supervisor excluído"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-base font-semibold">Supervisores</h2>
+      <p className="text-xs text-muted-foreground">
+        Cada supervisor pertence a um setor. Líderes e equipes são vinculados ao supervisor
+        por identificador — nenhum nome é inferido por texto.
+      </p>
+
+      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+        <Label>Novo supervisor</Label>
+        <Input
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          placeholder="Nome do supervisor"
+          className="h-11"
+        />
+        <select
+          value={setorId}
+          onChange={(e) => setSetorId(e.target.value)}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Selecione o setor…</option>
+          {setores.data?.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+        <Button
+          onClick={() => createMut.mutate()}
+          disabled={createMut.isPending || !nome.trim() || !setorId}
+          className="h-11 w-full"
+        >
+          {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Adicionar supervisor"}
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {rows.isLoading ? (
+          <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+        ) : (rows.data ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum supervisor cadastrado.</p>
+        ) : (
+          rows.data?.map((s) => (
+            <SupervisorEditRow
+              key={s.id}
+              supervisor={s}
+              setores={setores.data ?? []}
+              saving={updateMut.isPending}
+              onSave={(patch) => updateMut.mutate({ supervisorId: s.id, ...patch })}
+              onDelete={() => {
+                void confirmDelete({
+                  title: "Excluir supervisor?",
+                  description: `O supervisor "${s.nome}" será removido. Esta ação não poderá ser desfeita.`,
+                }).then((ok) => { if (ok) deleteMut.mutate(s.id); });
+              }}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SupervisorEditRow({
+  supervisor,
+  setores,
+  onSave,
+  onDelete,
+  saving,
+}: {
+  supervisor: { id: string; nome: string; setor_id: string; setor_nome: string | null };
+  setores: Array<{ id: string; nome: string }>;
+  onSave: (patch: { nome?: string; setorId?: string }) => void;
+  onDelete: () => void;
+  saving: boolean;
+}) {
+  const [nome, setNome] = useState(supervisor.nome);
+  const [setorId, setSetorId] = useState(supervisor.setor_id);
+  const dirty = nome !== supervisor.nome || setorId !== supervisor.setor_id;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
+        <select
+          value={setorId}
+          onChange={(e) => setSetorId(e.target.value)}
+          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          {setores.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onDelete}
+          className="h-8 text-destructive hover:text-destructive"
+        >
+          <Trash2 className="mr-1 size-3.5" /> Excluir
+        </Button>
+        <Button
+          size="sm"
+          disabled={!dirty || saving || !nome.trim()}
+          onClick={() => onSave({ nome, setorId })}
+          className="h-8"
+        >
+          {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Salvar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CreateTeamSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const [teamName, setTeamName] = useState("");
+  const [password, setPassword] = useState("");
+  const [hier, setHier] = useState({ setorId: "", supervisorId: "", leaderId: "" });
+  const createFn = useServerFn(adminCreateTeam);
+
   const mut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, teamName, password, setorId, leaderName } }),
+      createFn({
+        data: {
+          adminPassword: adminPw,
+          teamName,
+          password,
+          setorId: hier.setorId,
+          supervisorId: hier.supervisorId,
+          leaderId: hier.leaderId,
+        },
+      }),
     onSuccess: () => {
       toast.success("Equipe criada");
       setTeamName("");
       setPassword("");
-      setSetorId("");
-      setLeaderName("");
+      setHier({ setorId: "", supervisorId: "", leaderId: "" });
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -691,21 +967,13 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-5">
       <h2 className="text-base font-semibold">Criar Equipe</h2>
-      <div className="space-y-2">
-        <Label>Setor</Label>
-        <select
-          value={setorId}
-          onChange={(e) => setSetorId(e.target.value)}
-          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">Selecione…</option>
-          {setores.data?.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nome}
-            </option>
-          ))}
-        </select>
-      </div>
+      <HierarchyPicker
+        adminPw={adminPw}
+        setorId={hier.setorId}
+        supervisorId={hier.supervisorId}
+        leaderId={hier.leaderId}
+        onChange={setHier}
+      />
       <div className="space-y-2">
         <Label htmlFor="tn">Nome da equipe</Label>
         <Input
@@ -715,30 +983,6 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
           autoCapitalize="characters"
           className="h-12 text-base"
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="ld">Nome do líder</Label>
-        <select
-          id="ld"
-          value={leaderName}
-          onChange={(e) => setLeaderName(e.target.value)}
-          className="h-12 w-full rounded-md border border-input bg-background px-3 text-base"
-        >
-          <option value="">Selecione um líder…</option>
-          {(leaders.data ?? []).map((l) => {
-            const label = l.display_name || l.login;
-            return (
-              <option key={l.id} value={label}>
-                {label}
-              </option>
-            );
-          })}
-        </select>
-        {(leaders.data ?? []).length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Cadastre um líder em "Líderes" antes de criar a equipe.
-          </p>
-        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="np">Senha (mín. 6)</Label>
@@ -752,7 +996,14 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
       </div>
       <Button
         onClick={() => mut.mutate()}
-        disabled={mut.isPending || !teamName.trim() || password.length < 6 || !setorId || !leaderName.trim()}
+        disabled={
+          mut.isPending ||
+          !teamName.trim() ||
+          password.length < 6 ||
+          !hier.setorId ||
+          !hier.supervisorId ||
+          !hier.leaderId
+        }
         className="h-12 w-full text-base font-semibold"
       >
         {mut.isPending ? <Loader2 className="size-5 animate-spin" /> : "Criar Equipe"}
@@ -925,7 +1176,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
     const teamFull = teams.data?.find((t) => t.id === current.id);
     return (
       <div className="space-y-4">
-        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, leader: null }} onDeleted={() => setSelected(null)} />
+        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, supervisor_id: null, leader_id: null, supervisor: null, leader: null }} onDeleted={() => setSelected(null)} />
         {periodSelector("day")}
         <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
@@ -1022,6 +1273,9 @@ type TeamRow = {
   collaborator2: string | null;
   variable_rate: number;
   setor_id: string | null;
+  supervisor_id: string | null;
+  leader_id: string | null;
+  supervisor: string | null;
   leader: string | null;
 };
 
@@ -1037,24 +1291,17 @@ function TeamHeader({
   const qc = useQueryClient();
   const updateFn = useServerFn(adminUpdateTeam);
   const deleteFn = useServerFn(adminDeleteTeam);
-  const setoresFn = useServerFn(adminListSetores);
-  const setores = useQuery({
-    queryKey: ["admin-setores"],
-    queryFn: () => setoresFn({ data: { adminPassword: adminPw } }),
-  });
-  const leadersFn = useServerFn(adminListLeaders);
-  const leadersList = useQuery({
-    queryKey: ["admin-leaders"],
-    queryFn: () => leadersFn({ data: { adminPassword: adminPw } }),
-    staleTime: 60_000,
-  });
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(team.team_name);
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
-  const [setorId, setSetorId] = useState(team.setor_id ?? "");
-  const [leader, setLeader] = useState(team.leader ?? "");
+  const [hier, setHier] = useState({
+    setorId: team.setor_id ?? "",
+    supervisorId: team.supervisor_id ?? "",
+    leaderId: team.leader_id ?? "",
+  });
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const hierComplete = !!hier.setorId && !!hier.supervisorId && !!hier.leaderId;
 
   const updateMut = useMutation({
     mutationFn: () =>
@@ -1065,8 +1312,9 @@ function TeamHeader({
           teamName: name,
           collaborator1: c1.trim() || null,
           collaborator2: c2.trim() || null,
-          setorId: setorId || undefined,
-          leaderName: leader.trim() || undefined,
+          setorId: hier.setorId,
+          supervisorId: hier.supervisorId,
+          leaderId: hier.leaderId,
         },
       }),
     onSuccess: () => {
@@ -1131,50 +1379,20 @@ function TeamHeader({
             <Label className="text-xs">Colaborador 2</Label>
             <Input value={c2} onChange={(e) => setC2(e.target.value)} className="h-10" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Líder</Label>
-            <select
-              value={leader}
-              onChange={(e) => setLeader(e.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Selecione…</option>
-              {(leadersList.data ?? []).map((l) => {
-                const label = l.display_name || l.login;
-                return (
-                  <option key={l.id} value={label}>
-                    {label}
-                  </option>
-                );
-              })}
-              {leader && !(leadersList.data ?? []).some((l) => (l.display_name || l.login) === leader) && (
-                <option value={leader}>{leader} (atual)</option>
-              )}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Setor</Label>
-            <select
-              value={setorId}
-              onChange={(e) => setSetorId(e.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Selecione…</option>
-              {setores.data?.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                  {s.supervisor_nome ? ` — ${s.supervisor_nome}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <HierarchyPicker
+            adminPw={adminPw}
+            setorId={hier.setorId}
+            supervisorId={hier.supervisorId}
+            leaderId={hier.leaderId}
+            onChange={setHier}
+          />
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="h-10 flex-1" onClick={() => setEditing(false)}>
               Cancelar
             </Button>
             <Button
               className="h-10 flex-1"
-              disabled={updateMut.isPending || !name.trim() || !setorId}
+              disabled={updateMut.isPending || !name.trim() || !hierComplete}
               onClick={() => updateMut.mutate()}
             >
               {updateMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
@@ -1342,6 +1560,7 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
   const [name, setName] = useState("");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [hier, setHier] = useState({ setorId: "", supervisorId: "", leaderId: "" });
   const listFn = useServerFn(adminListLeaders);
   const createFn = useServerFn(adminCreateLeader);
   const delFn = useServerFn(adminDeleteLeader);
@@ -1354,11 +1573,21 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
 
   const createMut = useMutation({
     mutationFn: () =>
-      createFn({ data: { adminPassword: adminPw, leaderName: name, login, password } }),
+      createFn({
+        data: {
+          adminPassword: adminPw,
+          leaderName: name,
+          login,
+          password,
+          setorId: hier.setorId,
+          supervisorId: hier.supervisorId,
+        },
+      }),
     onSuccess: (res) => {
       setName("");
       setLogin("");
       setPassword("");
+      setHier({ setorId: "", supervisorId: "", leaderId: "" });
       toast.success(`Líder criado. Login: ${res.login}`);
       qc.invalidateQueries({ queryKey: ["admin-leaders"] });
     },
@@ -1366,9 +1595,12 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
   });
 
   const delMut = useMutation({
-    mutationFn: (leaderId: string) =>
-      delFn({ data: { adminPassword: adminPw, leaderId } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-leaders"] }),
+    mutationFn: (leaderUserId: string) =>
+      delFn({ data: { adminPassword: adminPw, leaderUserId } }),
+    onSuccess: () => {
+      toast.success("Líder excluído");
+      qc.invalidateQueries({ queryKey: ["admin-leaders"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -1377,8 +1609,8 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
       <div>
         <h2 className="mb-3 text-base font-semibold">Novo líder</h2>
         <p className="mb-3 text-xs text-muted-foreground">
-          O líder acessa o app com um usuário próprio e vê os dados de todas as equipes,
-          sem interferir na operação delas.
+          O líder pertence a um setor e a um supervisor. O vínculo é feito por identificador —
+          nenhum nome é interpretado como referência.
         </p>
         <form
           onSubmit={(e) => {
@@ -1387,10 +1619,22 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
               toast.error("Nome, login e senha (mín. 6) são obrigatórios.");
               return;
             }
+            if (!hier.setorId || !hier.supervisorId) {
+              toast.error("Selecione o setor e o supervisor do líder.");
+              return;
+            }
             createMut.mutate();
           }}
           className="space-y-2"
         >
+          <HierarchyPicker
+            adminPw={adminPw}
+            setorId={hier.setorId}
+            supervisorId={hier.supervisorId}
+            leaderId=""
+            requireLeader={false}
+            onChange={setHier}
+          />
           <div>
             <Label>Nome do líder</Label>
             <Input
@@ -1440,34 +1684,155 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
         ) : (
           <ul className="space-y-2">
             {(leaders.data ?? []).map((l) => (
-              <li
-                key={l.id}
-                className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {l.display_name || l.login}
-                  </p>
-                  <p className="truncate text-[11px] text-muted-foreground">Login: {l.login}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    void confirmDelete({
-                      title: "Excluir líder?",
-                      description: "O líder será removido do sistema. Esta ação não poderá ser desfeita.",
-                    }).then((ok) => { if (ok) delMut.mutate(l.id); });
-                  }}
-                  className="rounded-md p-2 text-muted-foreground hover:text-destructive"
-                  aria-label="Excluir líder"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </li>
+              <LeaderRowItem
+                key={l.user_id}
+                adminPw={adminPw}
+                leader={l}
+                onDelete={() => {
+                  void confirmDelete({
+                    title: "Excluir líder?",
+                    description: "O líder será removido do sistema. Esta ação não poderá ser desfeita.",
+                  }).then((ok) => { if (ok) delMut.mutate(l.user_id); });
+                }}
+              />
             ))}
           </ul>
         )}
       </div>
     </div>
+  );
+}
+
+type AdminLeaderRow = {
+  user_id: string;
+  leader_structure_id: string | null;
+  nome: string;
+  login: string;
+  email: string;
+  setor_id: string | null;
+  setor_nome: string | null;
+  supervisor_id: string | null;
+  supervisor_nome: string | null;
+  estrutura_normalizada: boolean;
+};
+
+/**
+ * Linha de líder: mostra vínculo estrutural e permite editar (quando normalizado)
+ * ou normalizar (quando legado, sem registro em `lideres_estrutura`).
+ */
+function LeaderRowItem({
+  adminPw,
+  leader,
+  onDelete,
+}: {
+  adminPw: string;
+  leader: AdminLeaderRow;
+  onDelete: () => void;
+}) {
+  const qc = useQueryClient();
+  const updateFn = useServerFn(adminUpdateLeader);
+  const normalizeFn = useServerFn(adminNormalizeLeader);
+  const [open, setOpen] = useState(false);
+  const [nome, setNome] = useState(leader.nome);
+  const [hier, setHier] = useState({
+    setorId: leader.setor_id ?? "",
+    supervisorId: leader.supervisor_id ?? "",
+    leaderId: "",
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-leaders"] });
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      updateFn({
+        data: {
+          adminPassword: adminPw,
+          leaderStructureId: leader.leader_structure_id ?? "",
+          nome,
+          setorId: hier.setorId,
+          supervisorId: hier.supervisorId,
+        },
+      }),
+    onSuccess: () => { toast.success("Líder atualizado"); setOpen(false); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const normalizeMut = useMutation({
+    mutationFn: () =>
+      normalizeFn({
+        data: {
+          adminPassword: adminPw,
+          leaderUserId: leader.user_id,
+          nome,
+          setorId: hier.setorId,
+          supervisorId: hier.supervisorId,
+        },
+      }),
+    onSuccess: () => { toast.success("Líder normalizado"); setOpen(false); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const busy = saveMut.isPending || normalizeMut.isPending;
+  const canSubmit = !!nome.trim() && !!hier.setorId && !!hier.supervisorId;
+
+  return (
+    <li className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{leader.nome || leader.login}</p>
+          <p className="truncate text-[11px] text-muted-foreground">Login: {leader.login}</p>
+          {leader.estrutura_normalizada ? (
+            <p className="truncate text-[11px] text-muted-foreground">
+              {leader.setor_nome ?? "—"} · {leader.supervisor_nome ?? "—"}
+            </p>
+          ) : (
+            <p className="text-[11px] font-medium text-destructive">
+              Estrutura pendente — normalize para vincular equipes.
+            </p>
+          )}
+          <Button
+            variant="outline"
+            className="mt-2 h-8 px-3 text-xs"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? "Fechar" : leader.estrutura_normalizada ? "Editar" : "Normalizar"}
+          </Button>
+        </div>
+        <button
+          onClick={onDelete}
+          className="rounded-md p-2 text-muted-foreground hover:text-destructive"
+          aria-label="Excluir líder"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-3 space-y-2 border-t border-border pt-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Nome do líder</Label>
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
+          </div>
+          <HierarchyPicker
+            adminPw={adminPw}
+            setorId={hier.setorId}
+            supervisorId={hier.supervisorId}
+            leaderId=""
+            requireLeader={false}
+            onChange={setHier}
+          />
+          <Button
+            className="h-10 w-full"
+            disabled={busy || !canSubmit}
+            onClick={() =>
+              leader.estrutura_normalizada ? saveMut.mutate() : normalizeMut.mutate()
+            }
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
+          </Button>
+        </div>
+      )}
+    </li>
   );
 }
 
