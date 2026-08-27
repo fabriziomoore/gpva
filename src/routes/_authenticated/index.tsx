@@ -166,15 +166,8 @@ function HomePage() {
   const today = useMemo(() => formatDateBR(new Date()), []);
   const teamPhoto = useTeamPhoto(userId);
 
-  const titleNode = (
-    <div className="w-full min-w-0 max-w-[180px]">
-      <img
-        src={gespLogo.url}
-        alt="ASSIS GESP - Assistência em Campo e Gestão da Produtividade"
-        className="block h-auto w-full"
-      />
-    </div>
-  );
+  const titleNode = <AppLogo className="min-w-0 max-w-[180px]" />;
+
 
   // Enquanto papel (líder/admin) ainda carrega, ou o próprio usuário indica ser
   // líder/admin, não renderizamos o home de equipe para evitar o "flash" antes
