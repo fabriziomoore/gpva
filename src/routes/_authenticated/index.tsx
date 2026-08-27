@@ -171,7 +171,7 @@ function HomePage() {
       <img
         src={gespLogo.url}
         alt="ASSIS GESP - Assistência em Campo e Gestão da Produtividade"
-        className="block h-auto w-full rounded-md bg-white/90 p-1"
+        className="block h-auto w-full"
       />
     </div>
   );
