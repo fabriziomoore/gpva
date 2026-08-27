@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search, FileText, AlertCircle, ArrowRight, User, MoreVertical, Archive, PauseCircle, PlayCircle, History, Trash2 } from "lucide-react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { Plus, Search, FileText, AlertCircle, ArrowRight, User, MoreVertical, Archive, PauseCircle, PlayCircle, History, Trash2, X } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
