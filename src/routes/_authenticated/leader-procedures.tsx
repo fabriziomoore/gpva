@@ -286,6 +286,7 @@ function LeaderProceduresPage() {
           </CardContent>
         </Card>
       </div>
+      </AppShell>
     );
   }
 
