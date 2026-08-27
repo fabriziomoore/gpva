@@ -240,13 +240,13 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
     text(company.slice(0, 3).toUpperCase(), M + 11, M + 14, { align: "center" });
   }
 
-  // Título e período
+  // Título e período (deslocado para acompanhar a logo mais larga)
   font(12, "bold"); setText(C.ink);
-  text("RELATÓRIO DE PRODUTIVIDADE", M + 26, M + 8);
+  text("RELATÓRIO DE PRODUTIVIDADE", M + 34, M + 8);
   font(9, "normal"); setText(C.sub);
-  text(`Período analisado: ${periodStr}`, M + 26, M + 14);
+  text(`Período analisado: ${periodStr}`, M + 34, M + 14);
   font(8, "normal"); setText(C.muted);
-  text(`Comparativo vs ${previousLabel(input.period)}`, M + 26, M + 19);
+  text(`Comparativo vs ${previousLabel(input.period)}`, M + 34, M + 19);
 
   // Centro: metadados (encaixa entre o título à esquerda e a caixa destaque à direita)
   const centerX = M + 110;
