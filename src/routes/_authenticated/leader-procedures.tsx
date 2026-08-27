@@ -38,9 +38,10 @@ export const Route = createFileRoute("/_authenticated/leader-procedures")({
 function LeaderProceduresPage() {
   const { userId, session } = useAuthSession();
   const userRoles = useUserRoles(userId);
-  const isLeaderOrAdmin = userRoles.data?.some((r: string) => r === 'leader' || r === 'admin') || 
-    session?.user.user_metadata?.is_leader === true ||
-    session?.user.user_metadata?.is_admin === true;
+  const isAdmin = userRoles.data?.includes('admin') || session?.user.user_metadata?.is_admin === true;
+  const isLeader = userRoles.data?.includes('leader') || session?.user.user_metadata?.is_leader === true;
+  const isLeaderOrAdmin = isAdmin || isLeader;
+
   
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
@@ -260,14 +261,15 @@ function LeaderProceduresPage() {
   const router = useRouter();
 
   const handleClose = () => {
-    if (userRoles.data?.includes("admin")) {
+    if (isAdmin) {
       router.navigate({ to: "/admin", replace: true });
-    } else if (userRoles.data?.includes("leader")) {
+    } else if (isLeader) {
       router.navigate({ to: "/leader", replace: true });
     } else {
       router.navigate({ to: "/", replace: true });
     }
   };
+
 
 
   if (!isLeaderOrAdmin && !userRoles.isLoading) {
