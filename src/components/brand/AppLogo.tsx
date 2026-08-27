@@ -16,8 +16,8 @@ export interface AppLogoProps extends React.ComponentProps<"div"> {
 export function AppLogo({ className, alt = "ACP — Assistente de Campo e Produtividade", ...props }: AppLogoProps) {
   return (
     <div className={cn("relative w-full", className)} {...props}>
-      <img src={lightLogo.url} alt={alt} className="block h-auto w-full dark:hidden" />
-      <img src={darkLogo.url} alt="" aria-hidden="true" className="hidden h-auto w-full dark:block" />
+      <img src={lightLogoUrl} alt={alt} className="block h-auto w-full dark:hidden" />
+      <img src={darkLogoUrl} alt="" aria-hidden="true" className="hidden h-auto w-full dark:block" />
     </div>
   );
 }
