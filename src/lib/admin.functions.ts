@@ -220,7 +220,13 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
       email_confirm: true,
       user_metadata: { team_name: data.teamName.trim() },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      const m = String(error.message || "");
+      if (/already been registered|already exists|duplicate/i.test(m)) {
+        throw new Error(`Já existe uma equipe com o login "${slug}". Escolha outro nome.`);
+      }
+      throw new Error(m);
+    }
     // O trigger handle_new_team cria a linha em `equipes`; aqui gravamos apenas
     // os UUIDs estruturais em um único UPDATE. Nunca escrevemos `supervisor`/`leader`
     // (strings históricas preservadas pela A4.2).

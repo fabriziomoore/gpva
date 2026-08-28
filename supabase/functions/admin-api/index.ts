@@ -191,7 +191,13 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         email, password: args.password, email_confirm: true,
         user_metadata: { team_name: args.teamName.trim() },
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        const m = String(error.message || "");
+        if (/already been registered|already exists|duplicate/i.test(m)) {
+          throw new Error(`Já existe uma equipe com o login "${slug}". Escolha outro nome.`);
+        }
+        throw new Error(m);
+      }
       const newId = created.user?.id;
       if (newId) {
         const { error: e2 } = await sb.from("equipes")
