@@ -164,14 +164,13 @@ function AuthPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background py-10">
-      <div className="absolute inset-x-0 top-0">
-        <DisclaimerBanner />
-      </div>
-      <div className="mb-8 w-full max-w-sm px-4 flex justify-center">
-        <AppLogo className="max-w-[192px]" />
-      </div>
-      <div className="w-full max-w-sm px-4">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      <DisclaimerBanner />
+      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto py-6">
+        <div className="mb-8 w-full max-w-sm px-4 flex justify-center">
+          <AppLogo className="max-w-[192px]" />
+        </div>
+        <div className="w-full max-w-sm px-4">
 
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
