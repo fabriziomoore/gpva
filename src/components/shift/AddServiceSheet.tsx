@@ -27,9 +27,21 @@ import { buildCaption } from "@/lib/share-negotiation";
 import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 
-type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
+type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
+
+// Tipos de serviço que podem ou não resultar em negociação (ex.: "Pós corte").
+// Ao selecionar um deles, perguntamos ao usuário se houve negociação antes de
+// decidir qual fluxo seguir.
+function isNegotiableType(t: ServiceType | null): boolean {
+  if (!t || t.is_negotiation) return false;
+  return t.name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim() === "pos corte";
+}
 type Reason = { id: string; name: string };
 
 export function AddServiceSheet({
