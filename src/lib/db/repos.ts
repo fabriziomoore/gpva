@@ -232,6 +232,174 @@ export async function repoAddService(input: {
   return row;
 }
 
+/**
+ * Atualiza um serviço existente (edição via long-press no expediente).
+ * Mantém id/created_at, substitui os vínculos de complementos e enfileira
+ * tudo no outbox para refletir imediatamente no banco quando online.
+ */
+export async function repoUpdateService(input: {
+  service_id: string;
+  service_type_id: string | null;
+  service_type_name: string;
+  is_negotiation: boolean;
+  viable: boolean;
+  reason_id?: string | null;
+  reason_name?: string | null;
+  registration_number?: string | null;
+  negotiated_value?: number | null;
+  complements?: { id: string | null; name: string }[];
+}): Promise<LocalService> {
+  await assertActiveSession();
+  const db = getLocalDB();
+  const current = await db.services.get(input.service_id);
+  if (!current) throw new Error("Serviço não encontrado neste dispositivo");
+
+  const updated: LocalService = {
+    ...current,
+    service_type_id: input.service_type_id,
+    service_type_name: input.service_type_name,
+    is_negotiation: input.is_negotiation,
+    viable: input.viable,
+    reason_id: input.reason_id ?? null,
+    reason_name: input.reason_name ?? null,
+    registration_number: input.registration_number ?? null,
+    negotiated_value: input.negotiated_value ?? null,
+    updated_at: nowIso(),
+    sync_state: "pending",
+  };
+  await db.services.put(updated);
+
+  // Coalesce: remove pushes anteriores pendentes deste serviço — o novo
+  // upsert carrega o estado final completo.
+  const prevPending = await db.outbox
+    .where("table")
+    .equals("servicos")
+    .and((r) => r.row_id === updated.id)
+    .toArray();
+  for (const p of prevPending) if (p.id != null) await db.outbox.delete(p.id);
+  await db.outbox.add({
+    table: "servicos",
+    op: "upsert",
+    row_id: updated.id,
+    payload: toServicePayload(updated),
+    tries: 0,
+    created_at: nowIso(),
+  });
+
+  // Substitui complementos: apaga vínculos antigos (com delete no outbox
+  // quando já estavam sincronizados) e recria os selecionados.
+  const oldLinks = await db.complement_links
+    .where("service_id")
+    .equals(updated.id)
+    .toArray();
+  for (const link of oldLinks) {
+    await db.complement_links.delete(link.id);
+    const linkPending = await db.outbox
+      .where("table")
+      .equals("vinculos_complementos")
+      .and((r) => r.row_id === link.id)
+      .toArray();
+    for (const p of linkPending) if (p.id != null) await db.outbox.delete(p.id);
+    if (link.sync_state === "synced") {
+      await db.outbox.add({
+        table: "vinculos_complementos",
+        op: "delete",
+        row_id: link.id,
+        payload: { id: link.id },
+        tries: 0,
+        created_at: nowIso(),
+      });
+    }
+  }
+  for (const c of input.complements ?? []) {
+    const id = newId();
+    const link = {
+      id,
+      team_id: updated.team_id,
+      shift_id: updated.shift_id,
+      service_id: updated.id,
+      complement_id: c.id,
+      complement_name: c.name,
+      updated_at: nowIso(),
+      sync_state: "pending" as const,
+    };
+    await db.complement_links.put(link);
+    await db.outbox.add({
+      table: "vinculos_complementos",
+      op: "upsert",
+      row_id: id,
+      payload: {
+        id,
+        team_id: updated.team_id,
+        shift_id: updated.shift_id,
+        service_id: updated.id,
+        complement_id: c.id,
+        complement_name: c.name,
+      },
+      tries: 0,
+      created_at: nowIso(),
+    });
+  }
+
+  await refreshPendingCount();
+  scheduleSync();
+  return updated;
+}
+
+/**
+ * Exclui um serviço e seus vínculos de complementos, localmente e no banco.
+ * Linhas ainda não sincronizadas simplesmente saem do outbox (nunca chegaram
+ * ao servidor); linhas sincronizadas ganham operações de delete.
+ */
+export async function repoDeleteService(serviceId: string): Promise<void> {
+  await assertActiveSession();
+  const db = getLocalDB();
+  const service = await db.services.get(serviceId);
+  if (!service) return;
+
+  const links = await db.complement_links.where("service_id").equals(serviceId).toArray();
+  for (const link of links) {
+    await db.complement_links.delete(link.id);
+    const linkPending = await db.outbox
+      .where("table")
+      .equals("vinculos_complementos")
+      .and((r) => r.row_id === link.id)
+      .toArray();
+    for (const p of linkPending) if (p.id != null) await db.outbox.delete(p.id);
+    if (link.sync_state === "synced") {
+      await db.outbox.add({
+        table: "vinculos_complementos",
+        op: "delete",
+        row_id: link.id,
+        payload: { id: link.id },
+        tries: 0,
+        created_at: nowIso(),
+      });
+    }
+  }
+
+  await db.services.delete(serviceId);
+  const svcPending = await db.outbox
+    .where("table")
+    .equals("servicos")
+    .and((r) => r.row_id === serviceId)
+    .toArray();
+  for (const p of svcPending) if (p.id != null) await db.outbox.delete(p.id);
+  if (service.sync_state === "synced") {
+    await db.outbox.add({
+      table: "servicos",
+      op: "delete",
+      row_id: serviceId,
+      payload: { id: serviceId },
+      tries: 0,
+      created_at: nowIso(),
+    });
+  }
+
+  await refreshPendingCount();
+  scheduleSync();
+}
+
 export async function repoAttachServiceLocation(input: {
   service_id: string;
   lat: number;
