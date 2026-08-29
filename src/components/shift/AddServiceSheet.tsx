@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReorderableGrid } from "./ReorderableGrid";
@@ -27,9 +27,23 @@ import { buildCaption } from "@/lib/share-negotiation";
 import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 
-type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements";
+type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
+
+// Tipos de serviço que podem ou não resultar em negociação (ex.: "Pós corte").
+// Ao selecionar um deles, perguntamos ao usuário se houve negociação antes de
+// decidir qual fluxo seguir.
+function isNegotiableType(t: ServiceType | null): boolean {
+  if (!t || t.is_negotiation) return false;
+  return (
+    t.name
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .trim() === "pos corte"
+  );
+}
 type Reason = { id: string; name: string };
 
 export function AddServiceSheet({
@@ -55,7 +69,13 @@ export function AddServiceSheet({
   const [valorAVista, setValorAVista] = useState("");
   const [valorParcelado, setValorParcelado] = useState("");
   const [parcelas, setParcelas] = useState("");
+  const [negotiatedOverride, setNegotiatedOverride] = useState(false);
   const team = useTeam(teamId).data;
+
+  // Serviço segue o fluxo de negociação quando o tipo já é de negociação
+  // (catálogo) ou quando o usuário respondeu "Sim" para tipos negociáveis
+  // como "Pós corte".
+  const isNegotiation = type?.is_negotiation === true || negotiatedOverride;
 
   useEffect(() => {
     if (open) {
@@ -69,6 +89,7 @@ export function AddServiceSheet({
       setValorAVista("");
       setValorParcelado("");
       setParcelas("");
+      setNegotiatedOverride(false);
       void fetchAndCacheCatalogOrder(teamId);
     }
   }, [open, teamId]);
@@ -132,7 +153,7 @@ export function AddServiceSheet({
         shift_id: shiftId,
         service_type_id: type.id,
         service_type_name: type.name,
-        is_negotiation: type.is_negotiation,
+        is_negotiation: isNegotiation,
         viable: opts.viable,
         reason_id: opts.reasonId ?? null,
         reason_name: opts.reasonName ?? null,
@@ -179,7 +200,8 @@ export function AddServiceSheet({
 
   function pickType(t: ServiceType) {
     setType(t);
-    setStep("viability");
+    if (isNegotiableType(t)) setStep("negotiationCheck");
+    else setStep("viability");
   }
 
   return (
@@ -189,6 +211,7 @@ export function AddServiceSheet({
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left text-base">
               {step === "type" && "Tipo de Serviço"}
+              {step === "negotiationCheck" && type?.name}
               {step === "viability" && type?.name}
               {step === "reason" && "Motivo da inviabilidade"}
               {step === "registration" && "Matrícula"}
@@ -247,12 +270,44 @@ export function AddServiceSheet({
             )
           )}
 
+          {step === "negotiationCheck" && (
+            <div className="space-y-4">
+              <p className="text-center text-sm text-muted-foreground">
+                Este {type?.name} foi negociado com o cliente?
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  disabled={saving}
+                  onClick={() => {
+                    setNegotiatedOverride(true);
+                    setStep("registration");
+                  }}
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-primary transition-colors hover:border-primary hover:bg-primary/10"
+                >
+                  <Banknote className="size-12" />
+                  <span className="text-xl">Sim, negociado</span>
+                </button>
+                <button
+                  disabled={saving}
+                  onClick={() => {
+                    setNegotiatedOverride(false);
+                    setStep("viability");
+                  }}
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-foreground transition-colors hover:border-primary hover:bg-accent"
+                >
+                  <XCircle className="size-12 text-muted-foreground" />
+                  <span className="text-xl">Não</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {step === "viability" && (
             <div className="grid grid-cols-2 gap-3">
               <button
                 disabled={saving}
                 onClick={() => {
-                  if (type?.is_negotiation) setStep("registration");
+                  if (isNegotiation) setStep("registration");
                   else setStep("complements");
                 }}
                 className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
@@ -313,7 +368,7 @@ export function AddServiceSheet({
               <Button
                 disabled={saving || !registration.trim()}
                 onClick={() => {
-                  if (type?.is_negotiation) {
+                  if (isNegotiation) {
                     setStep("payment");
                     return;
                   }
@@ -328,7 +383,7 @@ export function AddServiceSheet({
               >
                 {saving ? (
                   <Loader2 className="size-5 animate-spin" />
-                ) : type?.is_negotiation ? (
+                ) : isNegotiation ? (
                   "Continuar"
                 ) : (
                   "Salvar"
@@ -488,11 +543,11 @@ export function AddServiceSheet({
                 const nVista = valorAVista.trim() && isFinite(rawVista) && rawVista > 0 ? rawVista : 0;
                 const nParc = hasInstallment ? Number(valorParcelado.replace(",", ".")) : 0;
                 const nParcelas = hasInstallment ? Number(parcelas) : 0;
-                const negotiated = type?.is_negotiation
+                const negotiated = isNegotiation
                   ? (isFinite(nVista) ? nVista : 0) + (isFinite(nParc) ? nParc : 0)
                   : undefined;
                 const submission =
-                  type?.is_negotiation && payments.size > 0 && negotiated != null && negotiated > 0
+                  isNegotiation && payments.size > 0 && negotiated != null && negotiated > 0
                     ? {
                         date: new Date(),
                         leader: team?.leader,
@@ -509,7 +564,7 @@ export function AddServiceSheet({
                   saveService({
                     viable: true,
                     negotiated,
-                    registration: type?.is_negotiation ? registration.trim() : undefined,
+                    registration: isNegotiation ? registration.trim() : undefined,
                     complementIds: Array.from(selectedComplements),
                   });
 
