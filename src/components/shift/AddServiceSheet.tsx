@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReorderableGrid } from "./ReorderableGrid";
@@ -368,7 +368,7 @@ export function AddServiceSheet({
               <Button
                 disabled={saving || !registration.trim()}
                 onClick={() => {
-                  if (type?.is_negotiation) {
+                  if (isNegotiation) {
                     setStep("payment");
                     return;
                   }
@@ -383,7 +383,7 @@ export function AddServiceSheet({
               >
                 {saving ? (
                   <Loader2 className="size-5 animate-spin" />
-                ) : type?.is_negotiation ? (
+                ) : isNegotiation ? (
                   "Continuar"
                 ) : (
                   "Salvar"
@@ -543,11 +543,11 @@ export function AddServiceSheet({
                 const nVista = valorAVista.trim() && isFinite(rawVista) && rawVista > 0 ? rawVista : 0;
                 const nParc = hasInstallment ? Number(valorParcelado.replace(",", ".")) : 0;
                 const nParcelas = hasInstallment ? Number(parcelas) : 0;
-                const negotiated = type?.is_negotiation
+                const negotiated = isNegotiation
                   ? (isFinite(nVista) ? nVista : 0) + (isFinite(nParc) ? nParc : 0)
                   : undefined;
                 const submission =
-                  type?.is_negotiation && payments.size > 0 && negotiated != null && negotiated > 0
+                  isNegotiation && payments.size > 0 && negotiated != null && negotiated > 0
                     ? {
                         date: new Date(),
                         leader: team?.leader,
@@ -564,7 +564,7 @@ export function AddServiceSheet({
                   saveService({
                     viable: true,
                     negotiated,
-                    registration: type?.is_negotiation ? registration.trim() : undefined,
+                    registration: isNegotiation ? registration.trim() : undefined,
                     complementIds: Array.from(selectedComplements),
                   });
 
