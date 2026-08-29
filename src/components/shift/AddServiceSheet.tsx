@@ -211,6 +211,7 @@ export function AddServiceSheet({
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left text-base">
               {step === "type" && "Tipo de Serviço"}
+              {step === "negotiationCheck" && type?.name}
               {step === "viability" && type?.name}
               {step === "reason" && "Motivo da inviabilidade"}
               {step === "registration" && "Matrícula"}
@@ -269,12 +270,44 @@ export function AddServiceSheet({
             )
           )}
 
+          {step === "negotiationCheck" && (
+            <div className="space-y-4">
+              <p className="text-center text-sm text-muted-foreground">
+                Este {type?.name} foi negociado com o cliente?
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  disabled={saving}
+                  onClick={() => {
+                    setNegotiatedOverride(true);
+                    setStep("registration");
+                  }}
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-primary transition-colors hover:border-primary hover:bg-primary/10"
+                >
+                  <Banknote className="size-12" />
+                  <span className="text-xl">Sim, negociado</span>
+                </button>
+                <button
+                  disabled={saving}
+                  onClick={() => {
+                    setNegotiatedOverride(false);
+                    setStep("viability");
+                  }}
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-foreground transition-colors hover:border-primary hover:bg-accent"
+                >
+                  <XCircle className="size-12 text-muted-foreground" />
+                  <span className="text-xl">Não</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {step === "viability" && (
             <div className="grid grid-cols-2 gap-3">
               <button
                 disabled={saving}
                 onClick={() => {
-                  if (type?.is_negotiation) setStep("registration");
+                  if (isNegotiation) setStep("registration");
                   else setStep("complements");
                 }}
                 className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
