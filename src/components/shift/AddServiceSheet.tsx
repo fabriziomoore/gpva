@@ -69,7 +69,13 @@ export function AddServiceSheet({
   const [valorAVista, setValorAVista] = useState("");
   const [valorParcelado, setValorParcelado] = useState("");
   const [parcelas, setParcelas] = useState("");
+  const [negotiatedOverride, setNegotiatedOverride] = useState(false);
   const team = useTeam(teamId).data;
+
+  // Serviço segue o fluxo de negociação quando o tipo já é de negociação
+  // (catálogo) ou quando o usuário respondeu "Sim" para tipos negociáveis
+  // como "Pós corte".
+  const isNegotiation = type?.is_negotiation === true || negotiatedOverride;
 
   useEffect(() => {
     if (open) {
@@ -83,6 +89,7 @@ export function AddServiceSheet({
       setValorAVista("");
       setValorParcelado("");
       setParcelas("");
+      setNegotiatedOverride(false);
       void fetchAndCacheCatalogOrder(teamId);
     }
   }, [open, teamId]);
@@ -146,7 +153,7 @@ export function AddServiceSheet({
         shift_id: shiftId,
         service_type_id: type.id,
         service_type_name: type.name,
-        is_negotiation: type.is_negotiation,
+        is_negotiation: isNegotiation,
         viable: opts.viable,
         reason_id: opts.reasonId ?? null,
         reason_name: opts.reasonName ?? null,
