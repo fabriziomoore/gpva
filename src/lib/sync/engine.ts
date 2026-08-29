@@ -99,8 +99,11 @@ export async function drainOutbox(): Promise<void> {
       "equipes",
       "catalog_order",
     ];
+    // Pass 1: upserts/updates em ordem de dependência (pais antes dos filhos).
     for (const table of order) {
-      const rows = await db.outbox.where("table").equals(table).sortBy("id");
+      const rows = (await db.outbox.where("table").equals(table).sortBy("id")).filter(
+        (r) => r.op !== "delete",
+      );
       for (const row of rows) {
         try {
           await pushRow(row);
