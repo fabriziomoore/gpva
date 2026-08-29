@@ -200,7 +200,8 @@ export function AddServiceSheet({
 
   function pickType(t: ServiceType) {
     setType(t);
-    setStep("viability");
+    if (isNegotiableType(t)) setStep("negotiationCheck");
+    else setStep("viability");
   }
 
   return (
