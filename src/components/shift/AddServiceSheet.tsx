@@ -36,11 +36,13 @@ type ServiceType = { id: string; name: string; is_negotiation: boolean };
 // decidir qual fluxo seguir.
 function isNegotiableType(t: ServiceType | null): boolean {
   if (!t || t.is_negotiation) return false;
-  return t.name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim() === "pos corte";
+  return (
+    t.name
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .trim() === "pos corte"
+  );
 }
 type Reason = { id: string; name: string };
 
