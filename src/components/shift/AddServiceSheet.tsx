@@ -11,7 +11,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ChevronLeft, ChevronRight, Check, X, Handshake, ArrowRight, Search } from "lucide-react";
+import {
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  Handshake,
+  ArrowRight,
+  Search,
+  User,
+  CreditCard,
+  Wrench,
+} from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB, type LocalService } from "@/lib/db/local-db";
 import { repoUpsertService } from "@/lib/db/repos";
@@ -30,7 +42,34 @@ export type AddServiceSheetProps = {
   editComplements?: { id: string | null; name: string }[];
 };
 
-type Step = "viability" | "negotiation" | "details";
+type Step =
+  | "type"
+  | "viability"
+  | "reason"
+  | "registration"
+  | "payment"
+  | "complements"
+  | "negotiationCheck";
+
+const ALL_STEPS: Step[] = [
+  "type",
+  "viability",
+  "reason",
+  "registration",
+  "payment",
+  "complements",
+  "negotiationCheck",
+];
+
+const STEP_LABELS: Record<Step, string> = {
+  type: "Tipo",
+  viability: "Viável?",
+  reason: "Motivo",
+  registration: "Matrícula",
+  payment: "Pagamento",
+  complements: "Complementos",
+  negotiationCheck: "Negociação",
+};
 
 export function AddServiceSheet({
   open,
@@ -41,16 +80,19 @@ export function AddServiceSheet({
   editComplements,
 }: AddServiceSheetProps) {
   const isEdit = !!editService;
-  const [step, setStep] = useState<Step>("viability");
-  const [viable, setViable] = useState<boolean | null>(null);
-  const [isNegotiation, setIsNegotiation] = useState<boolean | null>(null);
+  const [step, setStep] = useState<Step>("type");
   const [serviceTypeId, setServiceTypeId] = useState<string | null>(null);
   const [serviceTypeName, setServiceTypeName] = useState<string>("");
-  const [negotiatedValue, setNegotiatedValue] = useState<string>("");
+  const [isNegotiable, setIsNegotiable] = useState<boolean | null>(null);
+  const [viable, setViable] = useState<boolean | null>(null);
+  const [isNegotiation, setIsNegotiation] = useState<boolean | null>(null);
   const [reasonId, setReasonId] = useState<string | null>(null);
   const [reasonName, setReasonName] = useState<string>("");
+  const [registration, setRegistration] = useState<string>("");
   const [complementIds, setComplementIds] = useState<string[]>([]);
-  const [catalogQuery, setCatalogQuery] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [negotiatedValue, setNegotiatedValue] = useState<string>("");
+  const [catalogQuery, setCatalogQuery] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   const catalogs = useLiveQuery(async () => {
@@ -66,31 +108,34 @@ export function AddServiceSheet({
   useEffect(() => {
     if (!open) return;
     if (editService) {
-      setViable(editService.viable);
-      setIsNegotiation(editService.is_negotiation);
       setServiceTypeId(editService.service_type_id);
       setServiceTypeName(editService.service_type_name);
+      setViable(editService.viable);
+      setIsNegotiation(editService.is_negotiation);
+      setReasonId(editService.reason_id ?? null);
+      setReasonName(editService.reason_name ?? "");
       setNegotiatedValue(
         editService.negotiated_value != null ? String(editService.negotiated_value) : "",
       );
-      setReasonId(editService.reason_id ?? null);
-      setReasonName(editService.reason_name ?? "");
       const ids = (editComplements ?? [])
         .map((c) => c.id)
         .filter((id): id is string => !!id);
       setComplementIds(ids);
-      setStep("details");
+      setStep("negotiationCheck");
     } else {
-      setViable(null);
-      setIsNegotiation(null);
       setServiceTypeId(null);
       setServiceTypeName("");
-      setNegotiatedValue("");
+      setIsNegotiable(null);
+      setViable(null);
+      setIsNegotiation(null);
       setReasonId(null);
       setReasonName("");
+      setRegistration("");
       setComplementIds([]);
+      setPaymentMethod("");
+      setNegotiatedValue("");
       setCatalogQuery("");
-      setStep("viability");
+      setStep("type");
     }
   }, [open, editService, editComplements]);
 
@@ -112,6 +157,8 @@ export function AddServiceSheet({
   function pickServiceType(s: ServiceType) {
     setServiceTypeId(s.id);
     setServiceTypeName(s.name);
+    setIsNegotiable(s.is_negotiation ?? false);
+    setStep("viability");
   }
 
   function toggleComplement(id: string) {
@@ -121,16 +168,16 @@ export function AddServiceSheet({
   }
 
   async function save() {
-    if (viable == null) {
-      toast.error("Selecione se o serviço é viável ou invável.");
-      return;
-    }
-    if (!viable && !isNegotiation && !reasonId) {
-      toast.error("Selecione um motivo para o serviço invável.");
-      return;
-    }
-    if (viable && !isNegotiation && !serviceTypeId) {
+    if (!serviceTypeId) {
       toast.error("Selecione o tipo de serviço.");
+      return;
+    }
+    if (viable == null) {
+      toast.error("Selecione se o serviço é viável ou inviável.");
+      return;
+    }
+    if (!viable && !reasonId) {
+      toast.error("Selecione um motivo para o serviço inviável.");
       return;
     }
     if (isNegotiation === true) {
@@ -164,15 +211,10 @@ export function AddServiceSheet({
         team_id: teamId,
         viable: viable!,
         is_negotiation: isNegotiation === true,
-        service_type_id: viable && !isNegotiation ? serviceTypeId : null,
-        service_type_name:
-          viable && !isNegotiation
-            ? serviceTypeName
-            : isNegotiation
-              ? "Negociação"
-              : reasonName || "Inviável",
-        reason_id: !viable && !isNegotiation ? reasonId : null,
-        reason_name: !viable && !isNegotiation ? reasonName : null,
+        service_type_id: serviceTypeId,
+        service_type_name: serviceTypeName,
+        reason_id: !viable ? reasonId : null,
+        reason_name: !viable ? reasonName : null,
         negotiated_value: isNegotiation === true ? Number(negotiatedValue) : null,
         lat,
         lng,
@@ -190,7 +232,7 @@ export function AddServiceSheet({
         for (const ex of existing) {
           await db.complement_links.delete(ex.id);
         }
-        if (viable && !isNegotiation && complementIds.length > 0) {
+        if (complementIds.length > 0) {
           for (const cid of complementIds) {
             const comp = complements.find((c) => c.id === cid);
             if (!comp) continue;
@@ -221,15 +263,35 @@ export function AddServiceSheet({
     }
   }
 
-  const headerTitle =
-    step === "negotiation"
-      ? "O PÓS-CORTE FOI NEGOCIADO?"
-      : step === "viability"
-        ? "O SERVIÇO FOI VIÁVEL?"
-        : "Detalhes do serviço";
+  function goBack() {
+    const idx = ALL_STEPS.indexOf(step);
+    if (idx <= 0) {
+      close();
+    } else {
+      setStep(ALL_STEPS[idx - 1]);
+    }
+  }
+
+  function goNext() {
+    const idx = ALL_STEPS.indexOf(step);
+    if (idx < ALL_STEPS.length - 1) {
+      setStep(ALL_STEPS[idx + 1]);
+    } else {
+      void save();
+    }
+  }
 
   const headerTone =
-    step === "negotiation" ? "bg-primary text-primary-foreground" : "bg-card text-foreground";
+    step === "negotiationCheck" ? "bg-primary text-primary-foreground" : "bg-card text-foreground";
+
+  const stepTitle =
+    step === "type" ? "QUAL TIPO DE SERVIÇO?" :
+    step === "viability" ? "O SERVIÇO FOI VIÁVEL?" :
+    step === "reason" ? "MOTIVO DO INVÁVEL" :
+    step === "registration" ? "MATRÍCULA DO CLIENTE" :
+    step === "payment" ? "FORMA DE PAGAMENTO" :
+    step === "complements" ? "COMPLEMENTOS" :
+    "O PÓS-CORTE FOI NEGOCIADO?";
 
   return (
     <Sheet open={open} onOpenChange={close}>
@@ -246,10 +308,10 @@ export function AddServiceSheet({
           <SheetTitle
             className={
               "text-left text-xl font-extrabold leading-tight " +
-              (step === "negotiation" ? "tracking-wide" : "")
+              (step === "negotiationCheck" ? "tracking-wide" : "")
             }
           >
-            {headerTitle}
+            {stepTitle}
           </SheetTitle>
           <SheetDescription className="sr-only">
             Fluxo de registro de serviço do expediente
@@ -258,50 +320,82 @@ export function AddServiceSheet({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {step === "viability" && (
-            <ViabilityStep
-              value={viable}
-              onPick={(v) => {
-                setViable(v);
-                setStep("negotiation");
-              }}
+          {step === "type" && (
+            <TypeStep
+              serviceTypes={filteredServiceTypes}
+              catalogQuery={catalogQuery}
+              onCatalogQueryChange={setCatalogQuery}
+              serviceTypeId={serviceTypeId}
+              onPickServiceType={pickServiceType}
             />
           )}
 
-          {step === "negotiation" && (
-            <NegotiationStep
-              value={isNegotiation}
+          {step === "viability" && (
+            <ViabilityStep
+              value={viable}
+              serviceTypeName={serviceTypeName}
               onPick={(v) => {
-                setIsNegotiation(v);
-                if (v) {
-                  setStep("details");
+                setViable(v);
+                if (!v) {
+                  setStep("reason");
                 } else {
-                  void save();
+                  setStep("registration");
                 }
               }}
             />
           )}
 
-          {step === "details" && (
-            <DetailsStep
-              viable={viable}
-              isNegotiation={isNegotiation}
-              serviceTypes={filteredServiceTypes}
-              complements={complements}
+          {step === "reason" && (
+            <ReasonStep
               reasons={reasons}
-              catalogQuery={catalogQuery}
-              onCatalogQueryChange={setCatalogQuery}
-              serviceTypeId={serviceTypeId}
-              onPickServiceType={pickServiceType}
               reasonId={reasonId}
               onPickReason={(r) => {
                 setReasonId(r.id);
                 setReasonName(r.name);
+                setStep("negotiationCheck");
               }}
+            />
+          )}
+
+          {step === "registration" && (
+            <RegistrationStep
+              value={registration}
+              onChange={setRegistration}
+              onNext={() => setStep("payment")}
+            />
+          )}
+
+          {step === "payment" && (
+            <PaymentStep
+              value={paymentMethod}
+              onChange={(v) => {
+                setPaymentMethod(v);
+                setStep("complements");
+              }}
+            />
+          )}
+
+          {step === "complements" && (
+            <ComplementsStep
+              complements={complements}
               complementIds={complementIds}
               onToggleComplement={toggleComplement}
+              onNext={() => setStep("negotiationCheck")}
+            />
+          )}
+
+          {step === "negotiationCheck" && (
+            <NegotiationStep
+              isNegotiable={isNegotiable}
+              value={isNegotiation}
               negotiatedValue={negotiatedValue}
               onChangeNegotiatedValue={setNegotiatedValue}
+              onPick={(v) => {
+                setIsNegotiation(v);
+                if (!v) {
+                  void save();
+                }
+              }}
             />
           )}
         </div>
@@ -311,16 +405,23 @@ export function AddServiceSheet({
             type="button"
             variant="outline"
             className="h-12 flex-1"
-            onClick={() => {
-              if (step === "details") setStep("negotiation");
-              else if (step === "negotiation") setStep("viability");
-              else close();
-            }}
+            onClick={goBack}
             disabled={saving}
           >
             <ChevronLeft className="mr-1 size-4" /> Voltar
           </Button>
-          {step !== "viability" && (
+          {step !== "negotiationCheck" || isNegotiation !== true ? (
+            <Button
+              type="button"
+              className="h-12 flex-1"
+              onClick={goNext}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              {isEdit ? "Salvar alterações" : "Continuar"}
+              {!saving && <ArrowRight className="ml-1 size-4" />}
+            </Button>
+          ) : (
             <Button
               type="button"
               className="h-12 flex-1"
@@ -328,8 +429,8 @@ export function AddServiceSheet({
               disabled={saving}
             >
               {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-              {isEdit ? "Salvar alterações" : "Finalizar"}
-              {!saving && <ArrowRight className="ml-1 size-4" />}
+              Finalizar
+              {!saving && <Check className="ml-1 size-4" />}
             </Button>
           )}
         </footer>
@@ -339,19 +440,14 @@ export function AddServiceSheet({
 }
 
 function Stepper({ step }: { step: Step }) {
-  const steps: { id: Step; label: string }[] = [
-    { id: "viability", label: "Viável?" },
-    { id: "negotiation", label: "Negociado?" },
-    { id: "details", label: "Detalhes" },
-  ];
-  const currentIdx = steps.findIndex((s) => s.id === step);
+  const currentIdx = ALL_STEPS.indexOf(step);
   return (
     <ol className="flex items-center gap-2 pt-1">
-      {steps.map((s, i) => {
+      {ALL_STEPS.map((s, i) => {
         const active = i === currentIdx;
         const done = i < currentIdx;
         return (
-          <li key={s.id} className="flex flex-1 items-center gap-2">
+          <li key={s} className="flex flex-1 items-center gap-2">
             <span
               className={
                 "flex size-6 items-center justify-center rounded-full text-[11px] font-bold " +
@@ -370,9 +466,9 @@ function Stepper({ step }: { step: Step }) {
                 (active ? "text-white" : "text-white/70")
               }
             >
-              {s.label}
+              {STEP_LABELS[s]}
             </span>
-            {i < steps.length - 1 && (
+            {i < ALL_STEPS.length - 1 && (
               <span className="h-px flex-1 bg-white/30" aria-hidden />
             )}
           </li>
@@ -382,17 +478,96 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
+function TypeStep({
+  serviceTypes,
+  catalogQuery,
+  onCatalogQueryChange,
+  serviceTypeId,
+  onPickServiceType,
+}: {
+  serviceTypes: ServiceType[];
+  catalogQuery: string;
+  onCatalogQueryChange: (q: string) => void;
+  serviceTypeId: string | null;
+  onPickServiceType: (s: ServiceType) => void;
+}) {
+  const sorted = useMemo(() => {
+    return [...serviceTypes].sort((a, b) => {
+      const oa = a.sort_order ?? 999;
+      const ob = b.sort_order ?? 999;
+      return oa !== ob ? oa - ob : a.name.localeCompare(b.name);
+    });
+  }, [serviceTypes]);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="service-search"
+            placeholder="Buscar tipo de serviço..."
+            value={catalogQuery}
+            onChange={(e) => onCatalogQueryChange(e.target.value)}
+            className="h-12 pl-9"
+          />
+        </div>
+        <div className="grid max-h-72 grid-cols-1 gap-1 overflow-y-auto pr-1">
+          {sorted.length === 0 && (
+            <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              Nenhum serviço encontrado.
+            </p>
+          )}
+          {sorted.map((s) => {
+            const selected = s.id === serviceTypeId;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => onPickServiceType(s)}
+                className={
+                  "flex items-center justify-between rounded-lg border p-3 text-left transition-colors " +
+                  (selected
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:bg-muted")
+                }
+              >
+                <span className="flex items-center gap-2">
+                  <Wrench className="size-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold">{s.name}</span>
+                  {s.is_negotiation && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Negociável
+                    </Badge>
+                  )}
+                </span>
+                {selected && <Check className="size-4 text-primary" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ViabilityStep({
   value,
+  serviceTypeName,
   onPick,
 }: {
   value: boolean | null;
+  serviceTypeName: string;
   onPick: (v: boolean) => void;
 }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Primeiro, diga se o serviço pôde ser executado.
+        O serviço{" "}
+        <span className="font-semibold text-foreground">{serviceTypeName}</span>{
+          " "
+        }
+        foi executado com sucesso?
       </p>
       <div className="grid grid-cols-1 gap-3">
         <button
@@ -432,92 +607,264 @@ function ViabilityStep({
   );
 }
 
-function NegotiationStep({
-  value,
-  onPick,
+function ReasonStep({
+  reasons,
+  reasonId,
+  onPickReason,
 }: {
-  value: boolean | null;
-  onPick: (v: boolean) => void;
+  reasons: Reason[];
+  reasonId: string | null;
+  onPickReason: (r: Reason) => void;
 }) {
+  const sorted = useMemo(() => {
+    return [...reasons].sort((a, b) => a.name.localeCompare(b.name));
+  }, [reasons]);
+
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        O pós-corte foi negociado com o cliente?
+      <p className="text-sm font-semibold text-foreground">
+        Qual o motivo da inviabilidade?
       </p>
-      <div className="grid grid-cols-1 gap-3">
-        <button
-          type="button"
-          onClick={() => onPick(true)}
-          className={
-            "flex items-center justify-between rounded-2xl border-2 p-5 text-left transition-colors " +
-            (value === true
-              ? "border-primary bg-primary/10"
-              : "border-border bg-card hover:bg-muted")
-          }
-        >
-          <span className="flex items-center gap-3">
-            <Handshake className="size-6 text-primary" />
-            <span className="text-lg font-bold">Foi negociado</span>
-          </span>
-          <ChevronRight className="size-5 text-muted-foreground" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onPick(false)}
-          className={
-            "flex items-center justify-between rounded-2xl border-2 p-5 text-left transition-colors " +
-            (value === false
-              ? "border-muted-foreground bg-muted"
-              : "border-border bg-card hover:bg-muted")
-          }
-        >
-          <span className="flex items-center gap-3">
-            <X className="size-6 text-muted-foreground" />
-            <span className="text-lg font-bold">Não foi negociado</span>
-          </span>
-          <ChevronRight className="size-5 text-muted-foreground" />
-        </button>
+      <div className="grid grid-cols-1 gap-2">
+        {sorted.length === 0 && (
+          <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+            Nenhum motivo cadastrado.
+          </p>
+        )}
+        {sorted.map((r) => {
+          const selected = r.id === reasonId;
+          return (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onPickReason(r)}
+              className={
+                "flex items-center justify-between rounded-xl border p-3 text-left transition-colors " +
+                (selected
+                  ? "border-destructive bg-destructive/10"
+                  : "border-border bg-card hover:bg-muted")
+              }
+            >
+              <span className="text-sm font-semibold">{r.name}</span>
+              {selected && <Check className="size-4 text-destructive" />}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function DetailsStep({
-  viable,
-  isNegotiation,
-  serviceTypes,
+function RegistrationStep({
+  value,
+  onChange,
+  onNext,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label
+          htmlFor="registration"
+          className="text-base font-semibold flex items-center gap-2"
+        >
+          <User className="size-4" />
+          Matrícula do cliente
+        </Label>
+        <Input
+          id="registration"
+          placeholder="Ex: 1234567"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-12 text-lg"
+        />
+        <p className="text-xs text-muted-foreground">
+          Número de matrícula ou identificação do cliente.
+        </p>
+      </div>
+      <Button type="button" className="w-full h-12" onClick={onNext}>
+        Continuar <ArrowRight className="ml-2 size-4" />
+      </Button>
+    </div>
+  );
+}
+
+function PaymentStep({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const methods = [
+    "Dinheiro",
+    "PIX",
+    "Cartão de Crédito",
+    "Cartão de Débito",
+    "Boleto",
+    "Faturado",
+    "Isento",
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-base font-semibold flex items-center gap-2">
+          <CreditCard className="size-4" />
+          Forma de pagamento
+        </Label>
+        <div className="grid grid-cols-1 gap-2">
+          {methods.map((method) => {
+            const selected = value === method;
+            return (
+              <button
+                key={method}
+                type="button"
+                onClick={() => onChange(method)}
+                className={
+                  "flex items-center justify-between rounded-xl border p-3 text-left transition-colors " +
+                  (selected
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:bg-muted")
+                }
+              >
+                <span className="text-sm font-semibold">{method}</span>
+                {selected && <Check className="size-4 text-primary" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComplementsStep({
   complements,
-  reasons,
-  catalogQuery,
-  onCatalogQueryChange,
-  serviceTypeId,
-  onPickServiceType,
-  reasonId,
-  onPickReason,
   complementIds,
   onToggleComplement,
-  negotiatedValue,
-  onChangeNegotiatedValue,
+  onNext,
 }: {
-  viable: boolean | null;
-  isNegotiation: boolean | null;
-  serviceTypes: ServiceType[];
   complements: Complement[];
-  reasons: Reason[];
-  catalogQuery: string;
-  onCatalogQueryChange: (q: string) => void;
-  serviceTypeId: string | null;
-  onPickServiceType: (s: ServiceType) => void;
-  reasonId: string | null;
-  onPickReason: (r: Reason) => void;
   complementIds: string[];
   onToggleComplement: (id: string) => void;
+  onNext: () => void;
+}) {
+  const sorted = useMemo(() => {
+    return [...complements].sort((a, b) => {
+      const oa = a.sort_order ?? 999;
+      const ob = b.sort_order ?? 999;
+      return oa !== ob ? oa - ob : a.name.localeCompare(b.name);
+    });
+  }, [complements]);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-base font-semibold">Complementos do serviço</p>
+        <div className="grid grid-cols-1 gap-2">
+          {sorted.length === 0 && (
+            <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              Nenhum complemento disponível.
+            </p>
+          )}
+          {sorted.map((c) => {
+            const checked = complementIds.includes(c.id);
+            return (
+              <label
+                key={c.id}
+                className={
+                  "flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors " +
+                  (checked
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card hover:bg-muted")
+                }
+              >
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={() => onToggleComplement(c.id)}
+                />
+                <span className="text-sm font-semibold">{c.name}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+      <Button type="button" className="w-full h-12" onClick={onNext}>
+        Continuar <ArrowRight className="ml-2 size-4" />
+      </Button>
+    </div>
+  );
+}
+
+function NegotiationStep({
+  isNegotiable,
+  value,
+  negotiatedValue,
+  onChangeNegotiatedValue,
+  onPick,
+}: {
+  isNegotiable: boolean | null;
+  value: boolean | null;
   negotiatedValue: string;
   onChangeNegotiatedValue: (v: string) => void;
+  onPick: (v: boolean) => void;
 }) {
-  if (isNegotiation === true) {
+  if (isNegotiable === false) {
     return (
       <div className="space-y-4">
+        <div className="rounded-xl border border-border bg-muted/50 p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Este tipo de serviço não exige negociação.
+          </p>
+        </div>
+        <Button type="button" className="w-full h-12" onClick={() => onPick(false)}>
+          Confirmar <Check className="ml-2 size-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  if (value === null) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          O pós-corte foi negociado com o cliente?
+        </p>
+        <div className="grid grid-cols-1 gap-3">
+          <button
+            type="button"
+            onClick={() => onPick(true)}
+            className="flex items-center justify-between rounded-2xl border-2 border-border bg-card p-5 text-left transition-colors hover:bg-muted"
+          >
+            <span className="flex items-center gap-3">
+              <Handshake className="size-6 text-primary" />
+              <span className="text-lg font-bold">Foi negociado</span>
+            </span>
+            <ChevronRight className="size-5 text-muted-foreground" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onPick(false)}
+            className="flex items-center justify-between rounded-2xl border-2 border-border bg-card p-5 text-left transition-colors hover:bg-muted"
+          >
+            <span className="flex items-center gap-3">
+              <X className="size-6 text-muted-foreground" />
+              <span className="text-lg font-bold">Não foi negociado</span>
+            </span>
+            <ChevronRight className="size-5 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (value === true) {
+    return (
+      <div className="space-y-3">
         <div className="space-y-2">
           <Label htmlFor="negotiated-value" className="text-base font-semibold">
             Valor negociado
@@ -541,115 +888,5 @@ function DetailsStep({
     );
   }
 
-  if (viable === false) {
-    return (
-      <div className="space-y-3">
-        <p className="text-sm font-semibold text-foreground">Motivo do invável</p>
-        <div className="grid grid-cols-1 gap-2">
-          {reasons.length === 0 && (
-            <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-              Nenhum motivo cadastrado.
-            </p>
-          )}
-          {reasons.map((r) => {
-            const selected = r.id === reasonId;
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => onPickReason(r)}
-                className={
-                  "flex items-center justify-between rounded-xl border p-3 text-left transition-colors " +
-                  (selected
-                    ? "border-destructive bg-destructive/10"
-                    : "border-border bg-card hover:bg-muted")
-                }
-              >
-                <span className="text-sm font-semibold">{r.name}</span>
-                {selected && <Check className="size-4 text-destructive" />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="service-search" className="text-base font-semibold">
-          Tipo de serviço
-        </Label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="service-search"
-            placeholder="Buscar serviço..."
-            value={catalogQuery}
-            onChange={(e) => onCatalogQueryChange(e.target.value)}
-            className="h-12 pl-9"
-          />
-        </div>
-        <div className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto pr-1">
-          {filteredServiceTypes.length === 0 && (
-            <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-              Nenhum serviço encontrado.
-            </p>
-          )}
-          {filteredServiceTypes.map((s) => {
-            const selected = s.id === serviceTypeId;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => onPickServiceType(s)}
-                className={
-                  "flex items-center justify-between rounded-lg border p-2.5 text-left transition-colors " +
-                  (selected
-                    ? "border-primary bg-primary/10"
-                    : "border-border bg-card hover:bg-muted")
-                }
-              >
-                <span className="text-sm font-semibold">{s.name}</span>
-                {selected && <Check className="size-4 text-primary" />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {complements.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-base font-semibold">Complementos</p>
-          <div className="grid grid-cols-1 gap-2">
-            {complements.map((c) => {
-              const checked = complementIds.includes(c.id);
-              return (
-                <label
-                  key={c.id}
-                  className={
-                    "flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors " +
-                    (checked ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted")
-                  }
-                >
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={() => onToggleComplement(c.id)}
-                  />
-                  <span className="text-sm font-semibold">{c.name}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {serviceTypeId && (
-        <Badge variant="secondary" className="w-fit">
-          Selecionado: {serviceTypes.find((s) => s.id === serviceTypeId)?.name}
-        </Badge>
-      )}
-    </div>
-  );
+  return null;
 }
