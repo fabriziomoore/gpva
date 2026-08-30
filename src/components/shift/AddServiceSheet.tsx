@@ -38,8 +38,7 @@ type Step = "type" | "viability" | "reason" | "registration" | "payment" | "comp
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 
 // Tipos de serviço que podem ou não resultar em negociação (ex.: "Pós corte").
-// Ao selecionar um deles, perguntamos ao usuário se houve negociação antes de
-// decidir qual fluxo seguir.
+// Após perguntar se é viável/inviável, se for viável, perguntamos se houve negociação.
 function isNegotiableType(t: ServiceType | null): boolean {
   if (!t || t.is_negotiation) return false;
   return (
@@ -260,8 +259,42 @@ export function AddServiceSheet({
 
   function pickType(t: ServiceType) {
     setType(t);
-    if (isNegotiableType(t)) setStep("negotiationCheck");
-    else setStep("viability");
+    // Sempre vai para viabilidade primeiro — a pergunta de negociação
+    // vem DEPOIS, só se for viável e o tipo for negociável.
+    setStep("viability");
+  }
+
+  // Chamada quando o usuário escolhe Viável ou Inviável.
+  // Se viável + tipo negociável (pós corte), pergunta sobre negociação.
+  // Caso contrário, segue direto para o próximo passo.
+  function onViabilityChosen(viable: boolean) {
+    if (!viable) {
+      // Inviável: vai para motivo, sem perguntar sobre negociação.
+      setNegotiatedOverride(false);
+      setStep("reason");
+      return;
+    }
+    // Viável: se for tipo negociável, pergunta se houve negociação;
+    // senão, vai direto para complementos.
+    if (isNegotiableType(type)) {
+      setStep("negotiationCheck");
+    } else {
+      setNegotiatedOverride(false);
+      setStep("complements");
+    }
+  }
+
+  function stepTitle(): string {
+    if (editService && step !== "type") return "Editar";
+    switch (step) {
+      case "type": return "Tipo de Serviço";
+      case "negotiationCheck": return ""; // título customizado no JSX
+      case "viability": return type?.name ?? "";
+      case "reason": return "Motivo da inviabilidade";
+      case "registration": return "Matrícula";
+      case "payment": return "Forma de pagamento";
+      case "complements": return "Complemento(s) do Serviço";
+    }
   }
 
   return (
@@ -270,14 +303,7 @@ export function AddServiceSheet({
         <SheetHeader className="border-b border-border p-4">
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left text-base">
-              {editService && "Editar — "}
-              {step === "type" && "Tipo de Serviço"}
-              {step === "negotiationCheck" && type?.name}
-              {step === "viability" && type?.name}
-              {step === "reason" && "Motivo da inviabilidade"}
-              {step === "registration" && "Matrícula"}
-              {step === "payment" && "Forma de pagamento"}
-              {step === "complements" && "Complemento(s) do Serviço"}
+              {stepTitle()}
             </SheetTitle>
             <div className="flex items-center gap-2">
               {canReorder && (
@@ -331,11 +357,43 @@ export function AddServiceSheet({
             )
           )}
 
-          {step === "negotiationCheck" && (
+          {step === "viability" && (
             <div className="space-y-4">
               <p className="text-center text-sm text-muted-foreground">
-                Este {type?.name} foi negociado com o cliente?
+                Este {type?.name} foi viável?
               </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  disabled={saving}
+                  onClick={() => onViabilityChosen(true)}
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
+                >
+                  <CheckCircle2 className="size-12" />
+                  <span className="text-xl">Viável</span>
+                </button>
+                <button
+                  disabled={saving}
+                  onClick={() => onViabilityChosen(false)}
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
+                >
+                  <XCircle className="size-12" />
+                  <span className="text-xl">Inviável</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === "negotiationCheck" && (
+            <div className="space-y-4">
+              {/* Título destacado para chamar atenção */}
+              <div className="rounded-2xl bg-primary/10 border-2 border-primary px-4 py-5 text-center">
+                <p className="text-lg font-bold text-primary">
+                  Houve negociação com o cliente?
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Responda para definir o fluxo deste {type?.name}.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   disabled={saving}
@@ -343,7 +401,7 @@ export function AddServiceSheet({
                     setNegotiatedOverride(true);
                     setStep("registration");
                   }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-primary transition-colors hover:border-primary hover:bg-primary/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-primary/40 bg-card font-bold text-primary transition-colors hover:border-primary hover:bg-primary/10"
                 >
                   <Banknote className="size-12" />
                   <span className="text-xl">Sim, negociado</span>
@@ -352,7 +410,7 @@ export function AddServiceSheet({
                   disabled={saving}
                   onClick={() => {
                     setNegotiatedOverride(false);
-                    setStep("viability");
+                    setStep("complements");
                   }}
                   className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-foreground transition-colors hover:border-primary hover:bg-accent"
                 >
@@ -360,30 +418,6 @@ export function AddServiceSheet({
                   <span className="text-xl">Não</span>
                 </button>
               </div>
-            </div>
-          )}
-
-          {step === "viability" && (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                disabled={saving}
-                onClick={() => {
-                  if (isNegotiation) setStep("registration");
-                  else setStep("complements");
-                }}
-                className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
-              >
-                <CheckCircle2 className="size-12" />
-                <span className="text-xl">Viável</span>
-              </button>
-              <button
-                disabled={saving}
-                onClick={() => setStep("reason")}
-                className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
-              >
-                <XCircle className="size-12" />
-                <span className="text-xl">Inviável</span>
-              </button>
             </div>
           )}
 
