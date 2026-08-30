@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { repoAddService, repoAttachServiceLocation, repoSaveCatalogOrder } from "@/lib/db/repos";
+import {
+  repoAddService,
+  repoAttachServiceLocation,
+  repoSaveCatalogOrder,
+  repoUpdateService,
+} from "@/lib/db/repos";
+import type { LocalService } from "@/lib/db/local-db";
 import {
   useServiceTypesCached,
   useReasonsCached,
@@ -51,11 +57,16 @@ export function AddServiceSheet({
   onOpenChange,
   teamId,
   shiftId,
+  editService = null,
+  editComplements = [],
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   teamId: string;
   shiftId: string;
+  /** Quando presente, o sheet abre em modo de edição pré-preenchido. */
+  editService?: LocalService | null;
+  editComplements?: { id: string | null; name: string }[];
 }) {
   const qc = useQueryClient();
   const [step, setStep] = useState<Step>("type");
@@ -90,9 +101,39 @@ export function AddServiceSheet({
       setValorParcelado("");
       setParcelas("");
       setNegotiatedOverride(false);
+      if (editService) {
+        // Pré-preenche o fluxo com os dados atuais do serviço. Para tipos
+        // negociáveis como "Pós corte", o flag de negociação mora no
+        // negotiatedOverride (o tipo do catálogo em si não é de negociação).
+        const t: ServiceType = {
+          id: editService.service_type_id ?? "",
+          name: editService.service_type_name,
+          is_negotiation: editService.is_negotiation,
+        };
+        if (editService.is_negotiation && isNegotiableType({ ...t, is_negotiation: false })) {
+          t.is_negotiation = false;
+          setNegotiatedOverride(true);
+        }
+        setType(t);
+        if (editService.reason_id || editService.reason_name) {
+          setReason({
+            id: editService.reason_id ?? "",
+            name: editService.reason_name ?? "",
+          });
+        }
+        setRegistration(editService.registration_number ?? "");
+        if (editService.is_negotiation && editService.negotiated_value != null) {
+          // Não sabemos a divisão original à vista/parcelado: pré-preenche o
+          // total no campo parcelado e o usuário ajusta se necessário.
+          setValorParcelado(String(editService.negotiated_value).replace(".", ","));
+        }
+        setSelectedComplements(
+          new Set(editComplements.map((c) => c.id).filter((v): v is string => !!v)),
+        );
+      }
       void fetchAndCacheCatalogOrder(teamId);
     }
-  }, [open, teamId]);
+  }, [open, teamId, editService, editComplements]);
 
   const types = useServiceTypesCached();
   const reasons = useReasonsCached();
@@ -144,6 +185,25 @@ export function AddServiceSheet({
       const chosen = (complements.data ?? []).filter((c) =>
         (opts.complementIds ?? []).includes(c.id),
       );
+      if (editService) {
+        // Edição: preserva id/created_at e a localização já capturada.
+        const updated = await repoUpdateService({
+          service_id: editService.id,
+          service_type_id: type.id || null,
+          service_type_name: type.name,
+          is_negotiation: isNegotiation,
+          viable: opts.viable,
+          reason_id: opts.reasonId ?? null,
+          reason_name: opts.reasonName ?? null,
+          registration_number: opts.registration ?? null,
+          negotiated_value: opts.negotiated ?? null,
+          complements: chosen.map((c) => ({ id: c.id, name: c.name })),
+        });
+        await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
+        toast.success("Serviço atualizado");
+        onOpenChange(false);
+        return updated.id;
+      }
       // Captura GPS em paralelo: espera pouco para gravar junto; se o Android
       // entregar a posição depois (comum offline), anexamos ao registro local.
       const fixPromise = tryGetGeoFix(8_000);
@@ -210,6 +270,7 @@ export function AddServiceSheet({
         <SheetHeader className="border-b border-border p-4">
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left text-base">
+              {editService && "Editar — "}
               {step === "type" && "Tipo de Serviço"}
               {step === "negotiationCheck" && type?.name}
               {step === "viability" && type?.name}

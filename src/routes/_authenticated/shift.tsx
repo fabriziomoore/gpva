@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin } from "lucide-react";
+import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X } from "lucide-react";
+import { repoDeleteService } from "@/lib/db/repos";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -37,6 +38,10 @@ function ShiftPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [pendingForms, setPendingForms] = useState<LocalService[] | null>(null);
+  const [selectedService, setSelectedService] = useState<LocalService | null>(null);
+  const [editTarget, setEditTarget] = useState<LocalService | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LocalService | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
@@ -71,6 +76,32 @@ function ShiftPage() {
     }
     return map;
   }, [complementLinks]);
+
+  // Versão completa (id + nome) para pré-preencher o fluxo de edição.
+  const complementRowsByService = useMemo(() => {
+    const map = new Map<string, { id: string | null; name: string }[]>();
+    for (const c of complementLinks ?? []) {
+      const arr = map.get(c.service_id) ?? [];
+      arr.push({ id: c.complement_id ?? null, name: c.complement_name });
+      map.set(c.service_id, arr);
+    }
+    return map;
+  }, [complementLinks]);
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await repoDeleteService(deleteTarget.id);
+      toast.success("Serviço excluído");
+      setDeleteTarget(null);
+      setSelectedService(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const loading = openShift === undefined || services === undefined;
 
@@ -167,7 +198,13 @@ function ShiftPage() {
             </p>
           )}
           {services.map((s) => (
-            <ServiceRow key={s.id} s={s} complementsByService={complementsByService} />
+            <ServiceRow
+              key={s.id}
+              s={s}
+              complementsByService={complementsByService}
+              selected={selectedService?.id === s.id}
+              onLongPress={(svc) => setSelectedService(svc)}
+            />
           ))}
         </div>
       <div
@@ -186,6 +223,44 @@ function ShiftPage() {
         </div>
       </div>
 
+      {selectedService && (
+        <div
+          className="fixed inset-x-0 z-40 mx-auto flex max-w-md items-center gap-2 px-4 pt-[max(env(safe-area-inset-top,0px),0.5rem)]"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+        >
+          <div className="flex flex-1 items-center justify-between gap-2 rounded-2xl border border-border bg-card p-2 shadow-lg">
+            <button
+              type="button"
+              aria-label="Fechar ações"
+              onClick={() => setSelectedService(null)}
+              className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
+              {selectedService.service_type_name}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditTarget(selectedService);
+                setSelectedService(null);
+              }}
+            >
+              <Pencil className="mr-1 size-4" /> Editar
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setDeleteTarget(selectedService)}
+            >
+              <Trash2 className="mr-1 size-4" /> Excluir
+            </Button>
+          </div>
+        </div>
+      )}
+
       {userId && openShift && (
         <>
           <AddServiceSheet
@@ -193,6 +268,16 @@ function ShiftPage() {
             onOpenChange={setAddOpen}
             teamId={userId}
             shiftId={openShift.id}
+          />
+          <AddServiceSheet
+            open={editTarget !== null}
+            onOpenChange={(v) => {
+              if (!v) setEditTarget(null);
+            }}
+            teamId={userId}
+            shiftId={openShift.id}
+            editService={editTarget}
+            editComplements={editTarget ? (complementRowsByService.get(editTarget.id) ?? []) : []}
           />
           <FinishShiftSheet
             open={finishOpen}
@@ -230,6 +315,32 @@ function ShiftPage() {
               Finalizar mesmo assim
             </Button>
             <Button onClick={() => void sendFirstPending()}>Enviar</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `"${deleteTarget.service_type_name}" será excluído permanentemente do dispositivo e do banco de dados.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" disabled={deleting} onClick={() => void confirmDelete()}>
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : "Excluir"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -283,15 +394,53 @@ function Kpi({
 function ServiceRow({
   s,
   complementsByService,
+  selected,
+  onLongPress,
 }: {
   s: LocalService;
   complementsByService: Map<string, string[]>;
+  selected?: boolean;
+  onLongPress?: (s: LocalService) => void;
 }) {
   const formsStatus = useFormsStatus(s.id);
   const isSynced = s.sync_state === "synced";
   const hasLocation = s.lat != null && s.lng != null;
+
+  // Long-press (500 ms) abre a barra de ações (editar/excluir) no topo.
+  const pressTimer = useRef<number | null>(null);
+  const firedRef = useRef(false);
+  const clearPress = () => {
+    if (pressTimer.current != null) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+  const pressHandlers = onLongPress
+    ? {
+        onPointerDown: () => {
+          firedRef.current = false;
+          clearPress();
+          pressTimer.current = window.setTimeout(() => {
+            firedRef.current = true;
+            onLongPress(s);
+          }, 500);
+        },
+        onPointerUp: clearPress,
+        onPointerLeave: clearPress,
+        onPointerCancel: clearPress,
+        onPointerMove: clearPress,
+        onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+      }
+    : {};
+
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+    <div
+      {...pressHandlers}
+      className={
+        "flex touch-pan-y items-center justify-between rounded-xl border bg-card p-3 select-none transition-colors " +
+        (selected ? "border-primary ring-2 ring-primary/40" : "border-border")
+      }
+    >
       <div className="flex items-center gap-3">
         {s.is_negotiation ? (
           <Banknote className="size-5 text-primary" />
