@@ -318,6 +318,32 @@ function ShiftPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `"${deleteTarget.service_type_name}" será excluído permanentemente do dispositivo e do banco de dados.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" disabled={deleting} onClick={() => void confirmDelete()}>
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : "Excluir"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
@@ -368,15 +394,53 @@ function Kpi({
 function ServiceRow({
   s,
   complementsByService,
+  selected,
+  onLongPress,
 }: {
   s: LocalService;
   complementsByService: Map<string, string[]>;
+  selected?: boolean;
+  onLongPress?: (s: LocalService) => void;
 }) {
   const formsStatus = useFormsStatus(s.id);
   const isSynced = s.sync_state === "synced";
   const hasLocation = s.lat != null && s.lng != null;
+
+  // Long-press (500 ms) abre a barra de ações (editar/excluir) no topo.
+  const pressTimer = useRef<number | null>(null);
+  const firedRef = useRef(false);
+  const clearPress = () => {
+    if (pressTimer.current != null) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+  const pressHandlers = onLongPress
+    ? {
+        onPointerDown: () => {
+          firedRef.current = false;
+          clearPress();
+          pressTimer.current = window.setTimeout(() => {
+            firedRef.current = true;
+            onLongPress(s);
+          }, 500);
+        },
+        onPointerUp: clearPress,
+        onPointerLeave: clearPress,
+        onPointerCancel: clearPress,
+        onPointerMove: clearPress,
+        onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+      }
+    : {};
+
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+    <div
+      {...pressHandlers}
+      className={
+        "flex touch-pan-y items-center justify-between rounded-xl border bg-card p-3 select-none transition-colors " +
+        (selected ? "border-primary ring-2 ring-primary/40" : "border-border")
+      }
+    >
       <div className="flex items-center gap-3">
         {s.is_negotiation ? (
           <Banknote className="size-5 text-primary" />
