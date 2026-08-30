@@ -101,9 +101,39 @@ export function AddServiceSheet({
       setValorParcelado("");
       setParcelas("");
       setNegotiatedOverride(false);
+      if (editService) {
+        // Pré-preenche o fluxo com os dados atuais do serviço. Para tipos
+        // negociáveis como "Pós corte", o flag de negociação mora no
+        // negotiatedOverride (o tipo do catálogo em si não é de negociação).
+        const t: ServiceType = {
+          id: editService.service_type_id ?? "",
+          name: editService.service_type_name,
+          is_negotiation: editService.is_negotiation,
+        };
+        if (editService.is_negotiation && isNegotiableType({ ...t, is_negotiation: false })) {
+          t.is_negotiation = false;
+          setNegotiatedOverride(true);
+        }
+        setType(t);
+        if (editService.reason_id || editService.reason_name) {
+          setReason({
+            id: editService.reason_id ?? "",
+            name: editService.reason_name ?? "",
+          });
+        }
+        setRegistration(editService.registration_number ?? "");
+        if (editService.is_negotiation && editService.negotiated_value != null) {
+          // Não sabemos a divisão original à vista/parcelado: pré-preenche o
+          // total no campo parcelado e o usuário ajusta se necessário.
+          setValorParcelado(String(editService.negotiated_value).replace(".", ","));
+        }
+        setSelectedComplements(
+          new Set(editComplements.map((c) => c.id).filter((v): v is string => !!v)),
+        );
+      }
       void fetchAndCacheCatalogOrder(teamId);
     }
-  }, [open, teamId]);
+  }, [open, teamId, editService, editComplements]);
 
   const types = useServiceTypesCached();
   const reasons = useReasonsCached();
