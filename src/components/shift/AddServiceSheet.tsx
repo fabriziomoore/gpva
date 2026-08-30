@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { repoAddService, repoAttachServiceLocation, repoSaveCatalogOrder } from "@/lib/db/repos";
+import {
+  repoAddService,
+  repoAttachServiceLocation,
+  repoSaveCatalogOrder,
+  repoUpdateService,
+} from "@/lib/db/repos";
+import type { LocalService } from "@/lib/db/local-db";
 import {
   useServiceTypesCached,
   useReasonsCached,
@@ -51,11 +57,16 @@ export function AddServiceSheet({
   onOpenChange,
   teamId,
   shiftId,
+  editService = null,
+  editComplements = [],
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   teamId: string;
   shiftId: string;
+  /** Quando presente, o sheet abre em modo de edição pré-preenchido. */
+  editService?: LocalService | null;
+  editComplements?: { id: string | null; name: string }[];
 }) {
   const qc = useQueryClient();
   const [step, setStep] = useState<Step>("type");
