@@ -1,739 +1,915 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  repoAddService,
-  repoAttachServiceLocation,
-  repoSaveCatalogOrder,
-  repoUpdateService,
-} from "@/lib/db/repos";
-import type { LocalService } from "@/lib/db/local-db";
-import {
-  useServiceTypesCached,
-  useReasonsCached,
-  useComplementsCached,
-  useOrdered,
-  fetchAndCacheCatalogOrder,
-} from "@/lib/db/catalogs";
-import { getLocalDB } from "@/lib/db/local-db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, XCircle, ArrowUpDown, Check, X, Banknote } from "lucide-react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { ReorderableGrid } from "./ReorderableGrid";
-import { useTeam } from "@/hooks/use-team";
 import {
-  submitNegotiationToGoogleForm,
-  PAYMENT_OPTIONS,
-  type PaymentOption,
-} from "@/lib/google-form";
-import { buildCaption } from "@/lib/share-negotiation";
-import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
-import { tryGetGeoFix } from "@/lib/geo";
+  X, ChevronRight, Check, Plus, Search, Scissors, Banknote,
+  CheckCircle2, XCircle, MapPin, AlertTriangle, Loader2,
+  GripVertical,
+} from "lucide-react";
+import { getLocalDB, type LocalService } from "@/lib/db/local-db";
+import { repoUpsertService, repoUpsertComplementLink } from "@/lib/db/repos";
+import { formatBRL } from "@/lib/format";
+import { reverseGeocode } from "@/lib/reverse-geocode";
+import { submitNegotiationToGoogleForm, getNegotiationFormUrl } from "@/lib/google-form";
+import { setFormsStatus, getFormsStatus } from "@/lib/forms-status";
+import { useOrdered } from "@/lib/db/catalogs";
 
-type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck";
+// ─── Tipos ───────────────────────────────────────────────────────────────────
+type Step =
+  | "type"
+  | "postCorteViability"
+  | "reason"
+  | "registration"
+  | "negotiationCheck"
+  | "negotiationDetails"
+  | "complements"
+  | "payment"
+  | "details";
 
-type ServiceType = { id: string; name: string; is_negotiation: boolean };
-
-// Tipos de serviço que podem ou não resultar em negociação (ex.: "Pós corte").
-// Após perguntar se é viável/inviável, se for viável, perguntamos se houve negociação.
-function isNegotiableType(t: ServiceType | null): boolean {
-  if (!t || t.is_negotiation) return false;
-  return (
-    t.name
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase()
-      .trim() === "pos corte"
-  );
+interface ServiceType {
+  id: string;
+  name: string;
+  requires_negotiation: boolean;
+  requires_complements: boolean;
+  requires_registration: boolean;
+  service_category?: string;
 }
-type Reason = { id: string; name: string };
 
+interface Complement {
+  id: string;
+  name: string;
+}
+
+interface Reason {
+  id: string;
+  name: string;
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 export function AddServiceSheet({
   open,
   onOpenChange,
   teamId,
   shiftId,
-  editService = null,
-  editComplements = [],
+  editService,
+  editComplements,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   teamId: string;
   shiftId: string;
-  /** Quando presente, o sheet abre em modo de edição pré-preenchido. */
   editService?: LocalService | null;
   editComplements?: { id: string | null; name: string }[];
 }) {
-  const qc = useQueryClient();
   const [step, setStep] = useState<Step>("type");
-  const [type, setType] = useState<ServiceType | null>(null);
-  const [reason, setReason] = useState<Reason | null>(null);
+  const [search, setSearch] = useState("");
+
+  // Tipo
+  const [selectedType, setSelectedType] = useState<ServiceType | null>(null);
+
+  // Viabilidade (Pós corte)
+  const [postCorteViable, setPostCorteViable] = useState<boolean | null>(null);
+
+  // Motivo de inviabilidade
+  const [selectedReason, setSelectedReason] = useState<Reason | null>(null);
+  const [reasonSearch, setReasonSearch] = useState("");
+
+  // Matrícula
   const [registration, setRegistration] = useState("");
-  const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
-  const [saving, setSaving] = useState(false);
-  const [reorderMode, setReorderMode] = useState(false);
-  const [payments, setPayments] = useState<Set<PaymentOption>>(new Set());
-  const [valorAVista, setValorAVista] = useState("");
-  const [valorParcelado, setValorParcelado] = useState("");
+
+  // Negociação
+  const [isNegotiation, setIsNegotiation] = useState<boolean | null>(null);
+  const [negotiatedValue, setNegotiatedValue] = useState("");
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
   const [parcelas, setParcelas] = useState("");
-  const [negotiatedOverride, setNegotiatedOverride] = useState(false);
-  const team = useTeam(teamId).data;
 
-  // Serviço segue o fluxo de negociação quando o tipo já é de negociação
-  // (catálogo) ou quando o usuário respondeu "Sim" para tipos negociáveis
-  // como "Pós corte".
-  const isNegotiation = type?.is_negotiation === true || negotiatedOverride;
+  // Complementos
+  const [selectedComplements, setSelectedComplements] = useState<string[]>([]);
+  const [complementSearch, setComplementSearch] = useState("");
 
+  // GPS
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "ok" | "fail">("idle");
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Saving
+  const [saving, setSaving] = useState(false);
+
+  // ─── Catalogos ──────────────────────────────────────────────────────────────
+  const { data: typesRaw } = useOrdered<ServiceType>("service_types");
+  const { data: complementsRaw } = useOrdered<Complement>("complements");
+  const { data: reasonsRaw } = useOrdered<Reason>("unviability_reasons");
+  const { data: paymentsRaw } = useOrdered<PaymentMethod>("payment_methods");
+
+  const serviceTypes: ServiceType[] = typesRaw ?? [];
+  const complements: Complement[] = complementsRaw ?? [];
+  const reasons: Reason[] = reasonsRaw ?? [];
+  const payments: PaymentMethod[] = paymentsRaw ?? [];
+
+  // ─── Init / edit ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (open) {
+    if (!open) {
       setStep("type");
-      setType(null);
-      setReason(null);
+      setSearch("");
+      setSelectedType(null);
+      setPostCorteViable(null);
+      setSelectedReason(null);
+      setReasonSearch("");
       setRegistration("");
-      setSelectedComplements(new Set());
-      setReorderMode(false);
-      setPayments(new Set());
-      setValorAVista("");
-      setValorParcelado("");
+      setIsNegotiation(null);
+      setNegotiatedValue("");
+      setSelectedPaymentMethods([]);
       setParcelas("");
-      setNegotiatedOverride(false);
-      if (editService) {
-        // Pré-preenche o fluxo com os dados atuais do serviço. Para tipos
-        // negociáveis como "Pós corte", o flag de negociação mora no
-        // negotiatedOverride (o tipo do catálogo em si não é de negociação).
-        const t: ServiceType = {
-          id: editService.service_type_id ?? "",
-          name: editService.service_type_name,
-          is_negotiation: editService.is_negotiation,
-        };
-        if (editService.is_negotiation && isNegotiableType({ ...t, is_negotiation: false })) {
-          t.is_negotiation = false;
-          setNegotiatedOverride(true);
-        }
-        setType(t);
-        if (editService.reason_id || editService.reason_name) {
-          setReason({
-            id: editService.reason_id ?? "",
-            name: editService.reason_name ?? "",
-          });
-        }
-        setRegistration(editService.registration_number ?? "");
-        if (editService.is_negotiation && editService.negotiated_value != null) {
-          // Não sabemos a divisão original à vista/parcelado: pré-preenche o
-          // total no campo parcelado e o usuário ajusta se necessário.
-          setValorParcelado(String(editService.negotiated_value).replace(".", ","));
-        }
-        setSelectedComplements(
-          new Set(editComplements.map((c) => c.id).filter((v): v is string => !!v)),
-        );
-      }
-      void fetchAndCacheCatalogOrder(teamId);
+      setSelectedComplements([]);
+      setComplementSearch("");
+      setGpsStatus("idle");
+      setLocation(null);
+      setSaving(false);
+      return;
     }
-  }, [open, teamId, editService, editComplements]);
+    if (editService) {
+      setSelectedType(
+        serviceTypes.find((t) => t.id === editService.service_type_id) ?? null,
+      );
+      setPostCorteViable(editService.viable);
+      setSelectedReason(
+        reasons.find((r) => r.id === editService.reason_id) ?? null,
+      );
+      setRegistration(editService.registration_number ?? "");
+      setIsNegotiation(editService.is_negotiation);
+      setNegotiatedValue(editService.negotiated_value ? String(editService.negotiated_value) : "");
+      setSelectedPaymentMethods(
+        editService.payment_methods
+          ? (JSON.parse(editService.payment_methods as string) as string[])
+          : [],
+      );
+      setParcelas(editService.parcelas ? String(editService.parcelas) : "");
+      setSelectedComplements(editComplements?.map((c) => c.name) ?? []);
+      setLocation(editService.lat != null && editService.lng != null ? { lat: editService.lat, lng: editService.lng } : null);
+      setGpsStatus(location ? "ok" : "idle");
+      setStep("type");
+    } else {
+      setStep("type");
+      void fetchLocation();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  const types = useServiceTypesCached();
-  const reasons = useReasonsCached();
-  const complements = useComplementsCached();
-
-  const orderedTypes = useOrdered(types.data, "tipos_servico");
-  const orderedReasons = useOrdered(reasons.data, "motivos_inviabilidade");
-
-  // Usage stats now come from the local Dexie mirror so they work offline.
-  const complementUsage = useLiveQuery(async () => {
-    const rows = await getLocalDB().complement_links.toArray();
-    const m = new Map<string, number>();
-    for (const r of rows) m.set(r.complement_name, (m.get(r.complement_name) ?? 0) + 1);
-    return m;
-  }, []);
-
-  const sortedComplements = useMemo(() => {
-    const list = complements.data ?? [];
-    const usage = complementUsage ?? new Map<string, number>();
-    return [...list].sort((a, b) => {
-      const ua = usage.get(a.name) ?? 0;
-      const ub = usage.get(b.name) ?? 0;
-      if (ub !== ua) return ub - ua;
-      return a.name.localeCompare(b.name);
-    });
-  }, [complements.data, complementUsage]);
-  const orderedComplements = useOrdered(sortedComplements, "complementos_servico");
-
-  const canReorder = step === "type" || step === "reason" || step === "complements";
-  useEffect(() => {
-    if (!canReorder && reorderMode) setReorderMode(false);
-  }, [canReorder, reorderMode]);
-
-  function saveOrder(catalog: "tipos_servico" | "motivos_inviabilidade" | "complementos_servico", ids: string[]) {
-    void repoSaveCatalogOrder({ team_id: teamId, catalog, item_ids: ids });
+  // ─── GPS ────────────────────────────────────────────────────────────────────
+  async function fetchLocation() {
+    setGpsStatus("loading");
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 8000,
+          enableHighAccuracy: true,
+        });
+      });
+      setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setGpsStatus("ok");
+    } catch {
+      setGpsStatus("fail");
+      setLocation(null);
+    }
   }
 
-  async function saveService(opts: {
-    viable: boolean;
-    reasonId?: string;
-    reasonName?: string;
-    registration?: string;
-    negotiated?: number;
-    complementIds?: string[];
-  }): Promise<string | null> {
-    if (!type) return null;
+  // ─── Filtros ────────────────────────────────────────────────────────────────
+  const filteredTypes = serviceTypes.filter((t) =>
+    t.name.toLowerCase().includes(search.toLowerCase()),
+  );
+  const filteredComplements = complements.filter((c) =>
+    c.name.toLowerCase().includes(complementSearch.toLowerCase()),
+  );
+  const filteredReasons = reasons.filter((r) =>
+    r.name.toLowerCase().includes(reasonSearch.toLowerCase()),
+  );
+
+  // ─── Avançar passo ──────────────────────────────────────────────────────────
+  function go(type: ServiceType) {
+    setSelectedType(type);
+    setSearch("");
+    if (type.id === "pos-corte" || type.requires_negotiation) {
+      setStep("postCorteViability");
+    } else {
+      if (type.requires_complements) {
+        setStep("complements");
+      } else {
+        void save(type, true, null, null, null, null, null);
+      }
+    }
+  }
+
+  function handlePostCorteViability(viable: boolean) {
+    setPostCorteViable(viable);
+    if (!viable) {
+      setStep("reason");
+    } else {
+      setStep("negotiationCheck");
+    }
+  }
+
+  function handleNegotiationCheck(negotiated: boolean) {
+    setIsNegotiation(negotiated);
+    if (negotiated) {
+      setStep("negotiationDetails");
+    } else {
+      setStep("complements");
+    }
+  }
+
+  function handleComplementToggle(name: string) {
+    setSelectedComplements((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    );
+  }
+
+  function handlePaymentToggle(id: string) {
+    setSelectedPaymentMethods((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+    );
+  }
+
+  // ─── Salvar ─────────────────────────────────────────────────────────────────
+  async function save(
+    type: ServiceType,
+    viable: boolean,
+    reasonId: string | null,
+    reasonName: string | null,
+    isNeg: boolean | null,
+    negValue: number | null,
+    complementNames: string[] | null,
+  ) {
     setSaving(true);
     try {
-      const chosen = (complements.data ?? []).filter((c) =>
-        (opts.complementIds ?? []).includes(c.id),
-      );
-      if (editService) {
-        // Edição: preserva id/created_at e a localização já capturada.
-        const updated = await repoUpdateService({
-          service_id: editService.id,
-          service_type_id: type.id || null,
-          service_type_name: type.name,
-          is_negotiation: isNegotiation,
-          viable: opts.viable,
-          reason_id: opts.reasonId ?? null,
-          reason_name: opts.reasonName ?? null,
-          registration_number: opts.registration ?? null,
-          negotiated_value: opts.negotiated ?? null,
-          complements: chosen.map((c) => ({ id: c.id, name: c.name })),
-        });
-        await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
-        toast.success("Serviço atualizado");
-        onOpenChange(false);
-        return updated.id;
+      const db = getLocalDB();
+      const lat = location?.lat ?? null;
+      const lng = location?.lng ?? null;
+      let address = null;
+      if (lat != null && lng != null) {
+        try {
+          address = await reverseGeocode(lat, lng);
+        } catch {
+          /* offline */
+        }
       }
-      // Captura GPS em paralelo: espera pouco para gravar junto; se o Android
-      // entregar a posição depois (comum offline), anexamos ao registro local.
-      const fixPromise = tryGetGeoFix(8_000);
-      const fix = await withSoftTimeout(fixPromise, 1_200);
-      const created = await repoAddService({
-        team_id: teamId,
+
+      const regNumber = registration.trim() || null;
+      const paymentMethodsJson = selectedPaymentMethods.length > 0
+        ? JSON.stringify(selectedPaymentMethods)
+        : null;
+      const qtdParcelas = parcelas ? parseInt(parcelas, 10) : null;
+
+      await repoUpsertService({
+        id: editService?.id,
         shift_id: shiftId,
+        team_id: teamId,
         service_type_id: type.id,
         service_type_name: type.name,
-        is_negotiation: isNegotiation,
-        viable: opts.viable,
-        reason_id: opts.reasonId ?? null,
-        reason_name: opts.reasonName ?? null,
-        registration_number: opts.registration ?? null,
-        negotiated_value: opts.negotiated ?? null,
-        complements: chosen.map((c) => ({ id: c.id, name: c.name })),
-        lat: fix?.lat ?? null,
-        lng: fix?.lng ?? null,
-        accuracy_m: fix?.accuracy_m ?? null,
-        captured_at: fix?.captured_at ?? null,
+        viable,
+        reason_id: reasonId,
+        reason_name: reasonName,
+        registration_number: regNumber,
+        is_negotiation: isNeg ?? false,
+        negotiated_value: negValue,
+        payment_methods: paymentMethodsJson,
+        parcelas: qtdParcelas,
+        lat,
+        lng,
+        address,
       });
 
-      if (!fix) {
-        void fixPromise.then((lateFix) => {
-          if (!lateFix) return;
-          return repoAttachServiceLocation({
-            service_id: created.id,
-            lat: lateFix.lat,
-            lng: lateFix.lng,
-            accuracy_m: lateFix.accuracy_m,
-            captured_at: lateFix.captured_at,
-          });
-        });
+      if (complementNames && complementNames.length > 0) {
+        const svcRow = await db.services
+          .where("[shift_id+team_id+service_type_id]")
+          .between([shiftId, teamId, type.id], [shiftId, teamId, type.id + "\uffff"])
+          .last();
+        if (svcRow) {
+          await db.complement_links
+            .where("service_id")
+            .equals(svcRow.id)
+            .delete();
+          for (const name of complementNames) {
+            const compRow = complements.find((c) => c.name === name);
+            await repoUpsertComplementLink({
+              shift_id: shiftId,
+              service_id: svcRow.id,
+              complement_id: compRow?.id ?? null,
+              complement_name: name,
+            });
+          }
+        }
       }
 
-      await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
-      toast.success("Serviço registrado");
+      if (isNeg && negValue != null) {
+        const formUrl = getNegotiationFormUrl({
+          matricula: regNumber ?? "",
+          valor: negValue,
+          paymentMethods: selectedPaymentMethods
+            .map((id) => payments.find((p) => p.id === id)?.name ?? "")
+            .filter(Boolean),
+          qtdParcelas,
+        });
+        const opened = await submitNegotiationToGoogleForm(formUrl);
+        const svcRow = await db.services
+          .where("[shift_id+team_id+service_type_id]")
+          .between([shiftId, teamId, type.id], [shiftId, teamId, type.id + "\uffff"])
+          .last();
+        if (svcRow) {
+          setFormsStatus(svcRow.id, opened ? "sent" : "failed");
+        }
+      }
+
       onOpenChange(false);
-      return created.id;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar");
-      return null;
     } finally {
       setSaving(false);
     }
   }
 
-  function withSoftTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T | null> {
-    return Promise.race([
-      promise,
-      new Promise<null>((resolve) => window.setTimeout(() => resolve(null), timeoutMs)),
-    ]);
-  }
+  // ─── Concluir ───────────────────────────────────────────────────────────────
+  async function finishFlow() {
+    if (!selectedType) return;
 
-  function pickType(t: ServiceType) {
-    setType(t);
-    // Tipos negociáveis (ex.: 'Pós corte'): a PRIMEIRA pergunta é se houve
-    // negociação. Sim → fluxo de negociação. Não → pergunta viável/inviável.
-    if (isNegotiableType(t)) {
-      setStep("negotiationCheck");
+    const compNames = selectedComplements;
+
+    if (selectedType.id === "pos-corte") {
+      if (postCorteViable === null) return;
+      if (!postCorteViable) {
+        await save(
+          selectedType,
+          false,
+          selectedReason?.id ?? null,
+          selectedReason?.name ?? null,
+          null,
+          null,
+          compNames.length > 0 ? compNames : null,
+        );
+      } else {
+        if (isNegotiation === null) return;
+        if (isNegotiation) {
+          const val = parseFloat(negotiatedValue.replace(",", ".")) || null;
+          await save(
+            selectedType,
+            true,
+            null,
+            null,
+            true,
+            val,
+            compNames.length > 0 ? compNames : null,
+          );
+        } else {
+          await save(
+            selectedType,
+            true,
+            null,
+            null,
+            false,
+            null,
+            compNames.length > 0 ? compNames : null,
+          );
+        }
+      }
       return;
     }
-    if (t.is_negotiation) {
-      setStep("registration");
+
+    if (selectedType.requires_negotiation) {
+      const val = parseFloat(negotiatedValue.replace(",", ".")) || null;
+      await save(
+        selectedType,
+        true,
+        null,
+        null,
+        isNegotiation ?? false,
+        val,
+        compNames.length > 0 ? compNames : null,
+      );
       return;
     }
-    setStep("viability");
+
+    await save(selectedType, true, null, null, null, null, compNames.length > 0 ? compNames : null);
   }
 
-  // Chamada quando o usuário escolhe Viável ou Inviável (ramo "não negociado").
-  // - Inviável → vai para motivo.
-  // - Viável → vai direto para complementos.
-  function onViabilityChosen(viable: boolean) {
-    if (!viable) {
-      setStep("reason");
-      return;
-    }
-    setStep("complements");
-  }
-
-  function stepTitle(): string {
-    if (editService && step !== "type") return "Editar";
-    switch (step) {
-      case "type": return "Tipo de Serviço";
-      case "negotiationCheck": return "Negociação"; // título no header, conteúdo customizado no JSX
-      case "viability": return type?.name ?? "";
-      case "reason": return "Motivo da inviabilidade";
-      case "registration": return "Matrícula";
-      case "payment": return "Forma de pagamento";
-      case "complements": return "Complemento(s) do Serviço";
-    }
-  }
+  // ─── Renders ────────────────────────────────────────────────────────────────
+  const stepLabel = getStepLabel(step);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" hideClose className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
-        <SheetHeader className="border-b border-border p-4">
-          <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="text-left text-base">
-              {stepTitle()}
-            </SheetTitle>
+      <SheetContent
+        side="bottom"
+        hideClose
+        className="flex h-[92vh] flex-col rounded-t-3xl p-0"
+      >
+        {/* Header */}
+        <SheetHeader className="shrink-0 border-b border-border px-4 pb-3 pt-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {canReorder && (
+              {step !== "type" && (
                 <button
                   type="button"
-                  onClick={() => setReorderMode((v) => !v)}
-                  className={
-                    "flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors " +
-                    (reorderMode
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground")
-                  }
-                  aria-label="Reorganizar"
+                  onClick={() => goBack()}
+                  className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground"
+                  aria-label="Voltar"
                 >
-                  {reorderMode ? <Check className="size-4" /> : <ArrowUpDown className="size-4" />}
-                  {reorderMode ? "Concluído" : "Reorganizar"}
+                  <X className="size-4" />
                 </button>
               )}
-              <SheetClose className="flex size-8 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2">
+              <SheetTitle className="text-left text-base font-semibold">
+                {step === "type" ? "Novo serviço" : stepLabel}
+              </SheetTitle>
+            </div>
+            {step !== "type" && (
+              <SheetClose className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground">
                 <X className="size-4" />
                 <span className="sr-only">Fechar</span>
               </SheetClose>
-            </div>
+            )}
           </div>
+          {step !== "type" && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {selectedType?.name}
+            </p>
+          )}
         </SheetHeader>
 
-        <div className="p-4">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
           {step === "type" && (
-            reorderMode ? (
-              <ReorderableGrid
-                items={orderedTypes.map((t) => ({ id: t.id, name: t.name }))}
-                onReorder={(ids) => saveOrder("tipos_servico", ids)}
-              />
-            ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {orderedTypes.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => pickType(t)}
-                  className="flex h-24 items-center justify-center rounded-2xl border-2 border-border bg-card p-3 text-center text-base font-semibold transition-colors hover:border-primary hover:bg-accent"
-                >
-                  {t.name}
-                </button>
-              ))}
-              {types.isLoading && (
-                <div className="col-span-2 flex justify-center py-10">
-                  <Loader2 className="size-6 animate-spin" />
-                </div>
-              )}
-            </div>
-            )
+            <TypeStep
+              types={filteredTypes}
+              search={search}
+              onSearch={setSearch}
+              onSelect={go}
+              editMode={!!editService}
+            />
           )}
-
-          {step === "viability" && (
-            <div className="space-y-4">
-              <p className="text-center text-sm text-muted-foreground">
-                Este {type?.name} foi viável?
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  disabled={saving}
-                  onClick={() => onViabilityChosen(true)}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
-                >
-                  <CheckCircle2 className="size-12" />
-                  <span className="text-xl">Viável</span>
-                </button>
-                <button
-                  disabled={saving}
-                  onClick={() => onViabilityChosen(false)}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
-                >
-                  <XCircle className="size-12" />
-                  <span className="text-xl">Inviável</span>
-                </button>
-              </div>
-            </div>
+          {step === "postCorteViability" && (
+            <ViabilityStep
+              onSelect={handlePostCorteViability}
+            />
           )}
-
-          {step === "negotiationCheck" && (
-            <div className="space-y-4">
-              {/* Título em destaque: caixa grande com cor primária chamando atenção. */}
-              <div className="rounded-2xl bg-primary/10 border-2 border-primary px-4 py-6 text-center shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-                  Etapa de negociação
-                </p>
-                <p className="mt-2 text-2xl font-extrabold leading-tight text-primary">
-                  Este {type?.name} foi negociado?
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Responda se houve negociação com o cliente.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  disabled={saving}
-                  onClick={() => {
-                    setNegotiatedOverride(true);
-                    setStep("registration");
-                  }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-primary/40 bg-card font-bold text-primary transition-colors hover:border-primary hover:bg-primary/10"
-                >
-                  <Banknote className="size-12" />
-                  <span className="text-xl">Sim, negociado</span>
-                </button>
-                <button
-                  disabled={saving}
-                  onClick={() => {
-                    setNegotiatedOverride(false);
-                    setStep("complements");
-                  }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-foreground transition-colors hover:border-primary hover:bg-accent"
-                >
-                  <XCircle className="size-12 text-muted-foreground" />
-                  <span className="text-xl">Não</span>
-                </button>
-              </div>
-            </div>
-          )}
-
           {step === "reason" && (
-            reorderMode ? (
-              <ReorderableGrid
-                columns={1}
-                items={orderedReasons.map((r) => ({ id: r.id, name: r.name }))}
-                onReorder={(ids) => saveOrder("motivos_inviabilidade", ids)}
-              />
-            ) : (
-            <div className="grid grid-cols-1 gap-2">
-              {orderedReasons.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    setReason(r);
-                    setStep("registration");
-                  }}
-                  className="rounded-xl border border-border bg-card px-4 py-4 text-left text-base font-medium hover:border-primary hover:bg-accent"
-                >
-                  {r.name}
-                </button>
-              ))}
-            </div>
-            )
+            <ReasonStep
+              reasons={filteredReasons}
+              search={reasonSearch}
+              onSearch={setReasonSearch}
+              selectedReason={selectedReason}
+              onSelect={(r) => {
+                setSelectedReason(r);
+                setStep("complements");
+              }}
+            />
           )}
-
-          {step === "registration" && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="mat">Matrícula</Label>
-                <Input
-                  id="mat"
-                  value={registration}
-                  onChange={(e) => setRegistration(e.target.value)}
-                  inputMode="numeric"
-                  placeholder="Ex: 103442500"
-                  className="h-14 text-lg"
-                  autoFocus
-                />
-              </div>
-              <Button
-                disabled={saving || !registration.trim()}
-                onClick={() => {
-                  if (isNegotiation) {
-                    setStep("payment");
-                    return;
-                  }
-                  void saveService({
-                    viable: false,
-                    reasonId: reason?.id,
-                    reasonName: reason?.name,
-                    registration: registration.trim(),
-                  });
-                }}
-                className="h-14 w-full text-base font-semibold"
-              >
-                {saving ? (
-                  <Loader2 className="size-5 animate-spin" />
-                ) : isNegotiation ? (
-                  "Continuar"
-                ) : (
-                  "Salvar"
-                )}
-              </Button>
-            </div>
+          {step === "negotiationCheck" && (
+            <NegotiationCheckStep
+              onSelect={handleNegotiationCheck}
+            />
           )}
-
-          {step === "payment" && (
-            <div className="space-y-4">
-              <div>
-                <Label>Forma(s) de pagamento</Label>
-                <p className="mb-1 text-xs text-muted-foreground">
-                  Toque para selecionar uma ou mais. Ao combinar à vista + parcelado, preencha os dois valores abaixo.
-                </p>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  {PAYMENT_OPTIONS.map((p) => {
-                    const on = payments.has(p);
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setPayments(new Set([p]))}
-                        className={
-                          "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
-                          (on
-                            ? "border-primary bg-primary/15 text-primary"
-                            : "border-border bg-card text-foreground hover:border-primary/50")
-                        }
-                      >
-                        {p}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              {(() => {
-                const hasInstallment =
-                  payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
-                // Quando é parcelado, o campo à vista também abre (opcional) para casos
-                // em que o cliente paga parte à vista e o restante parcelado.
-                const showUpfront = payments.size > 0;
-                const nVista = Number(valorAVista.replace(",", "."));
-                const nParc = Number(valorParcelado.replace(",", "."));
-                const nParcelas = Number(parcelas);
-                const vistaFilled = valorAVista.trim() !== "" && isFinite(nVista) && nVista > 0;
-                const invalidVista = !hasInstallment && !vistaFilled;
-                const invalidParc = hasInstallment && (!valorParcelado.trim() || !isFinite(nParc) || nParc <= 0);
-                // Aceita 1 parcela: crédito à vista (pagamento único no cartão).
-                const invalidQtd = hasInstallment && (!parcelas || nParcelas < 1);
-                return (
-                  <>
-                    {showUpfront && (
-                      <div>
-                        <Label htmlFor="val-vista">Valor à vista (R$)</Label>
-                        <Input
-                          id="val-vista"
-                          value={valorAVista}
-                          onChange={(e) => setValorAVista(e.target.value.replace(/[^0-9.,]/g, ""))}
-                          inputMode="decimal"
-                          placeholder="0,00"
-                          className="h-14 text-lg"
-                        />
-                      </div>
-                    )}
-                    {hasInstallment && (
-                      <>
-                        <div>
-                          <Label htmlFor="val-parc">Valor total parcelado (R$)</Label>
-                          <Input
-                            id="val-parc"
-                            value={valorParcelado}
-                            onChange={(e) => setValorParcelado(e.target.value.replace(/[^0-9.,]/g, ""))}
-                            inputMode="decimal"
-                            placeholder="0,00"
-                            className="h-14 text-lg"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="parc">Quantidade de parcelas</Label>
-                          <Input
-                            id="parc"
-                            value={parcelas}
-                            onChange={(e) => setParcelas(e.target.value.replace(/[^0-9]/g, ""))}
-                            inputMode="numeric"
-                            placeholder="Ex: 6"
-                            className="h-14 text-lg"
-                          />
-                        </div>
-                      </>
-                    )}
-                    <Button
-                      disabled={
-                        saving ||
-                        !registration.trim() ||
-                        payments.size === 0 ||
-                        invalidVista ||
-                        invalidParc ||
-                        invalidQtd
-                      }
-                      onClick={() => setStep("complements")}
-                      className="h-14 w-full text-base font-semibold"
-                    >
-                      Continuar
-                    </Button>
-                  </>
-                );
-              })()}
-            </div>
+          {step === "negotiationDetails" && (
+            <NegotiationDetailsStep
+              negotiatedValue={negotiatedValue}
+              onNegotiatedValueChange={setNegotiatedValue}
+              selectedPaymentMethods={selectedPaymentMethods}
+              onPaymentToggle={handlePaymentToggle}
+              payments={payments}
+              parcelas={parcelas}
+              onParcelasChange={setParcelas}
+              onContinue={() => setStep("complements")}
+            />
           )}
-
           {step === "complements" && (
-            <div className="space-y-4">
-              {!reorderMode && (
-                <p className="text-sm text-muted-foreground">
-                  Selecione os complementos (opcional). Toque em Finalizar para concluir.
-                </p>
-              )}
-              {reorderMode ? (
-                <ReorderableGrid
-                  items={orderedComplements.map((c) => ({ id: c.id, name: c.name }))}
-                  onReorder={(ids) => saveOrder("complementos_servico", ids)}
-                />
+            <ComplementStep
+              complements={filteredComplements}
+              search={complementSearch}
+              onSearch={setComplementSearch}
+              selected={selectedComplements}
+              onToggle={handleComplementToggle}
+            />
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 border-t border-border p-4 pb-safe">
+          {step === "complements" && (
+            <Button
+              onClick={finishFlow}
+              disabled={saving}
+              className="h-12 w-full text-base font-semibold"
+            >
+              {saving ? (
+                <Loader2 className="size-5 animate-spin" />
               ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {orderedComplements.map((c) => {
-                  const on = selectedComplements.has(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        setSelectedComplements((prev) => {
-                          const n = new Set(prev);
-                          if (n.has(c.id)) n.delete(c.id);
-                          else n.add(c.id);
-                          return n;
-                        });
-                      }}
-                      className={
-                        "rounded-xl border-2 px-3 py-4 text-sm font-medium transition-colors " +
-                        (on
-                          ? "border-primary bg-primary/15 text-primary"
-                          : "border-border bg-card text-foreground hover:border-primary/50")
-                      }
-                    >
-                      {c.name}
-                    </button>
-                  );
-                })}
-              </div>
+                <>
+                  <Check className="mr-2 size-5" /> Concluir
+                </>
               )}
-              {!reorderMode && (
-              (() => {
-                const hasInstallment =
-                  payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
-                const rawVista = Number(valorAVista.replace(",", "."));
-                const nVista = valorAVista.trim() && isFinite(rawVista) && rawVista > 0 ? rawVista : 0;
-                const nParc = hasInstallment ? Number(valorParcelado.replace(",", ".")) : 0;
-                const nParcelas = hasInstallment ? Number(parcelas) : 0;
-                const negotiated = isNegotiation
-                  ? (isFinite(nVista) ? nVista : 0) + (isFinite(nParc) ? nParc : 0)
-                  : undefined;
-                const submission =
-                  isNegotiation && payments.size > 0 && negotiated != null && negotiated > 0
-                    ? {
-                        date: new Date(),
-                        leader: team?.leader,
-                        setor: team?.setor_nome,
-                        matricula: registration.trim(),
-                        paymentMethods: Array.from(payments),
-                        valorAVista: nVista > 0 ? nVista : undefined,
-                        valorTotalParcelado: hasInstallment ? nParc : undefined,
-                        qtdParcelas: hasInstallment ? nParcelas : undefined,
-                      }
-                    : null;
-
-                const finalizeService = () =>
-                  saveService({
-                    viable: true,
-                    negotiated,
-                    registration: isNegotiation ? registration.trim() : undefined,
-                    complementIds: Array.from(selectedComplements),
-                  });
-
-                if (!submission) {
-                  return (
-                    <Button
-                      disabled={saving}
-                      onClick={finalizeService}
-                      className="h-14 w-full text-base font-semibold"
-                    >
-                      {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar"}
-                    </Button>
-                  );
-                }
-
-                return (
-                  <div className="space-y-2">
-                    <Button
-                      disabled={saving}
-                      onClick={async () => {
-                        const online = typeof navigator === "undefined" ? true : navigator.onLine;
-                        if (!online) {
-                          const serviceId = await finalizeService();
-                          if (serviceId) {
-                            saveFailedPayload(serviceId, submission);
-                            setFormsStatus(serviceId, "failed");
-                          }
-                          toast.warning(
-                            "Sem conexão — Forms marcado como pendente. Toque no rótulo depois para enviar.",
-                          );
-                          return;
-                        }
-                        const caption = buildCaption(submission);
-                        try {
-                          await navigator.clipboard.writeText(caption);
-                        } catch {
-                          /* alguns navegadores exigem gesto — ignorado */
-                        }
-                        const [serviceId, result] = await Promise.all([
-                          finalizeService(),
-                          submitNegotiationToGoogleForm(submission)
-                            .then((opened) => ({ ok: opened as boolean, err: null as unknown }))
-                            .catch((err: unknown) => ({ ok: false, err })),
-                        ]);
-                        if (serviceId) {
-                          setFormsStatus(serviceId, result.ok ? "sent" : "failed");
-                          if (!result.ok) saveFailedPayload(serviceId, submission);
-                        }
-                        if (result.ok) {
-                          toast.success("Forms aberto — descritivo copiado para colar");
-                        } else if (result.err) {
-                          toast.error(
-                            `Falha ao enviar para o Forms: ${
-                              result.err instanceof Error ? result.err.message : "erro desconhecido"
-                            }`,
-                          );
-                        } else {
-                          toast.error("Permita pop-ups para ver a confirmação do Forms");
-                        }
-                      }}
-                      className="h-14 w-full text-base font-semibold"
-                    >
-                      {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms"}
-                    </Button>
-                  </div>
-                );
-              })()
-              )}
-            </div>
+            </Button>
+          )}
+          {step === "type" && gpsStatus === "loading" && (
+            <p className="text-center text-xs text-muted-foreground">
+              <Loader2 className="mr-1 inline size-3 animate-spin" />
+              Obtendo localização…
+            </p>
+          )}
+          {step === "type" && gpsStatus === "ok" && (
+            <p className="flex items-center justify-center gap-1 text-xs text-success">
+              <MapPin className="size-3" /> Localização obtida
+            </p>
+          )}
+          {step === "type" && gpsStatus === "fail" && (
+            <p className="flex items-center justify-center gap-1 text-xs text-destructive">
+              <AlertTriangle className="size-3" /> Sem GPS — {location ? "lançar sem local" : "tente novamente"}
+              <button
+                type="button"
+                onClick={() => void fetchLocation()}
+                className="ml-1 underline underline-offset-2"
+              >
+                retry
+              </button>
+            </p>
           )}
         </div>
       </SheetContent>
     </Sheet>
+  );
+
+  // ─── Voltar ─────────────────────────────────────────────────────────────────
+  function goBack() {
+    switch (step) {
+      case "postCorteViability":
+        setStep("type");
+        setSelectedType(null);
+        break;
+      case "negotiationCheck":
+        setStep("postCorteViability");
+        break;
+      case "negotiationDetails":
+        setStep("negotiationCheck");
+        break;
+      case "reason":
+        setStep("postCorteViability");
+        setPostCorteViable(null);
+        break;
+      case "complements":
+        if (selectedType?.id === "pos-corte") {
+          if (postCorteViable === false) {
+            setStep("reason");
+          } else if (isNegotiation === true) {
+            setStep("negotiationDetails");
+          } else {
+            setStep("negotiationCheck");
+          }
+        } else {
+          setStep("type");
+          setSelectedType(null);
+        }
+        break;
+      default:
+        setStep("type");
+        setSelectedType(null);
+    }
+  }
+}
+
+// ─── Helpers de label ──────────────────────────────────────────────────────────
+function getStepLabel(step: Step): string {
+  switch (step) {
+    case "postCorteViability": return "Pós corte";
+    case "reason": return "Motivo da inviabilidade";
+    case "negotiationCheck": return "Negociação";
+    case "negotiationDetails": return "Detalhes da negociação";
+    case "complements": return "Complementos";
+    case "payment": return "Forma de pagamento";
+    case "details": return "Detalhes";
+    default: return "";
+  }
+}
+
+// ─── Step: Tipo ───────────────────────────────────────────────────────────────
+function TypeStep({
+  types,
+  search,
+  onSearch,
+  onSelect,
+}: {
+  types: ServiceType[];
+  search: string;
+  onSearch: (v: string) => void;
+  onSelect: (t: ServiceType) => void;
+  editMode: boolean;
+}) {
+  return (
+    <div className="space-y-3 p-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder="Buscar tipo de serviço…"
+          className="pl-9"
+          autoFocus
+        />
+      </div>
+      {types.length === 0 && (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Nenhum tipo encontrado.
+        </p>
+      )}
+      <div className="space-y-1">
+        {types.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onSelect(t)}
+            className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium transition-colors hover:border-primary hover:bg-primary/5"
+          >
+            <span>{t.name}</span>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Step: Viabilidade (Pós corte) ────────────────────────────────────────────
+function ViabilityStep({ onSelect }: { onSelect: (viable: boolean) => void }) {
+  return (
+    <div className="space-y-3 p-4">
+      <div className="mb-6 mt-2 text-center">
+        <Scissors className="mx-auto mb-3 size-12 text-primary" />
+        <h2 className="text-lg font-bold">Pós corte</h2>
+        <p className="mt-1 text-sm text-muted-foreground">O serviço foi viável?</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => onSelect(true)}
+          className="flex flex-col items-center gap-2 rounded-2xl border-2 border-success/40 bg-success/10 px-4 py-6 text-success transition-all hover:border-success hover:bg-success/20 active:scale-95"
+        >
+          <CheckCircle2 className="size-10" />
+          <span className="text-base font-bold">Viável</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelect(false)}
+          className="flex flex-col items-center gap-2 rounded-2xl border-2 border-destructive/40 bg-destructive/10 px-4 py-6 text-destructive transition-all hover:border-destructive hover:bg-destructive/20 active:scale-95"
+        >
+          <XCircle className="size-10" />
+          <span className="text-base font-bold">Inviável</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step: Motivo ──────────────────────────────────────────────────────────────
+function ReasonStep({
+  reasons,
+  search,
+  onSearch,
+  selectedReason,
+  onSelect,
+}: {
+  reasons: Reason[];
+  search: string;
+  onSearch: (v: string) => void;
+  selectedReason: Reason | null;
+  onSelect: (r: Reason) => void;
+}) {
+  return (
+    <div className="space-y-3 p-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder="Buscar motivo…"
+          className="pl-9"
+          autoFocus
+        />
+      </div>
+      {reasons.length === 0 && (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Nenhum motivo encontrado.
+        </p>
+      )}
+      <div className="space-y-1">
+        {reasons.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => onSelect(r)}
+            className={
+              "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors " +
+              (selectedReason?.id === r.id
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card hover:border-primary hover:bg-primary/5")
+            }
+          >
+            <span>{r.name}</span>
+            {selectedReason?.id === r.id && <Check className="size-4 text-primary" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Step: Pergunta se houve negociação (destaque máximo) ─────────────────────
+function NegotiationCheckStep({ onSelect }: { onSelect: (negotiated: boolean) => void }) {
+  return (
+    <div className="flex min-h-full flex-col justify-center p-6">
+      {/* Cartão de destaque com fundo gradiente */}
+      <div className="rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-1">
+        <div className="rounded-2xl border-2 border-primary/30 bg-card p-8">
+          {/* Ícone grande */}
+          <div className="mb-6 flex justify-center">
+            <div className="flex size-20 items-center justify-center rounded-full bg-primary/15">
+              <Banknote className="size-10 text-primary" />
+            </div>
+          </div>
+
+          {/* Título grande e chamativo */}
+          <h2 className="mb-2 text-center text-2xl font-black tracking-tight text-foreground">
+            Houve negociação?
+          </h2>
+          <p className="mb-8 text-center text-sm text-muted-foreground">
+            O cliente aceitou alguma forma de pagamento diferenciada?
+          </p>
+
+          {/* Botões grandes e destacados */}
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => onSelect(true)}
+              className="flex flex-col items-center gap-2 rounded-2xl border-2 border-success/50 bg-success/15 px-6 py-7 font-bold text-success transition-all hover:border-success hover:bg-success/25 active:scale-95"
+            >
+              <CheckCircle2 className="size-9" />
+              <span className="text-lg">Sim, houve</span>
+              <span className="text-xs font-normal opacity-80">negociação</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelect(false)}
+              className="flex flex-col items-center gap-2 rounded-2xl border-2 border-muted bg-muted/30 px-6 py-7 font-bold text-muted-foreground transition-all hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive active:scale-95"
+            >
+              <XCircle className="size-9" />
+              <span className="text-lg">Não</span>
+              <span className="text-xs font-normal opacity-80">não foi negociado</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step: Detalhes da negociação ─────────────────────────────────────────────
+function NegotiationDetailsStep({
+  negotiatedValue,
+  onNegotiatedValueChange,
+  selectedPaymentMethods,
+  onPaymentToggle,
+  payments,
+  parcelas,
+  onParcelasChange,
+  onContinue,
+}: {
+  negotiatedValue: string;
+  onNegotiatedValueChange: (v: string) => void;
+  selectedPaymentMethods: string[];
+  onPaymentToggle: (id: string) => void;
+  payments: PaymentMethod[];
+  parcelas: string;
+  onParcelasChange: (v: string) => void;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="space-y-5 p-4">
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <label className="mb-2 block text-sm font-semibold text-foreground">
+          Valor negociado (R$)
+        </label>
+        <Input
+          value={negotiatedValue}
+          onChange={(e) => onNegotiatedValueChange(e.target.value)}
+          placeholder="0,00"
+          inputMode="decimal"
+          className="h-12 text-lg font-semibold"
+          autoFocus
+        />
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-semibold text-foreground">Forma de pagamento</p>
+        <div className="flex flex-wrap gap-2">
+          {payments.map((p) => {
+            const selected = selectedPaymentMethods.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onPaymentToggle(p.id)}
+                className={
+                  "rounded-full border px-4 py-2 text-sm font-medium transition-colors " +
+                  (selected
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50")
+                }
+              >
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <label className="mb-2 block text-sm font-semibold text-foreground">
+          Quantidade de parcelas
+        </label>
+        <Input
+          value={parcelas}
+          onChange={(e) => onParcelasChange(e.target.value)}
+          placeholder="Ex: 2x"
+          inputMode="numeric"
+          className="h-12"
+        />
+      </div>
+
+      <Button onClick={onContinue} className="h-12 w-full text-base font-semibold">
+        Continuar <ChevronRight className="ml-2 size-4" />
+      </Button>
+    </div>
+  );
+}
+
+// ─── Step: Complementos ───────────────────────────────────────────────────────
+function ComplementStep({
+  complements,
+  search,
+  onSearch,
+  selected,
+  onToggle,
+}: {
+  complements: Complement[];
+  search: string;
+  onSearch: (v: string) => void;
+  selected: string[];
+  onToggle: (name: string) => void;
+}) {
+  return (
+    <div className="space-y-3 p-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder="Buscar complemento…"
+          className="pl-9"
+          autoFocus
+        />
+      </div>
+      {complements.length === 0 && (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Nenhum complemento encontrado.
+        </p>
+      )}
+      <div className="space-y-1">
+        {complements.map((c) => {
+          const on = selected.includes(c.name);
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onToggle(c.name)}
+              className={
+                "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors " +
+                (on
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card hover:border-primary/50")
+              }
+            >
+              <div
+                className={
+                  "flex size-5 shrink-0 items-center justify-center rounded border text-xs " +
+                  (on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground")
+                }
+              >
+                {on && <Check className="size-3" />}
+              </div>
+              <span>{c.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
