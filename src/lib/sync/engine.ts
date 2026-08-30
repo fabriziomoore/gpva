@@ -120,6 +120,26 @@ export async function drainOutbox(): Promise<void> {
         }
       }
     }
+    // Pass 2: deletes em ordem reversa (filhos antes dos pais) para não
+    // violar FKs — ex.: vínculos de complemento antes do serviço.
+    for (const table of [...order].reverse()) {
+      const rows = (await db.outbox.where("table").equals(table).sortBy("id")).filter(
+        (r) => r.op === "delete",
+      );
+      for (const row of rows) {
+        try {
+          await pushRow(row);
+          if (row.id != null) await db.outbox.delete(row.id);
+        } catch (err) {
+          const message = toSyncErrorMessage(err);
+          await db.outbox.update(row.id!, {
+            tries: row.tries + 1,
+            last_error: message,
+          });
+          throw err;
+        }
+      }
+    }
     useSyncStore.getState().markSynced();
   } catch (err) {
     const message = toSyncErrorMessage(err);
