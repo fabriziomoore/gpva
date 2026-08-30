@@ -198,7 +198,13 @@ function ShiftPage() {
             </p>
           )}
           {services.map((s) => (
-            <ServiceRow key={s.id} s={s} complementsByService={complementsByService} />
+            <ServiceRow
+              key={s.id}
+              s={s}
+              complementsByService={complementsByService}
+              selected={selectedService?.id === s.id}
+              onLongPress={(svc) => setSelectedService(svc)}
+            />
           ))}
         </div>
       <div
@@ -217,6 +223,44 @@ function ShiftPage() {
         </div>
       </div>
 
+      {selectedService && (
+        <div
+          className="fixed inset-x-0 z-40 mx-auto flex max-w-md items-center gap-2 px-4 pt-[max(env(safe-area-inset-top,0px),0.5rem)]"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+        >
+          <div className="flex flex-1 items-center justify-between gap-2 rounded-2xl border border-border bg-card p-2 shadow-lg">
+            <button
+              type="button"
+              aria-label="Fechar ações"
+              onClick={() => setSelectedService(null)}
+              className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
+              {selectedService.service_type_name}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditTarget(selectedService);
+                setSelectedService(null);
+              }}
+            >
+              <Pencil className="mr-1 size-4" /> Editar
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setDeleteTarget(selectedService)}
+            >
+              <Trash2 className="mr-1 size-4" /> Excluir
+            </Button>
+          </div>
+        </div>
+      )}
+
       {userId && openShift && (
         <>
           <AddServiceSheet
@@ -224,6 +268,16 @@ function ShiftPage() {
             onOpenChange={setAddOpen}
             teamId={userId}
             shiftId={openShift.id}
+          />
+          <AddServiceSheet
+            open={editTarget !== null}
+            onOpenChange={(v) => {
+              if (!v) setEditTarget(null);
+            }}
+            teamId={userId}
+            shiftId={openShift.id}
+            editService={editTarget}
+            editComplements={editTarget ? (complementRowsByService.get(editTarget.id) ?? []) : []}
           />
           <FinishShiftSheet
             open={finishOpen}
