@@ -44,7 +44,7 @@ function isNegotiableType(t: ServiceType | null): boolean {
   return (
     t.name
       .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
+      .replace(/\p{Diacritic}/gu, "")
       .toLowerCase()
       .trim() === "pos corte"
   );
@@ -259,29 +259,28 @@ export function AddServiceSheet({
 
   function pickType(t: ServiceType) {
     setType(t);
-    // Sempre vai para viabilidade primeiro — a pergunta de negociação
-    // vem DEPOIS, só se for viável e o tipo for negociável.
+    // Vai para a pergunta de viabilidade primeiro. A pergunta sobre
+    // negociação vem DEPOIS, só se for viável e o tipo for negociável
+    // (ex.: 'Pós corte').
     setStep("viability");
   }
 
   // Chamada quando o usuário escolhe Viável ou Inviável.
-  // Se viável + tipo negociável (pós corte), pergunta sobre negociação.
-  // Caso contrário, segue direto para o próximo passo.
+  // - Inviável → vai para motivo (não pergunta negociação).
+  // - Viável + tipo negociável → pergunta se houve negociação.
+  // - Viável + outros tipos → vai direto para complementos.
   function onViabilityChosen(viable: boolean) {
     if (!viable) {
-      // Inviável: vai para motivo, sem perguntar sobre negociação.
       setNegotiatedOverride(false);
       setStep("reason");
       return;
     }
-    // Viável: se for tipo negociável, pergunta se houve negociação;
-    // senão, vai direto para complementos.
     if (isNegotiableType(type)) {
       setStep("negotiationCheck");
-    } else {
-      setNegotiatedOverride(false);
-      setStep("complements");
+      return;
     }
+    setNegotiatedOverride(false);
+    setStep("complements");
   }
 
   function stepTitle(): string {
@@ -385,13 +384,16 @@ export function AddServiceSheet({
 
           {step === "negotiationCheck" && (
             <div className="space-y-4">
-              {/* Título destacado para chamar atenção */}
-              <div className="rounded-2xl bg-primary/10 border-2 border-primary px-4 py-5 text-center">
-                <p className="text-lg font-bold text-primary">
-                  Houve negociação com o cliente?
+              {/* Título em destaque: caixa grande com cor primária chamando atenção. */}
+              <div className="rounded-2xl bg-primary/10 border-2 border-primary px-4 py-6 text-center shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+                  Etapa de negociação
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Responda para definir o fluxo deste {type?.name}.
+                <p className="mt-2 text-2xl font-extrabold leading-tight text-primary">
+                  Este {type?.name} foi negociado?
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Responda se houve negociação com o cliente.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
