@@ -288,7 +288,7 @@ export function AddServiceSheet({
     if (editService && step !== "type") return "Editar";
     switch (step) {
       case "type": return "Tipo de Serviço";
-      case "negotiationCheck": return ""; // título customizado no JSX
+      case "negotiationCheck": return "Negociação"; // título no header, conteúdo customizado no JSX
       case "viability": return type?.name ?? "";
       case "reason": return "Motivo da inviabilidade";
       case "registration": return "Matrícula";
