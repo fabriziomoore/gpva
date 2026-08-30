@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin } from "lucide-react";
+import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X } from "lucide-react";
+import { repoDeleteService } from "@/lib/db/repos";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
