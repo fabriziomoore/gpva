@@ -38,6 +38,10 @@ function ShiftPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [pendingForms, setPendingForms] = useState<LocalService[] | null>(null);
+  const [selectedService, setSelectedService] = useState<LocalService | null>(null);
+  const [editTarget, setEditTarget] = useState<LocalService | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LocalService | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
@@ -72,6 +76,32 @@ function ShiftPage() {
     }
     return map;
   }, [complementLinks]);
+
+  // Versão completa (id + nome) para pré-preencher o fluxo de edição.
+  const complementRowsByService = useMemo(() => {
+    const map = new Map<string, { id: string | null; name: string }[]>();
+    for (const c of complementLinks ?? []) {
+      const arr = map.get(c.service_id) ?? [];
+      arr.push({ id: c.complement_id ?? null, name: c.complement_name });
+      map.set(c.service_id, arr);
+    }
+    return map;
+  }, [complementLinks]);
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await repoDeleteService(deleteTarget.id);
+      toast.success("Serviço excluído");
+      setDeleteTarget(null);
+      setSelectedService(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const loading = openShift === undefined || services === undefined;
 
