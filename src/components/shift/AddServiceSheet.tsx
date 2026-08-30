@@ -259,27 +259,27 @@ export function AddServiceSheet({
 
   function pickType(t: ServiceType) {
     setType(t);
-    // Vai para a pergunta de viabilidade primeiro. A pergunta sobre
-    // negociação vem DEPOIS, só se for viável e o tipo for negociável
-    // (ex.: 'Pós corte').
-    setStep("viability");
-  }
-
-  // Chamada quando o usuário escolhe Viável ou Inviável.
-  // - Inviável → vai para motivo (não pergunta negociação).
-  // - Viável + tipo negociável → pergunta se houve negociação.
-  // - Viável + outros tipos → vai direto para complementos.
-  function onViabilityChosen(viable: boolean) {
-    if (!viable) {
-      setNegotiatedOverride(false);
-      setStep("reason");
-      return;
-    }
-    if (isNegotiableType(type)) {
+    // Tipos negociáveis (ex.: 'Pós corte'): a PRIMEIRA pergunta é se houve
+    // negociação. Sim → fluxo de negociação. Não → pergunta viável/inviável.
+    if (isNegotiableType(t)) {
       setStep("negotiationCheck");
       return;
     }
-    setNegotiatedOverride(false);
+    if (t.is_negotiation) {
+      setStep("registration");
+      return;
+    }
+    setStep("viability");
+  }
+
+  // Chamada quando o usuário escolhe Viável ou Inviável (ramo "não negociado").
+  // - Inviável → vai para motivo.
+  // - Viável → vai direto para complementos.
+  function onViabilityChosen(viable: boolean) {
+    if (!viable) {
+      setStep("reason");
+      return;
+    }
     setStep("complements");
   }
 
