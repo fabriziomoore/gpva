@@ -185,6 +185,25 @@ export function AddServiceSheet({
       const chosen = (complements.data ?? []).filter((c) =>
         (opts.complementIds ?? []).includes(c.id),
       );
+      if (editService) {
+        // Edição: preserva id/created_at e a localização já capturada.
+        const updated = await repoUpdateService({
+          service_id: editService.id,
+          service_type_id: type.id || null,
+          service_type_name: type.name,
+          is_negotiation: isNegotiation,
+          viable: opts.viable,
+          reason_id: opts.reasonId ?? null,
+          reason_name: opts.reasonName ?? null,
+          registration_number: opts.registration ?? null,
+          negotiated_value: opts.negotiated ?? null,
+          complements: chosen.map((c) => ({ id: c.id, name: c.name })),
+        });
+        await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
+        toast.success("Serviço atualizado");
+        onOpenChange(false);
+        return updated.id;
+      }
       // Captura GPS em paralelo: espera pouco para gravar junto; se o Android
       // entregar a posição depois (comum offline), anexamos ao registro local.
       const fixPromise = tryGetGeoFix(8_000);
