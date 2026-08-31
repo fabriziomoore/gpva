@@ -132,7 +132,11 @@ export function AddServiceSheet({
       }
       void fetchAndCacheCatalogOrder(teamId);
     }
-  }, [open, teamId, editService, editComplements]);
+    // Dependências propositalmente limitadas a `open`/`teamId`: `editService`
+    // e `editComplements` são lidos via ref para evitar loop de render quando
+    // o pai recria esses objetos a cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, teamId]);
 
   const types = useServiceTypesCached();
   const reasons = useReasonsCached();
