@@ -40,6 +40,14 @@ Atualizado em 2026-08-31.
 - `user_roles`: 2
 - `vinculos_complementos`: 50
 
+## Storage da origem
+
+- Existe 1 bucket privado: `database_export_08_07_26`.
+- Objetos: 1.
+- Tamanho total aproximado: 501 KB.
+- O nome e o conteúdo esperado indicam artefato de backup/export, não dependência operacional do app.
+- O fluxo atual de foto de equipe continua persistindo Data URL em `equipes.photo_url`, sem necessidade de bucket operacional.
+
 ## Integridade referencial auditada
 
 - [x] `equipes.id -> auth.users.id`: 0 órfãos.
@@ -80,11 +88,12 @@ Atualizado em 2026-08-31.
 - [x] Confirmar 7/7 usuários com hash de senha e email confirmado.
 - [x] Auditar integridade referencial crítica da origem.
 - [x] Corrigir checkpoint `has_role` para `SECURITY INVOKER`, alinhado ao banco vivo.
+- [x] Inventariar Storage da origem.
+- [x] Remover senha administrativa hardcoded da rota de login; agora a sessão usa apenas a senha digitada pelo usuário.
 - [ ] Migrar Auth preservando UUID e hash de senha.
 - [ ] Migrar dados estruturais e operacionais preservando UUIDs/timestamps.
 - [ ] Comparar contagens origem × destino após carga.
-- [ ] Inventariar outros objetos de Storage, se existirem.
-- [ ] Remover senha administrativa hardcoded do backend web e da Edge Function.
+- [ ] Remover senha administrativa hardcoded restante do backend web, tela admin e Edge Function.
 - [ ] Configurar `ACP_ADMIN_PASSWORD` como secret server-side ou concluir transição para JWT + `user_roles`.
 - [ ] Implantar `admin-api` no Supabase novo somente após refatoração segura.
 - [ ] Regenerar e versionar `src/integrations/supabase/types.ts` após a carga final.
@@ -123,7 +132,9 @@ Atualizado em 2026-08-31.
 - `SUPABASE_SERVICE_ROLE_KEY` é estritamente server-only.
 - Hashes de senha da origem foram verificados para fins de migração e não devem ser expostos nem versionados.
 - `ACP_ADMIN_PASSWORD` foi documentada em `.env.example` como server-only.
-- A Edge Function `admin-api` ainda NÃO deve ser implantada enquanto a senha estiver hardcoded no código atual.
+- A rota `src/routes/auth.tsx` não contém mais senha administrativa fixa; usa a senha digitada na sessão corrente.
+- Ainda existem ocorrências hardcoded no backend administrativo/tela admin/Edge Function, que devem ser removidas antes de implantação final.
+- A Edge Function `admin-api` ainda NÃO deve ser implantada enquanto houver segredo hardcoded.
 - Exports com hash de senha/dados pessoais não devem ser commitados; `.gitignore` já cobre `migration-exports/` e padrões de export Auth.
 - `has_role` no checkpoint agora usa `SECURITY INVOKER`, igual ao destino vivo.
 
@@ -134,13 +145,15 @@ Atualizado em 2026-08-31.
 - Realtime: 100%
 - Ferramentas de migração: 100%
 - Inventário e auditoria da origem: 100%
+- Storage inventariado: 100%
 - Auth/dados reais migrados: 0% (carga ainda pendente)
+- Refatoração de segredo administrativo: iniciada
 - Edge Function/runtime final: pendente
-- Migração completa estimada: ~80%
+- Migração completa estimada: ~81%
 
 ## Bloqueio momentâneo
 
-O conector direto do Supabase de destino ficou indisponível durante a tentativa de iniciar a carga. Nenhuma escrita parcial foi realizada. A origem continua acessível e auditada.
+O conector direto do Supabase de destino está indisponível durante as tentativas de iniciar a carga. Nenhuma escrita parcial foi realizada. A origem continua acessível e auditada.
 
 ## Próxima microetapa exata
 
@@ -149,3 +162,4 @@ O conector direto do Supabase de destino ficou indisponível durante a tentativa
 3. Validar `auth.users = 7` e identidades funcionais.
 4. Importar dados `public` em ordem de FK.
 5. Comparar todas as contagens origem × destino e executar checks de integridade.
+6. Concluir remoção dos segredos administrativos hardcoded restantes antes do deploy final.
