@@ -21,6 +21,11 @@ dist-ssr
 .env.*
 !.env.example
 
+# Migration exports — may contain password hashes or user data
+migration-exports/
+auth-users*.json
+*auth-export*.json
+
 # Supabase local state
 supabase/.branches
 supabase/.temp
