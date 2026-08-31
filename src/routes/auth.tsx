@@ -112,7 +112,9 @@ function AuthPage() {
       sessionStorage.removeItem("gpva.forceSignedOut");
       // A credencial local já foi persistida dentro de signInTeam().
       if (team.trim().toLowerCase() === "adm") {
-        sessionStorage.setItem("gpva-admin-pw", "137889");
+        // Nunca embutir a senha administrativa no bundle. Mantemos somente
+        // a senha digitada pelo usuário durante esta sessão do navegador.
+        sessionStorage.setItem("gpva-admin-pw", password);
         await navigate({ to: "/admin", replace: true });
         return;
       }
