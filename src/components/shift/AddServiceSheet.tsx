@@ -548,15 +548,20 @@ export function AddServiceSheet({
   // ─── Voltar ─────────────────────────────────────────────────────────────────
   function goBack() {
     switch (step) {
-      case "postCorteViability":
+      case "negotiationCheck":
         setStep("type");
         setSelectedType(null);
         break;
-      case "negotiationCheck":
-        setStep("postCorteViability");
+      case "postCorteViability":
+        setStep("negotiationCheck");
         break;
       case "negotiationDetails":
-        setStep("negotiationCheck");
+        if (selectedType?.id === "pos-corte") {
+          setStep("negotiationCheck");
+        } else {
+          setStep("type");
+          setSelectedType(null);
+        }
         break;
       case "reason":
         setStep("postCorteViability");
@@ -733,20 +738,27 @@ function NegotiationCheckStep({ onSelect }: { onSelect: (negotiated: boolean) =>
   return (
     <div className="flex min-h-full flex-col justify-center p-6">
       {/* Cartão de destaque com fundo gradiente */}
-      <div className="rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-1">
-        <div className="rounded-2xl border-2 border-primary/30 bg-card p-8">
+      <div className="rounded-3xl bg-primary p-1 shadow-xl ring-4 ring-primary/40">
+        <div className="rounded-2xl border-2 border-primary bg-card p-8">
+          {/* Faixa de atenção bem visível */}
+          <div className="mb-6 flex animate-pulse justify-center">
+            <span className="rounded-full bg-primary px-5 py-1.5 text-xs font-black uppercase tracking-[0.2em] text-primary-foreground">
+              Atenção — Negociação
+            </span>
+          </div>
+
           {/* Ícone grande */}
-          <div className="mb-6 flex justify-center">
-            <div className="flex size-20 items-center justify-center rounded-full bg-primary/15">
-              <Banknote className="size-10 text-primary" />
+          <div className="mb-5 flex justify-center">
+            <div className="flex size-24 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+              <Banknote className="size-12" />
             </div>
           </div>
 
           {/* Título grande e chamativo */}
-          <h2 className="mb-2 text-center text-2xl font-black tracking-tight text-foreground">
+          <h2 className="mb-2 text-center text-3xl font-black tracking-tight text-primary">
             Houve negociação?
           </h2>
-          <p className="mb-8 text-center text-sm text-muted-foreground">
+          <p className="mb-8 text-center text-sm font-medium text-muted-foreground">
             O cliente aceitou alguma forma de pagamento diferenciada?
           </p>
 
