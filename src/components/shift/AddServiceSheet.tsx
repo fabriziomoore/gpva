@@ -194,8 +194,13 @@ export function AddServiceSheet({
   function go(type: ServiceType) {
     setSelectedType(type);
     setSearch("");
-    if (type.id === "pos-corte" || type.requires_negotiation) {
-      setStep("postCorteViability");
+    if (type.id === "pos-corte") {
+      // Pós corte: a PRIMEIRA pergunta é se foi negociado.
+      // Sim → fluxo de negociação. Não → pergunta viável/inviável.
+      setStep("negotiationCheck");
+    } else if (type.requires_negotiation) {
+      setIsNegotiation(true);
+      setStep("negotiationDetails");
     } else {
       if (type.requires_complements) {
         setStep("complements");
@@ -210,7 +215,7 @@ export function AddServiceSheet({
     if (!viable) {
       setStep("reason");
     } else {
-      setStep("negotiationCheck");
+      setStep("complements");
     }
   }
 
@@ -219,7 +224,8 @@ export function AddServiceSheet({
     if (negotiated) {
       setStep("negotiationDetails");
     } else {
-      setStep("complements");
+      // Não negociado → pergunta se foi viável ou inviável.
+      setStep("postCorteViability");
     }
   }
 
