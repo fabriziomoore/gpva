@@ -384,15 +384,19 @@ export function AddServiceSheet({
 
           {step === "negotiationCheck" && (
             <div className="space-y-4">
-              {/* Título em destaque: caixa grande com cor primária chamando atenção. */}
-              <div className="rounded-2xl bg-primary/10 border-2 border-primary px-4 py-6 text-center shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-                  Etapa de negociação
+              {/* Título de alto destaque: bloco sólido primário pulsante, para
+                  o colaborador reconhecer imediatamente a etapa de negociação. */}
+              <div className="rounded-2xl bg-primary px-4 py-8 text-center shadow-xl ring-4 ring-primary/40">
+                <div className="mx-auto mb-3 flex size-16 animate-pulse items-center justify-center rounded-full bg-primary-foreground/20">
+                  <Banknote className="size-9 text-primary-foreground" />
+                </div>
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-primary-foreground/80">
+                  Atenção — Negociação
                 </p>
-                <p className="mt-2 text-2xl font-extrabold leading-tight text-primary">
+                <p className="mt-2 text-3xl font-black leading-tight text-primary-foreground">
                   Este {type?.name} foi negociado?
                 </p>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm font-medium text-primary-foreground/90">
                   Responda se houve negociação com o cliente.
                 </p>
               </div>
