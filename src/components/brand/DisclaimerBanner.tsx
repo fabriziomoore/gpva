@@ -5,10 +5,10 @@
  */
 export function DisclaimerBanner() {
   return (
-    <div className="w-full px-3 pt-[calc(0.5rem+env(safe-area-inset-top))]">
+    <div className="w-full px-3 pt-[calc(0.25rem+env(safe-area-inset-top))]">
       <p
         role="note"
-        className="mx-auto w-full max-w-2xl rounded-xl bg-[#e8192c] px-4 py-2.5 text-center text-[11px] leading-relaxed text-white shadow-lg sm:text-xs"
+        className="mx-auto w-full max-w-md rounded-md bg-[#e8192c]/85 px-2.5 py-1 text-center text-[9px] leading-snug text-white/90 sm:text-[10px]"
       >
         Este não é um aplicativo oficial da Aegea. Trata-se de um protótipo
         desenvolvido por um colaborador, de uso facultativo, com o objetivo de

@@ -80,7 +80,7 @@ export function SyncIndicator() {
         <button
           type="button"
           aria-label={`Sincronização: ${label}`}
-          className="group relative block h-[2px] w-full cursor-pointer overflow-hidden border-0 bg-transparent p-0 outline-none focus-visible:h-[3px]"
+          className="group relative block h-[4px] w-full cursor-pointer overflow-hidden border-0 bg-transparent p-0 outline-none focus-visible:h-[6px]"
         >
           {/* Base gradient line — always visible, very subtle in idle */}
           <span

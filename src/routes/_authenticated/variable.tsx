@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { isPosCorteName } from "@/lib/service-types";
 
 export const Route = createFileRoute("/_authenticated/variable")({
   head: () => ({ meta: [{ title: "Variável" }] }),
@@ -51,7 +52,7 @@ function VariablePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("servicos")
-        .select("negotiated_value,created_at")
+        .select("negotiated_value,created_at,service_type_name")
         .eq("is_negotiation", true)
         .eq("viable", true)
         .order("created_at", { ascending: false })
@@ -60,6 +61,14 @@ function VariablePage() {
       return data ?? [];
     },
   });
+
+  // "Pós corte" negociado não soma na Variável (R$/negociação) — página
+  // inteira é sobre esse cálculo, então exclui de tudo aqui (somas,
+  // contagens e histórico), não só do valor final.
+  const negRows = useMemo(
+    () => (neg.data ?? []).filter((r) => !isPosCorteName(r.service_type_name)),
+    [neg.data],
+  );
 
   const sums = useMemo(() => {
     const now = new Date();
@@ -77,7 +86,7 @@ function VariablePage() {
 
     const buckets = { day: 0, week: 0, month: 0, year: 0, all: 0 };
     const counts = { day: 0, week: 0, month: 0, year: 0, all: 0 };
-    for (const r of neg.data ?? []) {
+    for (const r of negRows) {
       const t = new Date(r.created_at);
       const v = Number(r.negotiated_value) || 0;
       buckets.all += v;
@@ -101,16 +110,16 @@ function VariablePage() {
     }
     void days;
     return { buckets, counts };
-  }, [neg.data]);
+  }, [negRows]);
 
   const history = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of neg.data ?? []) {
+    for (const r of negRows) {
       const d = new Date(r.created_at).toLocaleDateString("pt-BR");
       m.set(d, (m.get(d) ?? 0) + (Number(r.negotiated_value) || 0));
     }
     return Array.from(m, ([date, value]) => ({ date, value })).reverse();
-  }, [neg.data]);
+  }, [negRows]);
 
   // Consulta período específico
   const now = new Date();
@@ -121,10 +130,10 @@ function VariablePage() {
 
   const years = useMemo(() => {
     const set = new Set<number>();
-    for (const r of neg.data ?? []) set.add(new Date(r.created_at).getFullYear());
+    for (const r of negRows) set.add(new Date(r.created_at).getFullYear());
     set.add(now.getFullYear());
     return Array.from(set).sort((a, b) => b - a);
-  }, [neg.data, now]);
+  }, [negRows, now]);
 
   const custom = useMemo(() => {
     let start: Date;
@@ -148,7 +157,7 @@ function VariablePage() {
     }
     let count = 0;
     let total = 0;
-    for (const r of neg.data ?? []) {
+    for (const r of negRows) {
       const t = new Date(r.created_at);
       if (t >= start && t < end) {
         count++;
@@ -156,7 +165,7 @@ function VariablePage() {
       }
     }
     return { label, count, total };
-  }, [customMode, customDay, customMonth, customYear, neg.data]);
+  }, [customMode, customDay, customMonth, customYear, negRows]);
 
   return (
     <AppShell title="Variável" right={<ShiftMeta />}>

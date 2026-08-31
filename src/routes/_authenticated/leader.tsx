@@ -22,6 +22,7 @@ import {
   Legend,
 } from "recharts";
 import { formatBRL, formatDateBR } from "@/lib/format";
+import { isPosCorteName } from "@/lib/service-types";
 import {
   Loader2,
   TrendingUp,
@@ -599,7 +600,12 @@ function PeriodView({
       total: blendedProjection(current.total, histAvgTotal, period),
       negotiated_value: blendedProjection(current.negotiated_value, histAvgNeg, period),
     };
-    const variable = current.negotiations * meta.rate;
+    // "Pós corte" negociado conta em "Negociações"/"Negociado" (via agg()
+    // acima), mas não soma na Variável Estimada (R$/negociação).
+    const variableNegotiations = curSvc.filter(
+      (r) => r.viable && r.is_negotiation && !isPosCorteName(r.service_type_name),
+    ).length;
+    const variable = variableNegotiations * meta.rate;
 
     const bucket = <T,>(arr: T[], keyFn: (x: T) => string) => {
       const m = new Map<string, { name: string; qty: number }>();
@@ -716,13 +722,18 @@ function PeriodView({
         };
         const c = { ...agg(svcCur), shifts: shiftsCur.length };
         const p = agg(svcPrev);
+        // "Pós corte" negociado conta em c.negotiations/negotiated_value, mas
+        // não soma na Variável Estimada (R$/negociação).
+        const variableNegotiations = svcCur.filter(
+          (r) => r.viable && r.is_negotiation && !isPosCorteName(r.service_type_name),
+        ).length;
         return {
           team_name: t.team_name,
           leader: t.leader,
           supervisor: t.supervisor,
           current: c,
           previous: p,
-          variable_estimated: c.negotiations * (t.variable_rate || 0),
+          variable_estimated: variableNegotiations * (t.variable_rate || 0),
         } as TeamBreakdown;
       })
       .sort((a, b) => b.current.total - a.current.total);

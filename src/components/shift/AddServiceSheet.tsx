@@ -32,6 +32,7 @@ import {
 import { buildCaption } from "@/lib/share-negotiation";
 import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
+import { isPosCorteName } from "@/lib/service-types";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck";
 
@@ -41,13 +42,7 @@ type ServiceType = { id: string; name: string; is_negotiation: boolean };
 // Após perguntar se é viável/inviável, se for viável, perguntamos se houve negociação.
 function isNegotiableType(t: ServiceType | null): boolean {
   if (!t || t.is_negotiation) return false;
-  return (
-    t.name
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase()
-      .trim() === "pos corte"
-  );
+  return isPosCorteName(t.name);
 }
 type Reason = { id: string; name: string };
 
@@ -80,6 +75,10 @@ export function AddServiceSheet({
   const [valorParcelado, setValorParcelado] = useState("");
   const [parcelas, setParcelas] = useState("");
   const [negotiatedOverride, setNegotiatedOverride] = useState(false);
+  // Resposta da etapa de viabilidade. Default true: tipos de negociação
+  // direta (catálogo) e qualquer tipo que não passe pela etapa de
+  // viabilidade são implicitamente viáveis.
+  const [viableAnswer, setViableAnswer] = useState(true);
   const team = useTeam(teamId).data;
 
   // Serviço segue o fluxo de negociação quando o tipo já é de negociação
@@ -100,6 +99,7 @@ export function AddServiceSheet({
       setValorParcelado("");
       setParcelas("");
       setNegotiatedOverride(false);
+      setViableAnswer(true);
       if (editService) {
         // Pré-preenche o fluxo com os dados atuais do serviço. Para tipos
         // negociáveis como "Pós corte", o flag de negociação mora no
@@ -114,6 +114,7 @@ export function AddServiceSheet({
           setNegotiatedOverride(true);
         }
         setType(t);
+        setViableAnswer(editService.viable);
         if (editService.reason_id || editService.reason_name) {
           setReason({
             id: editService.reason_id ?? "",
@@ -263,23 +264,25 @@ export function AddServiceSheet({
 
   function pickType(t: ServiceType) {
     setType(t);
-    // Tipos negociáveis (ex.: 'Pós corte'): a PRIMEIRA pergunta é se houve
-    // negociação. Sim → fluxo de negociação. Não → pergunta viável/inviável.
-    if (isNegotiableType(t)) {
-      setStep("negotiationCheck");
-      return;
-    }
+    // Tipos de negociação direta (catálogo): pula viabilidade, vai direto pra matrícula.
     if (t.is_negotiation) {
       setStep("registration");
       return;
     }
+    // Demais tipos (incluindo os negociáveis como "Pós corte"): pergunta viabilidade primeiro.
     setStep("viability");
   }
 
-  // Chamada quando o usuário escolhe Viável ou Inviável (ramo "não negociado").
-  // - Inviável → vai para motivo.
-  // - Viável → vai direto para complementos.
+  // Chamada quando o usuário escolhe Viável ou Inviável.
+  // - Tipo negociável (ex.: "Pós corte"), viável ou não: pergunta se houve
+  //   negociação — mesmo um serviço inviável pode ter sido pago/negociado.
+  // - Demais tipos: Inviável → motivo; Viável → complementos.
   function onViabilityChosen(viable: boolean) {
+    setViableAnswer(viable);
+    if (isNegotiableType(type)) {
+      setStep("negotiationCheck");
+      return;
+    }
     if (!viable) {
       setStep("reason");
       return;
@@ -300,13 +303,37 @@ export function AddServiceSheet({
     }
   }
 
+  // Cabeçalho na cor do botão "+ Serviço" (bg-primary) em todas as etapas.
+  // Só a etapa de negociação (Sim/Não, não autoexplicativo sem contexto)
+  // repete a pergunta no cabeçalho. "Viável/Inviável" já são autoexplicativos,
+  // então o cabeçalho ali só mostra o nome da O.S. (via stepTitle()).
+  const isNegotiationQuestion = step === "negotiationCheck";
+  const useColoredHeader =
+    step === "type" ||
+    step === "viability" ||
+    step === "registration" ||
+    step === "payment" ||
+    isNegotiationQuestion;
+  const questionText = isNegotiationQuestion ? `Este ${type?.name} foi negociado?` : "";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" hideClose className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
-        <SheetHeader className="border-b border-border p-4">
+        <SheetHeader
+          className={"border-b border-border p-4 " + (useColoredHeader ? "border-primary bg-primary" : "")}
+        >
           <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="text-left text-base">
-              {stepTitle()}
+            <SheetTitle
+              className={
+                "text-left text-base " +
+                (isNegotiationQuestion
+                  ? "whitespace-nowrap text-lg font-bold uppercase text-primary-foreground"
+                  : useColoredHeader
+                    ? "text-primary-foreground"
+                    : "")
+              }
+            >
+              {isNegotiationQuestion ? questionText : stepTitle()}
             </SheetTitle>
             <div className="flex items-center gap-2">
               {canReorder && (
@@ -362,9 +389,6 @@ export function AddServiceSheet({
 
           {step === "viability" && (
             <div className="space-y-4">
-              <p className="text-center text-sm text-muted-foreground">
-                Este {type?.name} foi viável?
-              </p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   disabled={saving}
@@ -388,43 +412,29 @@ export function AddServiceSheet({
 
           {step === "negotiationCheck" && (
             <div className="space-y-4">
-              {/* Título de alto destaque: bloco sólido primário pulsante, para
-                  o colaborador reconhecer imediatamente a etapa de negociação. */}
-              <div className="rounded-2xl bg-primary px-4 py-8 text-center shadow-xl ring-4 ring-primary/40">
-                <div className="mx-auto mb-3 flex size-16 animate-pulse items-center justify-center rounded-full bg-primary-foreground/20">
-                  <Banknote className="size-9 text-primary-foreground" />
-                </div>
-                <p className="text-xs font-black uppercase tracking-[0.25em] text-primary-foreground/80">
-                  Atenção — Negociação
-                </p>
-                <p className="mt-2 text-3xl font-black leading-tight text-primary-foreground">
-                  Este {type?.name} foi negociado?
-                </p>
-                <p className="mt-2 text-sm font-medium text-primary-foreground/90">
-                  Responda se houve negociação com o cliente.
-                </p>
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   disabled={saving}
                   onClick={() => {
                     setNegotiatedOverride(true);
-                    setStep("registration");
+                    // Serviço inviável negociado ainda precisa do motivo da
+                    // inviabilidade antes da matrícula/pagamento.
+                    setStep(viableAnswer ? "registration" : "reason");
                   }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-primary/40 bg-card font-bold text-primary transition-colors hover:border-primary hover:bg-primary/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
                 >
                   <Banknote className="size-12" />
-                  <span className="text-xl">Sim, negociado</span>
+                  <span className="text-xl">Sim</span>
                 </button>
                 <button
                   disabled={saving}
                   onClick={() => {
                     setNegotiatedOverride(false);
-                    setStep("viability");
+                    setStep(viableAnswer ? "complements" : "reason");
                   }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-foreground transition-colors hover:border-primary hover:bg-accent"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
                 >
-                  <XCircle className="size-12 text-muted-foreground" />
+                  <XCircle className="size-12" />
                   <span className="text-xl">Não</span>
                 </button>
               </div>
@@ -478,7 +488,7 @@ export function AddServiceSheet({
                     return;
                   }
                   void saveService({
-                    viable: false,
+                    viable: viableAnswer,
                     reasonId: reason?.id,
                     reasonName: reason?.name,
                     registration: registration.trim(),
@@ -667,7 +677,7 @@ export function AddServiceSheet({
 
                 const finalizeService = () =>
                   saveService({
-                    viable: true,
+                    viable: viableAnswer,
                     negotiated,
                     registration: isNegotiation ? registration.trim() : undefined,
                     complementIds: Array.from(selectedComplements),

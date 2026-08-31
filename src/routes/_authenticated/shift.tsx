@@ -4,12 +4,13 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X, FileText } from "lucide-react";
 import { repoDeleteService } from "@/lib/db/repos";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatBRL } from "@/lib/format";
+import { isPosCorteName } from "@/lib/service-types";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import type { LocalService } from "@/lib/db/local-db";
@@ -113,7 +114,10 @@ function ShiftPage() {
     const negociacoes = list.filter((x) => x.is_negotiation && x.viable);
     const totalNeg = negociacoes.reduce((a, b) => a + (Number(b.negotiated_value) || 0), 0);
     const rate = openShift?.variable_rate_snapshot ?? team?.variable_rate ?? 7;
-    const variavel = negociacoes.length * Number(rate);
+    // "Pós corte" negociado soma no total negociado (R$), mas não soma na
+    // Variável Estimada (R$/negociação) — regra específica desse tipo.
+    const negociacoesVariavel = negociacoes.filter((x) => !isPosCorteName(x.service_type_name));
+    const variavel = negociacoesVariavel.length * Number(rate);
     return { total, viaveis, inviaveis, totalNeg, variavel };
   }, [services, openShift, team]);
 
@@ -179,7 +183,45 @@ function ShiftPage() {
   }
 
   return (
-    <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
+    <AppShell
+      title="Expediente"
+      right={<ShiftMeta teamName={team?.team_name} />}
+      headerClassName={selectedService ? "border-primary bg-primary" : undefined}
+      headerOverride={
+        selectedService ? (
+          <div className="mx-auto flex max-w-md items-center gap-2 px-4 py-3">
+            <button
+              type="button"
+              aria-label="Fechar ações"
+              onClick={() => setSelectedService(null)}
+              className="flex size-10 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
+            >
+              <X className="size-4" />
+            </button>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-primary-foreground">
+              {selectedService.service_type_name}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditTarget(selectedService);
+                setSelectedService(null);
+              }}
+            >
+              <Pencil className="mr-1 size-4" /> Editar
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setDeleteTarget(selectedService)}
+            >
+              <Trash2 className="mr-1 size-4" /> Excluir
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
           <Kpi label="Total" value={String(kpis.total).padStart(2, "0")} />
@@ -224,41 +266,14 @@ function ShiftPage() {
       </div>
 
       {selectedService && (
+        // Fecha ao clicar em qualquer lugar fora do cabeçalho (que virou a
+        // barra de ações via headerOverride do AppShell — sem painel
+        // separado empilhado, evita artefato visual de camadas sobrepostas).
         <div
-          className="fixed inset-x-0 z-40 mx-auto flex max-w-md items-center gap-2 px-4 pt-[max(env(safe-area-inset-top,0px),0.5rem)]"
-          style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
-        >
-          <div className="flex flex-1 items-center justify-between gap-2 rounded-2xl border border-border bg-card p-2 shadow-lg">
-            <button
-              type="button"
-              aria-label="Fechar ações"
-              onClick={() => setSelectedService(null)}
-              className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
-              {selectedService.service_type_name}
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setEditTarget(selectedService);
-                setSelectedService(null);
-              }}
-            >
-              <Pencil className="mr-1 size-4" /> Editar
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => setDeleteTarget(selectedService)}
-            >
-              <Trash2 className="mr-1 size-4" /> Excluir
-            </Button>
-          </div>
-        </div>
+          className="fixed inset-0 z-20"
+          aria-hidden="true"
+          onClick={() => setSelectedService(null)}
+        />
       )}
 
       {userId && openShift && (
@@ -452,49 +467,8 @@ function ServiceRow({
         <div className="min-w-0">
           <p className="text-sm font-semibold">
             {s.service_type_name}
-            {s.is_negotiation && formsStatus && (
-              <>
-                {" - "}
-                {formsStatus === "sent" ? (
-                  <span className="text-success">Forms enviado</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      const payload = getFailedPayload(s.id);
-                      if (!payload) {
-                        toast.error("Dados do Forms não encontrados neste dispositivo.");
-                        return;
-                      }
-                      const online =
-                        typeof navigator === "undefined" ? true : navigator.onLine;
-                      if (!online) {
-                        toast.warning("Sem conexão — tente novamente quando estiver online.");
-                        return;
-                      }
-                      try {
-                        const opened = await submitNegotiationToGoogleForm(payload);
-                        if (opened) {
-                          setFormsStatus(s.id, "sent");
-                          toast.success("Forms aberto para envio manual.");
-                        } else {
-                          toast.error("Permita pop-ups para abrir o Forms.");
-                        }
-                      } catch (err) {
-                        toast.error(
-                          `Falha ao abrir Forms: ${
-                            err instanceof Error ? err.message : "erro desconhecido"
-                          }`,
-                        );
-                      }
-                    }}
-                    className="text-destructive underline underline-offset-2"
-                  >
-                    Forms não enviado
-                  </button>
-                )}
-              </>
+            {s.is_negotiation && isPosCorteName(s.service_type_name) && (
+              <span className="font-normal text-muted-foreground"> - Negociado</span>
             )}
           </p>
           <p className="truncate text-xs text-muted-foreground">
@@ -539,6 +513,49 @@ function ServiceRow({
         </div>
       </div>
       <div className="flex items-center gap-1.5">
+        {s.is_negotiation && formsStatus && (
+          formsStatus === "sent" ? (
+            <StatusBadge ok message="Forms enviado.">
+              <FileText className="size-3" strokeWidth={2.5} />
+            </StatusBadge>
+          ) : (
+            <button
+              type="button"
+              aria-label="Forms não enviado. Toque para tentar reenviar."
+              onClick={async (e) => {
+                e.stopPropagation();
+                const payload = getFailedPayload(s.id);
+                if (!payload) {
+                  toast.error("Dados do Forms não encontrados neste dispositivo.");
+                  return;
+                }
+                const online = typeof navigator === "undefined" ? true : navigator.onLine;
+                if (!online) {
+                  toast.warning("Sem conexão — tente novamente quando estiver online.");
+                  return;
+                }
+                try {
+                  const opened = await submitNegotiationToGoogleForm(payload);
+                  if (opened) {
+                    setFormsStatus(s.id, "sent");
+                    toast.success("Forms aberto para envio manual.");
+                  } else {
+                    toast.error("Permita pop-ups para abrir o Forms.");
+                  }
+                } catch (err) {
+                  toast.error(
+                    `Falha ao abrir Forms: ${
+                      err instanceof Error ? err.message : "erro desconhecido"
+                    }`,
+                  );
+                }
+              }}
+              className="inline-flex size-5 items-center justify-center rounded-[5px] bg-red-600 text-white transition-transform active:scale-95"
+            >
+              <FileText className="size-3" strokeWidth={2.5} />
+            </button>
+          )
+        )}
         <StatusBadge
           ok={isSynced}
           message={
