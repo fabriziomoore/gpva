@@ -1,7 +1,7 @@
 # Project Memory
 
 ## Core
-Sempre publicar automaticamente após qualquer alteração no app (preview + live + PWA devem ficar sincronizados).
+Deploy é via GitHub Actions (`.github/workflows/deploy.yml`): push pra `main` builda e publica web (Cloudflare Workers) e Edge Functions do Supabase. Verificar que o run da Action passou antes de considerar uma mudança publicada.
 Antes de modificar qualquer arquivo, listar todos os arquivos que serão alterados e justificar cada um. Não tocar em módulos não relacionados ao problema.
 Módulos independentes: offline-auth NUNCA modifica conectividade; NetworkService NUNCA depende de auth; Sync apenas consome estado de conectividade.
 

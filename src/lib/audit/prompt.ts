@@ -8,7 +8,7 @@ function priority(sev: CheckResult["severity"]): string {
   return "Baixa";
 }
 
-export function buildLovablePrompt(report: AuditReport): string {
+export function buildFixPrompt(report: AuditReport): string {
   const problems = report.results.filter((r) => r.severity === "error" || r.severity === "warning" || r.severity === "improvement");
   if (problems.length === 0) return "Nenhum problema encontrado — nada a corrigir.";
 
@@ -38,7 +38,7 @@ export function buildLovablePrompt(report: AuditReport): string {
     lines.push("");
   }
 
-  lines.push("## Instruções ao Lovable");
+  lines.push("## Instruções de Correção");
   lines.push("Aplicar as correções acima em ordem de prioridade (Crítica → Alta → Média). Após cada correção, rodar novamente a Auditoria Inteligente na página `/admin` para validar.");
   return lines.join("\n");
 }

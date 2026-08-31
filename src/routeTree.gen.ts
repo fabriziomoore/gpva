@@ -9,25 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedVariableRouteImport } from './routes/_authenticated/variable'
-import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedLeaderRankingRouteImport } from './routes/_authenticated/leader-ranking'
-import { Route as AuthenticatedLeaderProceduresRouteImport } from './routes/_authenticated/leader-procedures'
-import { Route as AuthenticatedLeaderMapRouteImport } from './routes/_authenticated/leader-map'
-import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
 import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
+import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
+import { Route as AuthenticatedLeaderMapRouteImport } from './routes/_authenticated/leader-map'
+import { Route as AuthenticatedLeaderProceduresRouteImport } from './routes/_authenticated/leader-procedures'
+import { Route as AuthenticatedLeaderRankingRouteImport } from './routes/_authenticated/leader-ranking'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
+import { Route as AuthenticatedVariableRouteImport } from './routes/_authenticated/variable'
 import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift_.$id.report'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -35,8 +34,9 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -44,47 +44,9 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedVariableRoute = AuthenticatedVariableRouteImport.update({
-  id: '/variable',
-  path: '/variable',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
-  id: '/shift',
-  path: '/shift',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedProductivityRoute =
-  AuthenticatedProductivityRouteImport.update({
-    id: '/productivity',
-    path: '/productivity',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedLeaderRankingRoute =
-  AuthenticatedLeaderRankingRouteImport.update({
-    id: '/leader-ranking',
-    path: '/leader-ranking',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedLeaderProceduresRoute =
-  AuthenticatedLeaderProceduresRouteImport.update({
-    id: '/leader-procedures',
-    path: '/leader-procedures',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedLeaderMapRoute = AuthenticatedLeaderMapRouteImport.update({
-  id: '/leader-map',
-  path: '/leader-map',
+const AuthenticatedLeaderRoute = AuthenticatedLeaderRouteImport.update({
+  id: '/leader',
+  path: '/leader',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLeaderConfigRoute =
@@ -93,9 +55,47 @@ const AuthenticatedLeaderConfigRoute =
     path: '/leader-config',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedLeaderRoute = AuthenticatedLeaderRouteImport.update({
-  id: '/leader',
-  path: '/leader',
+const AuthenticatedLeaderMapRoute = AuthenticatedLeaderMapRouteImport.update({
+  id: '/leader-map',
+  path: '/leader-map',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLeaderProceduresRoute =
+  AuthenticatedLeaderProceduresRouteImport.update({
+    id: '/leader-procedures',
+    path: '/leader-procedures',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedLeaderRankingRoute =
+  AuthenticatedLeaderRankingRouteImport.update({
+    id: '/leader-ranking',
+    path: '/leader-ranking',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProductivityRoute =
+  AuthenticatedProductivityRouteImport.update({
+    id: '/productivity',
+    path: '/productivity',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
+  id: '/shift',
+  path: '/shift',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVariableRoute = AuthenticatedVariableRouteImport.update({
+  id: '/variable',
+  path: '/variable',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedShiftIdReportRoute =
@@ -215,11 +215,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -229,11 +229,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -243,60 +243,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/variable': {
-      id: '/_authenticated/variable'
-      path: '/variable'
-      fullPath: '/variable'
-      preLoaderRoute: typeof AuthenticatedVariableRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/shift': {
-      id: '/_authenticated/shift'
-      path: '/shift'
-      fullPath: '/shift'
-      preLoaderRoute: typeof AuthenticatedShiftRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/productivity': {
-      id: '/_authenticated/productivity'
-      path: '/productivity'
-      fullPath: '/productivity'
-      preLoaderRoute: typeof AuthenticatedProductivityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/leader-ranking': {
-      id: '/_authenticated/leader-ranking'
-      path: '/leader-ranking'
-      fullPath: '/leader-ranking'
-      preLoaderRoute: typeof AuthenticatedLeaderRankingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/leader-procedures': {
-      id: '/_authenticated/leader-procedures'
-      path: '/leader-procedures'
-      fullPath: '/leader-procedures'
-      preLoaderRoute: typeof AuthenticatedLeaderProceduresRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/leader-map': {
-      id: '/_authenticated/leader-map'
-      path: '/leader-map'
-      fullPath: '/leader-map'
-      preLoaderRoute: typeof AuthenticatedLeaderMapRouteImport
+    '/_authenticated/leader': {
+      id: '/_authenticated/leader'
+      path: '/leader'
+      fullPath: '/leader'
+      preLoaderRoute: typeof AuthenticatedLeaderRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leader-config': {
@@ -306,11 +257,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeaderConfigRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/leader': {
-      id: '/_authenticated/leader'
-      path: '/leader'
-      fullPath: '/leader'
-      preLoaderRoute: typeof AuthenticatedLeaderRouteImport
+    '/_authenticated/leader-map': {
+      id: '/_authenticated/leader-map'
+      path: '/leader-map'
+      fullPath: '/leader-map'
+      preLoaderRoute: typeof AuthenticatedLeaderMapRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leader-procedures': {
+      id: '/_authenticated/leader-procedures'
+      path: '/leader-procedures'
+      fullPath: '/leader-procedures'
+      preLoaderRoute: typeof AuthenticatedLeaderProceduresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leader-ranking': {
+      id: '/_authenticated/leader-ranking'
+      path: '/leader-ranking'
+      fullPath: '/leader-ranking'
+      preLoaderRoute: typeof AuthenticatedLeaderRankingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/productivity': {
+      id: '/_authenticated/productivity'
+      path: '/productivity'
+      fullPath: '/productivity'
+      preLoaderRoute: typeof AuthenticatedProductivityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/shift': {
+      id: '/_authenticated/shift'
+      path: '/shift'
+      fullPath: '/shift'
+      preLoaderRoute: typeof AuthenticatedShiftRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/variable': {
+      id: '/_authenticated/variable'
+      path: '/variable'
+      fullPath: '/variable'
+      preLoaderRoute: typeof AuthenticatedVariableRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/shift_/$id/report': {

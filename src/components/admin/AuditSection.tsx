@@ -16,7 +16,7 @@ import {
 import { runClientChecks } from "@/lib/audit/client-checks";
 import { scoreFromResults, CATEGORY_LABELS, OUT_OF_SCOPE } from "@/lib/audit/types";
 import type { AuditReport, Category, CheckResult, JsonValue } from "@/lib/audit/types";
-import { buildLovablePrompt } from "@/lib/audit/prompt";
+import { buildFixPrompt } from "@/lib/audit/prompt";
 
 type Step = { key: string; label: string; run: () => Promise<CheckResult[]> };
 
@@ -221,7 +221,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
             <Button
               variant="outline"
               onClick={async () => {
-                const prompt = buildLovablePrompt(report);
+                const prompt = buildFixPrompt(report);
                 try { await navigator.clipboard.writeText(prompt); toast.success("Prompt copiado"); }
                 catch { toast.error("Falha ao copiar"); }
               }}
@@ -312,7 +312,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
                   variant="outline"
                   size="sm"
                   onClick={async () => {
-                    const prompt = buildLovablePrompt(viewing);
+                    const prompt = buildFixPrompt(viewing);
                     try { await navigator.clipboard.writeText(prompt); toast.success("Prompt copiado"); }
                     catch { toast.error("Falha ao copiar"); }
                   }}

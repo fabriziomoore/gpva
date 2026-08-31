@@ -165,7 +165,6 @@ export const runSecurityAudit = createServerFn({ method: "POST" })
       { name: "SUPABASE_URL" },
       { name: "SUPABASE_PUBLISHABLE_KEY", aliases: ["SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_ANON_KEY"] },
       { name: "SUPABASE_SERVICE_ROLE_KEY" },
-      { name: "LOVABLE_API_KEY" },
     ];
     for (const { name, aliases = [] } of expected) {
       const present = Boolean(process.env[name]) || aliases.some((a) => Boolean(process.env[a]));

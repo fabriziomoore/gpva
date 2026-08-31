@@ -1,6 +1,6 @@
 // Guarded service worker registration for GPVA.
-// Follows the Lovable PWA skill rules: never register in dev / preview /
-// iframe / when `?sw=off` is present. Uses the plugin-generated /sw.js.
+// Never registers in dev / iframe / when `?sw=off` is present. Uses the
+// plugin-generated /sw.js.
 
 const SW_URL = "/sw.js";
 
@@ -11,19 +11,6 @@ function isRefusedContext(): { refused: true; reason: string } | { refused: fals
     if (window.self !== window.top) return { refused: true, reason: "iframe" };
   } catch {
     return { refused: true, reason: "iframe" };
-  }
-  const host = window.location.hostname;
-  if (
-    host.startsWith("id-preview--") ||
-    host.startsWith("preview--") ||
-    host === "lovableproject.com" ||
-    host.endsWith(".lovableproject.com") ||
-    host === "lovableproject-dev.com" ||
-    host.endsWith(".lovableproject-dev.com") ||
-    host === "beta.lovable.dev" ||
-    host.endsWith(".beta.lovable.dev")
-  ) {
-    return { refused: true, reason: "lovable-preview" };
   }
   const params = new URLSearchParams(window.location.search);
   if (params.get("sw") === "off") return { refused: true, reason: "kill-switch" };

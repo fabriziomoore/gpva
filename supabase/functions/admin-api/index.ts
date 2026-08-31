@@ -835,7 +835,7 @@ async function auditSecurity(sb: any) {
     results.push({ id: "sec.rpc.has_role", category: "seguranca", title: "Função has_role acessível",
       severity: error ? "error" : "info", message: error ? error.message : `Retorno: ${String(data)}` });
   } catch (e) { results.push({ id: "sec.rpc.has_role", category: "seguranca", title: "Função has_role", severity: "error", message: (e as Error).message }); }
-  for (const name of ["SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","SUPABASE_SERVICE_ROLE_KEY","LOVABLE_API_KEY"]) {
+  for (const name of ["SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","SUPABASE_SERVICE_ROLE_KEY"]) {
     const present = Boolean(Deno.env.get(name));
     results.push({ id: `sec.secret.${name}`, category: "seguranca", title: `Segredo ${name}`,
       severity: present ? "info" : "error", message: present ? "Configurado" : "Ausente" });
