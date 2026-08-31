@@ -416,7 +416,7 @@ export function AddServiceSheet({
                   disabled={saving}
                   onClick={() => {
                     setNegotiatedOverride(false);
-                    setStep("complements");
+                    setStep("viability");
                   }}
                   className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-foreground transition-colors hover:border-primary hover:bg-accent"
                 >
