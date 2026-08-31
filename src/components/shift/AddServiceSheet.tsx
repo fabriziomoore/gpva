@@ -574,7 +574,7 @@ export function AddServiceSheet({
           } else if (isNegotiation === true) {
             setStep("negotiationDetails");
           } else {
-            setStep("negotiationCheck");
+            setStep("postCorteViability");
           }
         } else {
           setStep("type");
