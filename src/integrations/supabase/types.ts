@@ -788,6 +788,33 @@ export type Database = {
           },
         ]
       }
+      web_releases: {
+        Row: {
+          build_number: number
+          checksum: string | null
+          created_at: string
+          id: string
+          url: string
+          version: string
+        }
+        Insert: {
+          build_number: number
+          checksum?: string | null
+          created_at?: string
+          id?: string
+          url: string
+          version: string
+        }
+        Update: {
+          build_number?: number
+          checksum?: string | null
+          created_at?: string
+          id?: string
+          url?: string
+          version?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

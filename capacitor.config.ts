@@ -24,6 +24,12 @@ const config: CapacitorConfig = {
     contentInset: "always",
   },
   plugins: {
+    // Auto-update nativo desligado: quem checa/baixa/agenda a atualização
+    // web é o nosso próprio código (src/lib/ota/check-update.ts), contra
+    // o Supabase — não a nuvem da Capgo.
+    CapacitorUpdater: {
+      autoUpdate: "off",
+    },
     Keyboard: {
       resize: "native",
       resizeOnFullScreen: true,

@@ -4,11 +4,20 @@ import { Keyboard } from "@capacitor/keyboard";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import type { Router } from "@tanstack/react-router";
+import { checkForOtaUpdate, notifyOtaReady } from "@/lib/ota/check-update";
 
 // Native lifecycle wiring for the Android shell. Pure plugin usage — no
 // WebView hacks, no DOM listeners on focus, no JS-driven layout work.
 export function initNative(router: Router<any, any>) {
   if (!Capacitor.isNativePlatform()) return;
+
+  // Confirma pro plugin de OTA que esse bundle carregou bem — precisa ser
+  // cedo, antes de qualquer chamada de rede, senão ele reverte sozinho.
+  void notifyOtaReady();
+
+  // Checa/baixa atualização web em segundo plano; só ativa no próximo cold
+  // start (não interrompe um expediente em andamento).
+  void checkForOtaUpdate();
 
   // Status bar matches the dark theme; resize behavior delegated to Android.
   void StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined);
