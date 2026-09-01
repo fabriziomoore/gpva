@@ -28,6 +28,12 @@ jobs:
           SUPABASE_URL: "https://zerepuiyqbenogeyllxb.supabase.co"
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
+      # O Nitro gera dois arquivos de config do Wrangler no build:
+      # .output/server/wrangler.json (o que a action usa, via workingDirectory)
+      # e .wrangler/deploy/config.json na raiz (pra "nitro deploy", que a
+      # gente não usa). O wrangler recusa rodar vendo os dois ao mesmo tempo.
+      - run: rm -rf .wrangler
+
       - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
