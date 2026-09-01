@@ -77,9 +77,12 @@ jobs:
           # "exit code 22". x-upsert deixa reenviar o mesmo build_number
           # (ex: ao clicar "Re-run") sem travar em cima de um arquivo que já
           # existe de uma tentativa anterior.
+          # Chave nova (sb_secret_...) não é JWT — vai só no header apikey.
+          # Mandar também em Authorization: Bearer faz a plataforma tentar
+          # interpretar como JWT e rejeitar ("Invalid Compact JWS").
           UPLOAD_RESPONSE=$(curl -s -w '\n%{http_code}' -X POST \
             "$SUPABASE_URL/storage/v1/object/web-releases/${BUILD_NUMBER}.zip" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/zip" \
             -H "x-upsert: true" \
             --data-binary @dist.zip)
@@ -95,7 +98,6 @@ jobs:
           INSERT_RESPONSE=$(curl -s -w '\n%{http_code}' -X POST \
             "$SUPABASE_URL/rest/v1/web_releases?on_conflict=build_number" \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/json" \
             -H "Prefer: resolution=merge-duplicates,return=minimal" \
             -d "{\"build_number\": ${BUILD_NUMBER}, \"version\": \"${VERSION}\", \"url\": \"${PUBLIC_URL}\", \"checksum\": \"${CHECKSUM}\"}")
