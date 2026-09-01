@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+// Assinatura do release: lê de android/keystore.properties (local, nunca
+// commitado — veja keystore.properties.example) ou de variáveis de
+// ambiente (CI). A MESMA chave precisa assinar todo build de release daqui
+// pra frente, senão o Android para de aceitar os próximos como atualização
+// dos aparelhos já instalados.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+def resolvedStoreFile = keystoreProperties['storeFile'] ?: System.getenv("ANDROID_KEYSTORE_PATH")
+def resolvedStorePassword = keystoreProperties['storePassword'] ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
+def resolvedKeyAlias = keystoreProperties['keyAlias'] ?: System.getenv("ANDROID_KEY_ALIAS")
+def resolvedKeyPassword = keystoreProperties['keyPassword'] ?: System.getenv("ANDROID_KEY_PASSWORD")
+def hasSigningConfig = resolvedStoreFile && resolvedStorePassword && resolvedKeyAlias && resolvedKeyPassword
+
 android {
     namespace = "app.lovable.gpva"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +32,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasSigningConfig) {
+            release {
+                storeFile file(resolvedStoreFile)
+                storePassword resolvedStorePassword
+                keyAlias resolvedKeyAlias
+                keyPassword resolvedKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasSigningConfig) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
