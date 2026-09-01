@@ -1,0 +1,27 @@
+name: Check Supabase access token
+
+# O SUPABASE_ACCESS_TOKEN (usado pra fazer deploy das Edge Functions) tem
+# validade máxima de 1 ano e não avisa antes de expirar. Esse workflow testa
+# o token mensalmente; se ele já quebrou, o job falha e o GitHub manda
+# e-mail sozinho pra quem disparou (dono do repo, no caso do schedule).
+on:
+  schedule:
+    - cron: "0 9 1 * *" # dia 1 de cada mês, 9h UTC
+  workflow_dispatch: {}
+
+jobs:
+  check-token:
+    name: Verify SUPABASE_ACCESS_TOKEN still works
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Management API
+        run: |
+          set -euo pipefail
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://api.supabase.com/v1/projects" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ACCESS_TOKEN }}")
+          echo "Status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN parece inválido ou expirado (HTTP $STATUS). Gere um novo em supabase.com/dashboard/account/tokens e atualize o secret no GitHub."
+            exit 1
+          fi
