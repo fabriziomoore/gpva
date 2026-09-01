@@ -445,7 +445,7 @@ function PeriodTabs({
     return null;
   }, [mode, year, month, day, weeks, weekIdx]);
 
-  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
+  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
 
   return (
     <div className="space-y-4">
@@ -830,7 +830,7 @@ function PeriodView({
       </div>
 
       {period !== "day" && (
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl bg-card shadow-md p-4">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{projectionLabel(period)}</p>
           <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="flex min-w-0 flex-col justify-center rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
@@ -850,7 +850,7 @@ function PeriodView({
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-      <div className="rounded-2xl border border-border bg-card p-3">
+      <div className="rounded-2xl bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Atual vs {previousLabel(period)}</p>
         <div className="h-52 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -867,7 +867,7 @@ function PeriodView({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-3">
+      <div className="rounded-2xl bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Evolução (viáveis x inviáveis)</p>
         <div className="h-44 md:h-64">
           {stats.evolution.length === 0 ? (
@@ -897,7 +897,7 @@ function PeriodView({
       </div>
 
       {stats.bestDay && (
-        <div className="rounded-xl border border-border bg-card p-3">
+        <div className="rounded-xl bg-card shadow-md p-3">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Melhor dia do período</p>
           <p className="truncate text-sm font-semibold">{stats.bestDay.date} — {stats.bestDay.qty} viáveis</p>
         </div>
@@ -991,7 +991,7 @@ function Kpi({ label, value, delta, hint, tone, small }: { label: string; value:
   const dTone = delta === null || delta === undefined ? "text-muted-foreground" : delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground";
   const Icon = delta === null || delta === undefined ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   return (
-    <div className="flex min-w-0 flex-col rounded-xl border border-border bg-card p-3">
+    <div className="flex min-w-0 flex-col rounded-xl bg-card shadow-md p-3">
       <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={cn("truncate font-bold", small ? "text-sm md:text-base" : "text-lg md:text-xl", color)} title={value}>{value}</p>
       {delta !== undefined && delta !== null && (
@@ -1010,7 +1010,7 @@ function RankList({ title, items, empty }: { title: string; items: { name: strin
   const top = items.slice(0, 5);
   const max = top[0]?.qty ?? 1;
   return (
-    <div className="rounded-2xl border border-border bg-card p-3">
+    <div className="rounded-2xl bg-card shadow-md p-3">
       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
       {top.length === 0 ? (
         <p className="py-4 text-center text-xs text-muted-foreground">{empty}</p>

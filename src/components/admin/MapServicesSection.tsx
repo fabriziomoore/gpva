@@ -88,7 +88,7 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
         </p>
       </div>
 
-      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
         <div>
           <Label>Equipe</Label>
           <select
@@ -147,7 +147,7 @@ export function MapServicesSection({ adminPw }: { adminPw: string }) {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-lg bg-card shadow-md">
         <div className="border-b border-border p-2 text-xs font-medium">
           {list.isLoading ? "Carregando..." : `${list.data?.length ?? 0} registro(s)`}
         </div>

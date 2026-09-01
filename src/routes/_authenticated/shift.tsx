@@ -175,7 +175,7 @@ function ShiftPage() {
   if (!openShift) {
     return (
       <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
-        <div className="rounded-2xl border border-border bg-card p-6 text-center">
+        <div className="rounded-2xl bg-card shadow-md p-6 text-center">
           <p className="text-muted-foreground">Nenhum expediente em andamento.</p>
         </div>
       </AppShell>
@@ -235,7 +235,7 @@ function ShiftPage() {
 
         <div className="space-y-2">
           {services.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            <p className="whitespace-nowrap rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
               Nenhum serviço registrado. Toque em + para começar.
             </p>
           )}
@@ -399,7 +399,7 @@ function Kpi({
           ? "text-primary"
           : "text-foreground";
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="rounded-xl bg-card shadow-md p-3">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
     </div>

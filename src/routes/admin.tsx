@@ -267,7 +267,7 @@ function AdminPage() {
               return (
                 <section
                   key={group.id}
-                  className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm"
+                  className="min-w-0 overflow-hidden rounded-2xl bg-card p-4 shadow-md"
                 >
                   <div className="mb-3 flex items-center gap-2">
                     <GIcon className="size-4 text-primary" />
@@ -310,7 +310,7 @@ function AdminPage() {
         </main>
       ) : (
         <main className="mx-auto max-w-2xl px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="rounded-2xl bg-card p-4 shadow-md sm:p-5">
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
           ) : section === "variable" ? (
@@ -446,7 +446,7 @@ function CrudSection({
               rows.data?.map((r) => (
                 <div
                   key={r.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2"
+                  className="flex items-center justify-between rounded-lg bg-card shadow-md px-3 py-2"
                 >
                   <span className="text-sm">{r.name}</span>
                   <button
@@ -521,7 +521,7 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
         vinculados ao setor na seção Supervisores.
       </p>
 
-      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
         <Label>Novo setor</Label>
         <Input
           value={nome}
@@ -577,7 +577,7 @@ function SetorEditRow({
   const dirty = nome !== setor.nome;
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+    <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
       <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
       <div className="flex justify-end gap-2">
         <Button
@@ -816,7 +816,7 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
         por identificador — nenhum nome é inferido por texto.
       </p>
 
-      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
         <Label>Novo supervisor</Label>
         <Input
           value={nome}
@@ -888,7 +888,7 @@ function SupervisorEditRow({
   const dirty = nome !== supervisor.nome || setorId !== supervisor.setor_id;
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+    <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
       <div className="grid gap-2 sm:grid-cols-2">
         <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
         <select
@@ -1107,7 +1107,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
+  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm";
   const periodSelector = (variant: "day" | "week" | "month") => (
     <div className="flex gap-2 min-w-0">
       {variant === "day" ? (
@@ -1181,7 +1181,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
               .map(([name, qty]) => (
                 <div
                   key={name}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-lg bg-card shadow-md px-3 py-2 text-sm"
                 >
                   <span>{name}</span>
                   <span className="font-semibold">{qty}</span>
@@ -1325,7 +1325,7 @@ function TeamHeader({
 
   return (
     <>
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
+    <div className="flex flex-col gap-3 rounded-xl bg-card shadow-md p-3">
       <div className="flex items-center gap-3">
         <div className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
           {team.photo_url ? (
@@ -1467,7 +1467,7 @@ function TeamDayReports({
           {filtered.map((r) => {
             const isEditing = editingId === r.id;
             return (
-              <div key={r.id} className="rounded-xl border border-border bg-card p-3">
+              <div key={r.id} className="rounded-xl bg-card shadow-md p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{formatDateBR(r.started_at)}</p>
@@ -1536,7 +1536,7 @@ function TeamDayReports({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="rounded-xl bg-card shadow-md p-3">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-bold">{value}</div>
     </div>
@@ -1764,7 +1764,7 @@ function LeaderRowItem({
   const canSubmit = !!nome.trim() && !!hier.setorId && !!hier.supervisorId;
 
   return (
-    <li className="rounded-xl border border-border bg-card p-3">
+    <li className="rounded-xl bg-card shadow-md p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{leader.nome || leader.login}</p>
@@ -2108,7 +2108,7 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
         </p>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="space-y-3 rounded-xl bg-card shadow-md p-4">
         <h3 className="text-sm font-semibold">Criar nova conta de teste</h3>
         <div className="space-y-2">
           <Label htmlFor="tt-name">Nome da equipe</Label>
@@ -2152,7 +2152,7 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
             {(list.data ?? []).map((t) => (
               <li
                 key={t.id}
-                className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3"
+                className="flex flex-col gap-2 rounded-xl bg-card shadow-md p-3"
               >
                 {editingId === t.id ? (
                   <div className="flex flex-col gap-2">
@@ -2219,7 +2219,7 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-xl">
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-card p-5 shadow-xl">
             <Dialog.Title className="text-base font-semibold">Excluir conta de teste?</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm text-muted-foreground">
               Todos os dados vinculados a esta conta serão removidos.
@@ -2323,7 +2323,7 @@ function DevicesSection({ adminPw }: { adminPw: string }) {
             return (
               <li
                 key={d.user_id + d.session_id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-3"
+                className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3"
               >
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
@@ -2416,7 +2416,7 @@ function TrashSection({ adminPw }: { adminPw: string }) {
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => (
-            <li key={r.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-3">
+            <li key={r.id} className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3">
               <div className="flex min-w-0 flex-1 items-start gap-3">
                 <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
                   <Trash className="size-4" />

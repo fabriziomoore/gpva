@@ -274,12 +274,13 @@ export function AddServiceSheet({
   }
 
   // Chamada quando o usuário escolhe Viável ou Inviável.
-  // - Tipo negociável (ex.: "Pós corte"), viável ou não: pergunta se houve
-  //   negociação — mesmo um serviço inviável pode ter sido pago/negociado.
-  // - Demais tipos: Inviável → motivo; Viável → complementos.
+  // - Tipo negociável (ex.: "Pós corte") viável: pergunta se houve negociação.
+  // - Demais casos (inviável, negociável ou não): motivo → matrícula → salva,
+  //   sem passar pela pergunta de negociação.
+  // - Viável não-negociável: complementos.
   function onViabilityChosen(viable: boolean) {
     setViableAnswer(viable);
-    if (isNegotiableType(type)) {
+    if (isNegotiableType(type) && viable) {
       setStep("negotiationCheck");
       return;
     }
@@ -311,8 +312,10 @@ export function AddServiceSheet({
   const useColoredHeader =
     step === "type" ||
     step === "viability" ||
+    step === "reason" ||
     step === "registration" ||
     step === "payment" ||
+    step === "complements" ||
     isNegotiationQuestion;
   const questionText = isNegotiationQuestion ? `Este ${type?.name} foi negociado?` : "";
 
@@ -325,9 +328,9 @@ export function AddServiceSheet({
           <div className="flex items-center justify-between gap-2">
             <SheetTitle
               className={
-                "text-left text-base " +
+                "min-w-0 flex-1 truncate text-left text-sm sm:text-base " +
                 (isNegotiationQuestion
-                  ? "whitespace-nowrap text-lg font-bold uppercase text-primary-foreground"
+                  ? "text-lg font-bold text-primary-foreground"
                   : useColoredHeader
                     ? "text-primary-foreground"
                     : "")
@@ -373,7 +376,7 @@ export function AddServiceSheet({
                 <button
                   key={t.id}
                   onClick={() => pickType(t)}
-                  className="flex h-24 items-center justify-center rounded-2xl border-2 border-border bg-card p-3 text-center text-base font-semibold transition-colors hover:border-primary hover:bg-accent"
+                  className="flex h-24 items-center justify-center rounded-2xl bg-card p-3 text-center text-base font-semibold shadow-md transition-shadow hover:bg-accent hover:shadow-lg"
                 >
                   {t.name}
                 </button>
@@ -393,7 +396,7 @@ export function AddServiceSheet({
                 <button
                   disabled={saving}
                   onClick={() => onViabilityChosen(true)}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-success transition-colors hover:border-success hover:bg-success/10"
                 >
                   <CheckCircle2 className="size-12" />
                   <span className="text-xl">Viável</span>
@@ -401,7 +404,7 @@ export function AddServiceSheet({
                 <button
                   disabled={saving}
                   onClick={() => onViabilityChosen(false)}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
                 >
                   <XCircle className="size-12" />
                   <span className="text-xl">Inviável</span>
@@ -417,11 +420,9 @@ export function AddServiceSheet({
                   disabled={saving}
                   onClick={() => {
                     setNegotiatedOverride(true);
-                    // Serviço inviável negociado ainda precisa do motivo da
-                    // inviabilidade antes da matrícula/pagamento.
-                    setStep(viableAnswer ? "registration" : "reason");
+                    setStep("registration");
                   }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-success transition-colors hover:border-success hover:bg-success/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-success transition-colors hover:border-success hover:bg-success/10"
                 >
                   <Banknote className="size-12" />
                   <span className="text-xl">Sim</span>
@@ -430,9 +431,9 @@ export function AddServiceSheet({
                   disabled={saving}
                   onClick={() => {
                     setNegotiatedOverride(false);
-                    setStep(viableAnswer ? "complements" : "reason");
+                    setStep("complements");
                   }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-border bg-card font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
                 >
                   <XCircle className="size-12" />
                   <span className="text-xl">Não</span>
@@ -457,7 +458,7 @@ export function AddServiceSheet({
                     setReason(r);
                     setStep("registration");
                   }}
-                  className="rounded-xl border border-border bg-card px-4 py-4 text-left text-base font-medium hover:border-primary hover:bg-accent"
+                  className="rounded-xl bg-card shadow-md px-4 py-4 text-left text-base font-medium hover:border-primary hover:bg-accent"
                 >
                   {r.name}
                 </button>

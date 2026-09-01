@@ -66,7 +66,7 @@
 :root {
   --radius: 0.625rem;
   /* GPVA Light — white / blue / black, soft & professional */
-  --background: oklch(0.985 0.004 250);
+  --background: oklch(0.95 0.006 250);
   --foreground: oklch(0.20 0.02 260);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.20 0.02 260);
@@ -106,7 +106,7 @@
   /* GPVA Dark — industrial amber accent on deep slate */
   --background: oklch(0.16 0.018 250);
   --foreground: oklch(0.985 0.005 240);
-  --card: oklch(0.22 0.02 250);
+  --card: oklch(0.34 0.04 250);
   --card-foreground: oklch(0.985 0.005 240);
   --popover: oklch(0.22 0.02 250);
   --popover-foreground: oklch(0.985 0.005 240);
@@ -138,6 +138,40 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+}
+
+/*
+ * Reforço de sombra dos "floating cards" (shadow-md/lg/xl). O shadow padrão
+ * do Tailwind é um "drop shadow" deslocado pra baixo (offset-y positivo),
+ * então só aparece embaixo do elemento; --tw-shadow é sobrescrito aqui com
+ * offset 0/0 (halo centrado, igual nos 4 lados). A cor padrão (~10% preto)
+ * também some contra um fundo já escuro, daí a cor mais forte no dark.
+ * (--tw-shadow/--tw-shadow-color não herdam por padrão, por isso o seletor
+ * mira o próprio elemento com a classe, não um ancestral.)
+ */
+[class*="shadow-md"] {
+  --tw-shadow-color: #00000026;
+  --tw-shadow: 0 0 8px 0 var(--tw-shadow-color);
+}
+[class*="shadow-lg"] {
+  --tw-shadow-color: #00000026;
+  --tw-shadow: 0 0 14px 0 var(--tw-shadow-color);
+}
+[class*="shadow-xl"] {
+  --tw-shadow-color: #00000026;
+  --tw-shadow: 0 0 22px 0 var(--tw-shadow-color);
+}
+.dark [class*="shadow-md"] {
+  --tw-shadow-color: #00000080;
+  --tw-shadow: 0 0 8px 0 var(--tw-shadow-color);
+}
+.dark [class*="shadow-lg"] {
+  --tw-shadow-color: #00000080;
+  --tw-shadow: 0 0 14px 0 var(--tw-shadow-color);
+}
+.dark [class*="shadow-xl"] {
+  --tw-shadow-color: #00000080;
+  --tw-shadow: 0 0 22px 0 var(--tw-shadow-color);
 }
 
 @layer base {

@@ -181,7 +181,7 @@ function VariablePage() {
 
           <div className="grid grid-cols-2 gap-2">
             {(["day", "week", "month", "year"] as const).map((p) => (
-              <div key={p} className="rounded-2xl border border-border bg-card p-4">
+              <div key={p} className="rounded-2xl bg-card shadow-md p-4">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                   {p === "day" ? "Hoje" : p === "week" ? "Semana" : p === "month" ? "Mês" : "Ano"}
                 </p>
@@ -195,7 +195,7 @@ function VariablePage() {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-3">
+          <div className="rounded-2xl bg-card shadow-md p-3">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Consultar período específico
             </p>
@@ -283,7 +283,7 @@ function VariablePage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-3">
+          <div className="rounded-2xl bg-card shadow-md p-3">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Histórico financeiro
             </p>

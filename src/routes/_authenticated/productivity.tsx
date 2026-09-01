@@ -70,7 +70,7 @@ function QuantityTooltip({ active, payload, label }: QuantityTooltipProps) {
   const title = first.payload?.name ?? first.payload?.date ?? label;
 
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-xl">
+    <div className="rounded-lg bg-card px-3 py-2 text-xs shadow-xl">
       {title && <p className="mb-1 font-semibold text-foreground">{title}</p>}
       {payload.map((item, i) => (
         <p key={i} className="font-mono" style={{ color: item.color }}>
@@ -183,7 +183,7 @@ function ProdPage() {
                   key={s.id}
                   to="/shift/$id/report"
                   params={{ id: s.id }}
-                  className="flex items-center justify-between rounded-xl border border-border bg-card p-3 hover:bg-accent"
+                  className="flex items-center justify-between rounded-xl bg-card shadow-md p-3"
                 >
                   <div className="flex items-center gap-3">
                     <FileText className="size-4 text-primary" />
@@ -298,7 +298,7 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
     });
   }, [rows, customRange]);
 
-  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
+  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
 
   return (
     <div className="space-y-4">
@@ -424,7 +424,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
         <Card label="Inviáveis" value={`${inviaveis} (${pctI}%)`} tone="destructive" />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-3">
+      <div className="rounded-2xl bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Evolução
         </p>
@@ -465,7 +465,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-3">
+      <div className="rounded-2xl bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Por tipo de serviço
         </p>
@@ -490,12 +490,12 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
 
       {byType.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-border bg-card p-3">
+          <div className="rounded-xl bg-card shadow-md p-3">
             <p className="text-xs uppercase text-muted-foreground">Mais executado</p>
             <p className="text-sm font-semibold truncate">{byType[0]?.name}</p>
             <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[0]?.qty ?? 0)}</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-3">
+          <div className="rounded-xl bg-card shadow-md p-3">
             <p className="text-xs uppercase text-muted-foreground">Menos executado</p>
             <p className="text-sm font-semibold truncate">{byType[byType.length - 1]?.name}</p>
             <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[byType.length - 1]?.qty ?? 0)}</p>
@@ -518,7 +518,7 @@ function Card({
   const c =
     tone === "success" ? "text-success" : tone === "destructive" ? "text-destructive" : "text-foreground";
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="rounded-xl bg-card shadow-md p-3">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={"text-base font-bold " + c}>{value}</p>
     </div>

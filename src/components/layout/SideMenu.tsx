@@ -268,7 +268,7 @@ export function SideMenu() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 rounded-xl border border-border bg-muted/40 p-3">
+            <div className="mt-4 rounded-xl bg-card p-3 shadow-md">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Map className="size-4" />
                 <span>Consulta ArcGIS Aegea</span>
@@ -302,7 +302,7 @@ export function SideMenu() {
             <button
               type="button"
               onClick={openArcgisRisk}
-              className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left transition-colors hover:bg-muted"
+              className="mt-3 flex w-full items-center gap-3 rounded-xl bg-card p-3 text-left shadow-md transition-shadow hover:shadow-lg"
             >
               <AlertTriangle className="size-5 text-primary shrink-0" />
               <div className="min-w-0">
@@ -317,7 +317,7 @@ export function SideMenu() {
             <button
               type="button"
               onClick={openFeltMap}
-              className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-left transition-colors hover:bg-muted"
+              className="mt-3 flex w-full items-center gap-3 rounded-xl bg-card p-3 text-left shadow-md transition-shadow hover:shadow-lg"
             >
               <Map className="size-5 text-primary shrink-0" />
               <div className="min-w-0">

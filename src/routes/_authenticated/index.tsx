@@ -195,7 +195,7 @@ function HomePage() {
     <AppShell showBack={false}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
-        <div className="flex items-stretch gap-4 rounded-2xl border border-border bg-card p-4 overflow-hidden">
+        <div className="flex items-stretch gap-4 rounded-2xl bg-card shadow-md p-4 overflow-hidden">
           <div className="w-1/3 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center aspect-square">
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
@@ -242,7 +242,7 @@ function HomePage() {
           <Link
             to="/shift/$id/report"
             params={{ id: lastClosed.id }}
-            className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-accent"
+            className="flex items-center justify-between rounded-xl bg-card shadow-md p-4"
           >
             <div className="flex items-center gap-3">
               <FileText className="size-5 text-primary" />

@@ -150,7 +150,7 @@ export function LeaderRankingSection() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const selectCls = "h-10 rounded-lg border border-border bg-card px-3 text-sm";
+  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm";
   const periodSelector = (variant: "day" | "week" | "month") => (
     <div className="flex gap-2 min-w-0">
       {variant === "day" ? (
@@ -239,7 +239,7 @@ export function LeaderRankingSection() {
               .map(([name, qty]) => (
                 <div
                   key={name}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-lg bg-card shadow-md px-3 py-2 text-sm"
                 >
                   <span>{name}</span>
                   <span className="font-semibold">{qty}</span>
@@ -318,7 +318,7 @@ export function LeaderRankingSection() {
 
 function TeamHeaderReadOnly({ team }: { team: TeamRow }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+    <div className="flex items-center gap-3 rounded-xl bg-card shadow-md p-3">
       <div className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
         {team.photo_url ? (
           <img src={team.photo_url} alt={team.team_name} className="h-full w-full object-cover" />
@@ -374,7 +374,7 @@ function TeamDayReportsReadOnly({
           {filtered.map((r) => (
             <details
               key={r.id}
-              className="rounded-xl border border-border bg-card p-3 text-sm"
+              className="rounded-xl bg-card shadow-md p-3 text-sm"
             >
               <summary className="cursor-pointer">
                 <span className="font-semibold">{formatDateBR(r.started_at)}</span>
@@ -401,7 +401,7 @@ function TeamDayReportsReadOnly({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="rounded-xl bg-card shadow-md p-3">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-bold">{value}</div>
     </div>
