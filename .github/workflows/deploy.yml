@@ -38,6 +38,11 @@ jobs:
           secrets: |
             SUPABASE_SERVICE_ROLE_KEY
         env:
+          # A etapa de "wrangler secret bulk" (upload de secrets) roda como
+          # um subprocesso separado que não herda o apiToken passado só via
+          # `with:` — precisa também estar no ambiente explicitamente.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
   publish-mobile-ota:
