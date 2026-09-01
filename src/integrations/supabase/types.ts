@@ -38,6 +38,36 @@ export type Database = {
         }
         Relationships: []
       }
+      app_releases: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          url: string
+          version_code: number
+          version_name: string
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          url: string
+          version_code: number
+          version_name: string
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          url?: string
+          version_code?: number
+          version_name?: string
+        }
+        Relationships: []
+      }
       audit_reports: {
         Row: {
           counts: Json

@@ -1,0 +1,90 @@
+name: Release Android APK
+
+# Dispara só quando android/app/build.gradle muda — é ali que fica o
+# versionCode/versionName, então mexer nesse arquivo já É o ato de decidir
+# cortar uma release nativa nova. Mudança de tela/lógica normal não passa
+# por aqui, vai só pelo OTA (deploy.yml).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/app/build.gradle"
+  workflow_dispatch: {}
+
+jobs:
+  build-and-publish:
+    name: Build, sign and publish release APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build:mobile
+
+      - run: bun x cap sync android
+
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: ../release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Publish APK e registra a release
+        env:
+          SUPABASE_URL: "https://zerepuiyqbenogeyllxb.supabase.co"
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          VERSION_CODE=$(grep -oP 'versionCode\s+\K\d+' android/app/build.gradle)
+          VERSION_NAME=$(grep -oP 'versionName\s+"\K[^"]+' android/app/build.gradle)
+          APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          CHECKSUM=$(sha256sum "$APK" | cut -d ' ' -f1)
+          echo "Publicando versionCode=$VERSION_CODE versionName=$VERSION_NAME"
+
+          # Chave nova (sb_secret_...) não é JWT — vai só no header apikey.
+          UPLOAD_RESPONSE=$(curl -s -w '\n%{http_code}' -X POST \
+            "$SUPABASE_URL/storage/v1/object/app-releases/${VERSION_CODE}.apk" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            -H "x-upsert: true" \
+            --data-binary @"$APK")
+          UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+          UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
+          echo "Storage upload status: $UPLOAD_STATUS"
+          if [ "$UPLOAD_STATUS" -ge 300 ]; then
+            echo "::error::Falha ao subir o APK pro Storage: $UPLOAD_BODY"
+            exit 1
+          fi
+
+          PUBLIC_URL="$SUPABASE_URL/storage/v1/object/public/app-releases/${VERSION_CODE}.apk"
+          INSERT_RESPONSE=$(curl -s -w '\n%{http_code}' -X POST \
+            "$SUPABASE_URL/rest/v1/app_releases?on_conflict=version_code" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates,return=minimal" \
+            -d "{\"version_code\": ${VERSION_CODE}, \"version_name\": \"${VERSION_NAME}\", \"url\": \"${PUBLIC_URL}\", \"checksum\": \"${CHECKSUM}\"}")
+          INSERT_STATUS=$(echo "$INSERT_RESPONSE" | tail -n1)
+          INSERT_BODY=$(echo "$INSERT_RESPONSE" | sed '$d')
+          echo "Release row insert status: $INSERT_STATUS"
+          if [ "$INSERT_STATUS" -ge 300 ]; then
+            echo "::error::Falha ao registrar a release na tabela app_releases: $INSERT_BODY"
+            exit 1
+          fi
