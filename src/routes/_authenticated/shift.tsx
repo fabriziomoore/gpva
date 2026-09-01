@@ -266,13 +266,17 @@ function ShiftPage() {
       </div>
 
       {selectedService && (
-        // Fecha ao clicar em qualquer lugar fora do cabeçalho (que virou a
-        // barra de ações via headerOverride do AppShell — sem painel
-        // separado empilhado, evita artefato visual de camadas sobrepostas).
+        // Fecha ao tocar fora do cabeçalho (virou a barra de ações via
+        // headerOverride do AppShell). Usa onPointerDown, não onClick: o
+        // mesmo toque prolongado que abre isso monta esse overlay ainda com
+        // o dedo na tela — ao soltar, o navegador recalcula o elemento sob
+        // o dedo NAQUELE instante (já é o overlay, não a linha original) e
+        // dispararia um click residual fechando na hora. onPointerDown só
+        // reage a um toque novo, começado depois do overlay já existir.
         <div
           className="fixed inset-0 z-20"
           aria-hidden="true"
-          onClick={() => setSelectedService(null)}
+          onPointerDown={() => setSelectedService(null)}
         />
       )}
 
@@ -424,16 +428,23 @@ function ServiceRow({
   // Long-press (500 ms) abre a barra de ações (editar/excluir) no topo.
   const pressTimer = useRef<number | null>(null);
   const firedRef = useRef(false);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
   const clearPress = () => {
     if (pressTimer.current != null) {
       window.clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
   };
+  // Tolerância de movimento: um toque "parado" numa tela real sempre gera
+  // pequenos pointermove por tremor/ruído do sensor — cancelar em qualquer
+  // deslocamento tornava o long-press impossível de disparar de forma
+  // confiável no Android.
+  const MOVE_TOLERANCE_PX = 10;
   const pressHandlers = onLongPress
     ? {
-        onPointerDown: () => {
+        onPointerDown: (e: React.PointerEvent) => {
           firedRef.current = false;
+          startPos.current = { x: e.clientX, y: e.clientY };
           clearPress();
           pressTimer.current = window.setTimeout(() => {
             firedRef.current = true;
@@ -443,7 +454,12 @@ function ServiceRow({
         onPointerUp: clearPress,
         onPointerLeave: clearPress,
         onPointerCancel: clearPress,
-        onPointerMove: clearPress,
+        onPointerMove: (e: React.PointerEvent) => {
+          if (!startPos.current) return;
+          const dx = e.clientX - startPos.current.x;
+          const dy = e.clientY - startPos.current.y;
+          if (Math.hypot(dx, dy) > MOVE_TOLERANCE_PX) clearPress();
+        },
         onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
       }
     : {};
