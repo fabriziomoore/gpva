@@ -19,7 +19,8 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { AppLogo } from "@/components/brand/AppLogo";
 import { DisclaimerBanner } from "@/components/brand/DisclaimerBanner";
 import { Checkbox } from "@/components/ui/checkbox";
-import aguasDoRioLogoUrl from "@/assets/aguas-do-rio-logo.png?url";
+import aguasDoRioLogoLightUrl from "@/assets/aguas-do-rio-logo-light.png?url";
+import aguasDoRioLogoDarkUrl from "@/assets/aguas-do-rio-logo-dark.png?url";
 
 const LOGIN_TIMEOUT_MS = 8_000;
 
@@ -250,7 +251,8 @@ function AuthPage() {
               )}
             </Button>
             <div className="flex justify-end">
-              <img src={aguasDoRioLogoUrl} alt="Águas do Rio" className="h-10 w-auto" />
+              <img src={aguasDoRioLogoLightUrl} alt="Águas do Rio" className="block h-10 w-auto dark:hidden" />
+              <img src={aguasDoRioLogoDarkUrl} alt="" aria-hidden="true" className="hidden h-10 w-auto dark:block" />
             </div>
         </form>
 
