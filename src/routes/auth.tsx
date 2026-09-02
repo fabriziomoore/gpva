@@ -19,6 +19,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { AppLogo } from "@/components/brand/AppLogo";
 import { DisclaimerBanner } from "@/components/brand/DisclaimerBanner";
 import { Checkbox } from "@/components/ui/checkbox";
+import aguasDoRioLogoUrl from "@/assets/aguas-do-rio-logo.png?url";
 
 const LOGIN_TIMEOUT_MS = 8_000;
 
@@ -248,6 +249,9 @@ function AuthPage() {
                 "Entrar"
               )}
             </Button>
+            <div className="flex justify-end">
+              <img src={aguasDoRioLogoUrl} alt="Águas do Rio" className="h-7 w-auto" />
+            </div>
         </form>
 
         </div>
