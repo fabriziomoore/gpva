@@ -8,13 +8,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       position="top-center"
       offset={{
-        top: "calc(env(safe-area-inset-top, 0px) + 56px)",
+        top: "calc(env(safe-area-inset-top, 0px) + 8px)",
         right: 24,
         bottom: 24,
         left: 24,
       }}
       mobileOffset={{
-        top: "calc(env(safe-area-inset-top, 0px) + 56px)",
+        top: "calc(env(safe-area-inset-top, 0px) + 8px)",
         right: 16,
         bottom: 16,
         left: 16,
@@ -26,7 +26,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
         } as React.CSSProperties
       }
       toastOptions={{
-        style: { width: "min(92vw, 480px)", maxWidth: "calc(100vw - 32px)" },
+        // Cabe dentro da faixa do cabeçalho (~56px) sem invadir a linha de
+        // sincronismo logo abaixo dele — antes o offset de 56px + a altura
+        // padrão do toast empurravam o aviso pra cobrir exatamente a linha.
+        style: {
+          width: "min(92vw, 480px)",
+          maxWidth: "calc(100vw - 32px)",
+          minHeight: "auto",
+          padding: "10px 16px",
+        },
         classNames: {
           toast:
             "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",

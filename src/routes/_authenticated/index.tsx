@@ -205,16 +205,14 @@ function HomePage() {
             )}
           </div>
           <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
-            <div className="space-y-2">
-              <p className="truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
-              {(team?.collaborator1 || team?.collaborator2) && (
-                <p className="truncate text-xs font-medium text-foreground leading-tight">
-                  {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
-                </p>
-              )}
-            </div>
+            <p className="truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
+            {(team?.collaborator1 || team?.collaborator2) && (
+              <p className="mt-1.5 truncate text-xs font-medium text-foreground leading-tight">
+                {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
+              </p>
+            )}
             {team?.supervisor && (
-              <div className="text-[11px] leading-tight text-muted-foreground space-y-1.5">
+              <div className="mt-1.5 text-[11px] leading-tight text-muted-foreground space-y-1.5">
                 <div className="space-y-0.5">
                   {team.setor_nome && (
                     <p className="truncate">Setor: <span className="font-semibold text-foreground">{team.setor_nome}</span></p>
