@@ -201,7 +201,7 @@ function HomePage() {
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
             ) : (
-              <UserRound className="size-8 text-muted-foreground" />
+              <UserRound className="size-14 text-muted-foreground" />
             )}
           </div>
           <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
