@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   checkForNativeUpdate,
@@ -14,7 +13,7 @@ import {
  */
 export function NativeUpdateCard() {
   const [update, setUpdate] = useState<NativeUpdateInfo | null>(null);
-  const [installing, setInstalling] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,15 +29,14 @@ export function NativeUpdateCard() {
 
   async function install() {
     if (!update) return;
-    setInstalling(true);
+    setProgress(0);
     try {
-      toast.info("Baixando atualização...");
-      await downloadAndInstallNativeUpdate(update);
+      await downloadAndInstallNativeUpdate(update, setProgress);
       toast.success("Instalador aberto — confirme a instalação se o Android pedir.");
     } catch (err) {
       toast.error(err instanceof Error ? `Erro ao atualizar: ${err.message}` : "Erro ao baixar atualização");
     } finally {
-      setInstalling(false);
+      setProgress(null);
     }
   }
 
@@ -57,9 +55,21 @@ export function NativeUpdateCard() {
             {update.releaseType ?? "Atualização"} · v{update.versionName}
           </p>
         </div>
-        <Button onClick={install} disabled={installing} className="h-11 w-full">
-          {installing ? <Loader2 className="size-4 animate-spin" /> : "Baixar e instalar"}
-        </Button>
+        {progress === null ? (
+          <Button onClick={install} className="h-11 w-full">
+            Baixar e instalar
+          </Button>
+        ) : (
+          <div className="relative h-11 w-full overflow-hidden rounded-md bg-white">
+            <div
+              className="absolute inset-y-0 left-0 bg-blue-600 transition-[width] duration-150"
+              style={{ width: `${progress}%` }}
+            />
+            <div className="relative flex h-full items-center justify-center text-sm font-bold text-black">
+              {progress}%
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
