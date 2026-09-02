@@ -5,6 +5,7 @@ export type NativeUpdateInfo = {
   versionCode: number;
   versionName: string;
   url: string;
+  releaseType: string | null;
 };
 
 /**
@@ -21,7 +22,7 @@ export async function checkForNativeUpdate(): Promise<NativeUpdateInfo | null> {
       App.getInfo(),
       supabase
         .from("app_releases")
-        .select("version_code, version_name, url")
+        .select("version_code, version_name, url, release_type")
         .order("version_code", { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -31,7 +32,12 @@ export async function checkForNativeUpdate(): Promise<NativeUpdateInfo | null> {
     const currentVersionCode = Number(appInfo.build) || 0;
     if (release.version_code <= currentVersionCode) return null;
 
-    return { versionCode: release.version_code, versionName: release.version_name, url: release.url };
+    return {
+      versionCode: release.version_code,
+      versionName: release.version_name,
+      url: release.url,
+      releaseType: release.release_type,
+    };
   } catch {
     return null;
   }

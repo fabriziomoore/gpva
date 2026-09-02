@@ -44,6 +44,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          release_type: string | null
           url: string
           version_code: number
           version_name: string
@@ -53,6 +54,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          release_type?: string | null
           url: string
           version_code: number
           version_name: string
@@ -62,6 +64,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          release_type?: string | null
           url?: string
           version_code?: number
           version_name?: string
