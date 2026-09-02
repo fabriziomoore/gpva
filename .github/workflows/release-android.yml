@@ -36,7 +36,20 @@ jobs:
       - name: Decode keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/release.keystore"
+        run: |
+          set -euo pipefail
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/release.keystore"
+          # Confere integridade contra o checksum conhecido do arquivo local —
+          # se o secret foi colado errado (linha quebrada, espaço extra),
+          # falha aqui com uma mensagem clara em vez de um erro de parsing
+          # obscuro do Gradle 3 minutos de build depois.
+          ACTUAL=$(sha256sum "$GITHUB_WORKSPACE/release.keystore" | cut -d ' ' -f1)
+          EXPECTED="e1fbe22259e34181226db9a6dbc8ab604f80253ddf27d77747765e48581a5410"
+          echo "Keystore checksum: $ACTUAL"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 não bate com o checksum esperado — o secret foi colado errado (esperado $EXPECTED, obtido $ACTUAL). Gere o base64 de novo com 'base64 -w 0' e recadastre o secret."
+            exit 1
+          fi
 
       - name: Build signed release APK
         working-directory: android
