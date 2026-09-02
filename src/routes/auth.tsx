@@ -173,7 +173,7 @@ function AuthPage() {
       <DisclaimerBanner />
       <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto py-6">
         <div className="mb-8 w-full max-w-sm px-4 flex justify-center">
-          <AppLogo className="max-w-[192px]" />
+          <AppLogo className="max-w-[280px]" />
         </div>
         <div className="w-full max-w-sm px-4">
 
