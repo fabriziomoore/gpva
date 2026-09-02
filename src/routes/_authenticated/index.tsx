@@ -216,6 +216,9 @@ function HomePage() {
             {team?.supervisor && (
               <div className="text-[11px] leading-tight text-muted-foreground space-y-1.5">
                 <div className="space-y-0.5">
+                  {team.setor_nome && (
+                    <p className="truncate">Setor: <span className="font-semibold text-foreground">{team.setor_nome}</span></p>
+                  )}
                   <p className="truncate">Supervisor: <span className="font-semibold text-foreground">{team.supervisor}</span></p>
                   <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
                 </div>

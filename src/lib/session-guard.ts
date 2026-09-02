@@ -5,6 +5,7 @@ import { getLocalDB, type LocalShift } from "@/lib/db/local-db";
 import { clearRemembered } from "@/lib/remember-access";
 import { clearOfflineUnlock, getLastUserId } from "@/lib/offline-auth";
 import { clearSessionBackup } from "@/lib/sync/session-backup";
+import { reportDeviceVersion } from "@/lib/ota/device-info";
 import { toast } from "sonner";
 
 const LOGIN_TS_KEY = "gpva.loginAt";
@@ -247,6 +248,7 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
         .from("active_sessions")
         .update({ last_seen_at: new Date().toISOString() })
         .eq("user_id", userId);
+      void reportDeviceVersion(userId);
       return true;
     }
     if (Date.now() - claimedAt < CLAIM_GRACE_MS) return true;

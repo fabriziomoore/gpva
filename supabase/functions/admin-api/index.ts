@@ -174,6 +174,23 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const adminIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
       return (data ?? []).filter((r: any) => !r.is_test && !isReservedAdminTeam(r, adminIds));
     }
+    case "adminUpdatesOverview": {
+      const [teamsRes, nativeRes, webRes, adminRolesRes] = await Promise.all([
+        sb.from("equipes").select("id,team_name,is_test,native_version_code,web_bundle_version,version_reported_at").order("team_name"),
+        sb.from("app_releases").select("version_code").order("version_code", { ascending: false }).limit(1).maybeSingle(),
+        sb.from("web_releases").select("build_number").order("build_number", { ascending: false }).limit(1).maybeSingle(),
+        sb.from("user_roles").select("user_id").eq("role", "admin"),
+      ]);
+      if (teamsRes.error) throw new Error(teamsRes.error.message);
+      if (nativeRes.error) throw new Error(nativeRes.error.message);
+      if (webRes.error) throw new Error(webRes.error.message);
+      const adminIds = new Set((adminRolesRes.data ?? []).map((r: any) => r.user_id));
+      return {
+        latestNativeVersionCode: nativeRes.data?.version_code ?? null,
+        latestWebBuildNumber: webRes.data?.build_number ?? null,
+        teams: (teamsRes.data ?? []).filter((t: any) => !t.is_test && !isReservedAdminTeam(t, adminIds)),
+      };
+    }
     case "adminUpdateRate": {
       const { error } = await sb.from("equipes").update({ variable_rate: args.rate }).eq("id", args.teamId);
       if (error) throw new Error(error.message);
@@ -201,7 +218,11 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const newId = created.user?.id;
       if (newId) {
         const { error: e2 } = await sb.from("equipes")
-          .update({ setor_id: args.setorId, supervisor_id: args.supervisorId, leader_id: args.leaderId, onboarded: true })
+          .update({
+            setor_id: args.setorId, supervisor_id: args.supervisorId, leader_id: args.leaderId, onboarded: true,
+            collaborator1: String(args.collaborator1 ?? "").trim() || null,
+            collaborator2: String(args.collaborator2 ?? "").trim() || null,
+          })
           .eq("id", newId);
         if (e2) {
           const { error: undoErr } = await sb.auth.admin.deleteUser(newId);
@@ -212,6 +233,11 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       return { ok: true };
     }
     case "adminUpdateTeam": {
+      if (args.password !== undefined) {
+        if (String(args.password).length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+        const { error: pwErr } = await sb.auth.admin.updateUserById(args.teamId, { password: String(args.password) });
+        if (pwErr) throw new Error(pwErr.message);
+      }
       const patch: any = {};
       if (args.teamName !== undefined) { const n = String(args.teamName).trim(); if (!n) throw new Error("Nome inválido."); patch.team_name = n; }
       if (args.collaborator1 !== undefined) patch.collaborator1 = String(args.collaborator1 ?? "").trim() || null;

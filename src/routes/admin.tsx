@@ -12,7 +12,7 @@ import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
   Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
-  Smartphone, Trash, RotateCcw,
+  Smartphone, Trash, RotateCcw, RefreshCw,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
@@ -48,6 +48,7 @@ import {
   adminDeleteSupervisor,
   adminListDevices,
   adminSignOutDevice,
+  adminUpdatesOverview,
   adminListTrashShifts,
   adminRestoreShift,
   adminPurgeShift,
@@ -84,6 +85,7 @@ type SectionId =
   | "test_account"
   | "map_services"
   | "devices"
+  | "updates"
   | "trash"
   | "audit";
 
@@ -108,6 +110,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
   devices: { id: "devices", label: "Dispositivos", description: "Sessões ativas e logout remoto", icon: Smartphone },
+  updates: { id: "updates", label: "Atualizações", description: "Rollout de versão por equipe/aparelho", icon: RefreshCw },
   trash: { id: "trash", label: "Lixeira", description: "Relatórios excluídos — restaurar ou apagar", icon: Trash },
   audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
 };
@@ -125,7 +128,7 @@ const SECTION_GROUPS: SectionGroup[] = [
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
-    items: ["variable", "map_services", "google_form", "test_account", "devices", "trash", "audit"] },
+    items: ["variable", "map_services", "google_form", "test_account", "devices", "updates", "trash", "audit"] },
 ];
 
 function groupOf(id: SectionId): SectionGroup | undefined {
@@ -329,6 +332,8 @@ function AdminPage() {
             <MapServicesSection adminPw={adminPw} />
           ) : section === "devices" ? (
             <DevicesSection adminPw={adminPw} />
+          ) : section === "updates" ? (
+            <UpdatesSection adminPw={adminPw} />
           ) : section === "trash" ? (
             <TrashSection adminPw={adminPw} />
           ) : section === "audit" ? (
@@ -927,6 +932,8 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const [teamName, setTeamName] = useState("");
   const [password, setPassword] = useState("");
+  const [collab1, setCollab1] = useState("");
+  const [collab2, setCollab2] = useState("");
   const [hier, setHier] = useState({ setorId: "", supervisorId: "", leaderId: "" });
   const createFn = useServerFn(adminCreateTeam);
 
@@ -940,12 +947,16 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
           setorId: hier.setorId,
           supervisorId: hier.supervisorId,
           leaderId: hier.leaderId,
+          collaborator1: collab1.trim() || null,
+          collaborator2: collab2.trim() || null,
         },
       }),
     onSuccess: () => {
       toast.success("Equipe criada");
       setTeamName("");
       setPassword("");
+      setCollab1("");
+      setCollab2("");
       setHier({ setorId: "", supervisorId: "", leaderId: "" });
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
@@ -979,6 +990,24 @@ function CreateTeamSection({ adminPw }: { adminPw: string }) {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          className="h-12 text-base"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="c1">Colaborador 1</Label>
+        <Input
+          id="c1"
+          value={collab1}
+          onChange={(e) => setCollab1(e.target.value)}
+          className="h-12 text-base"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="c2">Colaborador 2</Label>
+        <Input
+          id="c2"
+          value={collab2}
+          onChange={(e) => setCollab2(e.target.value)}
           className="h-12 text-base"
         />
       </div>
@@ -1283,6 +1312,7 @@ function TeamHeader({
   const [name, setName] = useState(team.team_name);
   const [c1, setC1] = useState(team.collaborator1 ?? "");
   const [c2, setC2] = useState(team.collaborator2 ?? "");
+  const [newPassword, setNewPassword] = useState("");
   const [hier, setHier] = useState({
     setorId: team.setor_id ?? "",
     supervisorId: team.supervisor_id ?? "",
@@ -1303,11 +1333,13 @@ function TeamHeader({
           setorId: hier.setorId,
           supervisorId: hier.supervisorId,
           leaderId: hier.leaderId,
+          ...(newPassword ? { password: newPassword } : {}),
         },
       }),
     onSuccess: () => {
       toast.success("Equipe atualizada");
       setEditing(false);
+      setNewPassword("");
       qc.invalidateQueries({ queryKey: ["admin-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -1374,13 +1406,35 @@ function TeamHeader({
             leaderId={hier.leaderId}
             onChange={setHier}
           />
+          <div className="space-y-1">
+            <Label className="text-xs">Nova senha (opcional, mín. 6)</Label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Deixe em branco para manter a atual"
+              className="h-10"
+            />
+          </div>
           <div className="flex gap-2 pt-1">
-            <Button variant="outline" className="h-10 flex-1" onClick={() => setEditing(false)}>
+            <Button
+              variant="outline"
+              className="h-10 flex-1"
+              onClick={() => {
+                setEditing(false);
+                setNewPassword("");
+              }}
+            >
               Cancelar
             </Button>
             <Button
               className="h-10 flex-1"
-              disabled={updateMut.isPending || !name.trim() || !hierComplete}
+              disabled={
+                updateMut.isPending ||
+                !name.trim() ||
+                !hierComplete ||
+                (newPassword.length > 0 && newPassword.length < 6)
+              }
               onClick={() => updateMut.mutate()}
             >
               {updateMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
@@ -2361,6 +2415,117 @@ function DevicesSection({ adminPw }: { adminPw: string }) {
             );
           })}
         </ul>
+      )}
+    </div>
+  );
+}
+
+type UpdateStatus = "atualizado" | "desatualizado" | "nunca_reportou";
+
+function versionStatus(reported: number | null, latest: number | null): UpdateStatus {
+  if (reported == null) return "nunca_reportou";
+  if (latest == null) return "atualizado";
+  return reported >= latest ? "atualizado" : "desatualizado";
+}
+
+const UPDATE_STATUS_INFO: Record<UpdateStatus, { label: string; className: string }> = {
+  atualizado: { label: "Atualizado", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+  desatualizado: { label: "Desatualizado", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  nunca_reportou: { label: "Nunca reportou", className: "bg-muted text-muted-foreground" },
+};
+
+function UpdateStatusBadge({ status }: { status: UpdateStatus }) {
+  const info = UPDATE_STATUS_INFO[status];
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${info.className}`}>
+      {info.label}
+    </span>
+  );
+}
+
+function UpdatesSection({ adminPw }: { adminPw: string }) {
+  const fn = useServerFn(adminUpdatesOverview);
+  const overview = useQuery({
+    queryKey: ["admin-updates-overview"],
+    queryFn: () => fn({ data: { adminPassword: adminPw } }),
+    refetchInterval: 30_000,
+  });
+
+  const latestNative = overview.data?.latestNativeVersionCode ?? null;
+  const latestWeb = overview.data?.latestWebBuildNumber ?? null;
+  const teams = overview.data?.teams ?? [];
+
+  // Pior status primeiro — quem nunca reportou ou está desatualizado precisa
+  // de atenção; quem já está em dia fica no fim da lista.
+  const statusRank: Record<UpdateStatus, number> = { nunca_reportou: 0, desatualizado: 1, atualizado: 2 };
+  const sorted = [...teams].sort((a, b) => {
+    const ra = statusRank[versionStatus(a.native_version_code, latestNative)];
+    const rb = statusRank[versionStatus(b.native_version_code, latestNative)];
+    if (ra !== rb) return ra - rb;
+    return a.team_name.localeCompare(b.team_name);
+  });
+
+  const updatedCount = teams.filter(
+    (t) => versionStatus(t.native_version_code, latestNative) === "atualizado",
+  ).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Atualizações</h2>
+          <p className="text-xs text-muted-foreground">
+            {latestNative != null
+              ? `Último APK publicado: versionCode ${latestNative}`
+              : "Nenhum APK publicado ainda"}
+            {latestWeb != null ? ` · último bundle web: build ${latestWeb}` : ""}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="h-9"
+          onClick={() => overview.refetch()}
+          disabled={overview.isFetching}
+        >
+          {overview.isFetching ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
+        </Button>
+      </div>
+
+      {overview.isLoading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : teams.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          Nenhuma equipe cadastrada.
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            {updatedCount} de {teams.length} equipe(s) com o app nativo atualizado.
+          </p>
+          <ul className="space-y-2">
+            {sorted.map((t) => {
+              const nativeStatus = versionStatus(t.native_version_code, latestNative);
+              return (
+                <li key={t.id} className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground">{t.team_name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      APK: {t.native_version_code ?? "—"}
+                      {latestNative != null ? ` / ${latestNative}` : ""} · Bundle web: {t.web_bundle_version ?? "—"}
+                      {latestWeb != null ? ` / ${latestWeb}` : ""}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                      {t.version_reported_at
+                        ? `Último report: ${formatDateBR(t.version_reported_at)}`
+                        : "Nunca reportou versão — provável dispositivo que ainda não abriu o app após a instalação, ou está offline."}
+                    </div>
+                  </div>
+                  <UpdateStatusBadge status={nativeStatus} />
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );

@@ -8,16 +8,17 @@ import { Label } from "@/components/ui/label";
 import {
   tryOfflineLogin,
   hasValidOfflineUnlock,
-  getCredential,
   offlineErrorMessage,
   type OfflineLoginReason,
 } from "@/lib/offline-auth";
 import { readStoredAuthSession, hydrateLocalStorageFromBackup } from "@/lib/sync/session-backup";
 import { hasSessionEjection } from "@/lib/session-guard";
+import { getRememberLoginPref, setRememberLogin } from "@/lib/remember-login";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { AppLogo } from "@/components/brand/AppLogo";
 import { DisclaimerBanner } from "@/components/brand/DisclaimerBanner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const LOGIN_TIMEOUT_MS = 8_000;
 
@@ -68,6 +69,7 @@ function AuthPage() {
   const navigate = useNavigate();
   const [team, setTeam] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberLogin, setRememberLoginChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -85,11 +87,12 @@ function AuthPage() {
     };
   }, []);
 
-  // Pré-preenche o login com a equipe salva anteriormente (se houver
-  // credencial local de um primeiro acesso online prévio).
+  // Pré-preenche o Loguin só se o usuário marcou "Lembrar acesso" numa vez
+  // anterior — a senha nunca é lembrada nem pré-preenchida.
   useEffect(() => {
-    void getCredential().then((rec) => {
-      if (rec?.team) setTeam(rec.team);
+    void getRememberLoginPref().then(({ enabled, login }) => {
+      setRememberLoginChecked(enabled);
+      if (enabled && login) setTeam(login);
     });
   }, []);
 
@@ -110,6 +113,7 @@ function AuthPage() {
       }
       const authResult = await withLoginTimeout(signInTeam(team, password));
       sessionStorage.removeItem("gpva.forceSignedOut");
+      void setRememberLogin(rememberLogin, team);
       // A credencial local já foi persistida dentro de signInTeam().
       if (team.trim().toLowerCase() === "adm") {
         sessionStorage.setItem("gpva-admin-pw", "137889");
@@ -147,6 +151,7 @@ function AuthPage() {
     const result = await tryOfflineLogin(team, password);
     if (result.ok) {
       try { sessionStorage.removeItem("gpva.forceSignedOut"); } catch { /* ignore */ }
+      void setRememberLogin(rememberLogin, team);
       // Hidrata a sessão espelhada em Preferences DIRETO no localStorage.
       // NÃO chamamos supabase.auth.setSession() aqui — offline, ele tentaria
       // refresh de token, falharia, e emitiria SIGNED_OUT, apagando o
@@ -184,6 +189,16 @@ function AuthPage() {
                 autoComplete="username"
                 className="h-12 text-base"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="remember-login"
+                checked={rememberLogin}
+                onCheckedChange={(v) => setRememberLoginChecked(v === true)}
+              />
+              <Label htmlFor="remember-login" className="cursor-pointer text-sm font-normal text-muted-foreground">
+                Lembrar acesso (só o loguin — a senha não é salva)
+              </Label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="pw">Senha</Label>

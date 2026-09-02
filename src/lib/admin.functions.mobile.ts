@@ -22,6 +22,17 @@ export type TeamListRow = {
 
 export const listTeams = call<TeamListRow[]>("listTeams");
 
+export type UpdatesOverviewTeam = {
+  id: string; team_name: string; is_test: boolean | null;
+  native_version_code: number | null; web_bundle_version: number | null; version_reported_at: string | null;
+};
+export type UpdatesOverview = {
+  latestNativeVersionCode: number | null;
+  latestWebBuildNumber: number | null;
+  teams: UpdatesOverviewTeam[];
+};
+export const adminUpdatesOverview = call<UpdatesOverview>("adminUpdatesOverview");
+
 export const adminListRows = call<Array<{ id: string; name: string }>>("adminListRows");
 export const adminAddRow = call<{ ok: true }>("adminAddRow");
 export const adminDeleteRow = call<{ ok: true }>("adminDeleteRow");

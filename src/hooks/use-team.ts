@@ -53,17 +53,23 @@ export function useTeam(userId: string | null) {
         const { data, error } = await withTimeout(
           supabase
             .from("equipes")
-            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome)")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome),supervisores(nome),lideres_estrutura(nome)")
             .maybeSingle(),
         );
         if (error) throw error;
         if (!data) return cached;
         const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string } | null }).setores;
+        // supervisor_id/leader_id (estrutura canonica) sao a fonte da verdade
+        // desde a A5; equipes criadas depois nunca tem o texto legado
+        // preenchido (so o admin escreve os IDs). Cai pro texto so em
+        // equipes antigas/de teste sem vinculo estrutural.
+        const supEstrutura = (data as unknown as { supervisores: { nome: string } | null }).supervisores;
+        const lidEstrutura = (data as unknown as { lideres_estrutura: { nome: string } | null }).lideres_estrutura;
         const team: Team = {
           id: data.id,
           team_name: data.team_name,
-          supervisor: data.supervisor,
-          leader: data.leader,
+          supervisor: supEstrutura?.nome || data.supervisor,
+          leader: lidEstrutura?.nome || data.leader,
           variable_rate: data.variable_rate,
           onboarded: data.onboarded,
           photo_url: data.photo_url,

@@ -97,6 +97,45 @@ export const listTeams = createServerFn({ method: "POST" })
     return (rows ?? []).filter((r) => !r.is_test && !isReservedAdminTeam(r, adminIds));
   });
 
+// Visão geral de rollout: última versão publicada (nativa e web/OTA) vs.
+// última versão que cada equipe reportou. `equipes` guarda o report porque
+// sobrevive a logout/eject — diferente de `active_sessions`, que é efêmera
+// e não mostra devices desconectados no momento.
+export const adminUpdatesOverview = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [teamsRes, nativeRes, webRes, adminRolesRes] = await Promise.all([
+      supabaseAdmin
+        .from("equipes")
+        .select("id,team_name,is_test,native_version_code,web_bundle_version,version_reported_at")
+        .order("team_name"),
+      supabaseAdmin
+        .from("app_releases")
+        .select("version_code")
+        .order("version_code", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("web_releases")
+        .select("build_number")
+        .order("build_number", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin"),
+    ]);
+    if (teamsRes.error) throw new Error(teamsRes.error.message);
+    if (nativeRes.error) throw new Error(nativeRes.error.message);
+    if (webRes.error) throw new Error(webRes.error.message);
+    const adminIds = new Set((adminRolesRes.data ?? []).map((r) => r.user_id));
+    return {
+      latestNativeVersionCode: nativeRes.data?.version_code ?? null,
+      latestWebBuildNumber: webRes.data?.build_number ?? null,
+      teams: (teamsRes.data ?? []).filter((t) => !t.is_test && !isReservedAdminTeam(t, adminIds)),
+    };
+  });
+
 export const adminListRows = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; table: CrudTable }) => data)
   .handler(async ({ data }) => {
@@ -193,6 +232,8 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
       setorId: string;
       supervisorId: string;
       leaderId: string;
+      collaborator1?: string | null;
+      collaborator2?: string | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -239,6 +280,8 @@ export const adminCreateTeam = createServerFn({ method: "POST" })
           supervisor_id: data.supervisorId,
           leader_id: data.leaderId,
           onboarded: true,
+          collaborator1: data.collaborator1?.trim() || null,
+          collaborator2: data.collaborator2?.trim() || null,
         })
         .eq("id", newId);
       if (structErr) {
@@ -312,11 +355,19 @@ export const adminUpdateTeam = createServerFn({ method: "POST" })
       setorId?: string;
       supervisorId?: string;
       leaderId?: string;
+      password?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.password !== undefined) {
+      if (data.password.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+      const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(data.teamId, {
+        password: data.password,
+      });
+      if (pwErr) throw new Error(pwErr.message);
+    }
     const patch: {
       team_name?: string;
       collaborator1?: string | null;
