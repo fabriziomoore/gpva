@@ -90,9 +90,11 @@ function SettingsPage() {
     if (!nativeUpdate) return;
     setInstalling(true);
     try {
+      toast.info("Baixando atualização...");
       await downloadAndInstallNativeUpdate(nativeUpdate);
+      toast.success("Instalador aberto — confirme a instalação se o Android pedir.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao baixar atualização");
+      toast.error(err instanceof Error ? `Erro ao atualizar: ${err.message}` : "Erro ao baixar atualização");
     } finally {
       setInstalling(false);
     }

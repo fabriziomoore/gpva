@@ -41,4 +41,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Sem isso, o Android bloqueia silenciosamente (sem erro, sem prompt)
+         a tentativa de abrir o instalador de um APK baixado pelo próprio
+         app — necessária pra atualização nativa sem Play Store. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>
