@@ -235,10 +235,10 @@ export function SideMenu() {
         <Menu className="size-6" />
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[9998] bg-background/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Overlay className="fixed inset-0 z-[9998] bg-background/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
           style={{ height: fixedHeight || "100%", maxHeight: fixedHeight || "100%" } as React.CSSProperties}
-          className="fixed inset-y-0 left-0 z-[9999] flex w-72 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-card/40 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className="fixed inset-y-0 left-0 z-[9999] flex w-72 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-card shadow-2xl transition ease-in-out duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
         >
           <Dialog.Title className="sr-only">Menu</Dialog.Title>
           <header className="flex shrink-0 items-center justify-between px-4 py-4">
