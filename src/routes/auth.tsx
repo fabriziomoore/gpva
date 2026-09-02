@@ -190,16 +190,6 @@ function AuthPage() {
                 className="h-12 text-base"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember-login"
-                checked={rememberLogin}
-                onCheckedChange={(v) => setRememberLoginChecked(v === true)}
-              />
-              <Label htmlFor="remember-login" className="cursor-pointer text-sm font-normal text-muted-foreground">
-                Lembrar acesso (só o loguin — a senha não é salva)
-              </Label>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="pw">Senha</Label>
               <div className="relative">
@@ -219,6 +209,16 @@ function AuthPage() {
                 >
                   {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                 </button>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Checkbox
+                  id="remember-login"
+                  checked={rememberLogin}
+                  onCheckedChange={(v) => setRememberLoginChecked(v === true)}
+                />
+                <Label htmlFor="remember-login" className="cursor-pointer text-sm font-normal text-muted-foreground">
+                  Lembrar acesso
+                </Label>
               </div>
             </div>
             {errorMsg && (
