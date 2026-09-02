@@ -36,12 +36,16 @@ jobs:
       - name: Decode keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/release.keystore"
 
       - name: Build signed release APK
         working-directory: android
         env:
-          ANDROID_KEYSTORE_PATH: ../release.keystore
+          # Caminho absoluto: build.gradle fica em android/app/, então
+          # file("../release.keystore") resolveria relativo a android/app/
+          # (= android/release.keystore), não à raiz do repo onde o passo
+          # anterior decodificou o arquivo. Foi exatamente o que quebrou.
+          ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
