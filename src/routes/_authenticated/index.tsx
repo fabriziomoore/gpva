@@ -5,6 +5,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
+import { NativeUpdateCard } from "@/components/layout/NativeUpdateCard";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -256,6 +257,8 @@ function HomePage() {
             <span className="text-xs text-muted-foreground">Abrir →</span>
           </Link>
         )}
+
+        <NativeUpdateCard />
       </div>
     </AppShell>
   );

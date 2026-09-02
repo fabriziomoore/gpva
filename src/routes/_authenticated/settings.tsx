@@ -17,7 +17,6 @@ import { translateAuthError } from "@/lib/auth-errors";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useTeamPhoto, saveTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
 import { repoUpdateTeam } from "@/lib/db/repos";
-import { checkForNativeUpdate, downloadAndInstallNativeUpdate, type NativeUpdateInfo } from "@/lib/ota/native-update";
 import type { Team } from "@/hooks/use-team";
 
 const TEST_TEAM_NAME = "TESTANDO";
@@ -66,39 +65,8 @@ function useAppVersionInfo(): AppVersionInfo | null {
   return info;
 }
 
-// Checa uma vez, ao abrir a tela, se existe um APK novo publicado.
-function useNativeUpdateCheck(): NativeUpdateInfo | null {
-  const [update, setUpdate] = useState<NativeUpdateInfo | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void checkForNativeUpdate().then((info) => {
-      if (!cancelled) setUpdate(info);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return update;
-}
-
 function SettingsPage() {
   const versionInfo = useAppVersionInfo();
-  const nativeUpdate = useNativeUpdateCheck();
-  const [installing, setInstalling] = useState(false);
-
-  async function installNativeUpdate() {
-    if (!nativeUpdate) return;
-    setInstalling(true);
-    try {
-      toast.info("Baixando atualização...");
-      await downloadAndInstallNativeUpdate(nativeUpdate);
-      toast.success("Instalador aberto — confirme a instalação se o Android pedir.");
-    } catch (err) {
-      toast.error(err instanceof Error ? `Erro ao atualizar: ${err.message}` : "Erro ao baixar atualização");
-    } finally {
-      setInstalling(false);
-    }
-  }
   const { userId } = useAuthSession();
   const { data: team } = useTeam(userId);
   const qc = useQueryClient();
@@ -382,18 +350,6 @@ function SettingsPage() {
                 disabled={resetting}
               >
                 {resetting ? <Loader2 className="size-4 animate-spin" /> : "Zerar dados de apresentação"}
-              </Button>
-            </div>
-          )}
-
-          {nativeUpdate && (
-            <div className="space-y-2 rounded-2xl bg-card p-4 shadow-md">
-              <p className="text-sm font-semibold">Atualização disponível</p>
-              <p className="text-xs text-muted-foreground">
-                Versão {nativeUpdate.versionName} — baixa o instalador e o Android pede pra confirmar.
-              </p>
-              <Button onClick={installNativeUpdate} disabled={installing} className="h-11 w-full">
-                {installing ? <Loader2 className="size-4 animate-spin" /> : "Baixar e instalar"}
               </Button>
             </div>
           )}
