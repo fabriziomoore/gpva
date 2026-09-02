@@ -250,7 +250,7 @@ function AuthPage() {
               )}
             </Button>
             <div className="flex justify-end">
-              <img src={aguasDoRioLogoUrl} alt="Águas do Rio" className="h-7 w-auto" />
+              <img src={aguasDoRioLogoUrl} alt="Águas do Rio" className="h-10 w-auto" />
             </div>
         </form>
 
