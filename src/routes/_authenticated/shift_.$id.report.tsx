@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getLocalDB } from "@/lib/db/local-db";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Copy, Share2, Printer, Loader2 } from "lucide-react";
+import { Copy, Share2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/shift_/$id/report")({
@@ -44,61 +44,46 @@ function ReportPage() {
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-24">
           <pre className="whitespace-pre-wrap rounded-2xl bg-card shadow-md p-4 font-mono text-sm leading-relaxed">
             {text}
           </pre>
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 gap-2">
-            <Button
-              className="h-14 text-base font-semibold"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(text);
-                  toast.success("Relatório copiado");
-                } catch {
-                  toast.error("Não foi possível copiar");
-                }
-              }}
-            >
-              <Copy className="mr-2 size-5" /> Copiar Relatório
-            </Button>
-            <Button
-              variant="outline"
-              className="h-14 text-base font-semibold"
-              onClick={() => {
-                const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-                window.open(url, "_blank");
-              }}
-            >
-              <Share2 className="mr-2 size-5" /> Enviar no WhatsApp
-            </Button>
-            <Button
-              variant="outline"
-              className="h-14 text-base font-semibold"
-              onClick={() => exportPdf(text)}
-            >
-              <Printer className="mr-2 size-5" /> Exportar PDF
-            </Button>
-          </div>
+      {!q.isLoading && (
+        // Fixo no rodapé (mesmo padrão dos botões do Expediente) — só o
+        // relatório rola quando é grande, os botões continuam alcançáveis
+        // sem precisar rolar a tela toda.
+        <div
+          className="fixed inset-x-0 z-30 mx-auto flex max-w-md justify-between gap-2 px-4 transition-[bottom] duration-150"
+          style={{ bottom: "var(--sync-floating-bottom, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
+        >
+          <Button
+            className="h-14 flex-1 text-base font-semibold"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(text);
+                toast.success("Relatório copiado");
+              } catch {
+                toast.error("Não foi possível copiar");
+              }
+            }}
+          >
+            <Copy className="mr-2 size-5" /> Copiar
+          </Button>
+          <Button
+            variant="outline"
+            className="h-14 flex-1 text-base font-semibold"
+            onClick={() => {
+              const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+              window.open(url, "_blank");
+            }}
+          >
+            <Share2 className="mr-2 size-5" /> Compartilhar
+          </Button>
         </div>
       )}
     </AppShell>
   );
-}
-
-function exportPdf(text: string) {
-  const w = window.open("", "_blank");
-  if (!w) {
-    toast.error("Permita popups para gerar o PDF");
-    return;
-  }
-  w.document.write(`
-    <html><head><title>Relatório ACP</title>
-    <style>
-      body{font-family:ui-monospace,Menlo,Consolas,monospace;padding:24px;white-space:pre-wrap;line-height:1.5;font-size:13px;color:#111;}
-    </style></head><body>${text.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!)}</body></html>
-  `);
-  w.document.close();
-  setTimeout(() => w.print(), 300);
 }
