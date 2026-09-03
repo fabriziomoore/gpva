@@ -16,16 +16,20 @@ export async function notifyOtaReady(): Promise<void> {
   }
 }
 
+export type WebUpdateInfo = {
+  buildNumber: number;
+  url: string;
+  checksum: string | null;
+};
+
 /**
- * Checa se existe uma versão web mais nova publicada, baixa em segundo
- * plano e agenda pra ativar no próximo cold start (App.next não interrompe
- * a sessão atual — só troca quando o app for reaberto do zero).
+ * Só checa se existe uma versão web mais nova publicada — não baixa nada.
+ * Usado pelo WebUpdateCard pra decidir se mostra o aviso.
  */
-export async function checkForOtaUpdate(): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return;
+export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
+  if (!Capacitor.isNativePlatform()) return null;
   try {
     const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
-
     const [{ data: release }, current] = await Promise.all([
       supabase
         .from("web_releases")
@@ -35,19 +39,38 @@ export async function checkForOtaUpdate(): Promise<void> {
         .maybeSingle(),
       CapacitorUpdater.current(),
     ]);
-
-    if (!release?.url) return;
-
+    if (!release?.url) return null;
     const currentVersion = Number(current.bundle.version) || 0;
-    if (release.build_number <= currentVersion) return;
+    if (release.build_number <= currentVersion) return null;
+    return { buildNumber: release.build_number, url: release.url, checksum: release.checksum };
+  } catch {
+    return null;
+  }
+}
 
+/**
+ * Baixa o bundle, marca como próximo e recarrega o app sozinho — sem
+ * precisar que o usuário feche e abra manualmente (antes disso dependia de
+ * 2 ciclos de fechar/abrir, sem nenhum aviso na tela).
+ */
+export async function downloadAndApplyWebUpdate(
+  info: WebUpdateInfo,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
+  const listener = onProgress
+    ? await CapacitorUpdater.addListener("download", (state) => onProgress(state.percent))
+    : null;
+  try {
     const bundle = await CapacitorUpdater.download({
-      url: release.url,
-      version: String(release.build_number),
-      checksum: release.checksum ?? undefined,
+      url: info.url,
+      version: String(info.buildNumber),
+      checksum: info.checksum ?? undefined,
     });
     await CapacitorUpdater.next({ id: bundle.id });
-  } catch {
-    // Sem internet, servidor fora do ar, etc. — tenta de novo no próximo boot.
+    // Nunca resolve — destrói o contexto JS e recarrega com o bundle novo.
+    await CapacitorUpdater.reload();
+  } finally {
+    await listener?.remove();
   }
 }

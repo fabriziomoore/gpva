@@ -4,7 +4,7 @@ import { Keyboard } from "@capacitor/keyboard";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import type { Router } from "@tanstack/react-router";
-import { checkForOtaUpdate, notifyOtaReady } from "@/lib/ota/check-update";
+import { notifyOtaReady } from "@/lib/ota/check-update";
 
 // Native lifecycle wiring for the Android shell. Pure plugin usage — no
 // WebView hacks, no DOM listeners on focus, no JS-driven layout work.
@@ -15,9 +15,9 @@ export function initNative(router: Router<any, any>) {
   // cedo, antes de qualquer chamada de rede, senão ele reverte sozinho.
   void notifyOtaReady();
 
-  // Checa/baixa atualização web em segundo plano; só ativa no próximo cold
-  // start (não interrompe um expediente em andamento).
-  void checkForOtaUpdate();
+  // A checagem/download da atualização web agora é sob demanda, disparada
+  // pelo usuário no WebUpdateCard (home) — não mais silenciosa em segundo
+  // plano, pra evitar o app "atualizar" sem avisar nada na tela.
 
   // Status bar matches the dark theme; resize behavior delegated to Android.
   void StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined);

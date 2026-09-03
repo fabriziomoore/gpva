@@ -6,6 +6,7 @@ import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { NativeUpdateCard } from "@/components/layout/NativeUpdateCard";
+import { WebUpdateCard } from "@/components/layout/WebUpdateCard";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -271,6 +272,7 @@ function HomePage() {
         )}
 
         <NativeUpdateCard />
+        <WebUpdateCard />
       </div>
     </AppShell>
   );
