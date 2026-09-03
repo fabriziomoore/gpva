@@ -20,6 +20,7 @@ export type WebUpdateInfo = {
   buildNumber: number;
   url: string;
   checksum: string | null;
+  releaseType: string | null;
 };
 
 /**
@@ -33,7 +34,7 @@ export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
     const [{ data: release }, current] = await Promise.all([
       supabase
         .from("web_releases")
-        .select("build_number, url, checksum")
+        .select("build_number, url, checksum, release_type")
         .order("build_number", { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -42,7 +43,12 @@ export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
     if (!release?.url) return null;
     const currentVersion = Number(current.bundle.version) || 0;
     if (release.build_number <= currentVersion) return null;
-    return { buildNumber: release.build_number, url: release.url, checksum: release.checksum };
+    return {
+      buildNumber: release.build_number,
+      url: release.url,
+      checksum: release.checksum,
+      releaseType: release.release_type,
+    };
   } catch {
     return null;
   }

@@ -836,6 +836,7 @@ export type Database = {
           checksum: string | null
           created_at: string
           id: string
+          release_type: string | null
           url: string
           version: string
         }
@@ -844,6 +845,7 @@ export type Database = {
           checksum?: string | null
           created_at?: string
           id?: string
+          release_type?: string | null
           url: string
           version: string
         }
@@ -852,6 +854,7 @@ export type Database = {
           checksum?: string | null
           created_at?: string
           id?: string
+          release_type?: string | null
           url?: string
           version?: string
         }
