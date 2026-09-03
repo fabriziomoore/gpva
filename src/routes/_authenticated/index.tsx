@@ -201,13 +201,14 @@ function HomePage() {
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
             ) : (
-              // Ampliado e deslocado pra os ombros ficarem próximos dos
-              // cantos inferiores do quadrado, com folga suficiente pra a
-              // ponta arredondada do traço (round linecap "vaza" um pouco
-              // além do próprio path) não cruzar visualmente a borda.
+              // Ampliado e encostado no rodapé do quadrado (sem margem,
+              // sem "flutuar"). Deslocado pra baixo o suficiente pra a
+              // ponta arredondada do traço (round linecap) ficar recortada
+              // pelo overflow-hidden — some a bolinha, o traço reto do
+              // ombro é o que fica visível encostando no canto.
               <UserRound
                 strokeWidth={1.2}
-                className="absolute left-[-5%] top-[-11.25%] h-[110%] w-[110%] text-muted-foreground"
+                className="absolute left-[-10%] top-0 h-[120%] w-[120%] text-muted-foreground"
               />
             )}
           </div>
