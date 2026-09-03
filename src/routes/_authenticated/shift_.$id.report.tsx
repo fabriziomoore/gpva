@@ -80,7 +80,7 @@ function ReportPage() {
               window.open(url, "_blank");
             }}
           >
-            <Share2 className="mr-2 size-5" /> Compartilhar
+            <Share2 className="mr-2 size-5" /> Enviar no WhatsApp
           </Button>
         </div>
       )}

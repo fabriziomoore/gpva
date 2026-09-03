@@ -7,7 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { NativeUpdateCard } from "@/components/layout/NativeUpdateCard";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDateBR } from "@/lib/format";
@@ -252,7 +252,7 @@ function HomePage() {
           <Link
             to="/shift/$id/report"
             params={{ id: lastClosed.id }}
-            className="flex items-center justify-between rounded-xl bg-card shadow-md p-4"
+            className="group flex items-center justify-between rounded-xl bg-card shadow-md p-4 transition-shadow hover:shadow-lg"
           >
             <div className="flex items-center gap-3">
               <FileText className="size-5 text-primary" />
@@ -263,7 +263,10 @@ function HomePage() {
                 </p>
               </div>
             </div>
-            <span className="text-xs text-muted-foreground">Abrir →</span>
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 py-1.5 pl-3 pr-2 text-xs font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+              Abrir
+              <ChevronRight className="size-3.5" />
+            </span>
           </Link>
         )}
 
