@@ -201,10 +201,10 @@ function HomePage() {
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
             ) : (
-              // Ampliado e deslocado pra os ombros encostarem nos cantos
-              // inferiores do quadrado, em vez de flutuar centralizado com
-              // espaço sobrando em volta.
-              <UserRound className="absolute left-[-25%] top-[-31.25%] h-[150%] w-[150%] text-muted-foreground" />
+              // Ampliado e deslocado pra os ombros ficarem próximos dos
+              // cantos inferiores do quadrado, em vez de flutuar
+              // centralizado com espaço sobrando em volta.
+              <UserRound className="absolute left-[-10%] top-[-10%] h-[120%] w-[120%] text-muted-foreground" />
             )}
           </div>
           <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
