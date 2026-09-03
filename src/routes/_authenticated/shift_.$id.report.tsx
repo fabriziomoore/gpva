@@ -73,8 +73,7 @@ function ReportPage() {
             <Copy className="mr-2 size-5" /> Copiar
           </Button>
           <Button
-            variant="outline"
-            className="h-14 flex-1 text-base font-semibold"
+            className="h-14 flex-1 border-0 bg-[#25D366] text-base font-semibold text-white hover:bg-[#25D366]/90"
             onClick={() => {
               const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
               window.open(url, "_blank");

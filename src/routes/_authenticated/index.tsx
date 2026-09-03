@@ -5,8 +5,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { NativeUpdateCard } from "@/components/layout/NativeUpdateCard";
-import { WebUpdateCard } from "@/components/layout/WebUpdateCard";
+import { UpdateBanner } from "@/components/layout/UpdateBanner";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -271,8 +270,7 @@ function HomePage() {
           </Link>
         )}
 
-        <NativeUpdateCard />
-        <WebUpdateCard />
+        <UpdateBanner />
       </div>
     </AppShell>
   );
