@@ -197,11 +197,14 @@ function HomePage() {
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
         <div className="flex items-stretch gap-4 rounded-2xl bg-card shadow-md p-4 overflow-hidden">
-          <div className="w-1/3 shrink-0 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center aspect-square">
+          <div className="relative w-1/3 shrink-0 overflow-hidden rounded-xl border border-border bg-muted aspect-square">
             {teamPhoto ? (
               <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
             ) : (
-              <UserRound className="size-14 text-muted-foreground" />
+              // Ampliado e deslocado pra os ombros encostarem nos cantos
+              // inferiores do quadrado, em vez de flutuar centralizado com
+              // espaço sobrando em volta.
+              <UserRound className="absolute left-[-25%] top-[-31.25%] h-[150%] w-[150%] text-muted-foreground" />
             )}
           </div>
           <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
