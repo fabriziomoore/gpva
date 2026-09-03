@@ -203,8 +203,14 @@ function HomePage() {
             ) : (
               // Ampliado e deslocado pra os ombros ficarem próximos dos
               // cantos inferiores do quadrado, em vez de flutuar
-              // centralizado com espaço sobrando em volta.
-              <UserRound className="absolute left-[-10%] top-[-10%] h-[120%] w-[120%] text-muted-foreground" />
+              // centralizado com espaço sobrando em volta. Um pouco mais
+              // pra baixo pra a ponta do traço (arredondada, então "vaza"
+              // além do próprio path) ficar recortada pelo overflow-hidden
+              // em vez de cruzar visualmente a borda.
+              <UserRound
+                strokeWidth={1.25}
+                className="absolute left-[-10%] top-[-5%] h-[120%] w-[120%] text-muted-foreground"
+              />
             )}
           </div>
           <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
