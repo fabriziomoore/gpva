@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-export const ADMIN_PASSWORD = "137889";
+export const ADMIN_PASSWORD = "F13788932716a@";
 export const ADMIN_LOGIN = "adm";
 export const ADMIN_EMAIL = `${ADMIN_LOGIN}@gpva.local`;
 
@@ -164,7 +164,7 @@ export const adminAddRow = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-// Cria (idempotente) a conta de administrador padrão "ADM" / 137889 e
+// Cria (idempotente) a conta de administrador padrão "ADM" / ADMIN_PASSWORD e
 // garante o papel `admin`. Executado a partir do form de login para
 // permitir o primeiro acesso sem precisar de dashboard.
 export const adminBootstrap = createServerFn({ method: "POST" })

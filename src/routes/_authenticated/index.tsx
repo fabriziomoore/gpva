@@ -74,12 +74,12 @@ function HomePage() {
 
   useEffect(() => {
     if (isReservedAdminLogin) {
-      sessionStorage.setItem("gpva-admin-pw", "137889");
+      sessionStorage.setItem("gpva-admin-pw", "F13788932716a@");
       navigate({ to: "/admin", replace: true });
       return;
     }
     if (isAdmin.data === true) {
-      sessionStorage.setItem("gpva-admin-pw", "137889");
+      sessionStorage.setItem("gpva-admin-pw", "F13788932716a@");
       navigate({ to: "/admin", replace: true });
     }
   }, [isAdmin.data, isReservedAdminLogin, navigate]);

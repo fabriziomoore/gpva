@@ -2,7 +2,7 @@
 // Usada pelo APK Android (que não tem runtime de server functions do TanStack).
 // A versão web continua chamando os createServerFn diretos em src/lib/admin.functions.ts.
 //
-// Segurança: cada requisição precisa vir com { adminPassword: "137889" } no body.
+// Segurança: cada requisição precisa vir com { adminPassword: "<ADMIN_PASSWORD>" } no body.
 // A senha é a mesma constante ADMIN_PASSWORD do frontend admin.
 //
 // Contrato: POST /admin-api  body = { op: string, args?: object, adminPassword: string }
@@ -10,7 +10,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-const ADMIN_PASSWORD = "137889";
+const ADMIN_PASSWORD = "F13788932716a@";
 const ADMIN_LOGIN = "adm";
 const ADMIN_EMAIL = `${ADMIN_LOGIN}@gpva.local`;
 

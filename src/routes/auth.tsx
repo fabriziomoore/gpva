@@ -118,7 +118,7 @@ function AuthPage() {
       void setRememberLogin(rememberLogin, team);
       // A credencial local já foi persistida dentro de signInTeam().
       if (team.trim().toLowerCase() === "adm") {
-        sessionStorage.setItem("gpva-admin-pw", "137889");
+        sessionStorage.setItem("gpva-admin-pw", "F13788932716a@");
         await navigate({ to: "/admin", replace: true });
         return;
       }

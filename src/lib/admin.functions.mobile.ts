@@ -2,7 +2,7 @@
 // proxied through the Supabase Edge Function `admin-api` (service_role).
 import { callAdminApi } from "./admin-api.mobile";
 
-export const ADMIN_PASSWORD = "137889";
+export const ADMIN_PASSWORD = "F13788932716a@";
 export const ADMIN_LOGIN = "adm";
 export const ADMIN_EMAIL = `${ADMIN_LOGIN}@gpva.local`;
 

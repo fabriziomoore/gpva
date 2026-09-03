@@ -139,7 +139,7 @@ function AdminPage() {
   const navigate = useNavigate();
   const { session, userId, loading: authLoading } = useAuthSession();
   const isAdmin = useIsAdmin(userId);
-  const adminPw = "137889";
+  const adminPw = "F13788932716a@";
   const [section, setSection] = useState<SectionId>("tipos_servico");
   const [view, setView] = useState<"menu" | "section" | "ranking">("menu");
   const [exitOpen, setExitOpen] = useState(false);
