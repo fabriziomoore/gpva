@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import {
   checkForNativeUpdate,
   downloadAndInstallNativeUpdate,
@@ -28,17 +29,19 @@ function ProgressBar({ percent }: { percent: number }) {
 
 /**
  * Barra fixa no rodapé — mostra a atualização web (OTA) e/ou a atualização
- * nativa (APK) publicadas. As duas disputam o mesmo espaço no rodapé, então
- * ficam empilhadas dentro do MESMO container fixo em vez de cada uma abrir
- * seu próprio `fixed bottom-0` (o que faria uma cobrir a outra por completo).
- * A altura do espaçador reservado no fluxo normal da página é medida ao
- * vivo (ResizeObserver), já que 1 ou 2 cartões mudam a altura total.
+ * nativa (APK) publicadas. Quando as duas existem ao mesmo tempo, viram
+ * slides de um carrossel (um card por vez, deslize pra ver o outro) com um
+ * aviso acima informando que há mais de uma disponível — em vez de
+ * empilhar os dois cards um sobre o outro. A altura do espaçador reservado
+ * no fluxo normal da página é medida ao vivo (ResizeObserver).
  */
 export function UpdateBanner() {
   const [nativeUpdate, setNativeUpdate] = useState<NativeUpdateInfo | null>(null);
   const [webUpdate, setWebUpdate] = useState<WebUpdateInfo | null>(null);
   const [nativeProgress, setNativeProgress] = useState<number | null>(null);
   const [webProgress, setWebProgress] = useState<number | null>(null);
+  const [slide, setSlide] = useState(0);
+  const [api, setApi] = useState<CarouselApi>();
   const barRef = useRef<HTMLDivElement>(null);
   const [spacerHeight, setSpacerHeight] = useState(0);
 
@@ -56,6 +59,17 @@ export function UpdateBanner() {
   }, []);
 
   const hasAny = !!nativeUpdate || !!webUpdate;
+  const hasBoth = !!nativeUpdate && !!webUpdate;
+
+  useEffect(() => {
+    if (!api) return;
+    const onSelect = () => setSlide(api.selectedScrollSnap());
+    onSelect();
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
 
   useLayoutEffect(() => {
     if (!hasAny || !barRef.current) {
@@ -68,7 +82,7 @@ export function UpdateBanner() {
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [hasAny, nativeUpdate, webUpdate, nativeProgress, webProgress]);
+  }, [hasAny, hasBoth, nativeUpdate, webUpdate, nativeProgress, webProgress]);
 
   if (!hasAny) return null;
 
@@ -96,6 +110,40 @@ export function UpdateBanner() {
     }
   }
 
+  const webCard = (
+    <div className="space-y-2 p-4 text-center">
+      <div>
+        <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
+        <p className="text-xs text-muted-foreground">Nova versão do app pronta pra usar</p>
+      </div>
+      {webProgress === null ? (
+        <Button onClick={applyWeb} className="h-11 w-full">
+          Baixar atualização
+        </Button>
+      ) : (
+        <ProgressBar percent={webProgress} />
+      )}
+    </div>
+  );
+
+  const nativeCard = nativeUpdate && (
+    <div className="space-y-2 p-4 text-center">
+      <div>
+        <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
+        <p className="text-xs text-muted-foreground">
+          {nativeUpdate.releaseType ?? "Atualização"} · v{nativeUpdate.versionName}
+        </p>
+      </div>
+      {nativeProgress === null ? (
+        <Button onClick={installNative} className="h-11 w-full">
+          Baixar e instalar
+        </Button>
+      ) : (
+        <ProgressBar percent={nativeProgress} />
+      )}
+    </div>
+  );
+
   return (
     <>
       {/* Reserva espaço no fluxo normal — a barra abaixo é fixed, senão o
@@ -106,37 +154,35 @@ export function UpdateBanner() {
         className="fixed inset-x-0 bottom-0 z-20 bg-card shadow-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        {webUpdate && (
-          <div className={"space-y-2 p-4 text-center" + (nativeUpdate ? " border-b border-border" : "")}>
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
-              <p className="text-xs text-muted-foreground">Nova versão do app pronta pra usar</p>
-            </div>
-            {webProgress === null ? (
-              <Button onClick={applyWeb} className="h-11 w-full">
-                Baixar atualização
-              </Button>
-            ) : (
-              <ProgressBar percent={webProgress} />
-            )}
-          </div>
+        {hasBoth && (
+          <p className="border-b border-border bg-primary/10 px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-primary">
+            2 atualizações disponíveis · deslize para ver
+          </p>
         )}
-        {nativeUpdate && (
-          <div className="space-y-2 p-4 text-center">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
-              <p className="text-xs text-muted-foreground">
-                {nativeUpdate.releaseType ?? "Atualização"} · v{nativeUpdate.versionName}
-              </p>
+        {hasBoth ? (
+          <>
+            <Carousel setApi={setApi}>
+              <CarouselContent className="ml-0">
+                <CarouselItem className="pl-0">{webCard}</CarouselItem>
+                <CarouselItem className="pl-0">{nativeCard}</CarouselItem>
+              </CarouselContent>
+            </Carousel>
+            <div className="flex justify-center gap-1.5 pb-3">
+              {[0, 1].map((i) => (
+                <span
+                  key={i}
+                  className={
+                    "size-1.5 rounded-full transition-colors " +
+                    (slide === i ? "bg-primary" : "bg-muted-foreground/30")
+                  }
+                />
+              ))}
             </div>
-            {nativeProgress === null ? (
-              <Button onClick={installNative} className="h-11 w-full">
-                Baixar e instalar
-              </Button>
-            ) : (
-              <ProgressBar percent={nativeProgress} />
-            )}
-          </div>
+          </>
+        ) : webUpdate ? (
+          webCard
+        ) : (
+          nativeCard
         )}
       </div>
     </>
