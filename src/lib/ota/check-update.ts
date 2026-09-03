@@ -64,8 +64,16 @@ export async function downloadAndApplyWebUpdate(
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
+  // O plugin reporta download e extração como duas fases separadas, cada
+  // uma reiniciando o percentual do zero — sem isso a barra "andava um
+  // pouco, voltava pro início e recomeçava". Nunca deixamos o valor exibido
+  // regredir, só avançar.
+  let maxPercent = 0;
   const listener = onProgress
-    ? await CapacitorUpdater.addListener("download", (state) => onProgress(state.percent))
+    ? await CapacitorUpdater.addListener("download", (state) => {
+        maxPercent = Math.max(maxPercent, state.percent);
+        onProgress(maxPercent);
+      })
     : null;
   try {
     const bundle = await CapacitorUpdater.download({
