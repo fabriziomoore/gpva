@@ -31,9 +31,17 @@ export type WebUpdateInfo = {
 // chamada + `DROP TABLE public.ota_debug_log`) depois de resolvido.
 export async function logOtaDebug(payload: Record<string, unknown>): Promise<void> {
   try {
-    const { data } = await supabase.auth.getSession();
-    const userId = data.session?.user.id;
-    if (!userId) return;
+    // Não bloqueia (nem descarta o log) se a sessão ainda não restaurou —
+    // isso pode não estar pronto bem cedo no boot, que é exatamente quando
+    // a checagem automática roda. userId fica null nesse caso; a tabela
+    // aceita isso (RLS libera insert pra anon também, temporariamente).
+    let userId: string | null = null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      userId = data.session?.user.id ?? null;
+    } catch {
+      /* segue sem userId */
+    }
     // Tabela temporária de diagnóstico, fora do types.ts gerado — cast direto.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("ota_debug_log").insert({ user_id: userId, payload });
