@@ -23,7 +23,14 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     headers.set('apikey', supabaseKey);
-    return fetch(input, { ...init, headers });
+    // O WebView do Android aplica cache HTTP próprio por padrão quando a
+    // resposta não traz Cache-Control explícito (é o caso da API REST do
+    // Supabase). Isso fazia consultas repetidas com a mesma URL (ex.: "qual
+    // a última atualização publicada?") continuarem retornando uma resposta
+    // antiga já guardada, mesmo com dado novo no banco — sem nunca voltar
+    // pra rede. no-store garante que toda chamada é sempre uma ida real ao
+    // servidor.
+    return fetch(input, { ...init, headers, cache: 'no-store' });
   };
 }
 
