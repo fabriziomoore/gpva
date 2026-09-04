@@ -7,11 +7,9 @@ import {
   downloadAndInstallNativeUpdate,
   type NativeUpdateInfo,
 } from "@/lib/ota/native-update";
-import { Capacitor } from "@capacitor/core";
 import {
   checkForWebUpdate,
   downloadAndApplyWebUpdate,
-  getLastWebCheckDiagnostic,
   type WebUpdateInfo,
 } from "@/lib/ota/check-update";
 
@@ -79,15 +77,6 @@ export function UpdateBanner() {
         } else {
           toast.success("Você já está com a versão mais recente.", { id: "gpva-update-check" });
         }
-      } else if (Capacitor.isNativePlatform() && !web) {
-        // DIAGNÓSTICO TEMPORÁRIO — remover depois de identificado por que
-        // alguns devices não detectam atualização web sozinhos. Mostra os
-        // números reais só quando a checagem automática não achou nada.
-        const d = getLastWebCheckDiagnostic();
-        toast.message(
-          `[debug] bundle atual: ${d.currentVersion ?? "?"} (id ${d.bundleId ?? "?"}) · último publicado: ${d.latestBuild ?? "?"}${d.error ? ` · erro: ${d.error}` : ""}`,
-          { duration: 20_000 },
-        );
       }
     }
 

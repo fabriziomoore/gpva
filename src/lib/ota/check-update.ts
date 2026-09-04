@@ -23,19 +23,22 @@ export type WebUpdateInfo = {
   releaseType: string | null;
 };
 
-// Diagnóstico temporário — não dá pra ver o console de um APK real sem ADB.
-// Guarda o resultado da última checagem pra exibir num toast (ver
-// UpdateBanner) enquanto investigamos um caso de device que não detecta
-// atualização nenhuma. Remover depois de resolvido.
-export type WebCheckDiagnostic = {
-  currentVersion: number | null;
-  latestBuild: number | null;
-  bundleId: string | null;
-  error: string | null;
-};
-let lastDiagnostic: WebCheckDiagnostic = { currentVersion: null, latestBuild: null, bundleId: null, error: null };
-export function getLastWebCheckDiagnostic(): WebCheckDiagnostic {
-  return lastDiagnostic;
+// Diagnóstico TEMPORÁRIO — não dá pra ver o console de um APK real sem ADB.
+// Grava o resultado de toda checagem em public.ota_debug_log (tabela também
+// temporária) pra investigar um device que não detecta atualização nenhuma,
+// sem depender do usuário capturar um toast a tempo. Remover (função +
+// chamada + `DROP TABLE public.ota_debug_log`) depois de resolvido.
+async function logOtaDebug(payload: Record<string, unknown>): Promise<void> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const userId = data.session?.user.id;
+    if (!userId) return;
+    // Tabela temporária de diagnóstico, fora do types.ts gerado — cast direto.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("ota_debug_log").insert({ user_id: userId, payload });
+  } catch {
+    // Diagnóstico nunca pode quebrar nada.
+  }
 }
 
 /**
@@ -57,15 +60,22 @@ export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
     ]);
     const currentVersion = Number(current.bundle.version) || 0;
     if (dbError) {
-      lastDiagnostic = { currentVersion, latestBuild: null, bundleId: current.bundle.id, error: dbError.message };
+      void logOtaDebug({ stage: "db_error", error: dbError.message, currentVersion, bundle: current.bundle });
       return null;
     }
     if (!release?.url) {
-      lastDiagnostic = { currentVersion, latestBuild: null, bundleId: current.bundle.id, error: "sem release publicado" };
+      void logOtaDebug({ stage: "no_release_row", currentVersion, bundle: current.bundle });
       return null;
     }
-    lastDiagnostic = { currentVersion, latestBuild: release.build_number, bundleId: current.bundle.id, error: null };
-    if (release.build_number <= currentVersion) return null;
+    const willUpdate = release.build_number > currentVersion;
+    void logOtaDebug({
+      stage: "compared",
+      currentVersion,
+      latestBuild: release.build_number,
+      willUpdate,
+      bundle: current.bundle,
+    });
+    if (!willUpdate) return null;
     return {
       buildNumber: release.build_number,
       url: release.url,
@@ -73,12 +83,7 @@ export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
       releaseType: release.release_type,
     };
   } catch (e) {
-    lastDiagnostic = {
-      currentVersion: null,
-      latestBuild: null,
-      bundleId: null,
-      error: e instanceof Error ? e.message : String(e),
-    };
+    void logOtaDebug({ stage: "exception", error: e instanceof Error ? `${e.name}: ${e.message}` : String(e) });
     return null;
   }
 }
