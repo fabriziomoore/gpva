@@ -26,7 +26,7 @@ export function requestUpdateCheck(): void {
   window.dispatchEvent(new CustomEvent(MANUAL_CHECK_EVENT));
 }
 
-function ProgressBar({ percent }: { percent: number }) {
+export function ProgressBar({ percent }: { percent: number }) {
   return (
     <div className="relative h-11 w-full overflow-hidden rounded-md bg-white">
       <div

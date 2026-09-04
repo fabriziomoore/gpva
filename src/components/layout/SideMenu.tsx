@@ -330,24 +330,26 @@ export function SideMenu() {
                 </p>
               </div>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                requestUpdateCheck();
-              }}
-              className="mt-3 flex w-full items-center gap-3 rounded-xl bg-card p-3 text-left shadow-md transition-shadow hover:shadow-lg"
-            >
-              <RefreshCw className="size-5 text-primary shrink-0" />
-              <div className="min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Verificar atualização
+            {isLeader.data === true && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  requestUpdateCheck();
+                }}
+                className="mt-3 flex w-full items-center gap-3 rounded-xl bg-card p-3 text-left shadow-md transition-shadow hover:shadow-lg"
+              >
+                <RefreshCw className="size-5 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Verificar atualização
+                  </div>
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Força uma nova checagem caso o app não tenha avisado sozinho.
+                  </p>
                 </div>
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  Força uma nova checagem caso o app não tenha avisado sozinho.
-                </p>
-              </div>
-            </button>
+              </button>
+            )}
 
           </main>
           <footer className="shrink-0 border-t border-border bg-destructive">

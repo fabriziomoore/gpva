@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { CheckUpdateDialog } from "@/components/layout/CheckUpdateDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,11 +91,15 @@ function SettingsPage() {
     if (!file || !userId) return;
     try {
       const dataUrl = await fileToCompressedDataUrl(file);
-      await saveTeamPhoto(userId, dataUrl);
+      const { synced } = await saveTeamPhoto(userId, dataUrl);
       qc.setQueryData<Team | null>(["team", userId], (old) =>
         old ? { ...old, photo_url: dataUrl } : old,
       );
-      toast.success("Foto atualizada");
+      if (synced) {
+        toast.success("Foto atualizada");
+      } else {
+        toast.info("Foto salva neste aparelho — será enviada pra nuvem assim que a conexão voltar.");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao processar imagem");
     }
@@ -103,11 +108,11 @@ function SettingsPage() {
   async function removePhoto() {
     if (!userId) return;
     try {
-      await saveTeamPhoto(userId, null);
+      const { synced } = await saveTeamPhoto(userId, null);
       qc.setQueryData<Team | null>(["team", userId], (old) =>
         old ? { ...old, photo_url: null } : old,
       );
-      toast.success("Foto removida");
+      toast.success(synced ? "Foto removida" : "Foto removida neste aparelho — será sincronizado assim que a conexão voltar.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao remover");
     }
@@ -354,14 +359,15 @@ function SettingsPage() {
             </div>
           )}
 
-          {versionInfo && (
-            <div className="border-t border-border pt-6 text-center">
-              <p className="text-xs text-muted-foreground">
+          <div className="space-y-3 border-t border-border pt-6">
+            <CheckUpdateDialog />
+            {versionInfo && (
+              <p className="text-center text-xs text-muted-foreground">
                 Versão {versionInfo.version} ({versionInfo.build})
                 {versionInfo.otaBuild && ` · atualização ${versionInfo.otaBuild}`}
               </p>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       </div>
     </AppShell>
