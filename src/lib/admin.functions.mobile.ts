@@ -22,17 +22,6 @@ export type TeamListRow = {
 
 export const listTeams = call<TeamListRow[]>("listTeams");
 
-export type UpdatesOverviewTeam = {
-  id: string; team_name: string; is_test: boolean | null;
-  native_version_code: number | null; web_bundle_version: number | null; version_reported_at: string | null;
-};
-export type UpdatesOverview = {
-  latestNativeVersionCode: number | null;
-  latestWebBuildNumber: number | null;
-  teams: UpdatesOverviewTeam[];
-};
-export const adminUpdatesOverview = call<UpdatesOverview>("adminUpdatesOverview");
-
 export const adminListRows = call<Array<{ id: string; name: string }>>("adminListRows");
 export const adminAddRow = call<{ ok: true }>("adminAddRow");
 export const adminDeleteRow = call<{ ok: true }>("adminDeleteRow");
@@ -109,8 +98,16 @@ export type DeviceRow = {
   updated_at: string;
   account_label: string;
   account_kind: "admin" | "leader" | "team" | "unknown";
+  is_test: boolean;
+  native_version_code: number | null;
+  web_bundle_version: number | null;
 };
-export const adminListDevices = call<DeviceRow[]>("adminListDevices");
+export type DevicesOverview = {
+  devices: DeviceRow[];
+  latestNativeVersionCode: number | null;
+  latestWebBuildNumber: number | null;
+};
+export const adminListDevices = call<DevicesOverview>("adminListDevices");
 export const adminSignOutDevice = call<{ ok: true }>("adminSignOutDevice");
 
 // Lixeira (soft-delete)

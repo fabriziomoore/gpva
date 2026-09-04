@@ -17,24 +17,30 @@ export type Database = {
       active_sessions: {
         Row: {
           last_seen_at: string
+          native_version_code: number | null
           session_id: string
           updated_at: string
           user_agent: string | null
           user_id: string
+          web_bundle_version: number | null
         }
         Insert: {
           last_seen_at?: string
+          native_version_code?: number | null
           session_id: string
           updated_at?: string
           user_agent?: string | null
           user_id: string
+          web_bundle_version?: number | null
         }
         Update: {
           last_seen_at?: string
+          native_version_code?: number | null
           session_id?: string
           updated_at?: string
           user_agent?: string | null
           user_id?: string
+          web_bundle_version?: number | null
         }
         Relationships: []
       }

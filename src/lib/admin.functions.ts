@@ -97,45 +97,6 @@ export const listTeams = createServerFn({ method: "POST" })
     return (rows ?? []).filter((r) => !r.is_test && !isReservedAdminTeam(r, adminIds));
   });
 
-// Visão geral de rollout: última versão publicada (nativa e web/OTA) vs.
-// última versão que cada equipe reportou. `equipes` guarda o report porque
-// sobrevive a logout/eject — diferente de `active_sessions`, que é efêmera
-// e não mostra devices desconectados no momento.
-export const adminUpdatesOverview = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string }) => data)
-  .handler(async ({ data }) => {
-    assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [teamsRes, nativeRes, webRes, adminRolesRes] = await Promise.all([
-      supabaseAdmin
-        .from("equipes")
-        .select("id,team_name,is_test,native_version_code,web_bundle_version,version_reported_at")
-        .order("team_name"),
-      supabaseAdmin
-        .from("app_releases")
-        .select("version_code")
-        .order("version_code", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabaseAdmin
-        .from("web_releases")
-        .select("build_number")
-        .order("build_number", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin"),
-    ]);
-    if (teamsRes.error) throw new Error(teamsRes.error.message);
-    if (nativeRes.error) throw new Error(nativeRes.error.message);
-    if (webRes.error) throw new Error(webRes.error.message);
-    const adminIds = new Set((adminRolesRes.data ?? []).map((r) => r.user_id));
-    return {
-      latestNativeVersionCode: nativeRes.data?.version_code ?? null,
-      latestWebBuildNumber: webRes.data?.build_number ?? null,
-      teams: (teamsRes.data ?? []).filter((t) => !t.is_test && !isReservedAdminTeam(t, adminIds)),
-    };
-  });
-
 export const adminListRows = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string; table: CrudTable }) => data)
   .handler(async ({ data }) => {
@@ -1288,37 +1249,57 @@ export type DeviceRow = {
   updated_at: string;
   account_label: string;
   account_kind: "admin" | "leader" | "team" | "unknown";
+  is_test: boolean;
+  native_version_code: number | null;
+  web_bundle_version: number | null;
 };
 
+export type DevicesOverview = {
+  devices: DeviceRow[];
+  latestNativeVersionCode: number | null;
+  latestWebBuildNumber: number | null;
+};
+
+// Uma página só: quem está logado agora (qualquer papel — equipe, teste,
+// líder, admin), em que aparelho, e em que versão do app. Antes eram duas
+// seções separadas (Dispositivos e Atualizações), a segunda só cobrindo
+// equipes reais e sem nenhuma ligação com o aparelho físico.
 export const adminListDevices = createServerFn({ method: "POST" })
   .inputValidator((data: { adminPassword: string }) => data)
-  .handler(async ({ data }): Promise<DeviceRow[]> => {
+  .handler(async ({ data }): Promise<DevicesOverview> => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: sessions, error } = await supabaseAdmin
-      .from("active_sessions")
-      .select("user_id,session_id,user_agent,last_seen_at,updated_at")
-      .order("last_seen_at", { ascending: false });
+    const [{ data: sessions, error }, nativeRes, webRes] = await Promise.all([
+      supabaseAdmin
+        .from("active_sessions")
+        .select("user_id,session_id,user_agent,last_seen_at,updated_at,native_version_code,web_bundle_version")
+        .order("last_seen_at", { ascending: false }),
+      supabaseAdmin.from("app_releases").select("version_code").order("version_code", { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from("web_releases").select("build_number").order("build_number", { ascending: false }).limit(1).maybeSingle(),
+    ]);
     if (error) throw new Error(error.message);
+    const latestNativeVersionCode = nativeRes.data?.version_code ?? null;
+    const latestWebBuildNumber = webRes.data?.build_number ?? null;
     const rows = sessions ?? [];
-    if (!rows.length) return [];
+    if (!rows.length) return { devices: [], latestNativeVersionCode, latestWebBuildNumber };
     const ids = rows.map((r) => r.user_id);
     const [{ data: teams }, { data: roles }, usersList] = await Promise.all([
-      supabaseAdmin.from("equipes").select("id,team_name").in("id", ids),
+      supabaseAdmin.from("equipes").select("id,team_name,is_test").in("id", ids),
       supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", ids),
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
-    const teamMap = new Map((teams ?? []).map((t) => [t.id, t.team_name]));
+    const teamMap = new Map((teams ?? []).map((t) => [t.id, t]));
     const roleMap = new Map<string, string>();
     for (const r of roles ?? []) roleMap.set(r.user_id, r.role);
     const userMap = new Map<string, string>();
     if (!usersList.error) {
       for (const u of usersList.data.users) userMap.set(u.id, u.email ?? "");
     }
-    return rows.map((r) => {
+    const devices = rows.map((r) => {
       const role = roleMap.get(r.user_id);
+      const team = teamMap.get(r.user_id);
       let account_kind: DeviceRow["account_kind"] = "unknown";
-      let account_label = teamMap.get(r.user_id) ?? "";
+      let account_label = team?.team_name ?? "";
       if (role === "admin") { account_kind = "admin"; account_label = "Administrador"; }
       else if (role === "leader") {
         account_kind = "leader";
@@ -1329,8 +1310,9 @@ export const adminListDevices = createServerFn({ method: "POST" })
       } else {
         account_label = userMap.get(r.user_id) ?? r.user_id.slice(0, 8);
       }
-      return { ...r, account_label, account_kind };
+      return { ...r, account_label, account_kind, is_test: team?.is_test ?? false };
     });
+    return { devices, latestNativeVersionCode, latestWebBuildNumber };
   });
 
 export const adminSignOutDevice = createServerFn({ method: "POST" })

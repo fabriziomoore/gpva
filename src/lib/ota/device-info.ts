@@ -1,7 +1,10 @@
 // Reporta ao backend qual versão (nativa e do bundle web/OTA) este device
-// está rodando. Usado pelo painel admin para ver quantos aparelhos já
-// atualizaram sem depender do device estar logado no momento — grava em
-// `equipes` (persistente), não em `active_sessions` (efêmera).
+// está rodando. Grava em dois lugares com propósitos diferentes:
+// - `equipes`: persiste mesmo com a equipe deslogada, pra ver o rollout
+//   por equipe mesmo offline (só existe pra contas de equipe/teste).
+// - `active_sessions`: uma linha por QUALQUER conta logada agora mesmo
+//   (equipe, teste, líder ou admin) — usada pra unificar "quem tá logado"
+//   com "em que versão" numa página só no admin.
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -50,15 +53,26 @@ export async function reportDeviceVersion(userId: string): Promise<void> {
   try {
     const info = await getDeviceVersionInfo();
     if (info.native_version_code == null && info.web_bundle_version == null) return;
-    const { error } = await supabase
-      .from("equipes")
-      .update({
-        native_version_code: info.native_version_code,
-        web_bundle_version: info.web_bundle_version,
-        version_reported_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
-    if (!error) reportedForUserId = userId;
+    const [sessionRes] = await Promise.all([
+      supabase
+        .from("active_sessions")
+        .update({
+          native_version_code: info.native_version_code,
+          web_bundle_version: info.web_bundle_version,
+        })
+        .eq("user_id", userId),
+      // Só afeta linhas de verdade quando userId é uma equipe — pra líder/admin
+      // essa update() não casa com nenhuma linha e não faz nada, sem erro.
+      supabase
+        .from("equipes")
+        .update({
+          native_version_code: info.native_version_code,
+          web_bundle_version: info.web_bundle_version,
+          version_reported_at: new Date().toISOString(),
+        })
+        .eq("id", userId),
+    ]);
+    if (!sessionRes.error) reportedForUserId = userId;
   } catch {
     // Nunca derruba o heartbeat por causa disso.
   }

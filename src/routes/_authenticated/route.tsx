@@ -34,7 +34,17 @@ export const Route = createFileRoute("/_authenticated")({
     const localSession = readStoredAuthSession();
     bootLog("beforeLoad:readStoredAuthSession", { hasUser: !!localSession?.user });
     if (localSession?.user) {
-      void verifyActiveSession();
+      // Aguarda a checagem (expiração de 10h, inatividade de 2h30, takeover
+      // por outro device, desconexão pelo admin) ANTES de liberar a tela —
+      // nunca renderiza a área autenticada para só depois deslogar. Sem
+      // `force`: expiração/inatividade sempre rodam (são locais, sem rede);
+      // a parte de rede segue o throttle de 10s do próprio guard, então
+      // navegações internas seguidas não pagam round-trip a cada clique.
+      const ok = await verifyActiveSession({ userIdHint: localSession.user.id });
+      if (!ok) {
+        bootLog("beforeLoad:sessionInvalid->/auth");
+        throw redirect({ to: "/auth" });
+      }
       return { user: localSession.user };
     }
 
@@ -59,7 +69,11 @@ export const Route = createFileRoute("/_authenticated")({
       const result = await withAuthRouteTimeout(supabase.auth.getUser());
       bootLog("beforeLoad:supabase.getUser", { hasUser: !!result?.data?.user });
       if (result && !("error" in result && result.error) && result?.data?.user) {
-        void verifyActiveSession();
+        const ok = await verifyActiveSession({ userIdHint: result.data.user.id });
+        if (!ok) {
+          bootLog("beforeLoad:sessionInvalid->/auth");
+          throw redirect({ to: "/auth" });
+        }
         return { user: result.data.user };
       }
     }

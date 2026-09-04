@@ -9,11 +9,14 @@ import { reportDeviceVersion } from "@/lib/ota/device-info";
 import { toast } from "sonner";
 
 const LOGIN_TS_KEY = "gpva.loginAt";
+const IDLE_TS_KEY = "gpva.lastActivityAt";
 const SESSION_ID_KEY = "gpva.sessionId";
 const EJECTED_KEY = "gpva.ejected";
 const FORCE_SIGNED_OUT_KEY = "gpva.forceSignedOut";
-const MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
+const MAX_SESSION_MS = 10 * 60 * 60 * 1000; // 10h — sessão absoluta
+const IDLE_MAX_MS = 2.5 * 60 * 60 * 1000; // 2h30 sem interação
 const EXPIRY_CHECK_MS = 5 * 60 * 1000; // 5 min
+const IDLE_WRITE_THROTTLE_MS = 5_000; // evita gravar a cada pointerdown
 const HEARTBEAT_MS = 60 * 1000; // 60 s — realtime cobre takeover instantâneo
 const ACTIVE_CHECK_THROTTLE_MS = 10 * 1000; // 10 s
 const AUTH_PROBE_TIMEOUT_MS = 2_500;
@@ -35,8 +38,9 @@ let lastActiveCheckAt = 0;
 let activeCheckPromise: Promise<boolean> | null = null;
 const CLAIM_GRACE_MS = 10_000;
 let ejectionHandled = false;
+let lastIdleWriteAt = 0;
 
-type EjectReason = "expired" | "taken_over" | "admin_disconnect";
+type EjectReason = "expired" | "idle" | "taken_over" | "admin_disconnect";
 
 function getEjected(): EjectReason | null {
   try {
@@ -102,6 +106,32 @@ function getLoginTs(): number | null {
   }
 }
 
+function setIdleTs(ts: number): void {
+  try {
+    localStorage.setItem(IDLE_TS_KEY, String(ts));
+  } catch {
+    /* ignore */
+  }
+}
+
+function getIdleTs(): number | null {
+  try {
+    const v = localStorage.getItem(IDLE_TS_KEY);
+    return v ? Number(v) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Chamado a cada interação real (toque/clique/tecla) para resetar o relógio
+// de inatividade. Throttlado — não precisa gravar a cada pointerdown.
+function touchIdle(): void {
+  const now = Date.now();
+  if (now - lastIdleWriteAt < IDLE_WRITE_THROTTLE_MS) return;
+  lastIdleWriteAt = now;
+  setIdleTs(now);
+}
+
 function isOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
@@ -152,6 +182,7 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
     stopPerUserWatchers();
     try {
       localStorage.removeItem(LOGIN_TS_KEY);
+      localStorage.removeItem(IDLE_TS_KEY);
       localStorage.removeItem(SESSION_ID_KEY);
     } catch {
       /* ignore */
@@ -167,8 +198,10 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     if (reason === "expired") {
       toast.error("Sessão expirada. Faça login novamente.", { id: "gpva-session-ejected" });
+    } else if (reason === "idle") {
+      toast.error("Sessão encerrada por inatividade. Faça login novamente.", { id: "gpva-session-ejected" });
     } else if (reason === "admin_disconnect") {
-      toast.error("Sua sessão foi desconectada", { id: "gpva-session-ejected" });
+      toast.error("Seu aparelho foi deslogado pelo administrador.", { id: "gpva-session-ejected" });
     } else {
       toast.error("Sua conta foi acessada em outro dispositivo.", { id: "gpva-session-ejected" });
     }
@@ -185,9 +218,17 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
   }
 }
 
-export async function verifyActiveSession(opts: { force?: boolean } = {}): Promise<boolean> {
+export async function verifyActiveSession(
+  opts: { force?: boolean; userIdHint?: string } = {},
+): Promise<boolean> {
   if (typeof window === "undefined" || signingOut) return !signingOut;
   if (hasSessionEjection()) return false;
+
+  // Checagens locais (sem rede) de expiração absoluta e por inatividade —
+  // rodam sempre, mesmo sem `force`, para que o gate de rota nunca deixe
+  // a tela autenticada abrir antes de confirmar que a sessão ainda vale.
+  if (checkExpiration()) return false;
+  if (checkIdle()) return false;
 
   const now = Date.now();
   if (!opts.force && activeCheckPromise && now - lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
@@ -198,11 +239,19 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
   lastActiveCheckAt = now;
   activeCheckPromise = (async () => {
     const mine = localSessionId();
-    let userId = currentUserId;
+    // Prioriza um userId já conhecido (estado do módulo ou fornecido por
+    // quem chamou, ex. o gate de rota que já leu a sessão do Supabase) para
+    // não depender de getAuthUserIdOfflineSafe() — que pode demorar/expirar
+    // em rede instável — só para descobrir algo que já sabíamos.
+    let userId = currentUserId ?? opts.userIdHint ?? null;
     if (!userId) {
       userId = await getAuthUserIdOfflineSafe();
     }
-    if (!userId) return false;
+    // Ambíguo (não confirmamos quem é, mas também não temos nenhum sinal
+    // concreto de logout) — nunca deslogar por causa disso. Só age quando
+    // uma condição é CONFIRMADA (expiração, inatividade, linha sumiu,
+    // session_id trocou no banco).
+    if (!userId) return true;
     if (!mine) {
       await claimSession(userId);
       return true;
@@ -233,6 +282,16 @@ export async function verifyActiveSession(opts: { force?: boolean } = {}): Promi
     // Se a consulta falhou por rede (result === null via timeout ou erro),
     // NÃO deslogamos. Manter a sessão viva no modo offline é prioridade.
     if (!result || result.error) return true;
+
+    // A sessão local pode ter mudado enquanto a consulta acima estava em
+    // voo (ex.: um SIGNED_IN espúrio do SDK do Supabase — reidratação de
+    // token tratada como novo login — disparou um re-claim NESTE MESMO
+    // device durante o round-trip). Comparar `data.session_id` contra o
+    // `mine` capturado antes do await compararia contra um valor obsoleto
+    // e deslogaria o próprio device que acabou de se reivindicar, com a
+    // mensagem falsa de "outro aparelho acessou sua conta". Descarta esta
+    // checagem stale; a próxima (com o valor atual) decide corretamente.
+    if (localSessionId() !== mine) return true;
 
     const { data } = result;
     if (!data) {
@@ -309,6 +368,7 @@ async function claimSessionInternal(userId: string): Promise<void> {
   const sessionId = newId();
   setLocalSessionId(sessionId);
   setLoginTs(Date.now());
+  setIdleTs(Date.now());
   currentUserId = userId;
   if (isOffline()) return;
   const { error } = await supabase
@@ -443,11 +503,30 @@ function stopPerUserWatchers(): void {
   watchedUserId = null;
 }
 
-function checkExpiration(): void {
+// Retorna true quando a sessão foi (ou já estava) ejetada por essa checagem.
+function checkExpiration(): boolean {
   const ts = getLoginTs();
-  if (!ts) return;
-  if (isOffline()) return;
-  if (Date.now() - ts > MAX_SESSION_MS) void forceSignOut("expired");
+  if (!ts) return false;
+  if (isOffline()) return false;
+  if (Date.now() - ts > MAX_SESSION_MS) {
+    void forceSignOut("expired");
+    return true;
+  }
+  return false;
+}
+
+// Idem, para inatividade. Não age offline: em campo, um device pode passar
+// horas sem rede e sem toque na tela sem que isso deva ser tratado como
+// abandono da conta — o heartbeat/gate revalida assim que a rede volta.
+function checkIdle(): boolean {
+  const ts = getIdleTs();
+  if (!ts) return false;
+  if (isOffline()) return false;
+  if (Date.now() - ts > IDLE_MAX_MS) {
+    void forceSignOut("idle");
+    return true;
+  }
+  return false;
 }
 
 export function startSessionGuard(): void {
@@ -459,10 +538,12 @@ export function startSessionGuard(): void {
     const userId = await getAuthUserIdOfflineSafe();
     if (userId) {
       if (!getLoginTs()) setLoginTs(Date.now());
+      if (!getIdleTs()) setIdleTs(Date.now());
       // Sessão já existente ao abrir/recarregar o app: religamos os watchers
       // globais em qualquer tela, sem depender da tela inicial montar.
       await attachSessionForUser(userId, { claim: false });
       checkExpiration();
+      checkIdle();
     }
   })();
 
@@ -475,37 +556,46 @@ export function startSessionGuard(): void {
       // device enquanto este estava offline). Sem isso, o próprio novo login
       // é expulso pelo guard antes de `signInTeam` chamar `claimCurrentSession`.
       setLoginTs(Date.now());
+      setIdleTs(Date.now());
       void attachSessionForUser(session.user.id, { claim: true });
     } else if (event === "INITIAL_SESSION" && session?.user) {
       // Reidratação (refresh de página / retomada de foco). Preserva o
       // sessionId local — se este device ainda é o ativo no DB, segue; se
       // outro device tomou a sessão, verifyActiveSession() faz o logout.
       if (!getLoginTs()) setLoginTs(Date.now());
+      if (!getIdleTs()) setIdleTs(Date.now());
       void attachSessionForUser(session.user.id, { claim: false });
     } else if (event === "SIGNED_OUT") {
       stopPerUserWatchers();
       try {
         localStorage.removeItem(LOGIN_TS_KEY);
+        localStorage.removeItem(IDLE_TS_KEY);
         localStorage.removeItem(SESSION_ID_KEY);
       } catch {
         /* ignore */
       }
     } else if (event === "TOKEN_REFRESHED") {
       checkExpiration();
+      checkIdle();
     }
   });
 
-  expiryTimer = setInterval(checkExpiration, EXPIRY_CHECK_MS);
+  expiryTimer = setInterval(() => {
+    checkExpiration();
+    checkIdle();
+  }, EXPIRY_CHECK_MS);
   // Rede de segurança periódica caso o realtime caia. Fica em background,
   // com throttle, e não duplica o heartbeat por-usuário.
   globalSessionProbeTimer = setInterval(() => {
     checkExpiration();
+    checkIdle();
     void verifyActiveSession();
   }, HEARTBEAT_MS);
   void globalSessionProbeTimer;
 
   if (typeof document !== "undefined") {
     const probeOnInteraction = () => {
+      touchIdle();
       void verifyActiveSession();
     };
     document.addEventListener("pointerdown", probeOnInteraction, { capture: true, passive: true });
@@ -515,6 +605,7 @@ export function startSessionGuard(): void {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         checkExpiration();
+        checkIdle();
         if (currentUserId) {
           void pullRemote();
           // Ao voltar ao primeiro plano, valida imediatamente se ainda somos a

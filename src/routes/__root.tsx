@@ -18,6 +18,7 @@ import { THEME_BOOT_SCRIPT } from "../hooks/use-theme";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { SyncBadge } from "@/components/sync-badge";
 import { NetworkDiagPanel } from "@/components/NetworkDiagPanel";
+import { UpdateBanner } from "@/components/layout/UpdateBanner";
 import { Toaster } from "@/components/ui/sonner";
 import { registerPWA } from "../lib/pwa/register";
 
@@ -177,6 +178,11 @@ function RootComponent() {
       <Toaster />
       <SyncBadge />
       <NetworkDiagPanel />
+      {/* Montado uma única vez na raiz — mesmo app/mesmo bundle pra
+          qualquer conta (equipe, líder ou admin), então o aviso de
+          atualização aparece sempre no mesmo lugar (barra fixa no rodapé),
+          na primeira tela autenticada que a conta logada acessar. */}
+      <UpdateBanner />
     </QueryClientProvider>
   );
 }

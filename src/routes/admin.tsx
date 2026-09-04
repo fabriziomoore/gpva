@@ -15,6 +15,7 @@ import {
   Smartphone, Trash, RotateCcw, RefreshCw,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { requestUpdateCheck } from "@/components/layout/UpdateBanner";
 import { toast } from "sonner";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
@@ -48,7 +49,7 @@ import {
   adminDeleteSupervisor,
   adminListDevices,
   adminSignOutDevice,
-  adminUpdatesOverview,
+  type DeviceRow,
   adminListTrashShifts,
   adminRestoreShift,
   adminPurgeShift,
@@ -85,7 +86,6 @@ type SectionId =
   | "test_account"
   | "map_services"
   | "devices"
-  | "updates"
   | "trash"
   | "audit";
 
@@ -109,8 +109,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   map_services: { id: "map_services", label: "Serviços no Mapa", description: "Marcações registradas — remoção seletiva", icon: MapPin },
   google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
-  devices: { id: "devices", label: "Dispositivos", description: "Sessões ativas e logout remoto", icon: Smartphone },
-  updates: { id: "updates", label: "Atualizações", description: "Rollout de versão por equipe/aparelho", icon: RefreshCw },
+  devices: { id: "devices", label: "Dispositivos", description: "Sessões e versões — todas as contas", icon: Smartphone },
   trash: { id: "trash", label: "Lixeira", description: "Relatórios excluídos — restaurar ou apagar", icon: Trash },
   audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
 };
@@ -128,7 +127,7 @@ const SECTION_GROUPS: SectionGroup[] = [
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
-    items: ["variable", "map_services", "google_form", "test_account", "devices", "updates", "trash", "audit"] },
+    items: ["variable", "map_services", "google_form", "test_account", "devices", "trash", "audit"] },
 ];
 
 function groupOf(id: SectionId): SectionGroup | undefined {
@@ -332,8 +331,6 @@ function AdminPage() {
             <MapServicesSection adminPw={adminPw} />
           ) : section === "devices" ? (
             <DevicesSection adminPw={adminPw} />
-          ) : section === "updates" ? (
-            <UpdatesSection adminPw={adminPw} />
           ) : section === "trash" ? (
             <TrashSection adminPw={adminPw} />
           ) : section === "audit" ? (
@@ -2088,6 +2085,16 @@ function AdminSideMenu({
                 </li>
               ))}
             </ul>
+            <div className="mt-3 border-t border-border pt-3">
+              <button
+                type="button"
+                onClick={() => { onOpenChange(false); requestUpdateCheck(); }}
+                className={itemCls}
+              >
+                <RefreshCw className="size-5" />
+                <span>Verificar atualização</span>
+              </button>
+            </div>
           </nav>
           <button
             type="button"
@@ -2322,102 +2329,13 @@ function describeUserAgent(ua: string | null): string {
   return parts.length ? parts.join(" · ") : s.slice(0, 60);
 }
 
-function DevicesSection({ adminPw }: { adminPw: string }) {
-  const qc = useQueryClient();
-  const listFn = useServerFn(adminListDevices);
-  const signOutFn = useServerFn(adminSignOutDevice);
-  const devices = useQuery({
-    queryKey: ["admin-devices"],
-    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
-    refetchInterval: 15_000,
-  });
-  const signOutMut = useMutation({
-    mutationFn: (userId: string) => signOutFn({ data: { adminPassword: adminPw, userId } }),
-    onSuccess: () => {
-      toast.success("Dispositivo deslogado.");
-      qc.invalidateQueries({ queryKey: ["admin-devices"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const rows = devices.data ?? [];
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Dispositivos conectados</h2>
-          <p className="text-xs text-muted-foreground">
-            {rows.length} sessão(ões) ativa(s). Atualiza automaticamente.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          className="h-9"
-          onClick={() => devices.refetch()}
-          disabled={devices.isFetching}
-        >
-          {devices.isFetching ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
-        </Button>
-      </div>
-
-      {devices.isLoading ? (
-        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-      ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          Nenhum dispositivo conectado no momento.
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {rows.map((d) => {
-            const seen = new Date(d.last_seen_at);
-            const mins = Math.max(0, Math.round((Date.now() - seen.getTime()) / 60000));
-            const seenLabel =
-              mins < 1 ? "agora" : mins < 60 ? `há ${mins} min` : `há ${Math.round(mins / 60)}h`;
-            return (
-              <li
-                key={d.user_id + d.session_id}
-                className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3"
-              >
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-                    <Smartphone className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">
-                      {d.account_label}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {describeUserAgent(d.user_agent)}
-                    </div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      Último sinal {seenLabel} · {formatDateBR(d.last_seen_at)}
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="h-9 shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={async () => {
-                    if (
-                      await confirmDelete({
-                        description: `Deslogar "${d.account_label}"? O usuário precisará entrar de novo.`,
-                      })
-                    ) {
-                      signOutMut.mutate(d.user_id);
-                    }
-                  }}
-                  disabled={signOutMut.isPending}
-                >
-                  <LogOut className="size-4" />
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
+// UAs Android trazem o modelo entre "Android X.Y;" e "Build/" (ex.: "...
+// Android 13; SM-A325M Build/TP1A.220624.014; wv)..." → "SM-A325M").
+function describeDeviceModel(ua: string | null): string | null {
+  if (!ua) return null;
+  const m = ua.match(/Android\s+[\d.]+;\s*([^;)]+?)(?:\s+Build\/|\))/i);
+  const model = m?.[1]?.trim();
+  return model && model.toLowerCase() !== "wv" ? model : null;
 }
 
 type UpdateStatus = "atualizado" | "desatualizado" | "nunca_reportou";
@@ -2443,89 +2361,145 @@ function UpdateStatusBadge({ status }: { status: UpdateStatus }) {
   );
 }
 
-function UpdatesSection({ adminPw }: { adminPw: string }) {
-  const fn = useServerFn(adminUpdatesOverview);
-  const overview = useQuery({
-    queryKey: ["admin-updates-overview"],
-    queryFn: () => fn({ data: { adminPassword: adminPw } }),
-    refetchInterval: 30_000,
+function accountKindLabel(d: Pick<DeviceRow, "account_kind" | "is_test">): string {
+  switch (d.account_kind) {
+    case "admin": return "Administrador";
+    case "leader": return "Líder";
+    case "team": return d.is_test ? "Equipe de teste" : "Equipe";
+    default: return "Desconhecido";
+  }
+}
+
+function DevicesSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListDevices);
+  const signOutFn = useServerFn(adminSignOutDevice);
+  const devices = useQuery({
+    queryKey: ["admin-devices"],
+    queryFn: () => listFn({ data: { adminPassword: adminPw } }),
+    refetchInterval: 15_000,
+  });
+  const signOutMut = useMutation({
+    mutationFn: (userId: string) => signOutFn({ data: { adminPassword: adminPw, userId } }),
+    onSuccess: () => {
+      toast.success("Dispositivo deslogado.");
+      qc.invalidateQueries({ queryKey: ["admin-devices"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  const latestNative = overview.data?.latestNativeVersionCode ?? null;
-  const latestWeb = overview.data?.latestWebBuildNumber ?? null;
-  const teams = overview.data?.teams ?? [];
+  const rows = devices.data?.devices ?? [];
+  const latestNative = devices.data?.latestNativeVersionCode ?? null;
+  const latestWeb = devices.data?.latestWebBuildNumber ?? null;
 
   // Pior status primeiro — quem nunca reportou ou está desatualizado precisa
   // de atenção; quem já está em dia fica no fim da lista.
   const statusRank: Record<UpdateStatus, number> = { nunca_reportou: 0, desatualizado: 1, atualizado: 2 };
-  const sorted = [...teams].sort((a, b) => {
+  const sorted = [...rows].sort((a, b) => {
     const ra = statusRank[versionStatus(a.native_version_code, latestNative)];
     const rb = statusRank[versionStatus(b.native_version_code, latestNative)];
     if (ra !== rb) return ra - rb;
-    return a.team_name.localeCompare(b.team_name);
+    return a.account_label.localeCompare(b.account_label);
   });
 
-  const updatedCount = teams.filter(
-    (t) => versionStatus(t.native_version_code, latestNative) === "atualizado",
+  const updatedCount = rows.filter(
+    (d) => versionStatus(d.native_version_code, latestNative) === "atualizado",
   ).length;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Atualizações</h2>
+          <h2 className="text-base font-semibold">Dispositivos conectados</h2>
           <p className="text-xs text-muted-foreground">
-            {latestNative != null
-              ? `Último APK publicado: versionCode ${latestNative}`
-              : "Nenhum APK publicado ainda"}
+            {rows.length} sessão(ões) ativa(s)
+            {rows.length > 0 ? ` · ${updatedCount} atualizada(s)` : ""}. Atualiza automaticamente.
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {latestNative != null ? `Último APK: versionCode ${latestNative}` : "Nenhum APK publicado ainda"}
             {latestWeb != null ? ` · último bundle web: build ${latestWeb}` : ""}
           </p>
         </div>
         <Button
           variant="outline"
           className="h-9"
-          onClick={() => overview.refetch()}
-          disabled={overview.isFetching}
+          onClick={() => devices.refetch()}
+          disabled={devices.isFetching}
         >
-          {overview.isFetching ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
+          {devices.isFetching ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
         </Button>
       </div>
 
-      {overview.isLoading ? (
+      {devices.isLoading ? (
         <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-      ) : teams.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          Nenhuma equipe cadastrada.
+          Nenhum dispositivo conectado no momento.
         </div>
       ) : (
-        <>
-          <p className="text-xs text-muted-foreground">
-            {updatedCount} de {teams.length} equipe(s) com o app nativo atualizado.
-          </p>
-          <ul className="space-y-2">
-            {sorted.map((t) => {
-              const nativeStatus = versionStatus(t.native_version_code, latestNative);
-              return (
-                <li key={t.id} className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3">
+        <ul className="space-y-2">
+          {sorted.map((d) => {
+            const seen = new Date(d.last_seen_at);
+            const mins = Math.max(0, Math.round((Date.now() - seen.getTime()) / 60000));
+            const seenLabel =
+              mins < 1 ? "agora" : mins < 60 ? `há ${mins} min` : `há ${Math.round(mins / 60)}h`;
+            const model = describeDeviceModel(d.user_agent);
+            const nativeStatus = versionStatus(d.native_version_code, latestNative);
+            return (
+              <li
+                key={d.user_id + d.session_id}
+                className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3"
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                    <Smartphone className="size-4" />
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">{t.team_name}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      APK: {t.native_version_code ?? "—"}
-                      {latestNative != null ? ` / ${latestNative}` : ""} · Bundle web: {t.web_bundle_version ?? "—"}
-                      {latestWeb != null ? ` / ${latestWeb}` : ""}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {d.account_label}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        {accountKindLabel(d)}
+                      </span>
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {model ? `${model} · ` : ""}
+                      {describeUserAgent(d.user_agent)}
                     </div>
                     <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      {t.version_reported_at
-                        ? `Último report: ${formatDateBR(t.version_reported_at)}`
-                        : "Nunca reportou versão — provável dispositivo que ainda não abriu o app após a instalação, ou está offline."}
+                      Último sinal {seenLabel} · {formatDateBR(d.last_seen_at)}
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <UpdateStatusBadge status={nativeStatus} />
+                      <span className="text-[11px] text-muted-foreground">
+                        APK {d.native_version_code ?? "—"}
+                        {latestNative != null ? `/${latestNative}` : ""} · Web {d.web_bundle_version ?? "—"}
+                        {latestWeb != null ? `/${latestWeb}` : ""}
+                      </span>
                     </div>
                   </div>
-                  <UpdateStatusBadge status={nativeStatus} />
-                </li>
-              );
-            })}
-          </ul>
-        </>
+                </div>
+                <Button
+                  variant="outline"
+                  className="h-9 shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={async () => {
+                    if (
+                      await confirmDelete({
+                        description: `Deslogar "${d.account_label}"? O usuário precisará entrar de novo.`,
+                      })
+                    ) {
+                      signOutMut.mutate(d.user_id);
+                    }
+                  }}
+                  disabled={signOutMut.isPending}
+                >
+                  <LogOut className="size-4" />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

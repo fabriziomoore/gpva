@@ -13,6 +13,19 @@ import {
   type WebUpdateInfo,
 } from "@/lib/ota/check-update";
 
+const MANUAL_CHECK_EVENT = "gpva:check-update";
+
+/**
+ * Dispara uma nova checagem de atualização a partir de qualquer lugar do
+ * app (ex.: botão "Verificar atualização" no menu). Se nada de novo for
+ * encontrado, o próprio `UpdateBanner` mostra um toast avisando — o botão
+ * nunca fica sem resposta.
+ */
+export function requestUpdateCheck(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(MANUAL_CHECK_EVENT));
+}
+
 function ProgressBar({ percent }: { percent: number }) {
   return (
     <div className="relative h-11 w-full overflow-hidden rounded-md bg-white">
@@ -47,14 +60,30 @@ export function UpdateBanner() {
 
   useEffect(() => {
     let cancelled = false;
-    void checkForNativeUpdate().then((info) => {
-      if (!cancelled) setNativeUpdate(info);
-    });
-    void checkForWebUpdate().then((info) => {
-      if (!cancelled) setWebUpdate(info);
-    });
+
+    async function runCheck(manual: boolean) {
+      if (manual) toast.message("Verificando atualização...", { id: "gpva-update-check" });
+      const [native, web] = await Promise.all([checkForNativeUpdate(), checkForWebUpdate()]);
+      if (cancelled) return;
+      setNativeUpdate(native);
+      setWebUpdate(web);
+      // Feedback explícito só na checagem manual — a automática (no boot)
+      // fica silenciosa quando não há nada novo, pra não incomodar à toa.
+      if (manual) {
+        if (native || web) {
+          toast.success("Atualização encontrada.", { id: "gpva-update-check" });
+        } else {
+          toast.success("Você já está com a versão mais recente.", { id: "gpva-update-check" });
+        }
+      }
+    }
+
+    void runCheck(false);
+    const onManualCheck = () => void runCheck(true);
+    window.addEventListener(MANUAL_CHECK_EVENT, onManualCheck);
     return () => {
       cancelled = true;
+      window.removeEventListener(MANUAL_CHECK_EVENT, onManualCheck);
     };
   }, []);
 
@@ -90,7 +119,12 @@ export function UpdateBanner() {
     if (!nativeUpdate) return;
     setNativeProgress(0);
     try {
-      await downloadAndInstallNativeUpdate(nativeUpdate, setNativeProgress);
+      const result = await downloadAndInstallNativeUpdate(nativeUpdate, setNativeProgress);
+      if (result.usedFallback) {
+        toast.info("Este aparelho precisa atualizar pelo navegador desta vez — baixe o arquivo e instale manualmente.", {
+          duration: 10_000,
+        });
+      }
     } catch (err) {
       toast.error(err instanceof Error ? `Erro ao atualizar: ${err.message}` : "Erro ao baixar atualização");
     } finally {

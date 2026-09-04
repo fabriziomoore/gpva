@@ -174,23 +174,6 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const adminIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
       return (data ?? []).filter((r: any) => !r.is_test && !isReservedAdminTeam(r, adminIds));
     }
-    case "adminUpdatesOverview": {
-      const [teamsRes, nativeRes, webRes, adminRolesRes] = await Promise.all([
-        sb.from("equipes").select("id,team_name,is_test,native_version_code,web_bundle_version,version_reported_at").order("team_name"),
-        sb.from("app_releases").select("version_code").order("version_code", { ascending: false }).limit(1).maybeSingle(),
-        sb.from("web_releases").select("build_number").order("build_number", { ascending: false }).limit(1).maybeSingle(),
-        sb.from("user_roles").select("user_id").eq("role", "admin"),
-      ]);
-      if (teamsRes.error) throw new Error(teamsRes.error.message);
-      if (nativeRes.error) throw new Error(nativeRes.error.message);
-      if (webRes.error) throw new Error(webRes.error.message);
-      const adminIds = new Set((adminRolesRes.data ?? []).map((r: any) => r.user_id));
-      return {
-        latestNativeVersionCode: nativeRes.data?.version_code ?? null,
-        latestWebBuildNumber: webRes.data?.build_number ?? null,
-        teams: (teamsRes.data ?? []).filter((t: any) => !t.is_test && !isReservedAdminTeam(t, adminIds)),
-      };
-    }
     case "adminUpdateRate": {
       const { error } = await sb.from("equipes").update({ variable_rate: args.rate }).eq("id", args.teamId);
       if (error) throw new Error(error.message);
@@ -688,7 +671,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
     }
     case "auditRls": return await auditRls(sb);
     case "auditStorage": return await auditStorage(sb);
-    case "auditEdge": return await auditEdge(sb, payload.adminPassword!);
+    case "auditEdge": return await auditEdge(sb, ADMIN_PASSWORD);
     case "auditIntegrity": return await auditIntegrity(sb);
     case "auditCoords": return await auditCoords(sb);
     case "auditAuthOrphans": return await auditAuthOrphans(sb);
@@ -742,27 +725,34 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
 
     // ---------- Devices (sessões ativas) ----------
     case "adminListDevices": {
-      const { data: sessions, error } = await sb.from("active_sessions")
-        .select("user_id,session_id,user_agent,last_seen_at,updated_at")
-        .order("last_seen_at", { ascending: false });
+      const [{ data: sessions, error }, nativeRes, webRes] = await Promise.all([
+        sb.from("active_sessions")
+          .select("user_id,session_id,user_agent,last_seen_at,updated_at,native_version_code,web_bundle_version")
+          .order("last_seen_at", { ascending: false }),
+        sb.from("app_releases").select("version_code").order("version_code", { ascending: false }).limit(1).maybeSingle(),
+        sb.from("web_releases").select("build_number").order("build_number", { ascending: false }).limit(1).maybeSingle(),
+      ]);
       if (error) throw new Error(error.message);
+      const latestNativeVersionCode = nativeRes.data?.version_code ?? null;
+      const latestWebBuildNumber = webRes.data?.build_number ?? null;
       const rows = sessions ?? [];
-      if (!rows.length) return [];
+      if (!rows.length) return { devices: [], latestNativeVersionCode, latestWebBuildNumber };
       const ids = rows.map((r: any) => r.user_id);
       const [teamsRes, rolesRes, usersList] = await Promise.all([
-        sb.from("equipes").select("id,team_name").in("id", ids),
+        sb.from("equipes").select("id,team_name,is_test").in("id", ids),
         sb.from("user_roles").select("user_id,role").in("user_id", ids),
         sb.auth.admin.listUsers({ page: 1, perPage: 1000 }),
       ]);
-      const teamMap = new Map((teamsRes.data ?? []).map((t: any) => [t.id, t.team_name]));
+      const teamMap = new Map((teamsRes.data ?? []).map((t: any) => [t.id, t]));
       const roleMap = new Map<string, string>();
       for (const r of rolesRes.data ?? []) roleMap.set(r.user_id, r.role);
       const userMap = new Map<string, string>();
       if (!usersList.error) for (const u of usersList.data.users) userMap.set(u.id, u.email ?? "");
-      return rows.map((r: any) => {
+      const devices = rows.map((r: any) => {
         const role = roleMap.get(r.user_id);
+        const team = teamMap.get(r.user_id);
         let account_kind: "admin" | "leader" | "team" | "unknown" = "unknown";
-        let account_label = teamMap.get(r.user_id) ?? "";
+        let account_label = team?.team_name ?? "";
         if (role === "admin") { account_kind = "admin"; account_label = "Administrador"; }
         else if (role === "leader") {
           account_kind = "leader";
@@ -773,8 +763,9 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         } else {
           account_label = userMap.get(r.user_id) ?? String(r.user_id).slice(0, 8);
         }
-        return { ...r, account_label, account_kind };
+        return { ...r, account_label, account_kind, is_test: team?.is_test ?? false };
       });
+      return { devices, latestNativeVersionCode, latestWebBuildNumber };
     }
     case "adminSignOutDevice": {
       const { error } = await sb.from("active_sessions").delete().eq("user_id", args.userId);
