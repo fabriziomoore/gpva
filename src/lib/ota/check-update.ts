@@ -28,7 +28,7 @@ export type WebUpdateInfo = {
 // temporária) pra investigar um device que não detecta atualização nenhuma,
 // sem depender do usuário capturar um toast a tempo. Remover (função +
 // chamada + `DROP TABLE public.ota_debug_log`) depois de resolvido.
-async function logOtaDebug(payload: Record<string, unknown>): Promise<void> {
+export async function logOtaDebug(payload: Record<string, unknown>): Promise<void> {
   try {
     const { data } = await supabase.auth.getSession();
     const userId = data.session?.user.id;

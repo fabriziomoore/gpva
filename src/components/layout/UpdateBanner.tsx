@@ -10,6 +10,7 @@ import {
 import {
   checkForWebUpdate,
   downloadAndApplyWebUpdate,
+  logOtaDebug,
   type WebUpdateInfo,
 } from "@/lib/ota/check-update";
 
@@ -66,9 +67,13 @@ export function UpdateBanner() {
       lastCheckAt = Date.now();
       if (manual) toast.message("Verificando atualização...", { id: "gpva-update-check" });
       const [native, web] = await Promise.all([checkForNativeUpdate(), checkForWebUpdate()]);
-      if (cancelled) return;
+      if (cancelled) {
+        void logOtaDebug({ stage: "runcheck_cancelled_before_setstate", hasWeb: !!web, hasNative: !!native });
+        return;
+      }
       setNativeUpdate(native);
       setWebUpdate(web);
+      void logOtaDebug({ stage: "runcheck_setstate_done", hasWeb: !!web, hasNative: !!native, manual });
       // Feedback explícito só na checagem manual — a automática (no boot)
       // fica silenciosa quando não há nada novo, pra não incomodar à toa.
       if (manual) {
@@ -116,6 +121,12 @@ export function UpdateBanner() {
   }, [api]);
 
   useLayoutEffect(() => {
+    void logOtaDebug({
+      stage: "layout_effect",
+      hasAny,
+      hasBarRef: !!barRef.current,
+      barOffsetHeight: barRef.current?.offsetHeight ?? null,
+    });
     if (!hasAny || !barRef.current) {
       setSpacerHeight(0);
       return;
