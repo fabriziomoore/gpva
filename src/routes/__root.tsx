@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { startSync } from "../lib/sync/init";
 import { startSessionGuard } from "../lib/session-guard";
 import { requestBootPermissions } from "../lib/boot-permissions";
+import { notifyOtaReady } from "../lib/ota/check-update";
 import { THEME_BOOT_SCRIPT } from "../hooks/use-theme";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { SyncBadge } from "@/components/sync-badge";
@@ -142,6 +143,16 @@ function RootComponent() {
   useEffect(() => {
     console.log("[BOOT] 1. App iniciado — RootComponent mounted");
     void (async () => {
+      try {
+        // Confirma pro plugin de OTA que o bundle atual carregou com
+        // sucesso. Precisa ser o mais cedo possível — sem isso, o plugin
+        // assume que a atualização falhou e reverte pro bundle anterior
+        // sozinho, fazendo o device nunca progredir pra versões novas.
+        console.log("[BOOT] 1.5. notifyOtaReady:start");
+        await notifyOtaReady();
+        console.log("[BOOT] 1.5. notifyOtaReady:done");
+      } catch (e) { console.warn("[BOOT] 1.5. notifyOtaReady:error", e); }
+
       try {
         console.log("[BOOT] 2. requestBootPermissions:start (Capacitor)");
         await requestBootPermissions();
