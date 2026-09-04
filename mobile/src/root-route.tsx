@@ -5,8 +5,10 @@ import { startSync } from "@/lib/sync/init";
 import { startSessionGuard } from "@/lib/session-guard";
 import { Toaster } from "@/components/ui/sonner";
 import { requestBootPermissions } from "@/lib/boot-permissions";
+import { notifyOtaReady } from "@/lib/ota/check-update";
 import { SyncBadge } from "@/components/sync-badge";
 import { NetworkDiagPanel } from "@/components/NetworkDiagPanel";
+import { UpdateBanner } from "@/components/layout/UpdateBanner";
 
 function NotFoundComponent() {
   return (
@@ -42,6 +44,7 @@ function RootComponent(): ReactNode {
   const router = useRouter();
 
   useEffect(() => {
+    void notifyOtaReady();
     void startSync();
     startSessionGuard();
     void requestBootPermissions();
@@ -59,6 +62,10 @@ function RootComponent(): ReactNode {
       <Toaster />
       <SyncBadge />
       <NetworkDiagPanel />
+      {/* Montado uma única vez na raiz do app mobile — mesmo lugar (barra
+          fixa no rodapé) pra qualquer conta, na primeira tela que a conta
+          logada acessar. */}
+      <UpdateBanner />
     </QueryClientProvider>
   );
 }
