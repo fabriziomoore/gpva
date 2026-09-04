@@ -262,7 +262,7 @@ function HomePage() {
                 </p>
               </div>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 py-1.5 pl-3 pr-2 text-xs font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-blue-600 py-1.5 pl-3 pr-2 text-xs font-semibold text-black transition-colors">
               Abrir
               <ChevronRight className="size-3.5" />
             </span>
