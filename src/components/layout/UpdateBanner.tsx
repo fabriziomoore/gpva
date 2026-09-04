@@ -60,8 +60,10 @@ export function UpdateBanner() {
 
   useEffect(() => {
     let cancelled = false;
+    let lastCheckAt = 0;
 
     async function runCheck(manual: boolean) {
+      lastCheckAt = Date.now();
       if (manual) toast.message("Verificando atualização...", { id: "gpva-update-check" });
       const [native, web] = await Promise.all([checkForNativeUpdate(), checkForWebUpdate()]);
       if (cancelled) return;
@@ -81,9 +83,22 @@ export function UpdateBanner() {
     void runCheck(false);
     const onManualCheck = () => void runCheck(true);
     window.addEventListener(MANUAL_CHECK_EVENT, onManualCheck);
+
+    // Voltar do segundo plano (Android normalmente mantém o WebView vivo em
+    // background — o React nunca remonta, então sem isso a checagem só
+    // rodaria de novo com um fechamento completo do app). Throttlado pra
+    // não repetir a cada troca rápida de app.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastCheckAt < 60_000) return;
+      void runCheck(false);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
       window.removeEventListener(MANUAL_CHECK_EVENT, onManualCheck);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 
