@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
-// build de teste 2 — sem mudança funcional
+// build de teste 3 — confirmação final do card na Home
 
 /**
  * Confirma pro plugin de OTA que o bundle JS atual carregou com sucesso.
