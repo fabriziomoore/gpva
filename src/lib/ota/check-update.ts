@@ -23,6 +23,21 @@ export type WebUpdateInfo = {
   releaseType: string | null;
 };
 
+// Diagnóstico temporário — não dá pra ver o console de um APK real sem ADB.
+// Guarda o resultado da última checagem pra exibir num toast (ver
+// UpdateBanner) enquanto investigamos um caso de device que não detecta
+// atualização nenhuma. Remover depois de resolvido.
+export type WebCheckDiagnostic = {
+  currentVersion: number | null;
+  latestBuild: number | null;
+  bundleId: string | null;
+  error: string | null;
+};
+let lastDiagnostic: WebCheckDiagnostic = { currentVersion: null, latestBuild: null, bundleId: null, error: null };
+export function getLastWebCheckDiagnostic(): WebCheckDiagnostic {
+  return lastDiagnostic;
+}
+
 /**
  * Só checa se existe uma versão web mais nova publicada — não baixa nada.
  * Usado pelo WebUpdateCard pra decidir se mostra o aviso.
@@ -31,7 +46,7 @@ export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
   if (!Capacitor.isNativePlatform()) return null;
   try {
     const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
-    const [{ data: release }, current] = await Promise.all([
+    const [{ data: release, error: dbError }, current] = await Promise.all([
       supabase
         .from("web_releases")
         .select("build_number, url, checksum, release_type")
@@ -40,8 +55,16 @@ export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
         .maybeSingle(),
       CapacitorUpdater.current(),
     ]);
-    if (!release?.url) return null;
     const currentVersion = Number(current.bundle.version) || 0;
+    if (dbError) {
+      lastDiagnostic = { currentVersion, latestBuild: null, bundleId: current.bundle.id, error: dbError.message };
+      return null;
+    }
+    if (!release?.url) {
+      lastDiagnostic = { currentVersion, latestBuild: null, bundleId: current.bundle.id, error: "sem release publicado" };
+      return null;
+    }
+    lastDiagnostic = { currentVersion, latestBuild: release.build_number, bundleId: current.bundle.id, error: null };
     if (release.build_number <= currentVersion) return null;
     return {
       buildNumber: release.build_number,
@@ -49,7 +72,13 @@ export async function checkForWebUpdate(): Promise<WebUpdateInfo | null> {
       checksum: release.checksum,
       releaseType: release.release_type,
     };
-  } catch {
+  } catch (e) {
+    lastDiagnostic = {
+      currentVersion: null,
+      latestBuild: null,
+      bundleId: null,
+      error: e instanceof Error ? e.message : String(e),
+    };
     return null;
   }
 }
