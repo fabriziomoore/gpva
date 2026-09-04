@@ -69,7 +69,6 @@ jobs:
         env:
           SUPABASE_URL: "https://zerepuiyqbenogeyllxb.supabase.co"
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
           cd mobile/dist
@@ -77,6 +76,22 @@ jobs:
           cd ../..
           CHECKSUM=$(sha256sum dist.zip | cut -d ' ' -f1)
           VERSION="${GITHUB_SHA:0:7}"
+
+          # BUILD_NUMBER precisa ser o próximo número livre na tabela, não
+          # github.run_number (contador de execuções do workflow). Os dois
+          # podem colidir — ex.: um release inserido manualmente (teste,
+          # hotfix de versão) ocupa um build_number que o run_number alcança
+          # depois — e o upsert (on_conflict=build_number) sobrescreve o
+          # conteúdo silenciosamente SEM mudar o número. Devices que já
+          # tinham baixado aquele número nunca detectam a atualização
+          # seguinte, porque pra eles nada mudou (mesmo número, conteúdo
+          # novo por baixo). Calculando o próximo número a partir do que já
+          # existe no banco, cada publish sempre gera uma entrada nova.
+          CURRENT_MAX=$(curl -s \
+            "$SUPABASE_URL/rest/v1/web_releases?select=build_number&order=build_number.desc&limit=1" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" | jq -r '.[0].build_number // 0')
+          BUILD_NUMBER=$((CURRENT_MAX + 1))
+          echo "Next build_number: $BUILD_NUMBER"
 
           # -w aponta o status HTTP no fim do corpo; sem -f, então dá pra
           # imprimir a resposta de verdade quando algo falhar em vez de só
