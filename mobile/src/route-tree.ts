@@ -12,6 +12,7 @@ import { Route as ShiftRoute } from "@/routes/_authenticated/shift";
 import { Route as ProductivityRoute } from "@/routes/_authenticated/productivity";
 import { Route as SettingsRoute } from "@/routes/_authenticated/settings";
 import { Route as VariableRoute } from "@/routes/_authenticated/variable";
+import { Route as ProceduresRoute } from "@/routes/_authenticated/procedures";
 import { Route as ShiftReportRoute } from "@/routes/_authenticated/shift_.$id.report";
 import { Route as LeaderRoute } from "@/routes/_authenticated/leader";
 import { Route as LeaderConfigRoute } from "@/routes/_authenticated/leader-config";
@@ -75,6 +76,12 @@ const variable = (VariableRoute as any).update({
   getParentRoute: () => authenticated,
 });
 
+const procedures = (ProceduresRoute as any).update({
+  id: "/procedures",
+  path: "/procedures",
+  getParentRoute: () => authenticated,
+});
+
 const shiftReport = (ShiftReportRoute as any).update({
   id: "/shift_/$id/report",
   path: "/shift/$id/report",
@@ -118,6 +125,7 @@ const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   ProductivityRoute: productivity,
   SettingsRoute: settings,
   VariableRoute: variable,
+  ProceduresRoute: procedures,
   ShiftReportRoute: shiftReport,
   LeaderRoute: leader,
   LeaderConfigRoute: leaderConfig,

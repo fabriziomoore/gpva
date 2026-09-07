@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { DecisionTree, DecisionNode } from "@/lib/procedures/tree-validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,7 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
 
   const removeNode = (id: string) => {
     if (value.startNodeId === id) {
-      alert("Não é possível remover o nó inicial.");
+      toast.error("Não é possível remover o nó inicial.");
       return;
     }
     onChange({

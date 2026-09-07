@@ -82,6 +82,7 @@ const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
   { to: "/productivity" as const, label: "Produtividade", icon: BarChart3, exact: false },
   { to: "/variable" as const, label: "Variável", icon: Wallet, exact: false },
+  { to: "/procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
   { to: "/settings" as const, label: "Configurações", icon: Settings, exact: false },
 ];
 

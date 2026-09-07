@@ -112,8 +112,17 @@ export default defineConfig(({ command, mode }) => {
     ],
   };
 
-  // Avoids a double file-save rebuild flicker.
+  // Avoids a double file-save rebuild flicker. Also keeps the watcher out of
+  // mobile/dist, .output, android and ios — build outputs / native projects
+  // the web dev server never needs to react to, and which can crash Vite's
+  // watcher on Windows with EBUSY if a file there is mid-write by another
+  // process (e.g. a concurrent `bun run build:mobile`).
   return mergeConfig(config, {
-    server: { watch: { awaitWriteFinish: { stabilityThreshold: 1000, pollInterval: 100 } } },
+    server: {
+      watch: {
+        awaitWriteFinish: { stabilityThreshold: 1000, pollInterval: 100 },
+        ignored: ["**/mobile/dist/**", "**/.output/**", "**/android/**", "**/ios/**"],
+      },
+    },
   });
 });

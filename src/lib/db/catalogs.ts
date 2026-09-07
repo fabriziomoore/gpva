@@ -45,7 +45,7 @@ async function writeCache<T>(key: string, value: T): Promise<void> {
   }
 }
 
-function useCachedQuery<T>(key: string, fetcher: Fetcher<T>, queryKey: unknown[], enabled: boolean = true): UseQueryResult<T> {
+export function useCachedQuery<T>(key: string, fetcher: Fetcher<T>, queryKey: unknown[], enabled: boolean = true): UseQueryResult<T> {
   const liveCached = useLiveQuery(() => readCache<T>(key), [key]);
   const query = useQuery({
     queryKey,

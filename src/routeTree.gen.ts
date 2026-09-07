@@ -19,6 +19,7 @@ import { Route as AuthenticatedLeaderMapRouteImport } from './routes/_authentica
 import { Route as AuthenticatedLeaderProceduresRouteImport } from './routes/_authenticated/leader-procedures'
 import { Route as AuthenticatedLeaderRankingRouteImport } from './routes/_authenticated/leader-ranking'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedProceduresRouteImport } from './routes/_authenticated/procedures'
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
@@ -77,6 +78,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProceduresRoute = AuthenticatedProceduresRouteImport.update({
+  id: '/procedures',
+  path: '/procedures',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProductivityRoute =
   AuthenticatedProductivityRouteImport.update({
     id: '/productivity',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
   '/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/procedures': typeof AuthenticatedProceduresRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
   '/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/procedures': typeof AuthenticatedProceduresRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/_authenticated/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
   '/_authenticated/leader-ranking': typeof AuthenticatedLeaderRankingRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/procedures': typeof AuthenticatedProceduresRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/leader-procedures'
     | '/leader-ranking'
     | '/onboarding'
+    | '/procedures'
     | '/productivity'
     | '/settings'
     | '/shift'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/leader-procedures'
     | '/leader-ranking'
     | '/onboarding'
+    | '/procedures'
     | '/productivity'
     | '/settings'
     | '/shift'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leader-procedures'
     | '/_authenticated/leader-ranking'
     | '/_authenticated/onboarding'
+    | '/_authenticated/procedures'
     | '/_authenticated/productivity'
     | '/_authenticated/settings'
     | '/_authenticated/shift'
@@ -285,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/procedures': {
+      id: '/_authenticated/procedures'
+      path: '/procedures'
+      fullPath: '/procedures'
+      preLoaderRoute: typeof AuthenticatedProceduresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/productivity': {
       id: '/_authenticated/productivity'
       path: '/productivity'
@@ -330,6 +349,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeaderProceduresRoute: typeof AuthenticatedLeaderProceduresRoute
   AuthenticatedLeaderRankingRoute: typeof AuthenticatedLeaderRankingRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedProceduresRoute: typeof AuthenticatedProceduresRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
@@ -345,6 +365,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLeaderProceduresRoute: AuthenticatedLeaderProceduresRoute,
   AuthenticatedLeaderRankingRoute: AuthenticatedLeaderRankingRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedProceduresRoute: AuthenticatedProceduresRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,

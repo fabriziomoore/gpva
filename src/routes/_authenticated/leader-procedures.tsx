@@ -577,10 +577,14 @@ function LeaderProceduresPage() {
                         {proc.status === 'draft' && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => {
-                                if (confirm("Tem certeza que deseja excluir este rascunho?")) {
+                              onClick={async () => {
+                                const { confirmDelete } = await import("@/components/ui/confirm-dialog");
+                                if (await confirmDelete({
+                                  title: "Excluir rascunho?",
+                                  description: "Este rascunho será apagado permanentemente.",
+                                })) {
                                   deleteDraftMutation.mutate(proc.id);
                                 }
                               }}
