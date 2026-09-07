@@ -39,6 +39,7 @@ const formSchema = z.object({
   fonte: z.string().optional(),
   vigencia_inicio: z.string().min(1, "Data de início obrigatória"),
   vigencia_fim: z.string().optional(),
+  motivo_alteracao: z.string().max(500).optional(),
 });
 
 interface ProcedureFormProps {
@@ -79,6 +80,12 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
     },
   });
 
+  // Só é a "primeira versão" quando não há nada por trás (versao ausente ou
+  // 1 e sem predecessor) — em qualquer outra situação, é uma alteração de
+  // algo que já existia, e por isso precisa de um motivo registrado (é o
+  // changelog/auditoria: fica claro o que mudou e por quê pra cada versão).
+  const isFirstVersion = !initialData || (initialData.versao === 1 && !initialData.substitui_versao_id);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -89,14 +96,21 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
       fonte: initialData?.fonte || "",
       vigencia_inicio: initialData?.vigencia_inicio || "",
       vigencia_fim: initialData?.vigencia_fim || "",
+      motivo_alteracao: initialData?.motivo_alteracao || "",
     },
   });
 
   const handleAction = async (isPublishing: boolean) => {
     const values = form.getValues();
     const isValid = await form.trigger();
-    
+
     if (!isValid) return;
+
+    if (!isFirstVersion && !values.motivo_alteracao?.trim()) {
+      form.setError("motivo_alteracao", { message: "Descreva o que mudou e por quê nesta versão." });
+      toast.error("Preencha o motivo da alteração antes de continuar.");
+      return;
+    }
 
     // Validação profunda da árvore
     const validation = validateDecisionTree(tree);
@@ -226,6 +240,30 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
                     </FormItem>
                   )}
                 />
+
+                {!isFirstVersion && (
+                  <FormField
+                    control={form.control}
+                    name="motivo_alteracao"
+                    render={({ field }) => (
+                      <FormItem className="rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4">
+                        <FormLabel className="font-bold">Motivo da alteração</FormLabel>
+                        <FormDescription>
+                          O que mudou nesta versão e por quê — fica registrado no histórico pra qualquer auditoria futura.
+                        </FormDescription>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Ex: Corrigido erro de português no título e adicionado passo que faltava na instrução do resultado X."
+                            className="min-h-[80px] bg-background"
+                            {...field}
+                            disabled={isReadOnly}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}

@@ -477,6 +477,27 @@ export type Database = {
           },
         ]
       }
+      ota_debug_log: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload: Json
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       procedimento_versoes: {
         Row: {
           arvore_decisao: Json
@@ -486,6 +507,7 @@ export type Database = {
           descricao: string | null
           fonte: string | null
           id: string
+          motivo_alteracao: string | null
           procedimento_id: string
           publicado_por_id: string | null
           published_at: string | null
@@ -508,6 +530,7 @@ export type Database = {
           descricao?: string | null
           fonte?: string | null
           id?: string
+          motivo_alteracao?: string | null
           procedimento_id: string
           publicado_por_id?: string | null
           published_at?: string | null
@@ -530,6 +553,7 @@ export type Database = {
           descricao?: string | null
           fonte?: string | null
           id?: string
+          motivo_alteracao?: string | null
           procedimento_id?: string
           publicado_por_id?: string | null
           published_at?: string | null
@@ -879,6 +903,7 @@ export type Database = {
           p_categoria: string
           p_descricao: string
           p_fonte: string
+          p_motivo_alteracao?: string
           p_setor: string
           p_titulo: string
           p_vigencia_fim: string

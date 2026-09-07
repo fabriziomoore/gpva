@@ -94,7 +94,8 @@ function LeaderProceduresPage() {
         p_fonte: metadata.fonte || null,
         p_vigencia_inicio: metadata.vigencia_inicio,
         p_vigencia_fim: metadata.vigencia_fim || null,
-        p_arvore_decisao: versionData.arvore_decisao
+        p_arvore_decisao: versionData.arvore_decisao,
+        p_motivo_alteracao: metadata.motivo_alteracao || null,
       });
 
       if (rpcError) throw rpcError;
@@ -152,6 +153,7 @@ function LeaderProceduresPage() {
           vigencia_inicio: metadata.vigencia_inicio,
           vigencia_fim: metadata.vigencia_fim || null,
           arvore_decisao: versionData.arvore_decisao,
+          motivo_alteracao: metadata.motivo_alteracao || null,
         })
         .eq("id", id)
         .eq("status", "draft");
@@ -233,6 +235,64 @@ function LeaderProceduresPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
       toast.success("Nova versão draft criada!");
+      setEditingProcedure(data);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
+
+  // "Reativar" uma versão suspensa não desfaz o status dela diretamente
+  // (isso abriria uma brecha nas travas de segurança da publicação) — em
+  // vez disso, cria uma NOVA versão com o conteúdo antigo, sucedendo
+  // corretamente quem estiver publicado agora (se houver). Passa pelo
+  // mesmo fluxo auditado de sempre: revisão → motivo → publicar.
+  const reactivateMutation = useMutation({
+    mutationFn: async (oldVersion: any) => {
+      if (!userId) throw new Error("Usuário não autenticado");
+
+      const [{ data: current }, { data: allVersions }] = await Promise.all([
+        supabase
+          .from("procedimento_versoes")
+          .select("id")
+          .eq("procedimento_id", oldVersion.procedimento_id)
+          .eq("status", "published")
+          .maybeSingle(),
+        supabase
+          .from("procedimento_versoes")
+          .select("versao")
+          .eq("procedimento_id", oldVersion.procedimento_id)
+          .order("versao", { ascending: false })
+          .limit(1),
+      ]);
+      const nextVersao = (allVersions?.[0]?.versao ?? oldVersion.versao) + 1;
+
+      const { data, error } = await supabase
+        .from("procedimento_versoes")
+        .insert({
+          procedimento_id: oldVersion.procedimento_id,
+          titulo: oldVersion.titulo,
+          categoria: oldVersion.categoria,
+          descricao: oldVersion.descricao,
+          setor: oldVersion.setor,
+          fonte: oldVersion.fonte,
+          versao: nextVersao,
+          status: "draft",
+          arvore_decisao: oldVersion.arvore_decisao,
+          vigencia_inicio: oldVersion.vigencia_inicio,
+          substitui_versao_id: current?.id ?? null,
+          criado_por_id: userId,
+          motivo_alteracao: `Reativação da versão ${oldVersion.versao}.`,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["leader-procedures"] });
+      toast.success("Rascunho criado a partir da versão antiga — revise e publique.");
       setEditingProcedure(data);
     },
     onError: (error: any) => {
@@ -565,13 +625,20 @@ function LeaderProceduresPage() {
                         )}
 
                         {proc.status === 'suspended' && (
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => statusMutation.mutate({ id: proc.id, status: 'archived' })}
-                          >
-                            <Archive className="size-4 mr-2" />
-                            Arquivar
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem onClick={() => reactivateMutation.mutate(proc)}>
+                              <PlayCircle className="size-4 mr-2" />
+                              Reativar (nova versão)
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => statusMutation.mutate({ id: proc.id, status: 'archived' })}
+                            >
+                              <Archive className="size-4 mr-2" />
+                              Arquivar
+                            </DropdownMenuItem>
+                          </>
                         )}
 
                         {proc.status === 'draft' && (
@@ -611,6 +678,13 @@ function LeaderProceduresPage() {
                         {proc.vigencia_fim && ` — ${proc.vigencia_fim.split('-').reverse().join('/')}`}
                       </span>
                     </div>
+
+                    {proc.motivo_alteracao && (
+                      <p className="rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground line-clamp-2">
+                        <span className="font-semibold text-foreground/70">Motivo: </span>
+                        {proc.motivo_alteracao}
+                      </p>
+                    )}
 
                     <div className="flex gap-2">
                       <Badge variant="outline" className="text-[9px] font-normal">{proc.categoria}</Badge>
