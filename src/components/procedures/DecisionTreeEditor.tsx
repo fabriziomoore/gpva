@@ -16,12 +16,14 @@ interface DecisionTreeEditorProps {
 export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTreeEditorProps) {
   const [activeNodeId, setActiveNodeId] = useState<string | null>(value.startNodeId);
 
+  const makeNodeId = () => `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
   const addNode = (type: "question" | "result") => {
-    const newId = `node_${Date.now()}`;
-    const newNode: DecisionNode = type === "question" 
+    const newId = makeNodeId();
+    const newNode: DecisionNode = type === "question"
       ? { id: newId, type: "question", text: "", answers: [{ label: "Sim", nextNodeId: "" }] }
       : { id: newId, type: "result", title: "", instruction: "" };
-    
+
     onChange({
       ...value,
       nodes: [...value.nodes, newNode],
@@ -34,6 +36,27 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
       ...value,
       nodes: value.nodes.map(n => n.id === id ? { ...n, ...updates } as DecisionNode : n),
     });
+  };
+
+  // Cria um nó novo (pergunta ou resultado) e já liga a resposta a ele na
+  // mesma ação — evita a armadilha de ter que criar o nó em outro lugar
+  // primeiro pra depois voltar e escolher ele no "próximo nó" (isso era o
+  // principal ponto de confusão pra quem cadastra um procedimento).
+  const createAndLinkNode = (questionNode: DecisionNode & { type: "question" }, answerIdx: number, type: "question" | "result") => {
+    const newId = makeNodeId();
+    const newNode: DecisionNode = type === "question"
+      ? { id: newId, type: "question", text: "", answers: [{ label: "Sim", nextNodeId: "" }] }
+      : { id: newId, type: "result", title: "", instruction: "" };
+    const newAnswers = questionNode.answers.map((a, i) => (i === answerIdx ? { ...a, nextNodeId: newId } : a));
+    onChange({
+      ...value,
+      nodes: [
+        ...value.nodes.map((n) => (n.id === questionNode.id ? { ...n, answers: newAnswers } : n)),
+        newNode,
+      ],
+    });
+    setActiveNodeId(newId);
+    toast.success(type === "result" ? "Resultado criado e já ligado a essa resposta." : "Pergunta criada e já ligada a essa resposta.");
   };
 
   const removeNode = (id: string) => {
@@ -137,20 +160,27 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
                             placeholder="Rótulo (ex: Sim)"
                             disabled={isReadOnly}
                           />
-                          <select 
+                          <select
                             className="w-full flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             value={ans.nextNodeId}
                             onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === "__new_result__" || v === "__new_question__") {
+                                createAndLinkNode(activeNode, idx, v === "__new_result__" ? "result" : "question");
+                                return;
+                              }
                               const newAns = [...activeNode.answers];
-                              newAns[idx].nextNodeId = e.target.value;
+                              newAns[idx].nextNodeId = v;
                               updateNode(activeNode.id, { answers: newAns });
                             }}
                             disabled={isReadOnly}
                           >
                             <option value="">Selecione o próximo nó...</option>
+                            <option value="__new_result__">➕ Criar novo Resultado aqui</option>
+                            <option value="__new_question__">➕ Criar nova Pergunta aqui</option>
                             {value.nodes.filter(n => n.id !== activeNode.id).map(n => (
                               <option key={n.id} value={n.id}>
-                                [{n.type.toUpperCase()}] {n.type === "question" ? (n as any).text : (n as any).title}
+                                [{n.type.toUpperCase()}] {n.type === "question" ? (n as any).text || "(sem texto)" : (n as any).title || "(sem título)"}
                               </option>
                             ))}
                           </select>
