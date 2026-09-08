@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { ChevronRight, FileText, Loader2, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ChevronRight, FileText, Loader2, Search } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePublishedProcedures, type PublishedProcedure } from "@/hooks/use-procedures";
-import { ProcedurePlayer } from "@/components/procedures/ProcedurePlayer";
+import { ProcedurePlayer, type ProcedurePlayerHandle } from "@/components/procedures/ProcedurePlayer";
 
 export const Route = createFileRoute("/_authenticated/procedures")({
   head: () => ({ meta: [{ title: "Procedimentos" }] }),
@@ -17,6 +17,12 @@ function ProceduresPage() {
   const { data: procedures, isLoading } = usePublishedProcedures();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<PublishedProcedure | null>(null);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const playerRef = useRef<ProcedurePlayerHandle>(null);
+
+  useEffect(() => {
+    setCanGoBack(false);
+  }, [selected?.id]);
 
   const filtered = useMemo(() => {
     const list = procedures ?? [];
@@ -95,9 +101,28 @@ function ProceduresPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="uppercase">{selected?.titulo}</DialogTitle>
+            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-lg bg-primary py-1.5 pl-2 pr-3 text-primary-foreground">
+              {canGoBack && (
+                <button
+                  type="button"
+                  onClick={() => playerRef.current?.back()}
+                  aria-label="Voltar"
+                  className="shrink-0 rounded-md p-1 text-primary-foreground/90 transition-colors hover:text-primary-foreground"
+                >
+                  <ArrowLeft className="size-5" />
+                </button>
+              )}
+              <DialogTitle className="truncate uppercase text-primary-foreground">{selected?.titulo}</DialogTitle>
+            </div>
           </DialogHeader>
-          {selected && <ProcedurePlayer key={selected.id} tree={selected.arvore_decisao} />}
+          {selected && (
+            <ProcedurePlayer
+              ref={playerRef}
+              key={selected.id}
+              tree={selected.arvore_decisao}
+              onPathChange={setCanGoBack}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </AppShell>
