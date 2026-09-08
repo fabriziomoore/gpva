@@ -99,7 +99,11 @@ function ProceduresPage() {
       </div>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto" hideDefaultClose>
+        <DialogContent
+          className="max-h-[85vh] overflow-y-auto"
+          hideDefaultClose
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <div className="flex items-center gap-2">
               <div className="inline-flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg bg-primary pl-2 pr-3 text-primary-foreground">
