@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as StatusRouteImport } from './routes/status'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
 import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
@@ -39,11 +38,6 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatusRoute = StatusRouteImport.update({
-  id: '/status',
-  path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -121,7 +115,6 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/status': typeof StatusRoute
   '/leader': typeof AuthenticatedLeaderRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/leader-map': typeof AuthenticatedLeaderMapRoute
@@ -138,7 +131,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/status': typeof StatusRoute
   '/leader': typeof AuthenticatedLeaderRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/leader-map': typeof AuthenticatedLeaderMapRoute
@@ -158,7 +150,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/status': typeof StatusRoute
   '/_authenticated/leader': typeof AuthenticatedLeaderRoute
   '/_authenticated/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/_authenticated/leader-map': typeof AuthenticatedLeaderMapRoute
@@ -179,7 +170,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
-    | '/status'
     | '/leader'
     | '/leader-config'
     | '/leader-map'
@@ -196,7 +186,6 @@ export interface FileRouteTypes {
   to:
     | '/admin'
     | '/auth'
-    | '/status'
     | '/leader'
     | '/leader-config'
     | '/leader-map'
@@ -215,7 +204,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin'
     | '/auth'
-    | '/status'
     | '/_authenticated/leader'
     | '/_authenticated/leader-config'
     | '/_authenticated/leader-map'
@@ -235,7 +223,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
-  StatusRoute: typeof StatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -259,13 +246,6 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -401,7 +381,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
-  StatusRoute: StatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
