@@ -23,10 +23,10 @@ jobs:
           # Publishable/anon-style values — safe to be public, they end up
           # inlined in the client bundle regardless of where they're set.
           VITE_SUPABASE_URL: "https://zerepuiyqbenogeyllxb.supabase.co"
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
           # Server-side (SSR) reads of the same values, via process.env.
           SUPABASE_URL: "https://zerepuiyqbenogeyllxb.supabase.co"
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
 
       # O Nitro gera dois arquivos de config do Wrangler no build:
       # .output/server/wrangler.json (o que a action usa, via workingDirectory)

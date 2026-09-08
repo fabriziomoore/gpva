@@ -760,6 +760,39 @@ export type Database = {
           },
         ]
       }
+      system_health_state: {
+        Row: {
+          id: boolean
+          last_alert_sent_at: string | null
+          last_status: string
+        }
+        Insert: {
+          id?: boolean
+          last_alert_sent_at?: string | null
+          last_status?: string
+        }
+        Update: {
+          id?: boolean
+          last_alert_sent_at?: string | null
+          last_status?: string
+        }
+        Relationships: []
+      }
+      system_status_auth: {
+        Row: {
+          id: boolean
+          passphrase_hash: string
+        }
+        Insert: {
+          id?: boolean
+          passphrase_hash: string
+        }
+        Update: {
+          id?: boolean
+          passphrase_hash?: string
+        }
+        Relationships: []
+      }
       tipos_servico: {
         Row: {
           active: boolean
@@ -895,6 +928,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _compute_system_health: { Args: never; Returns: Json }
       admin_user_ids: { Args: never; Returns: string[] }
       audit_schema_snapshot: { Args: never; Returns: Json }
       create_procedure_with_version: {
@@ -911,6 +945,7 @@ export type Database = {
         }
         Returns: string
       }
+      get_system_health: { Args: { p_passphrase: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -928,6 +963,7 @@ export type Database = {
         Returns: string
       }
       reset_current_demo_session: { Args: never; Returns: Json }
+      run_system_health_alert_check: { Args: never; Returns: undefined }
       validate_procedure_tree: { Args: { p_tree: Json }; Returns: boolean }
     }
     Enums: {
