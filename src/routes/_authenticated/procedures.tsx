@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronRight, FileText, Loader2, Search } from "lucide-react";
+import { ArrowLeft, ChevronRight, FileText, Loader2, Search, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePublishedProcedures, type PublishedProcedure } from "@/hooks/use-procedures";
 import { ProcedurePlayer, type ProcedurePlayerHandle } from "@/components/procedures/ProcedurePlayer";
 
@@ -99,20 +99,28 @@ function ProceduresPage() {
       </div>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto" hideDefaultClose>
           <DialogHeader>
-            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-lg bg-primary py-1.5 pl-2 pr-3 text-primary-foreground">
-              {canGoBack && (
-                <button
-                  type="button"
-                  onClick={() => playerRef.current?.back()}
-                  aria-label="Voltar"
-                  className="shrink-0 rounded-md p-1 text-primary-foreground/90 transition-colors hover:text-primary-foreground"
-                >
-                  <ArrowLeft className="size-5" />
-                </button>
-              )}
-              <DialogTitle className="truncate uppercase text-primary-foreground">{selected?.titulo}</DialogTitle>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg bg-primary pl-2 pr-3 text-primary-foreground">
+                {canGoBack && (
+                  <button
+                    type="button"
+                    onClick={() => playerRef.current?.back()}
+                    aria-label="Voltar"
+                    className="shrink-0 rounded-md p-1 text-primary-foreground/90 transition-colors hover:text-primary-foreground"
+                  >
+                    <ArrowLeft className="size-5" />
+                  </button>
+                )}
+                <DialogTitle className="truncate uppercase text-primary-foreground">{selected?.titulo}</DialogTitle>
+              </div>
+              <DialogClose
+                aria-label="Fechar"
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:outline-none"
+              >
+                <X className="size-5" strokeWidth={3} />
+              </DialogClose>
             </div>
           </DialogHeader>
           {selected && (
