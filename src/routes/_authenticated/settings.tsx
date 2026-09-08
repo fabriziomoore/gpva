@@ -364,7 +364,7 @@ function SettingsPage() {
             {versionInfo && (
               <p className="text-center text-xs text-muted-foreground">
                 Versão {versionInfo.version} ({versionInfo.build})
-                {versionInfo.otaBuild && ` · atualização ${versionInfo.otaBuild}`}
+                {versionInfo.otaBuild && ` · Atualização ${versionInfo.otaBuild}`}
               </p>
             )}
           </div>
