@@ -121,7 +121,7 @@ function ProceduresPage() {
               </div>
               <DialogClose
                 aria-label="Fechar"
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:outline-none"
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-red-500/90 text-white transition-colors hover:bg-red-600 focus:outline-none focus-visible:outline-none"
               >
                 <X className="size-5" strokeWidth={3} />
               </DialogClose>
