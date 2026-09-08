@@ -267,6 +267,13 @@ function LeaderProceduresPage() {
       ]);
       const nextVersao = (allVersions?.[0]?.versao ?? oldVersion.versao) + 1;
 
+      // A vigência da versão suspensa pode estar em qualquer data do
+      // passado (ou até no futuro, se foi assim que ficou suspensa) —
+      // ao reativar, o esperado é "valer a partir de agora", não herdar
+      // essa data velha. Isso foi o que deixou uma reativação anterior
+      // publicada mas invisível pra equipe (vigencia_inicio no futuro).
+      const todayIso = new Date().toISOString().slice(0, 10);
+
       const { data, error } = await supabase
         .from("procedimento_versoes")
         .insert({
@@ -279,7 +286,7 @@ function LeaderProceduresPage() {
           versao: nextVersao,
           status: "draft",
           arvore_decisao: oldVersion.arvore_decisao,
-          vigencia_inicio: oldVersion.vigencia_inicio,
+          vigencia_inicio: todayIso,
           substitui_versao_id: current?.id ?? null,
           criado_por_id: userId,
           motivo_alteracao: `Reativação da versão ${oldVersion.versao}.`,
@@ -664,7 +671,7 @@ function LeaderProceduresPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors">{proc.titulo}</CardTitle>
+                  <CardTitle className="text-lg line-clamp-1 uppercase group-hover:text-primary transition-colors">{proc.titulo}</CardTitle>
                   <CardDescription className="line-clamp-2 min-h-[2.5rem] mt-1 text-xs">
                     {proc.descricao || "Sem descrição informada."}
                   </CardDescription>

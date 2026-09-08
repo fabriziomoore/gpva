@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { DecisionTree } from "@/lib/procedures/tree-validation";
+
+// Sim/Não são as respostas mais comuns nas árvores de decisão — colorir
+// de verde/vermelho deixa óbvio de relance qual caminho leva a qual
+// resultado, sem precisar ler o rótulo. Fixo nas duas cores em qualquer
+// tema (só o fundo do título segue claro/escuro).
+function answerColorClasses(label: string) {
+  const normalized = label.trim().toLowerCase();
+  if (normalized === "sim") return "border-transparent bg-green-600 text-white hover:bg-green-700";
+  if (normalized === "não" || normalized === "nao") return "border-transparent bg-red-600 text-white hover:bg-red-700";
+  return "";
+}
 
 /**
  * Percorre a árvore de decisão publicada por um líder, uma pergunta por
@@ -31,34 +43,42 @@ export function ProcedurePlayer({ tree }: { tree: DecisionTree }) {
     );
   }
 
+  const titleText = node.type === "question" ? node.text : node.title;
+
   return (
     <div className="space-y-4">
-      {path.length > 1 && (
-        <button
-          type="button"
-          onClick={back}
-          className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Voltar
-        </button>
-      )}
+      <div className="flex items-center gap-2 rounded-xl bg-primary px-3 py-2.5">
+        {path.length > 1 && (
+          <button
+            type="button"
+            onClick={back}
+            aria-label="Voltar"
+            className="-ml-1 shrink-0 rounded-md p-1 text-primary-foreground/90 transition-colors hover:text-primary-foreground"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
+        )}
+        <p className="flex-1 truncate text-base font-semibold leading-snug text-primary-foreground">
+          {titleText}
+        </p>
+      </div>
 
       {node.type === "question" ? (
-        <div className="space-y-3">
-          <p className="text-lg font-semibold leading-snug text-foreground">{node.text}</p>
-          <div className="space-y-2">
-            {node.answers.map((ans, i) => (
-              <Button
-                key={i}
-                variant="outline"
-                className="h-auto w-full whitespace-normal py-3 text-left text-base"
-                onClick={() => choose(ans.nextNodeId)}
-              >
-                {ans.label}
-              </Button>
-            ))}
-          </div>
+        <div className={cn("gap-2", node.answers.length === 2 ? "grid grid-cols-2" : "space-y-2")}>
+          {node.answers.map((ans, i) => (
+            <Button
+              key={i}
+              variant="outline"
+              className={cn(
+                "h-auto w-full whitespace-normal py-3 text-base",
+                node.answers.length === 2 ? "text-center" : "text-left",
+                answerColorClasses(ans.label),
+              )}
+              onClick={() => choose(ans.nextNodeId)}
+            >
+              {ans.label}
+            </Button>
+          ))}
         </div>
       ) : (
         <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
@@ -66,7 +86,6 @@ export function ProcedurePlayer({ tree }: { tree: DecisionTree }) {
             <CheckCircle2 className="size-5 shrink-0" />
             <p className="text-xs font-bold uppercase tracking-wide">Procedimento indicado</p>
           </div>
-          <p className="text-lg font-semibold text-foreground">{node.title}</p>
           <p className="whitespace-pre-wrap text-sm text-foreground/90">{node.instruction}</p>
           {node.reason && (
             <p className="border-t border-border pt-3 text-xs text-muted-foreground">

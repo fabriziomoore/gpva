@@ -72,7 +72,7 @@ function ProceduresPage() {
                     <FileText className="size-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">{proc.titulo}</p>
+                    <p className="truncate text-sm font-semibold uppercase text-foreground">{proc.titulo}</p>
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                         {proc.categoria}
@@ -95,7 +95,7 @@ function ProceduresPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selected?.titulo}</DialogTitle>
+            <DialogTitle className="uppercase">{selected?.titulo}</DialogTitle>
           </DialogHeader>
           {selected && <ProcedurePlayer key={selected.id} tree={selected.arvore_decisao} />}
         </DialogContent>

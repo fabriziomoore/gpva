@@ -158,7 +158,7 @@ export function ProcedureForm({ initialData, onSubmit, isSubmitting, isReadOnly 
                       <FormItem className="md:col-span-2">
                         <FormLabel className="font-bold">Título do Procedimento</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Manutenção de Ponto de Rede" {...field} disabled={isReadOnly} />
+                          <Input placeholder="Ex: Manutenção de Ponto de Rede" {...field} disabled={isReadOnly} className="uppercase" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
