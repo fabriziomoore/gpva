@@ -432,8 +432,9 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: teams, error: teamsErr } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,is_test");
+      .select("id,team_name,is_test,leader,setores(nome)");
     if (teamsErr) throw new Error(teamsErr.message);
+    type TeamWithSetor = TeamIdentity & { leader: string | null; setores: { nome: string } | null };
     const { data: adminRoles } = await supabaseAdmin
       .from("user_roles")
       .select("user_id")
@@ -506,9 +507,12 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
         if (!k) continue;
         byType[k] = (byType[k] ?? 0) + 1;
       }
+      const tt = t as unknown as TeamWithSetor;
       return {
         id: t.id,
         team_name: t.team_name,
+        setor_nome: tt.setores?.nome ?? null,
+        leader_name: tt.leader?.trim() || null,
         total: mine.length,
         viable,
         inviable,

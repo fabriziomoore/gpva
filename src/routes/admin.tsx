@@ -1058,6 +1058,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const [month, setMonth] = useState<number>(now.getMonth() + 1);
   const [day, setDay] = useState<number>(now.getDate());
   const [mode, setMode] = useState<"day" | "week" | "month">("day");
+  const [groupBy, setGroupBy] = useState<"equipe" | "setor" | "lider">("equipe");
 
   const weeks = useMemo(() => {
     const y = year;
@@ -1146,6 +1147,44 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const brl = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const current = selected ? sorted.find((t) => t.id === selected) : null;
+
+  type GroupAgg = {
+    label: string;
+    teamCount: number;
+    total: number;
+    viable: number;
+    inviable: number;
+    negotiations: number;
+    negotiationValue: number;
+  };
+  const groupBy_ = (key: "setor_nome" | "leader_name", fallback: string): GroupAgg[] => {
+    const map = new Map<string, GroupAgg>();
+    for (const t of sorted) {
+      const label = t[key] ?? fallback;
+      const g = map.get(label) ?? {
+        label,
+        teamCount: 0,
+        total: 0,
+        viable: 0,
+        inviable: 0,
+        negotiations: 0,
+        negotiationValue: 0,
+      };
+      g.teamCount += 1;
+      g.total += t.total;
+      g.viable += t.viable;
+      g.inviable += t.inviable;
+      g.negotiations += t.negotiations;
+      g.negotiationValue += t.negotiationValue;
+      map.set(label, g);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => b.viable + b.negotiations - (a.viable + a.negotiations),
+    );
+  };
+  const bySetor = groupBy_("setor_nome", "Sem setor");
+  const byLider = groupBy_("leader_name", "Sem líder");
+  const groupMax = (rows: GroupAgg[]) => Math.max(1, ...rows.map((r) => r.viable));
 
   const monthNames = [
     "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -1262,42 +1301,97 @@ function RankingSection({ adminPw }: { adminPw: string }) {
         </div>
       </div>
       {periodSelector(mode)}
-      <div className="space-y-3">
-        {sorted.map((t) => {
-          const pct = Math.round((t.viable / max) * 100);
-          const isTopNeg = t.id === topNegId && t.negotiationValue > 0;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setSelected(t.id)}
-              className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
-                isTopNeg
-                  ? "border-0 ring-2 ring-blue-500"
-                  : "border border-border hover:border-primary"
-              }`}
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-semibold">{t.team_name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {brl(t.negotiationValue)}
-                </span>
-              </div>
-              <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${pct}%` }}
-                />
-                <span className="absolute inset-y-0 right-2 flex items-center text-xs font-semibold text-foreground">
-                  {t.viable}
-                </span>
-              </div>
-            </button>
-          );
-        })}
-        {sorted.length === 0 && (
-          <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
-        )}
+
+      <div className="inline-flex w-full overflow-hidden rounded-lg border border-border">
+        {(["equipe", "setor", "lider"] as const).map((g) => (
+          <button
+            key={g}
+            onClick={() => setGroupBy(g)}
+            className={`flex-1 px-3 py-1.5 text-xs font-semibold ${groupBy === g ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+          >
+            {g === "equipe" ? "Equipes" : g === "setor" ? "Setores" : "Líderes"}
+          </button>
+        ))}
       </div>
+
+      {groupBy === "equipe" ? (
+        <div className="space-y-3">
+          {sorted.map((t) => {
+            const pct = Math.round((t.viable / max) * 100);
+            const isTopNeg = t.id === topNegId && t.negotiationValue > 0;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setSelected(t.id)}
+                className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
+                  isTopNeg
+                    ? "border-0 ring-2 ring-blue-500"
+                    : "border border-border hover:border-primary"
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-sm font-semibold">{t.team_name}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {brl(t.negotiationValue)}
+                  </span>
+                </div>
+                <p className="mb-1 truncate text-[11px] text-muted-foreground">
+                  {t.setor_nome ?? "Sem setor"} · {t.leader_name ?? "Sem líder"}
+                </p>
+                <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                  <span className="absolute inset-y-0 right-2 flex items-center text-xs font-semibold text-foreground">
+                    {t.viable}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+          {sorted.length === 0 && (
+            <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
+          )}
+        </div>
+      ) : (
+        (() => {
+          const rows = groupBy === "setor" ? bySetor : byLider;
+          const gMax = groupMax(rows);
+          return (
+            <div className="space-y-3">
+              {rows.map((g) => {
+                const pct = Math.round((g.viable / gMax) * 100);
+                return (
+                  <div key={g.label} className="rounded-xl border border-border bg-card p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-sm font-semibold">{g.label}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {brl(g.negotiationValue)}
+                      </span>
+                    </div>
+                    <p className="mb-1 text-[11px] text-muted-foreground">
+                      {g.teamCount} {g.teamCount === 1 ? "equipe" : "equipes"} · {g.negotiations} negociações
+                    </p>
+                    <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                      <span className="absolute inset-y-0 right-2 flex items-center text-xs font-semibold text-foreground">
+                        {g.viable}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {rows.length === 0 && (
+                <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
+              )}
+            </div>
+          );
+        })()
+      )}
     </div>
   );
 }

@@ -34,7 +34,8 @@ export const adminListTestTeams = call<TeamListRow[]>("adminListTestTeams");
 export const adminCreateTestTeam = call<{ ok: true }>("adminCreateTestTeam");
 
 export const adminTeamsRanking = call<Array<{
-  id: string; team_name: string; total: number; viable: number; inviable: number;
+  id: string; team_name: string; setor_nome: string | null; leader_name: string | null;
+  total: number; viable: number; inviable: number;
   negotiations: number; negotiationValue: number; byType: Record<string, number>;
 }>>("adminTeamsRanking");
 
