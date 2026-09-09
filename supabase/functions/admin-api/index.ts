@@ -309,7 +309,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
 
     // ---------- Ranking ----------
     case "adminTeamsRanking": {
-      const { data: teams, error: teamsErr } = await sb.from("equipes").select("id,team_name,is_test,leader,setores(nome)");
+      const { data: teams, error: teamsErr } = await sb.from("equipes").select("id,team_name,is_test,leader,setores(nome),lideres_estrutura(nome)");
       if (teamsErr) throw new Error(teamsErr.message);
       const { data: adminRoles } = await sb.from("user_roles").select("user_id").eq("role", "admin");
       const adminIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
@@ -358,7 +358,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
           id: t.id,
           team_name: t.team_name,
           setor_nome: t.setores?.nome ?? null,
-          leader_name: (t.leader ?? "").trim() || null,
+          leader_name: (t.lideres_estrutura?.nome ?? "").trim() || (t.leader ?? "").trim() || null,
           total: mine.length, viable, inviable, negotiations, negotiationValue, byType,
         };
       });
