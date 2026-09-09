@@ -50,8 +50,8 @@ export type LeaderRow = {
   nome: string;
   login: string;
   email: string;
-  setor_id: string | null;
-  setor_nome: string | null;
+  setor_ids: string[];
+  setor_nomes: string[];
   supervisor_id: string | null;
   supervisor_nome: string | null;
   estrutura_normalizada: boolean;

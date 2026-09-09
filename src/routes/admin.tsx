@@ -694,7 +694,7 @@ function HierarchyPicker({
 
   const supervisorOptions = (supervisores.data ?? []).filter((s) => s.setor_ids.includes(setorId));
   const leaderOptions = (leaders.data ?? []).filter(
-    (l) => l.estrutura_normalizada && l.setor_id === setorId && l.supervisor_id === supervisorId,
+    (l) => l.estrutura_normalizada && l.setor_ids.includes(setorId) && l.supervisor_id === supervisorId,
   );
 
   return (
@@ -1617,12 +1617,70 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
+/**
+ * Seletor SUPERVISOR → SETORES pra cadastro de líder: primeiro escolhe o
+ * supervisor, depois marca quais dos setores dele o líder vai cobrir (não
+ * dá pra escolher um setor que o supervisor não gerencia).
+ */
+function LeaderHierarchyPicker({
+  adminPw,
+  supervisorId,
+  setorIds,
+  onChange,
+}: {
+  adminPw: string;
+  supervisorId: string;
+  setorIds: string[];
+  onChange: (next: { supervisorId: string; setorIds: string[] }) => void;
+}) {
+  const supervisoresFn = useServerFn(adminListSupervisores);
+  const supervisores = useQuery({
+    queryKey: ["admin-supervisores"],
+    queryFn: () => supervisoresFn({ data: { adminPassword: adminPw } }),
+  });
+
+  const selected = (supervisores.data ?? []).find((s) => s.id === supervisorId);
+  const availableSetores = selected
+    ? selected.setor_ids.map((id, i) => ({ id, nome: selected.setor_nomes[i] ?? "?" }))
+    : [];
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label>Supervisor</Label>
+        <select
+          value={supervisorId}
+          onChange={(e) => onChange({ supervisorId: e.target.value, setorIds: [] })}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Selecione…</option>
+          {(supervisores.data ?? []).map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+      </div>
+      <div className="space-y-2">
+        <Label>Setores (do supervisor escolhido)</Label>
+        {!supervisorId ? (
+          <p className="text-xs text-muted-foreground">Escolha o supervisor primeiro.</p>
+        ) : (
+          <SetorMultiSelect
+            setores={availableSetores}
+            selected={setorIds}
+            onChange={(ids) => onChange({ supervisorId, setorIds: ids })}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
 function LeadersSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
-  const [hier, setHier] = useState({ setorId: "", supervisorId: "", leaderId: "" });
+  const [hier, setHier] = useState({ setorIds: [] as string[], supervisorId: "" });
   const listFn = useServerFn(adminListLeaders);
   const createFn = useServerFn(adminCreateLeader);
   const delFn = useServerFn(adminDeleteLeader);
@@ -1641,7 +1699,7 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
           leaderName: name,
           login,
           password,
-          setorId: hier.setorId,
+          setorIds: hier.setorIds,
           supervisorId: hier.supervisorId,
         },
       }),
@@ -1649,7 +1707,7 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
       setName("");
       setLogin("");
       setPassword("");
-      setHier({ setorId: "", supervisorId: "", leaderId: "" });
+      setHier({ setorIds: [], supervisorId: "" });
       toast.success(`Líder criado. Login: ${res.login}`);
       qc.invalidateQueries({ queryKey: ["admin-leaders"] });
     },
@@ -1681,20 +1739,18 @@ function LeadersSection({ adminPw }: { adminPw: string }) {
               toast.error("Nome, login e senha (mín. 6) são obrigatórios.");
               return;
             }
-            if (!hier.setorId || !hier.supervisorId) {
-              toast.error("Selecione o setor e o supervisor do líder.");
+            if (!hier.supervisorId || hier.setorIds.length === 0) {
+              toast.error("Selecione o supervisor e ao menos um setor do líder.");
               return;
             }
             createMut.mutate();
           }}
           className="space-y-2"
         >
-          <HierarchyPicker
+          <LeaderHierarchyPicker
             adminPw={adminPw}
-            setorId={hier.setorId}
             supervisorId={hier.supervisorId}
-            leaderId=""
-            requireLeader={false}
+            setorIds={hier.setorIds}
             onChange={setHier}
           />
           <div>
@@ -1771,8 +1827,8 @@ type AdminLeaderRow = {
   nome: string;
   login: string;
   email: string;
-  setor_id: string | null;
-  setor_nome: string | null;
+  setor_ids: string[];
+  setor_nomes: string[];
   supervisor_id: string | null;
   supervisor_nome: string | null;
   estrutura_normalizada: boolean;
@@ -1797,9 +1853,8 @@ function LeaderRowItem({
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState(leader.nome);
   const [hier, setHier] = useState({
-    setorId: leader.setor_id ?? "",
+    setorIds: leader.setor_ids,
     supervisorId: leader.supervisor_id ?? "",
-    leaderId: "",
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-leaders"] });
@@ -1811,7 +1866,7 @@ function LeaderRowItem({
           adminPassword: adminPw,
           leaderStructureId: leader.leader_structure_id ?? "",
           nome,
-          setorId: hier.setorId,
+          setorIds: hier.setorIds,
           supervisorId: hier.supervisorId,
         },
       }),
@@ -1826,7 +1881,7 @@ function LeaderRowItem({
           adminPassword: adminPw,
           leaderUserId: leader.user_id,
           nome,
-          setorId: hier.setorId,
+          setorIds: hier.setorIds,
           supervisorId: hier.supervisorId,
         },
       }),
@@ -1835,7 +1890,7 @@ function LeaderRowItem({
   });
 
   const busy = saveMut.isPending || normalizeMut.isPending;
-  const canSubmit = !!nome.trim() && !!hier.setorId && !!hier.supervisorId;
+  const canSubmit = !!nome.trim() && hier.setorIds.length > 0 && !!hier.supervisorId;
 
   return (
     <li className="rounded-xl bg-card shadow-md p-3">
@@ -1845,7 +1900,7 @@ function LeaderRowItem({
           <p className="truncate text-[11px] text-muted-foreground">Login: {leader.login}</p>
           {leader.estrutura_normalizada ? (
             <p className="truncate text-[11px] text-muted-foreground">
-              {leader.setor_nome ?? "—"} · {leader.supervisor_nome ?? "—"}
+              {leader.setor_nomes.length > 0 ? leader.setor_nomes.join(", ") : "—"} · {leader.supervisor_nome ?? "—"}
             </p>
           ) : (
             <p className="text-[11px] font-medium text-destructive">
@@ -1875,12 +1930,10 @@ function LeaderRowItem({
             <Label className="text-xs">Nome do líder</Label>
             <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
           </div>
-          <HierarchyPicker
+          <LeaderHierarchyPicker
             adminPw={adminPw}
-            setorId={hier.setorId}
             supervisorId={hier.supervisorId}
-            leaderId=""
-            requireLeader={false}
+            setorIds={hier.setorIds}
             onChange={setHier}
           />
           <Button

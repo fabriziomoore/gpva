@@ -400,12 +400,41 @@ export type Database = {
           },
         ]
       }
+      lider_setores: {
+        Row: {
+          lider_id: string
+          setor_id: string
+        }
+        Insert: {
+          lider_id: string
+          setor_id: string
+        }
+        Update: {
+          lider_id?: string
+          setor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lider_setores_lider_id_fkey"
+            columns: ["lider_id"]
+            isOneToOne: false
+            referencedRelation: "lideres_estrutura"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lider_setores_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lideres_estrutura: {
         Row: {
           created_at: string
           id: string
           nome: string
-          setor_id: string
           supervisor_id: string
           updated_at: string
           user_id: string
@@ -414,7 +443,6 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
-          setor_id: string
           supervisor_id: string
           updated_at?: string
           user_id: string
@@ -423,19 +451,11 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
-          setor_id?: string
           supervisor_id?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "lideres_estrutura_setor_id_fkey"
-            columns: ["setor_id"]
-            isOneToOne: false
-            referencedRelation: "setores"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "lideres_estrutura_supervisor_id_fkey"
             columns: ["supervisor_id"]
