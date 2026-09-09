@@ -1073,6 +1073,8 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const [day, setDay] = useState<number>(now.getDate());
   const [mode, setMode] = useState<"day" | "week" | "month">("day");
   const [groupBy, setGroupBy] = useState<"equipe" | "setor" | "lider">("equipe");
+  const [selectedSetorLabel, setSelectedSetorLabel] = useState("");
+  const [selectedLiderLabel, setSelectedLiderLabel] = useState("");
 
   const weeks = useMemo(() => {
     const y = year;
@@ -1311,7 +1313,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
             onClick={() => setGroupBy(g)}
             className={`flex-1 px-3 py-1.5 text-xs font-semibold ${groupBy === g ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
           >
-            {g === "equipe" ? "Equipes" : g === "setor" ? "Setores" : "Líderes"}
+            {g === "equipe" ? "Todos" : g === "setor" ? "Setores" : "Líderes"}
           </button>
         ))}
       </div>
@@ -1359,18 +1361,35 @@ function RankingSection({ adminPw }: { adminPw: string }) {
       ) : (
         (() => {
           const rows = groupBy === "setor" ? bySetor : byLider;
+          const selectedLabel = groupBy === "setor" ? selectedSetorLabel : selectedLiderLabel;
+          const setSelectedLabel = groupBy === "setor" ? setSelectedSetorLabel : setSelectedLiderLabel;
+          const activeLabel = rows.some((g) => g.label === selectedLabel) ? selectedLabel : (rows[0]?.label ?? "");
+          const active = rows.find((g) => g.label === activeLabel) ?? null;
+
+          if (rows.length === 0) {
+            return <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>;
+          }
+
           return (
-            <div className="space-y-5">
-              {rows.map((g) => (
-                <div key={g.label} className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 px-1">
-                    <span className="min-w-0 truncate text-sm font-bold">{g.label}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {g.teams.length} {g.teams.length === 1 ? "equipe" : "equipes"} · {brl(g.negotiationValue)}
-                    </span>
-                  </div>
+            <div className="space-y-3">
+              <select
+                value={activeLabel}
+                onChange={(e) => setSelectedLabel(e.target.value)}
+                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {rows.map((g) => (
+                  <option key={g.label} value={g.label}>
+                    {g.label} ({g.teams.length})
+                  </option>
+                ))}
+              </select>
+              {active && (
+                <>
+                  <p className="px-1 text-xs text-muted-foreground">
+                    {active.teams.length} {active.teams.length === 1 ? "equipe" : "equipes"} · {brl(active.negotiationValue)}
+                  </p>
                   <div className="space-y-3">
-                    {g.teams.map((t) => {
+                    {active.teams.map((t) => {
                       const pct = Math.round((t.viable / max) * 100);
                       const isTopNeg = t.id === topNegId && t.negotiationValue > 0;
                       return (
@@ -1402,10 +1421,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
                       );
                     })}
                   </div>
-                </div>
-              ))}
-              {rows.length === 0 && (
-                <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
+                </>
               )}
             </div>
           );
