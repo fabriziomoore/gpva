@@ -8,6 +8,7 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
@@ -496,7 +497,7 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
   });
 
   const updateMut = useMutation({
-    mutationFn: (payload: { setorId: string; nome?: string }) =>
+    mutationFn: (payload: { setorId: string; nome?: string; variavelAtivo?: boolean }) =>
       updateFn({ data: { adminPassword: adminPw, ...payload } }),
     onSuccess: () => {
       toast.success("Setor atualizado");
@@ -570,8 +571,8 @@ function SetorEditRow({
   onDelete,
   saving,
 }: {
-  setor: { id: string; nome: string };
-  onSave: (patch: { nome?: string }) => void;
+  setor: { id: string; nome: string; variavel_ativo: boolean };
+  onSave: (patch: { nome?: string; variavelAtivo?: boolean }) => void;
   onDelete: () => void;
   saving: boolean;
 }) {
@@ -581,6 +582,19 @@ function SetorEditRow({
   return (
     <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
       <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
+      <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
+        <div>
+          <p className="text-sm font-medium">Sistema de variável</p>
+          <p className="text-[11px] text-muted-foreground">
+            Desative para setores que não recebem variável.
+          </p>
+        </div>
+        <Switch
+          checked={setor.variavel_ativo}
+          disabled={saving}
+          onCheckedChange={(checked) => onSave({ variavelAtivo: checked })}
+        />
+      </div>
       <div className="flex justify-end gap-2">
         <Button
           size="sm"

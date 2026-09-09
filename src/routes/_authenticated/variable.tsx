@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -45,6 +45,13 @@ function VariablePage() {
   const { userId } = useAuthSession();
   const { data: team } = useTeam(userId);
   const rate = team?.variable_rate ?? 7;
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (team && team.setor_variavel_ativo === false) {
+      navigate({ to: "/" });
+    }
+  }, [team, navigate]);
 
   const neg = useQuery({
     queryKey: ["negotiations", userId],

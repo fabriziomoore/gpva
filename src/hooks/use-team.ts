@@ -35,6 +35,7 @@ export type Team = {
   setor_id?: string | null;
   setor_nome?: string | null;
   setor_supervisor?: string | null;
+  setor_variavel_ativo: boolean;
 };
 
 export function useTeam(userId: string | null) {
@@ -47,18 +48,21 @@ export function useTeam(userId: string | null) {
     refetchOnWindowFocus: false,
     initialData: () => (userId ? undefined : null),
     queryFn: async (): Promise<Team | null> => {
-      const cached = userId ? await getCachedTeam(userId) : null;
+      const cachedRaw = userId ? await getCachedTeam(userId) : null;
+      const cached: Team | null = cachedRaw
+        ? { ...cachedRaw, setor_variavel_ativo: cachedRaw.setor_variavel_ativo ?? true }
+        : null;
       if (isOffline() && cached) return cached;
       try {
         const { data, error } = await withTimeout(
           supabase
             .from("equipes")
-            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome),supervisores(nome),lideres_estrutura(nome)")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome,variavel_ativo),supervisores(nome),lideres_estrutura(nome)")
             .maybeSingle(),
         );
         if (error) throw error;
         if (!data) return cached;
-        const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string } | null }).setores;
+        const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string; variavel_ativo: boolean } | null }).setores;
         // supervisor_id/leader_id (estrutura canonica) sao a fonte da verdade
         // desde a A5; equipes criadas depois nunca tem o texto legado
         // preenchido (so o admin escreve os IDs). Cai pro texto so em
@@ -78,6 +82,7 @@ export function useTeam(userId: string | null) {
           setor_id: data.setor_id,
           setor_nome: setor?.nome ?? null,
           setor_supervisor: setor?.supervisor_nome ?? null,
+          setor_variavel_ativo: setor?.variavel_ativo ?? true,
         };
         await cacheTeam(team);
         return team;

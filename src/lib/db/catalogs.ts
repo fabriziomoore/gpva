@@ -175,6 +175,7 @@ export type CatTeam = {
   setor_id?: string | null;
   setor_nome?: string | null;
   setor_supervisor?: string | null;
+  setor_variavel_ativo?: boolean;
 };
 
 export async function getCachedTeam(teamId: string): Promise<CatTeam | null> {

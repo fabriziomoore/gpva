@@ -726,6 +726,7 @@ export type Database = {
           supervisor_nome: string
           supervisor_user_id: string | null
           updated_at: string
+          variavel_ativo: boolean
         }
         Insert: {
           created_at?: string
@@ -734,6 +735,7 @@ export type Database = {
           supervisor_nome?: string
           supervisor_user_id?: string | null
           updated_at?: string
+          variavel_ativo?: boolean
         }
         Update: {
           created_at?: string
@@ -742,6 +744,7 @@ export type Database = {
           supervisor_nome?: string
           supervisor_user_id?: string | null
           updated_at?: string
+          variavel_ativo?: boolean
         }
         Relationships: []
       }

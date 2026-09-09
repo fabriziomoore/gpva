@@ -5,6 +5,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText, RefreshCw } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
+import { useTeam } from "@/hooks/use-team";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { requestUpdateCheck } from "@/components/layout/UpdateBanner";
 import { prepareAppSignOut, finalizePreparedSignOut } from "@/lib/auth";
@@ -97,6 +98,7 @@ const leaderItems = [
 export function SideMenu() {
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
+  const { data: team } = useTeam(userId);
   const [open, setOpen] = useState(false);
   const [fixedHeight, setFixedHeight] = useState<string | null>(null);
   const [orientation, setOrientation] = useState(0);
@@ -165,10 +167,13 @@ export function SideMenu() {
     // 4. Finalização (Fase B: Supabase SignOut Remoto e Cleanup)
     await finalizePreparedSignOut(queryClient, signOutContext);
   }
-  const items = useMemo(
-    () => (isLeader.data === true ? leaderItems : teamItems),
-    [isLeader.data],
-  );
+  const items = useMemo(() => {
+    if (isLeader.data === true) return leaderItems;
+    if (team && team.setor_variavel_ativo === false) {
+      return teamItems.filter((item) => item.to !== "/variable");
+    }
+    return teamItems;
+  }, [isLeader.data, team]);
   const [arcgisQuery, setArcgisQuery] = useState("");
   const [arcgisEmbedUrl, setArcgisEmbedUrl] = useState<string | null>(null);
   const [arcgisTitle, setArcgisTitle] = useState<string>("Consulta ArcGIS");
