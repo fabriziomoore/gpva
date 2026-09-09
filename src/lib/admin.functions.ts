@@ -51,12 +51,19 @@ async function assertHierarchy(
   if (supervisorId) {
     const { data: sup, error } = await sb
       .from("supervisores")
-      .select("id,setor_id")
+      .select("id")
       .eq("id", supervisorId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!sup) throw new Error("Supervisor não encontrado.");
-    if (sup.setor_id !== setorId) {
+    const { data: link, error: linkErr } = await sb
+      .from("supervisor_setores")
+      .select("supervisor_id")
+      .eq("supervisor_id", supervisorId)
+      .eq("setor_id", setorId)
+      .maybeSingle();
+    if (linkErr) throw new Error(linkErr.message);
+    if (!link) {
       throw new Error("O supervisor selecionado não pertence ao setor escolhido.");
     }
   }
@@ -996,8 +1003,8 @@ export const adminDeleteSetor = createServerFn({ method: "POST" })
     if (countErr) throw new Error(countErr.message);
     if ((count ?? 0) > 0) throw new Error("Setor possui equipes vinculadas. Mova as equipes antes de excluir.");
     const { count: supCount, error: supErr } = await supabaseAdmin
-      .from("supervisores")
-      .select("id", { count: "exact", head: true })
+      .from("supervisor_setores")
+      .select("supervisor_id", { count: "exact", head: true })
       .eq("setor_id", data.setorId);
     if (supErr) throw new Error(supErr.message);
     if ((supCount ?? 0) > 0) {
@@ -1016,8 +1023,8 @@ export const adminDeleteSetor = createServerFn({ method: "POST" })
 export type SupervisorRow = {
   id: string;
   nome: string;
-  setor_id: string;
-  setor_nome: string | null;
+  setor_ids: string[];
+  setor_nomes: string[];
   user_id: string | null;
 };
 
@@ -1028,88 +1035,153 @@ export const adminListSupervisores = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let query = supabaseAdmin
       .from("supervisores")
-      .select("id,nome,setor_id,user_id,setores(nome)")
+      .select("id,nome,user_id,supervisor_setores(setor_id,setores(nome))")
       .order("nome");
-    if (data.setorId) query = query.eq("setor_id", data.setorId);
+    if (data.setorId) {
+      const { data: linked, error: linkErr } = await supabaseAdmin
+        .from("supervisor_setores")
+        .select("supervisor_id")
+        .eq("setor_id", data.setorId);
+      if (linkErr) throw new Error(linkErr.message);
+      const ids = (linked ?? []).map((r) => r.supervisor_id);
+      if (ids.length === 0) return [];
+      query = query.in("id", ids);
+    }
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
     type Join = {
       id: string;
       nome: string;
-      setor_id: string;
       user_id: string | null;
-      setores: { nome: string } | null;
+      supervisor_setores: { setor_id: string; setores: { nome: string } | null }[] | null;
     };
     return ((rows ?? []) as unknown as Join[]).map((r) => ({
       id: r.id,
       nome: r.nome,
-      setor_id: r.setor_id,
-      setor_nome: r.setores?.nome ?? null,
       user_id: r.user_id ?? null,
+      setor_ids: (r.supervisor_setores ?? []).map((s) => s.setor_id),
+      setor_nomes: (r.supervisor_setores ?? []).map((s) => s.setores?.nome ?? "").filter(Boolean),
     }));
   });
 
 export const adminCreateSupervisor = createServerFn({ method: "POST" })
-  .inputValidator((data: { adminPassword: string; nome: string; setorId: string }) => data)
+  .inputValidator((data: { adminPassword: string; nome: string; setorIds: string[] }) => data)
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const nome = data.nome.trim();
     if (!nome) throw new Error("Nome do supervisor obrigatório.");
+    const setorIds = Array.from(new Set(data.setorIds.filter(Boolean)));
+    if (setorIds.length === 0) throw new Error("Selecione ao menos um setor.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertHierarchy(supabaseAdmin, { setorId: data.setorId });
-    const { error } = await supabaseAdmin
+    const { count, error: setorErr } = await supabaseAdmin
+      .from("setores")
+      .select("id", { count: "exact", head: true })
+      .in("id", setorIds);
+    if (setorErr) throw new Error(setorErr.message);
+    if ((count ?? 0) !== setorIds.length) {
+      throw new Error("Um ou mais setores selecionados não foram encontrados.");
+    }
+    const { data: created, error } = await supabaseAdmin
       .from("supervisores")
-      .insert({ nome, setor_id: data.setorId });
+      .insert({ nome })
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
+    const { error: linkErr } = await supabaseAdmin
+      .from("supervisor_setores")
+      .insert(setorIds.map((setor_id) => ({ supervisor_id: created.id, setor_id })));
+    if (linkErr) throw new Error(linkErr.message);
     return { ok: true as const };
   });
 
 export const adminUpdateSupervisor = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { adminPassword: string; supervisorId: string; nome?: string; setorId?: string }) => data,
+    (data: { adminPassword: string; supervisorId: string; nome?: string; setorIds?: string[] }) => data,
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: atual, error: getErr } = await supabaseAdmin
       .from("supervisores")
-      .select("id,setor_id")
+      .select("id")
       .eq("id", data.supervisorId)
       .maybeSingle();
     if (getErr) throw new Error(getErr.message);
     if (!atual) throw new Error("Supervisor não encontrado.");
 
-    const patch: { nome?: string; setor_id?: string } = {};
     if (data.nome !== undefined) {
       const nome = data.nome.trim();
       if (!nome) throw new Error("Nome do supervisor obrigatório.");
-      patch.nome = nome;
+      const { error } = await supabaseAdmin.from("supervisores").update({ nome }).eq("id", atual.id);
+      if (error) throw new Error(error.message);
     }
-    if (data.setorId !== undefined && data.setorId !== atual.setor_id) {
-      const { count: leadCount, error: lErr } = await supabaseAdmin
-        .from("lideres_estrutura")
-        .select("id", { count: "exact", head: true })
-        .eq("supervisor_id", atual.id);
-      if (lErr) throw new Error(lErr.message);
-      const { count: teamCount, error: tErr } = await supabaseAdmin
-        .from("equipes")
-        .select("id", { count: "exact", head: true })
-        .eq("supervisor_id", atual.id);
-      if (tErr) throw new Error(tErr.message);
-      if ((leadCount ?? 0) > 0 || (teamCount ?? 0) > 0) {
-        throw new Error(
-          "Supervisor possui líderes ou equipes vinculados. Ajuste os vínculos antes de mudar o setor.",
-        );
+
+    if (data.setorIds !== undefined) {
+      const desired = Array.from(new Set(data.setorIds.filter(Boolean)));
+      if (desired.length === 0) {
+        throw new Error("O supervisor precisa ficar vinculado a ao menos um setor.");
       }
-      await assertHierarchy(supabaseAdmin, { setorId: data.setorId });
-      patch.setor_id = data.setorId;
+
+      const { data: existingRows, error: exErr } = await supabaseAdmin
+        .from("supervisor_setores")
+        .select("setor_id")
+        .eq("supervisor_id", atual.id);
+      if (exErr) throw new Error(exErr.message);
+      const current = (existingRows ?? []).map((r) => r.setor_id);
+
+      const toAdd = desired.filter((id) => !current.includes(id));
+      const toRemove = current.filter((id) => !desired.includes(id));
+
+      if (toAdd.length > 0) {
+        const { count, error: setorErr } = await supabaseAdmin
+          .from("setores")
+          .select("id", { count: "exact", head: true })
+          .in("id", toAdd);
+        if (setorErr) throw new Error(setorErr.message);
+        if ((count ?? 0) !== toAdd.length) {
+          throw new Error("Um ou mais setores selecionados não foram encontrados.");
+        }
+      }
+
+      // Remover um vínculo é bloqueado se ainda houver líder/equipe daquele
+      // setor específico dependendo deste supervisor — adicionar um setor
+      // novo, ao contrário, é sempre livre (não quebra nada existente).
+      for (const setorId of toRemove) {
+        const { count: leadCount, error: lErr } = await supabaseAdmin
+          .from("lideres_estrutura")
+          .select("id", { count: "exact", head: true })
+          .eq("supervisor_id", atual.id)
+          .eq("setor_id", setorId);
+        if (lErr) throw new Error(lErr.message);
+        const { count: teamCount, error: tErr } = await supabaseAdmin
+          .from("equipes")
+          .select("id", { count: "exact", head: true })
+          .eq("supervisor_id", atual.id)
+          .eq("setor_id", setorId);
+        if (tErr) throw new Error(tErr.message);
+        if ((leadCount ?? 0) > 0 || (teamCount ?? 0) > 0) {
+          throw new Error(
+            "Supervisor possui líderes ou equipes vinculados nesse setor. Ajuste os vínculos antes de remover.",
+          );
+        }
+      }
+
+      if (toRemove.length > 0) {
+        const { error } = await supabaseAdmin
+          .from("supervisor_setores")
+          .delete()
+          .eq("supervisor_id", atual.id)
+          .in("setor_id", toRemove);
+        if (error) throw new Error(error.message);
+      }
+      if (toAdd.length > 0) {
+        const { error } = await supabaseAdmin
+          .from("supervisor_setores")
+          .insert(toAdd.map((setor_id) => ({ supervisor_id: atual.id, setor_id })));
+        if (error) throw new Error(error.message);
+      }
     }
-    if (Object.keys(patch).length === 0) return { ok: true as const };
-    const { error } = await supabaseAdmin
-      .from("supervisores")
-      .update(patch)
-      .eq("id", atual.id);
-    if (error) throw new Error(error.message);
+
     return { ok: true as const };
   });
 

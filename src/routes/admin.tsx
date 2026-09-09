@@ -692,7 +692,7 @@ function HierarchyPicker({
     staleTime: 60_000,
   });
 
-  const supervisorOptions = (supervisores.data ?? []).filter((s) => s.setor_id === setorId);
+  const supervisorOptions = (supervisores.data ?? []).filter((s) => s.setor_ids.includes(setorId));
   const leaderOptions = (leaders.data ?? []).filter(
     (l) => l.estrutura_normalizada && l.setor_id === setorId && l.supervisor_id === supervisorId,
   );
@@ -769,7 +769,7 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
   const deleteFn = useServerFn(adminDeleteSupervisor);
 
   const [nome, setNome] = useState("");
-  const [setorId, setSetorId] = useState("");
+  const [setorIds, setSetorIds] = useState<string[]>([]);
 
   const rows = useQuery({
     queryKey: ["admin-supervisores"],
@@ -786,10 +786,10 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
   };
 
   const createMut = useMutation({
-    mutationFn: () => createFn({ data: { adminPassword: adminPw, nome, setorId } }),
+    mutationFn: () => createFn({ data: { adminPassword: adminPw, nome, setorIds } }),
     onSuccess: () => {
       setNome("");
-      setSetorId("");
+      setSetorIds([]);
       toast.success("Supervisor criado");
       invalidate();
     },
@@ -797,7 +797,7 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
   });
 
   const updateMut = useMutation({
-    mutationFn: (payload: { supervisorId: string; nome?: string; setorId?: string }) =>
+    mutationFn: (payload: { supervisorId: string; nome?: string; setorIds?: string[] }) =>
       updateFn({ data: { adminPassword: adminPw, ...payload } }),
     onSuccess: () => { toast.success("Supervisor atualizado"); invalidate(); },
     onError: (e: Error) => toast.error(e.message),
@@ -814,8 +814,8 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
     <div className="space-y-5">
       <h2 className="text-base font-semibold">Supervisores</h2>
       <p className="text-xs text-muted-foreground">
-        Cada supervisor pertence a um setor. Líderes e equipes são vinculados ao supervisor
-        por identificador — nenhum nome é inferido por texto.
+        Um supervisor pode gerenciar mais de um setor. Líderes e equipes são vinculados ao
+        supervisor por identificador — nenhum nome é inferido por texto.
       </p>
 
       <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
@@ -826,19 +826,11 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
           placeholder="Nome do supervisor"
           className="h-11"
         />
-        <select
-          value={setorId}
-          onChange={(e) => setSetorId(e.target.value)}
-          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">Selecione o setor…</option>
-          {setores.data?.map((s) => (
-            <option key={s.id} value={s.id}>{s.nome}</option>
-          ))}
-        </select>
+        <Label className="text-xs text-muted-foreground">Setores</Label>
+        <SetorMultiSelect setores={setores.data ?? []} selected={setorIds} onChange={setSetorIds} />
         <Button
           onClick={() => createMut.mutate()}
-          disabled={createMut.isPending || !nome.trim() || !setorId}
+          disabled={createMut.isPending || !nome.trim() || setorIds.length === 0}
           className="h-11 w-full"
         >
           {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Adicionar supervisor"}
@@ -872,6 +864,44 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
   );
 }
 
+function SetorMultiSelect({
+  setores,
+  selected,
+  onChange,
+}: {
+  setores: Array<{ id: string; nome: string }>;
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-input bg-background p-2">
+      {setores.length === 0 ? (
+        <p className="px-1 py-1 text-xs text-muted-foreground">Nenhum setor cadastrado.</p>
+      ) : (
+        setores.map((s) => {
+          const checked = selected.includes(s.id);
+          return (
+            <label
+              key={s.id}
+              className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() =>
+                  onChange(checked ? selected.filter((id) => id !== s.id) : [...selected, s.id])
+                }
+                className="size-4"
+              />
+              {s.nome}
+            </label>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 function SupervisorEditRow({
   supervisor,
   setores,
@@ -879,30 +909,23 @@ function SupervisorEditRow({
   onDelete,
   saving,
 }: {
-  supervisor: { id: string; nome: string; setor_id: string; setor_nome: string | null };
+  supervisor: { id: string; nome: string; setor_ids: string[]; setor_nomes: string[] };
   setores: Array<{ id: string; nome: string }>;
-  onSave: (patch: { nome?: string; setorId?: string }) => void;
+  onSave: (patch: { nome?: string; setorIds?: string[] }) => void;
   onDelete: () => void;
   saving: boolean;
 }) {
   const [nome, setNome] = useState(supervisor.nome);
-  const [setorId, setSetorId] = useState(supervisor.setor_id);
-  const dirty = nome !== supervisor.nome || setorId !== supervisor.setor_id;
+  const [setorIds, setSetorIds] = useState<string[]>(supervisor.setor_ids);
+  const sameIds = (a: string[], b: string[]) =>
+    a.length === b.length && [...a].sort().join() === [...b].sort().join();
+  const dirty = nome !== supervisor.nome || !sameIds(setorIds, supervisor.setor_ids);
 
   return (
     <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
-        <select
-          value={setorId}
-          onChange={(e) => setSetorId(e.target.value)}
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-        >
-          {setores.map((s) => (
-            <option key={s.id} value={s.id}>{s.nome}</option>
-          ))}
-        </select>
-      </div>
+      <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
+      <p className="text-[11px] font-semibold uppercase text-muted-foreground">Setores</p>
+      <SetorMultiSelect setores={setores} selected={setorIds} onChange={setSetorIds} />
       <div className="flex justify-end gap-2">
         <Button
           size="sm"
@@ -914,8 +937,8 @@ function SupervisorEditRow({
         </Button>
         <Button
           size="sm"
-          disabled={!dirty || saving || !nome.trim()}
-          onClick={() => onSave({ nome, setorId })}
+          disabled={!dirty || saving || !nome.trim() || setorIds.length === 0}
+          onClick={() => onSave({ nome, setorIds })}
           className="h-8"
         >
           {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Salvar"}

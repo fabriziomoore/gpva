@@ -129,10 +129,17 @@ async function assertHierarchy(
   if (leaderId && !supervisorId) throw new Error("Selecione um supervisor antes de escolher o líder.");
 
   if (supervisorId) {
-    const { data: sup, error } = await sb.from("supervisores").select("id,setor_id").eq("id", supervisorId).maybeSingle();
+    const { data: sup, error } = await sb.from("supervisores").select("id").eq("id", supervisorId).maybeSingle();
     if (error) throw new Error(error.message);
     if (!sup) throw new Error("Supervisor não encontrado.");
-    if (sup.setor_id !== setorId) throw new Error("O supervisor selecionado não pertence ao setor escolhido.");
+    const { data: link, error: linkErr } = await sb
+      .from("supervisor_setores")
+      .select("supervisor_id")
+      .eq("supervisor_id", supervisorId)
+      .eq("setor_id", setorId)
+      .maybeSingle();
+    if (linkErr) throw new Error(linkErr.message);
+    if (!link) throw new Error("O supervisor selecionado não pertence ao setor escolhido.");
   }
   if (leaderId) {
     const { data: lid, error } = await sb.from("lideres_estrutura").select("id,setor_id,supervisor_id").eq("id", leaderId).maybeSingle();
@@ -551,7 +558,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const { count, error: e1 } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("setor_id", args.setorId);
       if (e1) throw new Error(e1.message);
       if ((count ?? 0) > 0) throw new Error("Setor possui equipes vinculadas.");
-      const { count: sc, error: e2 } = await sb.from("supervisores").select("id", { count: "exact", head: true }).eq("setor_id", args.setorId);
+      const { count: sc, error: e2 } = await sb.from("supervisor_setores").select("supervisor_id", { count: "exact", head: true }).eq("setor_id", args.setorId);
       if (e2) throw new Error(e2.message);
       if ((sc ?? 0) > 0) throw new Error("Setor possui supervisores vinculados. Remova-os antes de excluir.");
       const { error } = await sb.from("setores").delete().eq("id", args.setorId);
@@ -561,41 +568,81 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
 
     // ---------- Supervisores ----------
     case "adminListSupervisores": {
-      let q = sb.from("supervisores").select("id,nome,setor_id,user_id,setores(nome)").order("nome");
-      if (args.setorId) q = q.eq("setor_id", args.setorId);
+      let q = sb.from("supervisores").select("id,nome,user_id,supervisor_setores(setor_id,setores(nome))").order("nome");
+      if (args.setorId) {
+        const { data: linked, error: linkErr } = await sb.from("supervisor_setores").select("supervisor_id").eq("setor_id", args.setorId);
+        if (linkErr) throw new Error(linkErr.message);
+        const ids = (linked ?? []).map((r: any) => r.supervisor_id);
+        if (ids.length === 0) return [];
+        q = q.in("id", ids);
+      }
       const { data, error } = await q;
       if (error) throw new Error(error.message);
       return (data ?? []).map((r: any) => ({
-        id: r.id, nome: r.nome, setor_id: r.setor_id, setor_nome: r.setores?.nome ?? null, user_id: r.user_id ?? null,
+        id: r.id,
+        nome: r.nome,
+        user_id: r.user_id ?? null,
+        setor_ids: (r.supervisor_setores ?? []).map((s: any) => s.setor_id),
+        setor_nomes: (r.supervisor_setores ?? []).map((s: any) => s.setores?.nome ?? "").filter(Boolean),
       }));
     }
 
     case "adminCreateSupervisor": {
       const nome = String(args.nome ?? "").trim();
       if (!nome) throw new Error("Nome do supervisor obrigatório.");
-      await assertHierarchy(sb, { setorId: args.setorId });
-      const { error } = await sb.from("supervisores").insert({ nome, setor_id: args.setorId });
+      const setorIds: string[] = Array.from(new Set((args.setorIds ?? []).filter(Boolean)));
+      if (setorIds.length === 0) throw new Error("Selecione ao menos um setor.");
+      const { count, error: setorErr } = await sb.from("setores").select("id", { count: "exact", head: true }).in("id", setorIds);
+      if (setorErr) throw new Error(setorErr.message);
+      if ((count ?? 0) !== setorIds.length) throw new Error("Um ou mais setores selecionados não foram encontrados.");
+      const { data: created, error } = await sb.from("supervisores").insert({ nome }).select("id").single();
       if (error) throw new Error(error.message);
+      const { error: linkErr } = await sb.from("supervisor_setores").insert(setorIds.map((setor_id) => ({ supervisor_id: created.id, setor_id })));
+      if (linkErr) throw new Error(linkErr.message);
       return { ok: true };
     }
     case "adminUpdateSupervisor": {
-      const { data: atual, error: gErr } = await sb.from("supervisores").select("id,setor_id").eq("id", args.supervisorId).maybeSingle();
+      const { data: atual, error: gErr } = await sb.from("supervisores").select("id").eq("id", args.supervisorId).maybeSingle();
       if (gErr) throw new Error(gErr.message);
       if (!atual) throw new Error("Supervisor não encontrado.");
-      const patch: any = {};
-      if (args.nome !== undefined) { const n = String(args.nome).trim(); if (!n) throw new Error("Nome do supervisor obrigatório."); patch.nome = n; }
-      if (args.setorId !== undefined && args.setorId !== atual.setor_id) {
-        const { count: lc, error: lErr } = await sb.from("lideres_estrutura").select("id", { count: "exact", head: true }).eq("supervisor_id", atual.id);
-        if (lErr) throw new Error(lErr.message);
-        const { count: tc, error: tErr } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("supervisor_id", atual.id);
-        if (tErr) throw new Error(tErr.message);
-        if ((lc ?? 0) > 0 || (tc ?? 0) > 0) throw new Error("Supervisor possui líderes ou equipes vinculados. Ajuste os vínculos antes de mudar o setor.");
-        await assertHierarchy(sb, { setorId: args.setorId });
-        patch.setor_id = args.setorId;
+
+      if (args.nome !== undefined) {
+        const n = String(args.nome).trim();
+        if (!n) throw new Error("Nome do supervisor obrigatório.");
+        const { error } = await sb.from("supervisores").update({ nome: n }).eq("id", atual.id);
+        if (error) throw new Error(error.message);
       }
-      if (Object.keys(patch).length === 0) return { ok: true };
-      const { error } = await sb.from("supervisores").update(patch).eq("id", atual.id);
-      if (error) throw new Error(error.message);
+
+      if (args.setorIds !== undefined) {
+        const desired: string[] = Array.from(new Set((args.setorIds ?? []).filter(Boolean)));
+        if (desired.length === 0) throw new Error("O supervisor precisa ficar vinculado a ao menos um setor.");
+        const { data: existingRows, error: exErr } = await sb.from("supervisor_setores").select("setor_id").eq("supervisor_id", atual.id);
+        if (exErr) throw new Error(exErr.message);
+        const current = (existingRows ?? []).map((r: any) => r.setor_id);
+        const toAdd = desired.filter((id) => !current.includes(id));
+        const toRemove = current.filter((id: string) => !desired.includes(id));
+
+        if (toAdd.length > 0) {
+          const { count, error: setorErr } = await sb.from("setores").select("id", { count: "exact", head: true }).in("id", toAdd);
+          if (setorErr) throw new Error(setorErr.message);
+          if ((count ?? 0) !== toAdd.length) throw new Error("Um ou mais setores selecionados não foram encontrados.");
+        }
+        for (const setorId of toRemove) {
+          const { count: lc, error: lErr } = await sb.from("lideres_estrutura").select("id", { count: "exact", head: true }).eq("supervisor_id", atual.id).eq("setor_id", setorId);
+          if (lErr) throw new Error(lErr.message);
+          const { count: tc, error: tErr } = await sb.from("equipes").select("id", { count: "exact", head: true }).eq("supervisor_id", atual.id).eq("setor_id", setorId);
+          if (tErr) throw new Error(tErr.message);
+          if ((lc ?? 0) > 0 || (tc ?? 0) > 0) throw new Error("Supervisor possui líderes ou equipes vinculados nesse setor. Ajuste os vínculos antes de remover.");
+        }
+        if (toRemove.length > 0) {
+          const { error } = await sb.from("supervisor_setores").delete().eq("supervisor_id", atual.id).in("setor_id", toRemove);
+          if (error) throw new Error(error.message);
+        }
+        if (toAdd.length > 0) {
+          const { error } = await sb.from("supervisor_setores").insert(toAdd.map((setor_id) => ({ supervisor_id: atual.id, setor_id })));
+          if (error) throw new Error(error.message);
+        }
+      }
       return { ok: true };
     }
     case "adminDeleteSupervisor": {

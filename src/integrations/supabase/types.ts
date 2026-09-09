@@ -725,12 +725,41 @@ export type Database = {
         }
         Relationships: []
       }
+      supervisor_setores: {
+        Row: {
+          setor_id: string
+          supervisor_id: string
+        }
+        Insert: {
+          setor_id: string
+          supervisor_id: string
+        }
+        Update: {
+          setor_id?: string
+          supervisor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_setores_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_setores_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "supervisores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supervisores: {
         Row: {
           created_at: string
           id: string
           nome: string
-          setor_id: string
           updated_at: string
           user_id: string | null
         }
@@ -738,7 +767,6 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
-          setor_id: string
           updated_at?: string
           user_id?: string | null
         }
@@ -746,19 +774,10 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
-          setor_id?: string
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "supervisores_setor_id_fkey"
-            columns: ["setor_id"]
-            isOneToOne: false
-            referencedRelation: "setores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       system_health_state: {
         Row: {
