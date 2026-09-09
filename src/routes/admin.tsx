@@ -250,7 +250,7 @@ function AdminPage() {
           <button
             type="button"
             onClick={() => setView("ranking")}
-            className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-card to-card p-5 text-left shadow-md transition-all hover:border-primary hover:shadow-xl"
+            className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-5 text-left shadow-md transition-all hover:border-primary hover:shadow-xl"
           >
             <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
               <LayoutDashboard className="size-6" />
