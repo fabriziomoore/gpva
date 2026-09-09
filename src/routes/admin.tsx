@@ -1950,6 +1950,8 @@ function LeaderRowItem({
     setorIds: leader.setor_ids,
     supervisorId: leader.supervisor_id ?? "",
   });
+  const [newLogin, setNewLogin] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-leaders"] });
 
@@ -1962,9 +1964,17 @@ function LeaderRowItem({
           nome,
           setorIds: hier.setorIds,
           supervisorId: hier.supervisorId,
+          ...(newLogin.trim() ? { newLogin: newLogin.trim() } : {}),
+          ...(newPassword ? { newPassword } : {}),
         },
       }),
-    onSuccess: () => { toast.success("Líder atualizado"); setOpen(false); invalidate(); },
+    onSuccess: () => {
+      toast.success("Líder atualizado");
+      setOpen(false);
+      setNewLogin("");
+      setNewPassword("");
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -1977,9 +1987,17 @@ function LeaderRowItem({
           nome,
           setorIds: hier.setorIds,
           supervisorId: hier.supervisorId,
+          ...(newLogin.trim() ? { newLogin: newLogin.trim() } : {}),
+          ...(newPassword ? { newPassword } : {}),
         },
       }),
-    onSuccess: () => { toast.success("Líder normalizado"); setOpen(false); invalidate(); },
+    onSuccess: () => {
+      toast.success("Líder normalizado");
+      setOpen(false);
+      setNewLogin("");
+      setNewPassword("");
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -2030,9 +2048,34 @@ function LeaderRowItem({
             setorIds={hier.setorIds}
             onChange={setHier}
           />
+          <div className="space-y-1">
+            <Label className="text-xs">Novo login (opcional)</Label>
+            <Input
+              value={newLogin}
+              onChange={(e) => setNewLogin(e.target.value)}
+              placeholder={`Atual: ${leader.login}`}
+              className="h-10"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Nova senha (opcional, mín. 6)</Label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Deixe em branco para não alterar"
+              className="h-10"
+            />
+          </div>
           <Button
             className="h-10 w-full"
-            disabled={busy || !canSubmit}
+            disabled={
+              busy ||
+              !canSubmit ||
+              (newPassword.length > 0 && newPassword.length < 6)
+            }
             onClick={() =>
               leader.estrutura_normalizada ? saveMut.mutate() : normalizeMut.mutate()
             }

@@ -467,6 +467,18 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (gErr) throw new Error(gErr.message);
       if (!atual) throw new Error("Líder não encontrado na estrutura operacional.");
 
+      if (args.newLogin !== undefined) {
+        const slug = slugify(args.newLogin);
+        if (!slug || slug.length < 3) throw new Error("Login inválido.");
+        const { error } = await sb.auth.admin.updateUserById(atual.user_id, { email: `${slug}@gpva.local` });
+        if (error) throw new Error(error.message);
+      }
+      if (args.newPassword !== undefined) {
+        if (String(args.newPassword).length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+        const { error } = await sb.auth.admin.updateUserById(atual.user_id, { password: args.newPassword });
+        if (error) throw new Error(error.message);
+      }
+
       if (args.nome !== undefined) {
         const n = String(args.nome).trim();
         if (!n) throw new Error("Nome do líder obrigatório.");
@@ -519,6 +531,17 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (!nome) throw new Error("Informe o nome do líder.");
       const setorIds: string[] = Array.from(new Set((args.setorIds ?? []).filter(Boolean)));
       if (setorIds.length === 0) throw new Error("Selecione ao menos um setor.");
+      if (args.newLogin !== undefined) {
+        const slug = slugify(args.newLogin);
+        if (!slug || slug.length < 3) throw new Error("Login inválido.");
+        const { error } = await sb.auth.admin.updateUserById(args.leaderUserId, { email: `${slug}@gpva.local` });
+        if (error) throw new Error(error.message);
+      }
+      if (args.newPassword !== undefined) {
+        if (String(args.newPassword).length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+        const { error } = await sb.auth.admin.updateUserById(args.leaderUserId, { password: args.newPassword });
+        if (error) throw new Error(error.message);
+      }
       const { data: role, error: rErr } = await sb.from("user_roles")
         .select("user_id").eq("user_id", args.leaderUserId).eq("role", "leader").maybeSingle();
       if (rErr) throw new Error(rErr.message);

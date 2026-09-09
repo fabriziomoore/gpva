@@ -734,6 +734,8 @@ export const adminUpdateLeader = createServerFn({ method: "POST" })
       nome?: string;
       setorIds?: string[];
       supervisorId?: string;
+      newLogin?: string;
+      newPassword?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -746,6 +748,23 @@ export const adminUpdateLeader = createServerFn({ method: "POST" })
       .maybeSingle();
     if (getErr) throw new Error(getErr.message);
     if (!atual) throw new Error("Líder não encontrado na estrutura operacional.");
+
+    if (data.newLogin !== undefined) {
+      const slug = sanitizeLogin(data.newLogin);
+      if (!slug || slug.length < 3) throw new Error("Login inválido.");
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(atual.user_id, {
+        email: `${slug}@gpva.local`,
+      });
+      if (error) throw new Error(error.message);
+    }
+
+    if (data.newPassword !== undefined) {
+      if (data.newPassword.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(atual.user_id, {
+        password: data.newPassword,
+      });
+      if (error) throw new Error(error.message);
+    }
 
     if (data.nome !== undefined) {
       const nome = data.nome.trim();
@@ -842,6 +861,8 @@ export const adminNormalizeLeader = createServerFn({ method: "POST" })
       nome: string;
       setorIds: string[];
       supervisorId: string;
+      newLogin?: string;
+      newPassword?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -851,6 +872,22 @@ export const adminNormalizeLeader = createServerFn({ method: "POST" })
     const setorIds = Array.from(new Set(data.setorIds.filter(Boolean)));
     if (setorIds.length === 0) throw new Error("Selecione ao menos um setor.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.newLogin !== undefined) {
+      const slug = sanitizeLogin(data.newLogin);
+      if (!slug || slug.length < 3) throw new Error("Login inválido.");
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.leaderUserId, {
+        email: `${slug}@gpva.local`,
+      });
+      if (error) throw new Error(error.message);
+    }
+    if (data.newPassword !== undefined) {
+      if (data.newPassword.length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.leaderUserId, {
+        password: data.newPassword,
+      });
+      if (error) throw new Error(error.message);
+    }
 
     const { data: role, error: roleErr } = await supabaseAdmin
       .from("user_roles")
