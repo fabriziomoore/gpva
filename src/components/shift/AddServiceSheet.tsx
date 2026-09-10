@@ -701,24 +701,14 @@ export function AddServiceSheet({
               )}
               {!reorderMode && (
                 hasHdSubstituicao ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={saving}
-                      onClick={() => setStep("hdForm")}
-                      className="h-14 text-base font-semibold"
-                    >
-                      Forms
-                    </Button>
-                    <Button
-                      disabled={saving}
-                      onClick={finalizeService}
-                      className="h-14 text-base font-semibold"
-                    >
-                      {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar"}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => setStep("hdForm")}
+                    className="h-14 w-full text-base font-semibold"
+                  >
+                    Finalizar e abrir Forms
+                  </Button>
                 ) : !negotiationSubmission ? (
                   <Button
                     disabled={saving}
@@ -879,7 +869,7 @@ export function AddServiceSheet({
                 }}
                 className="h-14 w-full text-base font-semibold"
               >
-                {saving ? <Loader2 className="size-5 animate-spin" /> : "Copiar e abrir Forms"}
+                {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms"}
               </Button>
             </div>
           )}
