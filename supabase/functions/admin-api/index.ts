@@ -389,6 +389,23 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (error) throw new Error(error.message);
       return { ok: true };
     }
+    case "adminShiftServices": {
+      const [servicesRes, linksRes, impactsRes] = await Promise.all([
+        sb.from("servicos")
+          .select("service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value")
+          .eq("shift_id", args.shiftId).is("deleted_at", null),
+        sb.from("vinculos_complementos").select("complement_name").eq("shift_id", args.shiftId).is("deleted_at", null),
+        sb.from("impactos_expediente").select("impact_name").eq("shift_id", args.shiftId).is("deleted_at", null),
+      ]);
+      if (servicesRes.error) throw new Error(servicesRes.error.message);
+      if (linksRes.error) throw new Error(linksRes.error.message);
+      if (impactsRes.error) throw new Error(impactsRes.error.message);
+      return {
+        services: servicesRes.data ?? [],
+        complements: linksRes.data ?? [],
+        impacts: impactsRes.data ?? [],
+      };
+    }
 
     // ---------- Leaders ----------
     case "adminCreateLeader": {

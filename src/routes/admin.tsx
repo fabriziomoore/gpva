@@ -34,6 +34,7 @@ import {
   adminListShifts,
   adminDeleteShift,
   adminUpdateShiftReport,
+  adminShiftServices,
   listTeams,
   adminCreateLeader,
   adminListLeaders,
@@ -64,6 +65,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
 import { formatDateBR } from "@/lib/format";
+import { buildReport } from "@/lib/report";
 import { confirmDelete } from "@/components/ui/confirm-dialog";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
 
@@ -1267,11 +1269,12 @@ function RankingSection({ adminPw }: { adminPw: string }) {
 
   if (current) {
     const teamFull = teams.data?.find((t) => t.id === current.id);
+    const teamMeta = teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, supervisor_id: null, leader_id: null, supervisor: null, leader: null };
     return (
       <div className="space-y-4">
-        <TeamHeader adminPw={adminPw} team={teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, supervisor_id: null, leader_id: null, supervisor: null, leader: null }} onDeleted={() => setSelected(null)} />
+        <TeamHeader adminPw={adminPw} team={teamMeta} onDeleted={() => setSelected(null)} />
         {periodSelector("day")}
-        <TeamDayReports adminPw={adminPw} teamId={current.id} year={year} month={month} day={day} />
+        <TeamDayReports adminPw={adminPw} teamId={current.id} team={teamMeta} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
           <Stat label="Viáveis" value={current.viable} />
@@ -1622,12 +1625,14 @@ function TeamHeader({
 function TeamDayReports({
   adminPw,
   teamId,
+  team,
   year,
   month,
   day,
 }: {
   adminPw: string;
   teamId: string;
+  team: { team_name: string; supervisor: string | null; leader: string | null };
   year: number;
   month: number;
   day: number;
@@ -1642,7 +1647,29 @@ function TeamDayReports({
   const q = useQuery({
     queryKey: ["admin-shifts", teamId],
     queryFn: () => listFn({ data: { adminPassword: adminPw, teamId } }),
+    // Pra refletir o status (aberto/fechado) do expediente em tempo real.
+    refetchInterval: 15_000,
   });
+
+  // Invalida os relatórios ao vivo (abertos) quando algo muda nos serviços,
+  // vínculos ou impactos do expediente.
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-shift-live-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "servicos" }, () =>
+        qc.invalidateQueries({ queryKey: ["admin-shift-live"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "vinculos_complementos" }, () =>
+        qc.invalidateQueries({ queryKey: ["admin-shift-live"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "impactos_expediente" }, () =>
+        qc.invalidateQueries({ queryKey: ["admin-shift-live"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
   const delMut = useMutation({
     mutationFn: (shiftId: string) => delFn({ data: { adminPassword: adminPw, shiftId } }),
@@ -1688,7 +1715,7 @@ function TeamDayReports({
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{formatDateBR(r.started_at)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {r.status === "closed" ? "Fechado" : "Aberto"}
+                      {r.status === "closed" ? "Fechado" : "Aberto · ao vivo"}
                     </p>
                   </div>
                   <div className="flex gap-1">
@@ -1718,6 +1745,9 @@ function TeamDayReports({
                     </button>
                   </div>
                 </div>
+                {!isEditing && (
+                  <AdminShiftReportBody adminPw={adminPw} shift={r} team={team} />
+                )}
                 {isEditing && (
                   <div className="mt-3 space-y-2 border-t border-border pt-3">
                     <Label className="text-xs">Texto do relatório</Label>
@@ -1747,6 +1777,57 @@ function TeamDayReports({
         </div>
       )}
     </div>
+  );
+}
+
+function AdminShiftReportBody({
+  adminPw,
+  shift,
+  team,
+}: {
+  adminPw: string;
+  shift: { id: string; started_at: string; status: string; report_text: string | null };
+  team: { team_name: string; supervisor: string | null; leader: string | null };
+}) {
+  const liveFn = useServerFn(adminShiftServices);
+  const isOpen = shift.status !== "closed";
+  const live = useQuery({
+    queryKey: ["admin-shift-live", shift.id],
+    queryFn: () => liveFn({ data: { adminPassword: adminPw, shiftId: shift.id } }),
+    enabled: isOpen,
+    refetchInterval: isOpen ? 15_000 : false,
+  });
+
+  const text = isOpen
+    ? live.data
+      ? buildReport({
+          started_at: shift.started_at,
+          team_name: team.team_name,
+          supervisor: team.supervisor ?? "",
+          leader: team.leader ?? "",
+          services: live.data.services,
+          impacts: live.data.impacts,
+          complements: live.data.complements,
+        })
+      : null
+    : shift.report_text;
+
+  if (isOpen && live.isLoading) {
+    return (
+      <div className="mt-3 flex justify-center border-t border-border pt-3">
+        <Loader2 className="size-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return text ? (
+    <pre className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-xs text-foreground">
+      {text}
+    </pre>
+  ) : (
+    <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+      Sem texto de relatório.
+    </p>
   );
 }
 

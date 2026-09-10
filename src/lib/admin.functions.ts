@@ -578,6 +578,50 @@ export const adminUpdateShiftReport = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export type ShiftServiceRow = {
+  service_type_name: string;
+  is_negotiation: boolean;
+  viable: boolean;
+  reason_name: string | null;
+  registration_number: string | null;
+  negotiated_value: number | null;
+};
+
+// Serviços/complementos/impactos de um expediente ainda ABERTO — usado pra
+// montar uma prévia do relatório em tempo real (o texto final só é gerado
+// e salvo quando a equipe finaliza o expediente).
+export const adminShiftServices = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; shiftId: string }) => data)
+  .handler(async ({ data }) => {
+    assertAdmin(data.adminPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [servicesRes, linksRes, impactsRes] = await Promise.all([
+      supabaseAdmin
+        .from("servicos")
+        .select("service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value")
+        .eq("shift_id", data.shiftId)
+        .is("deleted_at", null),
+      supabaseAdmin
+        .from("vinculos_complementos")
+        .select("complement_name")
+        .eq("shift_id", data.shiftId)
+        .is("deleted_at", null),
+      supabaseAdmin
+        .from("impactos_expediente")
+        .select("impact_name")
+        .eq("shift_id", data.shiftId)
+        .is("deleted_at", null),
+    ]);
+    if (servicesRes.error) throw new Error(servicesRes.error.message);
+    if (linksRes.error) throw new Error(linksRes.error.message);
+    if (impactsRes.error) throw new Error(impactsRes.error.message);
+    return {
+      services: (servicesRes.data ?? []) as ShiftServiceRow[],
+      complements: linksRes.data ?? [],
+      impacts: impactsRes.data ?? [],
+    };
+  });
+
 // ============= Líderes =============
 
 function sanitizeLogin(login: string): string {

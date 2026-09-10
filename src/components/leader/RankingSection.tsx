@@ -7,8 +7,10 @@ import {
   leaderTeamsRanking,
   leaderListShifts,
   leaderListTeams,
+  leaderShiftServices,
 } from "@/lib/leader.functions";
 import { formatDateBR } from "@/lib/format";
+import { buildReport } from "@/lib/report";
 
 type TeamRow = {
   id: string;
@@ -19,6 +21,7 @@ type TeamRow = {
   variable_rate: number;
   setor_id: string | null;
   leader: string | null;
+  supervisor: string | null;
 };
 
 export function LeaderRankingSection() {
@@ -207,24 +210,22 @@ export function LeaderRankingSection() {
     const teamFull = (teams.data ?? []).find((t) => t.id === current.id) as
       | TeamRow
       | undefined;
+    const teamMeta = teamFull ?? {
+      id: current.id,
+      team_name: current.team_name,
+      photo_url: null,
+      collaborator1: null,
+      collaborator2: null,
+      variable_rate: 0,
+      setor_id: null,
+      leader: null,
+      supervisor: null,
+    };
     return (
       <div className="space-y-4">
-        <TeamHeaderReadOnly
-          team={
-            teamFull ?? {
-              id: current.id,
-              team_name: current.team_name,
-              photo_url: null,
-              collaborator1: null,
-              collaborator2: null,
-              variable_rate: 0,
-              setor_id: null,
-              leader: null,
-            }
-          }
-        />
+        <TeamHeaderReadOnly team={teamMeta} />
         {periodSelector("day")}
-        <TeamDayReportsReadOnly teamId={current.id} year={year} month={month} day={day} />
+        <TeamDayReportsReadOnly teamId={current.id} team={teamMeta} year={year} month={month} day={day} />
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Total" value={current.total} />
           <Stat label="Viáveis" value={current.viable} />
@@ -340,20 +341,45 @@ function TeamHeaderReadOnly({ team }: { team: TeamRow }) {
 
 function TeamDayReportsReadOnly({
   teamId,
+  team,
   year,
   month,
   day,
 }: {
   teamId: string;
+  team: { team_name: string; supervisor: string | null; leader: string | null };
   year: number;
   month: number;
   day: number;
 }) {
+  const qc = useQueryClient();
   const listFn = useServerFn(leaderListShifts);
   const q = useQuery({
     queryKey: ["leader-shifts", teamId],
     queryFn: () => listFn({ data: { teamId } }),
+    // Pra refletir o status (aberto/fechado) do expediente em tempo real.
+    refetchInterval: 15_000,
   });
+
+  // Invalida os relatórios ao vivo (abertos) quando algo muda nos serviços,
+  // vínculos ou impactos do expediente.
+  useEffect(() => {
+    const channel = supabase
+      .channel("leader-shift-live-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "servicos" }, () =>
+        qc.invalidateQueries({ queryKey: ["leader-shift-live"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "vinculos_complementos" }, () =>
+        qc.invalidateQueries({ queryKey: ["leader-shift-live"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "impactos_expediente" }, () =>
+        qc.invalidateQueries({ queryKey: ["leader-shift-live"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
   const dayStart = new Date(year, month - 1, day, 0, 0, 0).getTime();
   const dayEnd = dayStart + 24 * 60 * 60 * 1000;
@@ -372,30 +398,68 @@ function TeamDayReportsReadOnly({
       ) : (
         <div className="space-y-2">
           {filtered.map((r) => (
-            <details
-              key={r.id}
-              className="rounded-xl bg-card shadow-md p-3 text-sm"
-            >
+            <details key={r.id} className="rounded-xl bg-card shadow-md p-3 text-sm">
               <summary className="cursor-pointer">
                 <span className="font-semibold">{formatDateBR(r.started_at)}</span>
                 <span className="ml-2 text-xs text-muted-foreground">
-                  {r.status === "closed" ? "Fechado" : "Aberto"}
+                  {r.status === "closed" ? "Fechado" : "Aberto · ao vivo"}
                 </span>
               </summary>
-              {r.report_text ? (
-                <pre className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-xs text-foreground">
-                  {r.report_text}
-                </pre>
-              ) : (
-                <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                  Sem texto de relatório.
-                </p>
-              )}
+              <ShiftReportBody shift={r} team={team} />
             </details>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function ShiftReportBody({
+  shift,
+  team,
+}: {
+  shift: { id: string; started_at: string; status: string; report_text: string | null };
+  team: { team_name: string; supervisor: string | null; leader: string | null };
+}) {
+  const liveFn = useServerFn(leaderShiftServices);
+  const isOpen = shift.status !== "closed";
+  const live = useQuery({
+    queryKey: ["leader-shift-live", shift.id],
+    queryFn: () => liveFn({ data: { shiftId: shift.id } }),
+    enabled: isOpen,
+    refetchInterval: isOpen ? 15_000 : false,
+  });
+
+  const text = isOpen
+    ? live.data
+      ? buildReport({
+          started_at: shift.started_at,
+          team_name: team.team_name,
+          supervisor: team.supervisor ?? "",
+          leader: team.leader ?? "",
+          services: live.data.services,
+          impacts: live.data.impacts,
+          complements: live.data.complements,
+        })
+      : null
+    : shift.report_text;
+
+  if (isOpen && live.isLoading) {
+    return (
+      <div className="mt-3 flex justify-center border-t border-border pt-3">
+        <Loader2 className="size-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return text ? (
+    <pre className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-xs text-foreground">
+      {text}
+    </pre>
+  ) : (
+    <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+      Sem texto de relatório.
+    </p>
   );
 }
 

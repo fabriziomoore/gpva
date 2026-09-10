@@ -21,6 +21,7 @@ export const leaderListTeams: Callable<
     collaborator2: string | null;
     setor_id: string | null;
     leader: string | null;
+    supervisor: string | null;
     is_test: boolean | null;
   }>
 > = async () => {
@@ -29,13 +30,18 @@ export const leaderListTeams: Callable<
   const { data, error } = await supabase
     .from("equipes")
     .select(
-      "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test",
+      "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,supervisor,is_test,supervisores(nome)",
     )
     .order("team_name");
   if (error) throw new Error(error.message);
-  return (data ?? []).filter(
-    (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
-  );
+  return (data ?? [])
+    .filter(
+      (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
+    )
+    .map((r) => ({
+      ...r,
+      supervisor: (r.supervisores as { nome: string } | null)?.nome || r.supervisor,
+    }));
 };
 
 export const leaderTeamsRanking: Callable<
@@ -159,6 +165,42 @@ export const leaderListShifts: Callable<
     status: string;
     report_text: string | null;
   }>;
+};
+
+export type ShiftServiceRow = {
+  service_type_name: string;
+  is_negotiation: boolean;
+  viable: boolean;
+  reason_name: string | null;
+  registration_number: string | null;
+  negotiated_value: number | null;
+};
+
+export type ShiftServicesResult = {
+  services: ShiftServiceRow[];
+  complements: { complement_name: string }[];
+  impacts: { impact_name: string }[];
+};
+
+export const leaderShiftServices: Callable<ShiftServicesResult, { shiftId: string }> = async ({
+  data,
+}) => {
+  const [servicesRes, linksRes, impactsRes] = await Promise.all([
+    supabase
+      .from("servicos")
+      .select("service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value")
+      .eq("shift_id", data.shiftId),
+    supabase.from("vinculos_complementos").select("complement_name").eq("shift_id", data.shiftId),
+    supabase.from("impactos_expediente").select("impact_name").eq("shift_id", data.shiftId),
+  ]);
+  if (servicesRes.error) throw new Error(servicesRes.error.message);
+  if (linksRes.error) throw new Error(linksRes.error.message);
+  if (impactsRes.error) throw new Error(impactsRes.error.message);
+  return {
+    services: (servicesRes.data ?? []) as ShiftServiceRow[],
+    complements: linksRes.data ?? [],
+    impacts: impactsRes.data ?? [],
+  };
 };
 
 export type ClientHistoryRow = {

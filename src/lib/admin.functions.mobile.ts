@@ -45,6 +45,16 @@ export const adminListShifts = call<Array<{
 export const adminDeleteShift = call<{ ok: true }>("adminDeleteShift");
 export const adminUpdateShiftReport = call<{ ok: true }>("adminUpdateShiftReport");
 
+export type ShiftServiceRow = {
+  service_type_name: string; is_negotiation: boolean; viable: boolean;
+  reason_name: string | null; registration_number: string | null; negotiated_value: number | null;
+};
+export const adminShiftServices = call<{
+  services: ShiftServiceRow[];
+  complements: { complement_name: string }[];
+  impacts: { impact_name: string }[];
+}>("adminShiftServices");
+
 export type LeaderRow = {
   user_id: string;
   leader_structure_id: string | null;

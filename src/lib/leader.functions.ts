@@ -24,13 +24,18 @@ export const leaderListTeams = createServerFn({ method: "POST" })
     const { data, error } = await context.supabase
       .from("equipes")
       .select(
-        "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,is_test",
+        "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,supervisor,is_test,supervisores(nome)",
       )
       .order("team_name");
     if (error) throw new Error(error.message);
-    return (data ?? []).filter(
-      (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
-    );
+    return (data ?? [])
+      .filter(
+        (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
+      )
+      .map((r) => ({
+        ...r,
+        supervisor: (r.supervisores as { nome: string } | null)?.nome || r.supervisor,
+      }));
   });
 
 export const leaderTeamsRanking = createServerFn({ method: "POST" })
@@ -138,6 +143,47 @@ export const leaderListShifts = createServerFn({ method: "POST" })
       .limit(200);
     if (error) throw new Error(error.message);
     return rows ?? [];
+  });
+
+export type ShiftServiceRow = {
+  service_type_name: string;
+  is_negotiation: boolean;
+  viable: boolean;
+  reason_name: string | null;
+  registration_number: string | null;
+  negotiated_value: number | null;
+};
+
+// Serviços/complementos/impactos de um expediente ainda ABERTO — usado pra
+// montar uma prévia do relatório em tempo real (o texto final só é gerado
+// e salvo quando a equipe finaliza o expediente).
+export const leaderShiftServices = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { shiftId: string }) => data)
+  .handler(async ({ data, context }) => {
+    await assertLeader(context);
+    const [servicesRes, linksRes, impactsRes] = await Promise.all([
+      context.supabase
+        .from("servicos")
+        .select("service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value")
+        .eq("shift_id", data.shiftId),
+      context.supabase
+        .from("vinculos_complementos")
+        .select("complement_name")
+        .eq("shift_id", data.shiftId),
+      context.supabase
+        .from("impactos_expediente")
+        .select("impact_name")
+        .eq("shift_id", data.shiftId),
+    ]);
+    if (servicesRes.error) throw new Error(servicesRes.error.message);
+    if (linksRes.error) throw new Error(linksRes.error.message);
+    if (impactsRes.error) throw new Error(impactsRes.error.message);
+    return {
+      services: servicesRes.data ?? [],
+      complements: linksRes.data ?? [],
+      impacts: impactsRes.data ?? [],
+    };
   });
 
 export type ClientHistoryRow = {
