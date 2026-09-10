@@ -35,8 +35,15 @@ export function buildHdCaption(input: HdSubmission): string {
 
 /**
  * Abre o formulário em branco (sem preenchimento automático — ver nota
- * acima). No app nativo abre num WebView próprio, igual ao Forms de
- * negociação; na web abre em nova aba. Retorna true se conseguiu abrir.
+ * acima). No app nativo abre num WebView próprio com toolbar customizada,
+ * igual ao Forms de negociação; na web abre em nova aba. Retorna true se
+ * conseguiu abrir.
+ *
+ * Em navegadores, o window.open precisa ser feito SÍNCRONO no gesto do
+ * clique — senão o popup abre em about:blank e a navegação posterior é
+ * bloqueada (mesmo cuidado do Forms de negociação, ver google-form.ts).
+ * Por isso abrimos a aba em branco aqui já na primeira linha, antes de
+ * qualquer await.
  */
 export async function openHdForm(ordemServico?: string): Promise<boolean> {
   const isNativeGuess =
@@ -44,9 +51,16 @@ export async function openHdForm(ordemServico?: string): Promise<boolean> {
     (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
       .Capacitor?.isNativePlatform?.() === true;
 
+  let win: Window | null = null;
+  if (typeof window !== "undefined" && !isNativeGuess) {
+    win = window.open("about:blank", "_blank");
+    if (!win) return false;
+  }
+
   try {
     const { Capacitor } = await import("@capacitor/core");
     if (Capacitor.isNativePlatform()) {
+      win?.close();
       const { InAppBrowser, ToolBarType, BackgroundColor } = await import(
         "@capgo/inappbrowser"
       );
@@ -73,6 +87,10 @@ export async function openHdForm(ordemServico?: string): Promise<boolean> {
     if (isNativeGuess) return false;
   }
 
-  const win = window.open(HD_FORM_URL, "_blank");
-  return !!win;
+  if (!win) {
+    win = window.open(HD_FORM_URL, "_blank");
+    return !!win;
+  }
+  win.location.href = HD_FORM_URL;
+  return true;
 }
