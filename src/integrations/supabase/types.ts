@@ -734,6 +734,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          negociacao_ativa: boolean
           nome: string
           supervisor_nome: string
           supervisor_user_id: string | null
@@ -743,6 +744,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          negociacao_ativa?: boolean
           nome: string
           supervisor_nome?: string
           supervisor_user_id?: string | null
@@ -752,6 +754,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          negociacao_ativa?: boolean
           nome?: string
           supervisor_nome?: string
           supervisor_user_id?: string | null
@@ -985,6 +988,25 @@ export type Database = {
       _compute_system_health: { Args: never; Returns: Json }
       admin_user_ids: { Args: never; Returns: string[] }
       audit_schema_snapshot: { Args: never; Returns: Json }
+      client_history: {
+        Args: { p_registration: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_negotiation: boolean
+          negotiated_value: number
+          payment_methods: string[]
+          qtd_parcelas: number
+          reason_name: string
+          registration_number: string
+          service_type_name: string
+          team_id: string
+          team_name: string
+          valor_a_vista: number
+          valor_parcelado: number
+          viable: boolean
+        }[]
+      }
       create_procedure_with_version: {
         Args: {
           p_arvore_decisao: Json
@@ -1007,6 +1029,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      negotiations_in_period: {
+        Args: { p_end: string; p_registration?: string; p_start: string }
+        Returns: {
+          created_at: string
+          id: string
+          negotiated_value: number
+          payment_methods: string[]
+          qtd_parcelas: number
+          registration_number: string
+          service_type_name: string
+          team_id: string
+          team_name: string
+          valor_a_vista: number
+          valor_parcelado: number
+        }[]
+      }
       operational_visible_team_ids: { Args: never; Returns: string[] }
       publish_procedure_version: {
         Args: {
@@ -1015,6 +1053,16 @@ export type Database = {
           p_vigencia_inicio: string
         }
         Returns: string
+      }
+      recurring_issues: {
+        Args: never
+        Returns: {
+          cnt: number
+          last_at: string
+          reason_name: string
+          registration_number: string
+          team_names: string[]
+        }[]
       }
       reset_current_demo_session: { Args: never; Returns: Json }
       run_system_health_alert_check: { Args: never; Returns: undefined }

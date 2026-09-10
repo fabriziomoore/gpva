@@ -497,7 +497,7 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
   });
 
   const updateMut = useMutation({
-    mutationFn: (payload: { setorId: string; nome?: string; variavelAtivo?: boolean }) =>
+    mutationFn: (payload: { setorId: string; nome?: string; variavelAtivo?: boolean; negociacaoAtiva?: boolean }) =>
       updateFn({ data: { adminPassword: adminPw, ...payload } }),
     onSuccess: () => {
       toast.success("Setor atualizado");
@@ -571,8 +571,8 @@ function SetorEditRow({
   onDelete,
   saving,
 }: {
-  setor: { id: string; nome: string; variavel_ativo: boolean };
-  onSave: (patch: { nome?: string; variavelAtivo?: boolean }) => void;
+  setor: { id: string; nome: string; variavel_ativo: boolean; negociacao_ativa: boolean };
+  onSave: (patch: { nome?: string; variavelAtivo?: boolean; negociacaoAtiva?: boolean }) => void;
   onDelete: () => void;
   saving: boolean;
 }) {
@@ -593,6 +593,19 @@ function SetorEditRow({
           checked={setor.variavel_ativo}
           disabled={saving}
           onCheckedChange={(checked) => onSave({ variavelAtivo: checked })}
+        />
+      </div>
+      <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
+        <div>
+          <p className="text-sm font-medium">Aba de negociações</p>
+          <p className="text-[11px] text-muted-foreground">
+            Ative para setores que negociam (mostra a aba "Negociações" em Clientes).
+          </p>
+        </div>
+        <Switch
+          checked={setor.negociacao_ativa}
+          disabled={saving}
+          onCheckedChange={(checked) => onSave({ negociacaoAtiva: checked })}
         />
       </div>
       <div className="flex justify-end gap-2">

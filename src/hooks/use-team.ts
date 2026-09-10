@@ -36,6 +36,7 @@ export type Team = {
   setor_nome?: string | null;
   setor_supervisor?: string | null;
   setor_variavel_ativo: boolean;
+  setor_negociacao_ativa: boolean;
 };
 
 export function useTeam(userId: string | null) {
@@ -50,19 +51,23 @@ export function useTeam(userId: string | null) {
     queryFn: async (): Promise<Team | null> => {
       const cachedRaw = userId ? await getCachedTeam(userId) : null;
       const cached: Team | null = cachedRaw
-        ? { ...cachedRaw, setor_variavel_ativo: cachedRaw.setor_variavel_ativo ?? true }
+        ? {
+            ...cachedRaw,
+            setor_variavel_ativo: cachedRaw.setor_variavel_ativo ?? true,
+            setor_negociacao_ativa: cachedRaw.setor_negociacao_ativa ?? false,
+          }
         : null;
       if (isOffline() && cached) return cached;
       try {
         const { data, error } = await withTimeout(
           supabase
             .from("equipes")
-            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome,variavel_ativo),supervisores(nome),lideres_estrutura(nome)")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
             .maybeSingle(),
         );
         if (error) throw error;
         if (!data) return cached;
-        const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string; variavel_ativo: boolean } | null }).setores;
+        const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string; variavel_ativo: boolean; negociacao_ativa: boolean } | null }).setores;
         // supervisor_id/leader_id (estrutura canonica) sao a fonte da verdade
         // desde a A5; equipes criadas depois nunca tem o texto legado
         // preenchido (so o admin escreve os IDs). Cai pro texto so em
@@ -83,6 +88,7 @@ export function useTeam(userId: string | null) {
           setor_nome: setor?.nome ?? null,
           setor_supervisor: setor?.supervisor_nome ?? null,
           setor_variavel_ativo: setor?.variavel_ativo ?? true,
+          setor_negociacao_ativa: setor?.negociacao_ativa ?? false,
         };
         await cacheTeam(team);
         return team;

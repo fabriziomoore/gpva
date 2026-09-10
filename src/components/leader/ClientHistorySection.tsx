@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuthSession } from "@/hooks/use-auth";
+import { useTeam } from "@/hooks/use-team";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import {
   leaderClientHistory,
@@ -47,8 +49,19 @@ function periodRangeISO(
 }
 
 export function ClientHistorySection() {
+  const { userId } = useAuthSession();
+  const { data: team } = useTeam(userId);
+  // Contas de equipe só veem "Negociações" se o setor tiver isso ativado
+  // (admin gerencia em Administração → Setores). Líder (team === null) não
+  // é restringido — só faz sentido barrar quem realmente é uma equipe.
+  const canNegotiate = team ? team.setor_negociacao_ativa : true;
+
   const [tab, setTab] = useState<"negotiations" | "recurring">("negotiations");
   const [searched, setSearched] = useState("");
+
+  useEffect(() => {
+    if (!canNegotiate && tab === "negotiations") setTab("recurring");
+  }, [canNegotiate, tab]);
 
   const runSearch = (value: string) => {
     const v = value.trim();
@@ -67,13 +80,15 @@ export function ClientHistorySection() {
 
   return (
     <div className="space-y-4">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="negotiations">Negociações</TabsTrigger>
-          <TabsTrigger value="recurring">Recorrentes</TabsTrigger>
-        </TabsList>
-      </Tabs>
-      {tab === "negotiations" ? (
+      {canNegotiate && (
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="negotiations">Negociações</TabsTrigger>
+            <TabsTrigger value="recurring">Recorrentes</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+      {tab === "negotiations" && canNegotiate ? (
         <NegotiationsPeriodList onPickMatricula={runSearch} />
       ) : (
         <RecurringIssuesPanel onPickMatricula={runSearch} />

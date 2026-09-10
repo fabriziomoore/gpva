@@ -1069,6 +1069,7 @@ export type SetorRow = {
   id: string;
   nome: string;
   variavel_ativo: boolean;
+  negociacao_ativa: boolean;
 };
 
 export const adminListSetores = createServerFn({ method: "POST" })
@@ -1078,7 +1079,7 @@ export const adminListSetores = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("setores")
-      .select("id,nome,variavel_ativo")
+      .select("id,nome,variavel_ativo,negociacao_ativa")
       .order("nome");
     if (error) throw new Error(error.message);
     return (rows ?? []) as SetorRow[];
@@ -1100,12 +1101,18 @@ export const adminCreateSetor = createServerFn({ method: "POST" })
 
 export const adminUpdateSetor = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { adminPassword: string; setorId: string; nome?: string; variavelAtivo?: boolean }) => data,
+    (data: {
+      adminPassword: string;
+      setorId: string;
+      nome?: string;
+      variavelAtivo?: boolean;
+      negociacaoAtiva?: boolean;
+    }) => data,
   )
   .handler(async ({ data }) => {
     assertAdmin(data.adminPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: { nome?: string; variavel_ativo?: boolean } = {};
+    const patch: { nome?: string; variavel_ativo?: boolean; negociacao_ativa?: boolean } = {};
     if (data.nome !== undefined) {
       const nome = data.nome.trim();
       if (!nome) throw new Error("Nome do setor obrigatório.");
@@ -1113,6 +1120,9 @@ export const adminUpdateSetor = createServerFn({ method: "POST" })
     }
     if (data.variavelAtivo !== undefined) {
       patch.variavel_ativo = data.variavelAtivo;
+    }
+    if (data.negociacaoAtiva !== undefined) {
+      patch.negociacao_ativa = data.negociacaoAtiva;
     }
     if (Object.keys(patch).length === 0) return { ok: true as const };
     const { error } = await supabaseAdmin

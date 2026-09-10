@@ -622,7 +622,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
 
     // ---------- Setores ----------
     case "adminListSetores": {
-      const { data, error } = await sb.from("setores").select("id,nome,variavel_ativo").order("nome");
+      const { data, error } = await sb.from("setores").select("id,nome,variavel_ativo,negociacao_ativa").order("nome");
       if (error) throw new Error(error.message);
       return data ?? [];
     }
@@ -636,6 +636,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const patch: any = {};
       if (args.nome !== undefined) { const n = String(args.nome).trim(); if (!n) throw new Error("Nome obrigatório."); patch.nome = n; }
       if (args.variavelAtivo !== undefined) { patch.variavel_ativo = !!args.variavelAtivo; }
+      if (args.negociacaoAtiva !== undefined) { patch.negociacao_ativa = !!args.negociacaoAtiva; }
       if (Object.keys(patch).length === 0) return { ok: true };
       const { error } = await sb.from("setores").update(patch).eq("id", args.setorId);
       if (error) throw new Error(error.message);

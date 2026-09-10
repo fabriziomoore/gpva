@@ -158,118 +158,43 @@ export type ClientHistoryRow = {
 };
 
 // Histórico completo de um cliente (matrícula): toda negociação e toda
-// tentativa inviável já registrada para esse número, de qualquer equipe
-// visível ao chamador (RLS via operational_visible_team_ids() restringe
-// isso automaticamente: líder vê as equipes que lidera, equipe vê só a si
-// mesma) — por isso não exige o papel de líder, funciona pras duas contas.
+// tentativa inviável já registrada para esse número, de QUALQUER equipe —
+// serve de consulta pra saber se outra equipe já esteve lá, como terminou
+// e se o cliente costuma negociar. Usa a função client_history() (security
+// definer) porque esse cruzamento não respeita o RLS normal por equipe.
 export const leaderClientHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { registrationNumber: string }) => data)
   .handler(async ({ data, context }) => {
     const reg = data.registrationNumber.trim();
     if (!reg) return [];
-    const { data: rows, error } = await context.supabase
-      .from("servicos")
-      .select(
-        "id,team_id,service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at,equipes(team_name)",
-      )
-      .ilike("registration_number", reg)
-      .order("created_at", { ascending: false })
-      .limit(200);
+    const { data: rows, error } = await context.supabase.rpc("client_history", {
+      p_registration: reg,
+    });
     if (error) throw new Error(error.message);
-    return (rows ?? []).map((r) => ({
-      id: r.id as string,
-      team_id: r.team_id as string,
-      team_name: (r.equipes as { team_name: string } | null)?.team_name ?? "-",
-      registration_number: r.registration_number as string | null,
-      service_type_name: r.service_type_name as string,
-      is_negotiation: r.is_negotiation as boolean,
-      viable: r.viable as boolean,
-      reason_name: r.reason_name as string | null,
-      negotiated_value: r.negotiated_value as number | null,
-      payment_methods: r.payment_methods as string[] | null,
-      valor_a_vista: r.valor_a_vista as number | null,
-      valor_parcelado: r.valor_parcelado as number | null,
-      qtd_parcelas: r.qtd_parcelas as number | null,
-      created_at: r.created_at as string,
-    }));
+    return (rows ?? []) as ClientHistoryRow[];
   });
 
 // Negociações de um período (dia/mês/ano), opcionalmente filtradas por
-// matrícula — para navegar sem precisar saber a matrícula de antemão.
-// Sem exigência de papel de líder: RLS já restringe o que cada chamador vê.
+// matrícula — pra navegar sem precisar saber a matrícula de antemão.
+// Mesma lógica cross-equipe da função acima (negotiations_in_period).
 export const leaderNegotiations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     (data: { startISO: string; endISO: string; registrationNumber?: string | null }) => data,
   )
   .handler(async ({ data, context }) => {
-    const { data: admins } = await context.supabase.rpc("admin_user_ids");
-    const adminIds = new Set(((admins ?? []) as string[]));
-    const { data: teams, error: teamsErr } = await context.supabase
-      .from("equipes")
-      .select("id,team_name,is_test");
-    if (teamsErr) throw new Error(teamsErr.message);
-    const hiddenIds = new Set(
-      (teams ?? [])
-        .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id) || t.team_name.trim().toLowerCase() === ADMIN_TEAM_LOGIN)
-        .map((t) => t.id),
-    );
-    const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.team_name]));
-    const reg = data.registrationNumber?.trim();
-
-    type Row = {
-      id: string;
-      team_id: string;
-      service_type_name: string;
-      reason_name: string | null;
-      registration_number: string | null;
-      negotiated_value: number | null;
-      payment_methods: string[] | null;
-      valor_a_vista: number | null;
-      valor_parcelado: number | null;
-      qtd_parcelas: number | null;
-      created_at: string;
-    };
-    const all: Row[] = [];
-    const pageSize = 1000;
-    let from = 0;
-    while (true) {
-      let query = context.supabase
-        .from("servicos")
-        .select(
-          "id,team_id,service_type_name,reason_name,registration_number,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at",
-        )
-        .eq("is_negotiation", true)
-        .eq("viable", true)
-        .gte("created_at", data.startISO)
-        .lt("created_at", data.endISO)
-        .order("created_at", { ascending: false })
-        .range(from, from + pageSize - 1);
-      if (reg) query = query.ilike("registration_number", reg);
-      const { data: rows, error } = await query;
-      if (error) throw new Error(error.message);
-      if (!rows?.length) break;
-      all.push(...(rows as Row[]).filter((r) => !hiddenIds.has(r.team_id)));
-      if (rows.length < pageSize) break;
-      from += pageSize;
-    }
-
-    return all.map((r) => ({
-      id: r.id,
-      team_id: r.team_id,
-      team_name: teamNameById.get(r.team_id) ?? "-",
-      registration_number: r.registration_number,
-      service_type_name: r.service_type_name,
+    const { data: rows, error } = await context.supabase.rpc("negotiations_in_period", {
+      p_start: data.startISO,
+      p_end: data.endISO,
+      p_registration: data.registrationNumber?.trim() || undefined,
+    });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      ...r,
       is_negotiation: true,
       viable: true,
-      reason_name: r.reason_name,
-      negotiated_value: r.negotiated_value,
-      payment_methods: r.payment_methods,
-      valor_a_vista: r.valor_a_vista,
-      valor_parcelado: r.valor_parcelado,
-      qtd_parcelas: r.qtd_parcelas,
-      created_at: r.created_at,
+      reason_name: null,
     })) as ClientHistoryRow[];
   });
 
@@ -282,84 +207,18 @@ export type RecurringIssueRow = {
 };
 
 // Clientes recorrentes: matrículas com 2+ serviços inviáveis pelo mesmo
-// motivo, em qualquer época — o mesmo dado que hoje só aparece dentro do
-// PDF (flag "repeat_prev"), aqui de forma proativa e sem precisar buscar
-// uma matrícula específica. Sem exigência de papel de líder: RLS já
-// restringe o que cada chamador vê (líder vê suas equipes, equipe vê só a
-// si mesma).
+// motivo, em qualquer época e de qualquer equipe — o mesmo dado que hoje só
+// aparece dentro do PDF (flag "repeat_prev"), aqui de forma proativa.
 export const leaderRecurringIssues = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: admins } = await context.supabase.rpc("admin_user_ids");
-    const adminIds = new Set(((admins ?? []) as string[]));
-    const { data: teams, error: teamsErr } = await context.supabase
-      .from("equipes")
-      .select("id,team_name,is_test");
-    if (teamsErr) throw new Error(teamsErr.message);
-    const hiddenIds = new Set(
-      (teams ?? [])
-        .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id) || t.team_name.trim().toLowerCase() === ADMIN_TEAM_LOGIN)
-        .map((t) => t.id),
-    );
-    const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.team_name]));
-
-    type Row = { team_id: string; registration_number: string | null; reason_name: string | null; created_at: string };
-    const all: Row[] = [];
-    const pageSize = 1000;
-    let from = 0;
-    while (true) {
-      const { data: rows, error } = await context.supabase
-        .from("servicos")
-        .select("team_id,registration_number,reason_name,created_at")
-        .eq("viable", false)
-        .not("registration_number", "is", null)
-        .order("created_at", { ascending: false })
-        .range(from, from + pageSize - 1);
-      if (error) throw new Error(error.message);
-      if (!rows?.length) break;
-      all.push(...(rows as Row[]).filter((r) => !hiddenIds.has(r.team_id)));
-      if (rows.length < pageSize) break;
-      from += pageSize;
-    }
-
-    type Group = {
-      registration_number: string;
-      reason_name: string;
-      count: number;
-      last_at: string;
-      team_names: Set<string>;
-    };
-    const groups = new Map<string, Group>();
-    for (const r of all) {
-      const reg = (r.registration_number || "").trim();
-      const reason = (r.reason_name || "").trim();
-      if (!reg || !reason) continue;
-      const key = `${reg.toUpperCase()}|${reason.toLowerCase()}`;
-      const g = groups.get(key);
-      if (g) {
-        g.count += 1;
-        if (r.created_at > g.last_at) g.last_at = r.created_at;
-        g.team_names.add(teamNameById.get(r.team_id) ?? "-");
-      } else {
-        groups.set(key, {
-          registration_number: reg,
-          reason_name: reason,
-          count: 1,
-          last_at: r.created_at,
-          team_names: new Set([teamNameById.get(r.team_id) ?? "-"]),
-        });
-      }
-    }
-
-    return Array.from(groups.values())
-      .filter((g) => g.count >= 2)
-      .sort((a, b) => b.count - a.count || (a.last_at < b.last_at ? 1 : -1))
-      .slice(0, 50)
-      .map((g) => ({
-        registration_number: g.registration_number,
-        reason_name: g.reason_name,
-        count: g.count,
-        last_at: g.last_at,
-        team_names: Array.from(g.team_names),
-      }));
+    const { data: rows, error } = await context.supabase.rpc("recurring_issues");
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      registration_number: r.registration_number,
+      reason_name: r.reason_name,
+      count: Number(r.cnt),
+      last_at: r.last_at,
+      team_names: r.team_names ?? [],
+    })) as RecurringIssueRow[];
   });
