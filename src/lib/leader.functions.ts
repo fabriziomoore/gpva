@@ -144,6 +144,7 @@ export type ClientHistoryRow = {
   id: string;
   team_id: string;
   team_name: string;
+  registration_number: string | null;
   service_type_name: string;
   is_negotiation: boolean;
   viable: boolean;
@@ -170,7 +171,7 @@ export const leaderClientHistory = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase
       .from("servicos")
       .select(
-        "id,team_id,service_type_name,is_negotiation,viable,reason_name,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at,equipes(team_name)",
+        "id,team_id,service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at,equipes(team_name)",
       )
       .ilike("registration_number", reg)
       .order("created_at", { ascending: false })
@@ -180,6 +181,7 @@ export const leaderClientHistory = createServerFn({ method: "POST" })
       id: r.id as string,
       team_id: r.team_id as string,
       team_name: (r.equipes as { team_name: string } | null)?.team_name ?? "-",
+      registration_number: r.registration_number as string | null,
       service_type_name: r.service_type_name as string,
       is_negotiation: r.is_negotiation as boolean,
       viable: r.viable as boolean,
@@ -191,6 +193,84 @@ export const leaderClientHistory = createServerFn({ method: "POST" })
       qtd_parcelas: r.qtd_parcelas as number | null,
       created_at: r.created_at as string,
     }));
+  });
+
+// Negociações de um período (dia/mês/ano), opcionalmente filtradas por
+// matrícula — para navegar sem precisar saber a matrícula de antemão.
+export const leaderNegotiations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: { startISO: string; endISO: string; registrationNumber?: string | null }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    await assertLeader(context);
+    const { data: admins } = await context.supabase.rpc("admin_user_ids");
+    const adminIds = new Set(((admins ?? []) as string[]));
+    const { data: teams, error: teamsErr } = await context.supabase
+      .from("equipes")
+      .select("id,team_name,is_test");
+    if (teamsErr) throw new Error(teamsErr.message);
+    const hiddenIds = new Set(
+      (teams ?? [])
+        .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id) || t.team_name.trim().toLowerCase() === ADMIN_TEAM_LOGIN)
+        .map((t) => t.id),
+    );
+    const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.team_name]));
+    const reg = data.registrationNumber?.trim();
+
+    type Row = {
+      id: string;
+      team_id: string;
+      service_type_name: string;
+      reason_name: string | null;
+      registration_number: string | null;
+      negotiated_value: number | null;
+      payment_methods: string[] | null;
+      valor_a_vista: number | null;
+      valor_parcelado: number | null;
+      qtd_parcelas: number | null;
+      created_at: string;
+    };
+    const all: Row[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+      let query = context.supabase
+        .from("servicos")
+        .select(
+          "id,team_id,service_type_name,reason_name,registration_number,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at",
+        )
+        .eq("is_negotiation", true)
+        .eq("viable", true)
+        .gte("created_at", data.startISO)
+        .lt("created_at", data.endISO)
+        .order("created_at", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (reg) query = query.ilike("registration_number", reg);
+      const { data: rows, error } = await query;
+      if (error) throw new Error(error.message);
+      if (!rows?.length) break;
+      all.push(...(rows as Row[]).filter((r) => !hiddenIds.has(r.team_id)));
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return all.map((r) => ({
+      id: r.id,
+      team_id: r.team_id,
+      team_name: teamNameById.get(r.team_id) ?? "-",
+      registration_number: r.registration_number,
+      service_type_name: r.service_type_name,
+      is_negotiation: true,
+      viable: true,
+      reason_name: r.reason_name,
+      negotiated_value: r.negotiated_value,
+      payment_methods: r.payment_methods,
+      valor_a_vista: r.valor_a_vista,
+      valor_parcelado: r.valor_parcelado,
+      qtd_parcelas: r.qtd_parcelas,
+      created_at: r.created_at,
+    })) as ClientHistoryRow[];
   });
 
 export type RecurringIssueRow = {
