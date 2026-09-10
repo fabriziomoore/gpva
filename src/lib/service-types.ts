@@ -12,3 +12,16 @@ export function isPosCorteName(name: string | null | undefined): boolean {
       .trim() === "pos corte"
   );
 }
+
+// Complemento "Substituição de HD" — dispara a etapa extra de devolução de
+// medidores (Forms da empresa) na tela de registro de serviço.
+export function isHdSubstituicaoName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return (
+    name
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .trim() === "substituicao de hd"
+  );
+}
