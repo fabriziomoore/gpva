@@ -167,7 +167,7 @@ export async function submitNegotiationToGoogleForm(input: NegotiationSubmission
         toolbarTextColor: "#ffffff",
         backgroundColor: BackgroundColor.WHITE,
         visibleTitle: true,
-        showArrow: false,
+        showArrow: true,
         showReloadButton: false,
         activeNativeNavigationForWebview: true,
         isPresentAfterPageLoad: false,
