@@ -29,6 +29,10 @@ export interface LocalService {
   reason_name?: string | null;
   registration_number?: string | null;
   negotiated_value?: number | null;
+  payment_methods?: string[] | null;
+  valor_a_vista?: number | null;
+  valor_parcelado?: number | null;
+  qtd_parcelas?: number | null;
   lat?: number | null;
   lng?: number | null;
   accuracy_m?: number | null;
@@ -122,6 +126,10 @@ class GpvaDB extends Dexie {
     // v4: persistent reverse-geocode cache (offline).
     this.version(4).stores({
       geocode_cache: "key, cached_at",
+    });
+    // v5: add negotiation payment breakdown to services (no new index required — plain columns).
+    this.version(5).stores({
+      services: "id, shift_id, team_id, sync_state, created_at",
     });
   }
 }

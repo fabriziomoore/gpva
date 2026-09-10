@@ -640,6 +640,8 @@ export type Database = {
           lat: number | null
           lng: number | null
           negotiated_value: number | null
+          payment_methods: string[] | null
+          qtd_parcelas: number | null
           reason_id: string | null
           reason_name: string | null
           registration_number: string | null
@@ -647,6 +649,8 @@ export type Database = {
           service_type_name: string
           shift_id: string
           team_id: string
+          valor_a_vista: number | null
+          valor_parcelado: number | null
           viable: boolean
         }
         Insert: {
@@ -659,6 +663,8 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           negotiated_value?: number | null
+          payment_methods?: string[] | null
+          qtd_parcelas?: number | null
           reason_id?: string | null
           reason_name?: string | null
           registration_number?: string | null
@@ -666,6 +672,8 @@ export type Database = {
           service_type_name: string
           shift_id: string
           team_id: string
+          valor_a_vista?: number | null
+          valor_parcelado?: number | null
           viable?: boolean
         }
         Update: {
@@ -678,6 +686,8 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           negotiated_value?: number | null
+          payment_methods?: string[] | null
+          qtd_parcelas?: number | null
           reason_id?: string | null
           reason_name?: string | null
           registration_number?: string | null
@@ -685,6 +695,8 @@ export type Database = {
           service_type_name?: string
           shift_id?: string
           team_id?: string
+          valor_a_vista?: number | null
+          valor_parcelado?: number | null
           viable?: boolean
         }
         Relationships: [

@@ -160,3 +160,133 @@ export const leaderListShifts: Callable<
     report_text: string | null;
   }>;
 };
+
+export type ClientHistoryRow = {
+  id: string;
+  team_id: string;
+  team_name: string;
+  service_type_name: string;
+  is_negotiation: boolean;
+  viable: boolean;
+  reason_name: string | null;
+  negotiated_value: number | null;
+  payment_methods: string[] | null;
+  valor_a_vista: number | null;
+  valor_parcelado: number | null;
+  qtd_parcelas: number | null;
+  created_at: string;
+};
+
+export const leaderClientHistory: Callable<ClientHistoryRow[], { registrationNumber: string }> = async ({
+  data,
+}) => {
+  const reg = data.registrationNumber.trim();
+  if (!reg) return [];
+  const { data: rows, error } = await supabase
+    .from("servicos")
+    .select(
+      "id,team_id,service_type_name,is_negotiation,viable,reason_name,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at,equipes(team_name)",
+    )
+    .ilike("registration_number", reg)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  return (rows ?? []).map((r) => ({
+    id: r.id as string,
+    team_id: r.team_id as string,
+    team_name: (r.equipes as { team_name: string } | null)?.team_name ?? "-",
+    service_type_name: r.service_type_name as string,
+    is_negotiation: r.is_negotiation as boolean,
+    viable: r.viable as boolean,
+    reason_name: r.reason_name as string | null,
+    negotiated_value: r.negotiated_value as number | null,
+    payment_methods: r.payment_methods as string[] | null,
+    valor_a_vista: r.valor_a_vista as number | null,
+    valor_parcelado: r.valor_parcelado as number | null,
+    qtd_parcelas: r.qtd_parcelas as number | null,
+    created_at: r.created_at as string,
+  }));
+};
+
+export type RecurringIssueRow = {
+  registration_number: string;
+  reason_name: string;
+  count: number;
+  last_at: string;
+  team_names: string[];
+};
+
+export const leaderRecurringIssues: Callable<RecurringIssueRow[]> = async () => {
+  const { data: admins } = await supabase.rpc("admin_user_ids");
+  const adminIds = new Set(((admins ?? []) as string[]));
+  const { data: teams, error: teamsErr } = await supabase
+    .from("equipes")
+    .select("id,team_name,is_test");
+  if (teamsErr) throw new Error(teamsErr.message);
+  const hiddenIds = new Set(
+    (teams ?? [])
+      .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id) || t.team_name.trim().toLowerCase() === ADMIN_TEAM_LOGIN)
+      .map((t) => t.id),
+  );
+  const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.team_name]));
+
+  type Row = { team_id: string; registration_number: string | null; reason_name: string | null; created_at: string };
+  const all: Row[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data: rows, error } = await supabase
+      .from("servicos")
+      .select("team_id,registration_number,reason_name,created_at")
+      .eq("viable", false)
+      .not("registration_number", "is", null)
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    if (!rows?.length) break;
+    all.push(...(rows as Row[]).filter((r) => !hiddenIds.has(r.team_id)));
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  type Group = {
+    registration_number: string;
+    reason_name: string;
+    count: number;
+    last_at: string;
+    team_names: Set<string>;
+  };
+  const groups = new Map<string, Group>();
+  for (const r of all) {
+    const reg = (r.registration_number || "").trim();
+    const reason = (r.reason_name || "").trim();
+    if (!reg || !reason) continue;
+    const key = `${reg.toUpperCase()}|${reason.toLowerCase()}`;
+    const g = groups.get(key);
+    if (g) {
+      g.count += 1;
+      if (r.created_at > g.last_at) g.last_at = r.created_at;
+      g.team_names.add(teamNameById.get(r.team_id) ?? "-");
+    } else {
+      groups.set(key, {
+        registration_number: reg,
+        reason_name: reason,
+        count: 1,
+        last_at: r.created_at,
+        team_names: new Set([teamNameById.get(r.team_id) ?? "-"]),
+      });
+    }
+  }
+
+  return Array.from(groups.values())
+    .filter((g) => g.count >= 2)
+    .sort((a, b) => b.count - a.count || (a.last_at < b.last_at ? 1 : -1))
+    .slice(0, 50)
+    .map((g) => ({
+      registration_number: g.registration_number,
+      reason_name: g.reason_name,
+      count: g.count,
+      last_at: g.last_at,
+      team_names: Array.from(g.team_names),
+    }));
+};

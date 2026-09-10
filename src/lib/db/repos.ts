@@ -161,6 +161,10 @@ export async function repoAddService(input: {
   reason_name?: string | null;
   registration_number?: string | null;
   negotiated_value?: number | null;
+  payment_methods?: string[] | null;
+  valor_a_vista?: number | null;
+  valor_parcelado?: number | null;
+  qtd_parcelas?: number | null;
   complements?: { id: string | null; name: string }[];
   lat?: number | null;
   lng?: number | null;
@@ -181,6 +185,10 @@ export async function repoAddService(input: {
     reason_name: input.reason_name ?? null,
     registration_number: input.registration_number ?? null,
     negotiated_value: input.negotiated_value ?? null,
+    payment_methods: input.payment_methods ?? null,
+    valor_a_vista: input.valor_a_vista ?? null,
+    valor_parcelado: input.valor_parcelado ?? null,
+    qtd_parcelas: input.qtd_parcelas ?? null,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
     accuracy_m: input.accuracy_m ?? null,
@@ -247,6 +255,10 @@ export async function repoUpdateService(input: {
   reason_name?: string | null;
   registration_number?: string | null;
   negotiated_value?: number | null;
+  payment_methods?: string[] | null;
+  valor_a_vista?: number | null;
+  valor_parcelado?: number | null;
+  qtd_parcelas?: number | null;
   complements?: { id: string | null; name: string }[];
 }): Promise<LocalService> {
   await assertActiveSession();
@@ -264,6 +276,10 @@ export async function repoUpdateService(input: {
     reason_name: input.reason_name ?? null,
     registration_number: input.registration_number ?? null,
     negotiated_value: input.negotiated_value ?? null,
+    payment_methods: input.payment_methods ?? null,
+    valor_a_vista: input.valor_a_vista ?? null,
+    valor_parcelado: input.valor_parcelado ?? null,
+    qtd_parcelas: input.qtd_parcelas ?? null,
     updated_at: nowIso(),
     sync_state: "pending",
   };
@@ -486,6 +502,10 @@ function toServicePayload(r: LocalService) {
     reason_name: r.reason_name,
     registration_number: r.registration_number,
     negotiated_value: r.negotiated_value,
+    payment_methods: r.payment_methods ?? null,
+    valor_a_vista: r.valor_a_vista ?? null,
+    valor_parcelado: r.valor_parcelado ?? null,
+    qtd_parcelas: r.qtd_parcelas ?? null,
     lat: r.lat ?? null,
     lng: r.lng ?? null,
     accuracy_m: r.accuracy_m ?? null,

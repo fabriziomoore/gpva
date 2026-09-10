@@ -123,10 +123,23 @@ export function AddServiceSheet({
           });
         }
         setRegistration(editService.registration_number ?? "");
-        if (editService.is_negotiation && editService.negotiated_value != null) {
-          // Não sabemos a divisão original à vista/parcelado: pré-preenche o
-          // total no campo parcelado e o usuário ajusta se necessário.
-          setValorParcelado(String(editService.negotiated_value).replace(".", ","));
+        if (editService.is_negotiation) {
+          if (editService.payment_methods?.length) {
+            setPayments(new Set(editService.payment_methods as PaymentOption[]));
+          }
+          if (editService.valor_a_vista != null) {
+            setValorAVista(String(editService.valor_a_vista).replace(".", ","));
+          }
+          if (editService.valor_parcelado != null) {
+            setValorParcelado(String(editService.valor_parcelado).replace(".", ","));
+          } else if (editService.negotiated_value != null) {
+            // Serviço antigo, sem detalhamento salvo: pré-preenche o total no
+            // campo parcelado e o usuário ajusta se necessário.
+            setValorParcelado(String(editService.negotiated_value).replace(".", ","));
+          }
+          if (editService.qtd_parcelas != null) {
+            setParcelas(String(editService.qtd_parcelas));
+          }
         }
         setSelectedComplements(
           new Set(editComplements.map((c) => c.id).filter((v): v is string => !!v)),
@@ -182,6 +195,10 @@ export function AddServiceSheet({
     reasonName?: string;
     registration?: string;
     negotiated?: number;
+    paymentMethods?: string[];
+    valorAVista?: number;
+    valorParcelado?: number;
+    qtdParcelas?: number;
     complementIds?: string[];
   }): Promise<string | null> {
     if (!type) return null;
@@ -202,6 +219,10 @@ export function AddServiceSheet({
           reason_name: opts.reasonName ?? null,
           registration_number: opts.registration ?? null,
           negotiated_value: opts.negotiated ?? null,
+          payment_methods: opts.paymentMethods ?? null,
+          valor_a_vista: opts.valorAVista ?? null,
+          valor_parcelado: opts.valorParcelado ?? null,
+          qtd_parcelas: opts.qtdParcelas ?? null,
           complements: chosen.map((c) => ({ id: c.id, name: c.name })),
         });
         await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
@@ -224,6 +245,10 @@ export function AddServiceSheet({
         reason_name: opts.reasonName ?? null,
         registration_number: opts.registration ?? null,
         negotiated_value: opts.negotiated ?? null,
+        payment_methods: opts.paymentMethods ?? null,
+        valor_a_vista: opts.valorAVista ?? null,
+        valor_parcelado: opts.valorParcelado ?? null,
+        qtd_parcelas: opts.qtdParcelas ?? null,
         complements: chosen.map((c) => ({ id: c.id, name: c.name })),
         lat: fix?.lat ?? null,
         lng: fix?.lng ?? null,
@@ -354,6 +379,10 @@ export function AddServiceSheet({
       viable: viableAnswer,
       negotiated,
       registration: isNegotiation ? registration.trim() : undefined,
+      paymentMethods: negotiationSubmission?.paymentMethods,
+      valorAVista: negotiationSubmission?.valorAVista,
+      valorParcelado: negotiationSubmission?.valorTotalParcelado,
+      qtdParcelas: negotiationSubmission?.qtdParcelas,
       complementIds: Array.from(selectedComplements),
     });
 

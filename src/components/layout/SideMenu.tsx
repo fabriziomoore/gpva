@@ -90,6 +90,7 @@ const teamItems = [
 const leaderItems = [
   { to: "/leader" as const, label: "Painel", icon: BarChart3, exact: true },
   { to: "/leader-ranking" as const, label: "Ranking & Perfis", icon: Trophy, exact: true },
+  { to: "/leader-clients" as const, label: "Clientes", icon: Search, exact: true },
   { to: "/leader-map" as const, label: "Mapa", icon: Map, exact: true },
   { to: "/leader-procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
   { to: "/leader-config" as const, label: "Configuração", icon: Settings, exact: false },

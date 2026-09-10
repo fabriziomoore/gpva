@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedLeaderRouteImport } from './routes/_authenticated/leader'
+import { Route as AuthenticatedLeaderClientsRouteImport } from './routes/_authenticated/leader-clients'
 import { Route as AuthenticatedLeaderConfigRouteImport } from './routes/_authenticated/leader-config'
 import { Route as AuthenticatedLeaderMapRouteImport } from './routes/_authenticated/leader-map'
 import { Route as AuthenticatedLeaderProceduresRouteImport } from './routes/_authenticated/leader-procedures'
@@ -50,6 +51,12 @@ const AuthenticatedLeaderRoute = AuthenticatedLeaderRouteImport.update({
   path: '/leader',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeaderClientsRoute =
+  AuthenticatedLeaderClientsRouteImport.update({
+    id: '/leader-clients',
+    path: '/leader-clients',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLeaderConfigRoute =
   AuthenticatedLeaderConfigRouteImport.update({
     id: '/leader-config',
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/leader': typeof AuthenticatedLeaderRoute
+  '/leader-clients': typeof AuthenticatedLeaderClientsRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/leader-map': typeof AuthenticatedLeaderMapRoute
   '/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
@@ -132,6 +140,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/leader': typeof AuthenticatedLeaderRoute
+  '/leader-clients': typeof AuthenticatedLeaderClientsRoute
   '/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/leader-map': typeof AuthenticatedLeaderMapRoute
   '/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
@@ -151,6 +160,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/_authenticated/leader': typeof AuthenticatedLeaderRoute
+  '/_authenticated/leader-clients': typeof AuthenticatedLeaderClientsRoute
   '/_authenticated/leader-config': typeof AuthenticatedLeaderConfigRoute
   '/_authenticated/leader-map': typeof AuthenticatedLeaderMapRoute
   '/_authenticated/leader-procedures': typeof AuthenticatedLeaderProceduresRoute
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/leader'
+    | '/leader-clients'
     | '/leader-config'
     | '/leader-map'
     | '/leader-procedures'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/leader'
+    | '/leader-clients'
     | '/leader-config'
     | '/leader-map'
     | '/leader-procedures'
@@ -205,6 +217,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/_authenticated/leader'
+    | '/_authenticated/leader-clients'
     | '/_authenticated/leader-config'
     | '/_authenticated/leader-map'
     | '/_authenticated/leader-procedures'
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/leader'
       fullPath: '/leader'
       preLoaderRoute: typeof AuthenticatedLeaderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leader-clients': {
+      id: '/_authenticated/leader-clients'
+      path: '/leader-clients'
+      fullPath: '/leader-clients'
+      preLoaderRoute: typeof AuthenticatedLeaderClientsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leader-config': {
@@ -344,6 +364,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedLeaderRoute: typeof AuthenticatedLeaderRoute
+  AuthenticatedLeaderClientsRoute: typeof AuthenticatedLeaderClientsRoute
   AuthenticatedLeaderConfigRoute: typeof AuthenticatedLeaderConfigRoute
   AuthenticatedLeaderMapRoute: typeof AuthenticatedLeaderMapRoute
   AuthenticatedLeaderProceduresRoute: typeof AuthenticatedLeaderProceduresRoute
@@ -360,6 +381,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLeaderRoute: AuthenticatedLeaderRoute,
+  AuthenticatedLeaderClientsRoute: AuthenticatedLeaderClientsRoute,
   AuthenticatedLeaderConfigRoute: AuthenticatedLeaderConfigRoute,
   AuthenticatedLeaderMapRoute: AuthenticatedLeaderMapRoute,
   AuthenticatedLeaderProceduresRoute: AuthenticatedLeaderProceduresRoute,
