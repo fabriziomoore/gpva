@@ -33,9 +33,9 @@ import { buildCaption } from "@/lib/share-negotiation";
 import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 import { isPosCorteName, isHdSubstituicaoName } from "@/lib/service-types";
-import { buildHdCaption, openHdForm, HD_DIAMETRO_OPTIONS, type HdDiametro } from "@/lib/hd-form";
+import { buildHdCaption, openHdForm } from "@/lib/hd-form";
 
-type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck" | "hdForm";
+type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck";
 
 type ServiceType = { id: string; name: string; is_negotiation: boolean };
 
@@ -76,10 +76,6 @@ export function AddServiceSheet({
   const [valorParcelado, setValorParcelado] = useState("");
   const [parcelas, setParcelas] = useState("");
   const [negotiatedOverride, setNegotiatedOverride] = useState(false);
-  const [hdOrdemServico, setHdOrdemServico] = useState("");
-  const [hdHidrometro, setHdHidrometro] = useState("");
-  const [hdLeitura, setHdLeitura] = useState("");
-  const [hdDiametro, setHdDiametro] = useState<HdDiametro | null>(null);
   // Resposta da etapa de viabilidade. Default true: tipos de negociação
   // direta (catálogo) e qualquer tipo que não passe pela etapa de
   // viabilidade são implicitamente viáveis.
@@ -105,10 +101,6 @@ export function AddServiceSheet({
       setParcelas("");
       setNegotiatedOverride(false);
       setViableAnswer(true);
-      setHdOrdemServico("");
-      setHdHidrometro("");
-      setHdLeitura("");
-      setHdDiametro(null);
       if (editService) {
         // Pré-preenche o fluxo com os dados atuais do serviço. Para tipos
         // negociáveis como "Pós corte", o flag de negociação mora no
@@ -310,7 +302,6 @@ export function AddServiceSheet({
       case "registration": return "Matrícula";
       case "payment": return "Forma de pagamento";
       case "complements": return "Complemento(s) do Serviço";
-      case "hdForm": return "Devolução de HD";
     }
   }
 
@@ -326,12 +317,11 @@ export function AddServiceSheet({
     step === "registration" ||
     step === "payment" ||
     step === "complements" ||
-    step === "hdForm" ||
     isNegotiationQuestion;
   const questionText = isNegotiationQuestion ? `Este ${type?.name} foi negociado?` : "";
 
-  // Cálculo da negociação, compartilhado entre a etapa de complementos
-  // (botão "Finalizar e abrir Forms") e a etapa de devolução de HD.
+  // Cálculo da negociação, usado no botão "Finalizar e abrir Forms" da
+  // etapa de complementos.
   const hasInstallment =
     payments.has("PARCELAMENTO BOLETO") || payments.has("CARTÃO DE CRÉDITO");
   const rawVista = Number(valorAVista.replace(",", "."));
@@ -704,10 +694,26 @@ export function AddServiceSheet({
                   <Button
                     type="button"
                     disabled={saving}
-                    onClick={() => setStep("hdForm")}
+                    onClick={async () => {
+                      const caption = buildHdCaption({
+                        equipe: team?.team_name ?? "",
+                        lider: team?.leader,
+                      });
+                      try {
+                        await navigator.clipboard.writeText(caption);
+                      } catch {
+                        /* alguns navegadores exigem gesto — ignorado */
+                      }
+                      const [, opened] = await Promise.all([finalizeService(), openHdForm()]);
+                      if (opened) {
+                        toast.success("Forms aberto — dados da equipe copiados para colar");
+                      } else {
+                        toast.error("Permita pop-ups para abrir o Forms");
+                      }
+                    }}
                     className="h-14 w-full text-base font-semibold"
                   >
-                    Finalizar e abrir Forms
+                    {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms"}
                   </Button>
                 ) : !negotiationSubmission ? (
                   <Button
@@ -769,108 +775,6 @@ export function AddServiceSheet({
                   </div>
                 )
               )}
-            </div>
-          )}
-
-          {step === "hdForm" && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Preencha os dados abaixo. Ao continuar, o resumo é copiado para a área de
-                transferência e o formulário de devolução abre para você colar/selecionar os valores.
-              </p>
-              <div>
-                <Label htmlFor="hd-os">Nº da ordem de serviço</Label>
-                <Input
-                  id="hd-os"
-                  value={hdOrdemServico}
-                  onChange={(e) => setHdOrdemServico(e.target.value)}
-                  inputMode="numeric"
-                  placeholder="Ex: 12345"
-                  className="h-14 text-lg"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <Label htmlFor="hd-medidor">Número do hidrômetro retirado</Label>
-                <Input
-                  id="hd-medidor"
-                  value={hdHidrometro}
-                  onChange={(e) => setHdHidrometro(e.target.value)}
-                  inputMode="numeric"
-                  className="h-14 text-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="hd-leitura">Leitura</Label>
-                <Input
-                  id="hd-leitura"
-                  value={hdLeitura}
-                  onChange={(e) => setHdLeitura(e.target.value.replace(/[^0-9.,]/g, ""))}
-                  inputMode="decimal"
-                  className="h-14 text-lg"
-                />
-              </div>
-              <div>
-                <Label>Diâmetro do medidor</Label>
-                <div className="mt-1 grid grid-cols-3 gap-2">
-                  {HD_DIAMETRO_OPTIONS.map((d) => {
-                    const on = hdDiametro === d;
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setHdDiametro(d)}
-                        className={
-                          "rounded-xl border-2 px-2 py-3 text-sm font-medium transition-colors " +
-                          (on
-                            ? "border-primary bg-primary/15 text-primary"
-                            : "border-border bg-card text-foreground hover:border-primary/50")
-                        }
-                      >
-                        {d}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <Button
-                disabled={
-                  saving ||
-                  !hdOrdemServico.trim() ||
-                  !hdHidrometro.trim() ||
-                  !hdLeitura.trim() ||
-                  !hdDiametro
-                }
-                onClick={async () => {
-                  const diametro = hdDiametro;
-                  if (!diametro) return;
-                  const caption = buildHdCaption({
-                    equipe: team?.team_name ?? "",
-                    lider: team?.leader,
-                    ordemServico: hdOrdemServico.trim(),
-                    hidrometroRetirado: hdHidrometro.trim(),
-                    leitura: hdLeitura.trim(),
-                    diametro,
-                  });
-                  try {
-                    await navigator.clipboard.writeText(caption);
-                  } catch {
-                    /* alguns navegadores exigem gesto — ignorado */
-                  }
-                  const [, opened] = await Promise.all([
-                    finalizeService(),
-                    openHdForm(hdOrdemServico.trim()),
-                  ]);
-                  if (opened) {
-                    toast.success("Forms aberto — resumo copiado para colar");
-                  } else {
-                    toast.error("Permita pop-ups para abrir o Forms");
-                  }
-                }}
-                className="h-14 w-full text-base font-semibold"
-              >
-                {saving ? <Loader2 className="size-5 animate-spin" /> : "Finalizar e abrir Forms"}
-              </Button>
             </div>
           )}
         </div>

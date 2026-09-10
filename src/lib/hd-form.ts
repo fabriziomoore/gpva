@@ -1,35 +1,22 @@
 // Formulário "DEVOLUÇÃO DE MEDIDORES" (Microsoft Forms) — é da empresa, sem
 // acesso de edição, então não dá pra gerar um link com preenchimento
 // automático (a Microsoft só permite isso quando o dono do formulário liga
-// "Habilitar respostas pré-preenchidas" no editor). Em vez disso, coletamos
-// os mesmos dados aqui no app, copiamos um resumo formatado para a área de
-// transferência e abrimos o formulário em branco para colar/selecionar.
+// "Habilitar respostas pré-preenchidas" no editor). Em vez disso, copiamos
+// os dados que já temos (equipe/líder) para a área de transferência e
+// abrimos o formulário em branco para colar/selecionar o resto.
 
 export const HD_FORM_URL =
   "https://forms.cloud.microsoft/pages/responsepage.aspx?id=TAWRiYfpl0Kjc_nPDgxH7IKRFzihJU1BsMdPlZRr6-9UNzBHOTlVVDBCSFJMQ0tEMDhTUEo4MVhXNy4u&route=shorturl";
 
-export const HD_DIAMETRO_OPTIONS = [
-  '1/2"', '3/4"', '1"', '1 1/2"', '2"', '3"', '4"', '5"', '6"',
-] as const;
-export type HdDiametro = (typeof HD_DIAMETRO_OPTIONS)[number];
-
 export type HdSubmission = {
   equipe: string;
   lider: string | null | undefined;
-  ordemServico: string;
-  hidrometroRetirado: string;
-  leitura: string;
-  diametro: HdDiametro;
 };
 
 export function buildHdCaption(input: HdSubmission): string {
   const lines: string[] = ["*DEVOLUÇÃO DE MEDIDORES*"];
   lines.push(`Equipe: ${input.equipe}`);
   lines.push(`Líder responsável: ${input.lider || "-"}`);
-  lines.push(`Nº da ordem de serviço: ${input.ordemServico}`);
-  lines.push(`Número do hidrômetro retirado: ${input.hidrometroRetirado}`);
-  lines.push(`Leitura: ${input.leitura}`);
-  lines.push(`Diâmetro do medidor: ${input.diametro}`);
   return lines.join("\n");
 }
 
@@ -45,7 +32,7 @@ export function buildHdCaption(input: HdSubmission): string {
  * Por isso abrimos a aba em branco aqui já na primeira linha, antes de
  * qualquer await.
  */
-export async function openHdForm(ordemServico?: string): Promise<boolean> {
+export async function openHdForm(): Promise<boolean> {
   const isNativeGuess =
     typeof window !== "undefined" &&
     (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
@@ -64,12 +51,9 @@ export async function openHdForm(ordemServico?: string): Promise<boolean> {
       const { InAppBrowser, ToolBarType, BackgroundColor } = await import(
         "@capgo/inappbrowser"
       );
-      const title = ordemServico
-        ? `Forms Devolução de HD  •  OS ${ordemServico}`
-        : "Forms Devolução de HD";
       await InAppBrowser.openWebView({
         url: HD_FORM_URL,
-        title,
+        title: "Forms Devolução de HD",
         toolbarType: ToolBarType.COMPACT,
         toolbarColor: "#1a2338",
         toolbarTextColor: "#ffffff",
