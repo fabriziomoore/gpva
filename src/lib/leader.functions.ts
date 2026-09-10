@@ -159,13 +159,13 @@ export type ClientHistoryRow = {
 
 // Histórico completo de um cliente (matrícula): toda negociação e toda
 // tentativa inviável já registrada para esse número, de qualquer equipe
-// visível ao líder (RLS via operational_visible_team_ids() já restringe
-// isso às equipes que ele realmente lidera).
+// visível ao chamador (RLS via operational_visible_team_ids() restringe
+// isso automaticamente: líder vê as equipes que lidera, equipe vê só a si
+// mesma) — por isso não exige o papel de líder, funciona pras duas contas.
 export const leaderClientHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { registrationNumber: string }) => data)
   .handler(async ({ data, context }) => {
-    await assertLeader(context);
     const reg = data.registrationNumber.trim();
     if (!reg) return [];
     const { data: rows, error } = await context.supabase
@@ -197,13 +197,13 @@ export const leaderClientHistory = createServerFn({ method: "POST" })
 
 // Negociações de um período (dia/mês/ano), opcionalmente filtradas por
 // matrícula — para navegar sem precisar saber a matrícula de antemão.
+// Sem exigência de papel de líder: RLS já restringe o que cada chamador vê.
 export const leaderNegotiations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     (data: { startISO: string; endISO: string; registrationNumber?: string | null }) => data,
   )
   .handler(async ({ data, context }) => {
-    await assertLeader(context);
     const { data: admins } = await context.supabase.rpc("admin_user_ids");
     const adminIds = new Set(((admins ?? []) as string[]));
     const { data: teams, error: teamsErr } = await context.supabase
@@ -284,11 +284,12 @@ export type RecurringIssueRow = {
 // Clientes recorrentes: matrículas com 2+ serviços inviáveis pelo mesmo
 // motivo, em qualquer época — o mesmo dado que hoje só aparece dentro do
 // PDF (flag "repeat_prev"), aqui de forma proativa e sem precisar buscar
-// uma matrícula específica.
+// uma matrícula específica. Sem exigência de papel de líder: RLS já
+// restringe o que cada chamador vê (líder vê suas equipes, equipe vê só a
+// si mesma).
 export const leaderRecurringIssues = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertLeader(context);
     const { data: admins } = await context.supabase.rpc("admin_user_ids");
     const adminIds = new Set(((admins ?? []) as string[]));
     const { data: teams, error: teamsErr } = await context.supabase

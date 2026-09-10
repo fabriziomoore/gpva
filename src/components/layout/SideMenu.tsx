@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText, RefreshCw } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText, RefreshCw, Users } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useTeam } from "@/hooks/use-team";
@@ -83,6 +83,8 @@ const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
   { to: "/productivity" as const, label: "Produtividade", icon: BarChart3, exact: false },
   { to: "/variable" as const, label: "Variável", icon: Wallet, exact: false },
+  { to: "/equipes" as const, label: "Equipes", icon: Users, exact: false },
+  { to: "/leader-clients" as const, label: "Clientes", icon: Search, exact: false },
   { to: "/procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
   { to: "/settings" as const, label: "Configurações", icon: Settings, exact: false },
 ];

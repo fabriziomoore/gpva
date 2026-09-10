@@ -1018,6 +1018,17 @@ export type Database = {
       }
       reset_current_demo_session: { Args: never; Returns: Json }
       run_system_health_alert_check: { Args: never; Returns: undefined }
+      team_ranking: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          inviable: number
+          negotiation_value: number
+          negotiations: number
+          team_id: string
+          team_name: string
+          viable: number
+        }[]
+      }
       validate_procedure_tree: { Args: { p_tree: Json }; Returns: boolean }
     }
     Enums: {
