@@ -193,49 +193,62 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
 }
 
 function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string) => void }) {
+  const [query, setQuery] = useState("");
   const recurring = useQuery({
     queryKey: ["leader-recurring-issues"],
     queryFn: () => leaderRecurringIssues(),
   });
 
   return (
-    <div className="rounded-2xl bg-card shadow-md p-4">
-      <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
-        <AlertTriangle className="size-4 text-destructive" />
-        Clientes recorrentes
-      </p>
-      <p className="mb-3 text-xs text-muted-foreground">
-        Matrículas com o mesmo motivo de inviabilidade em 2 ou mais visitas.
-      </p>
-      {recurring.isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : (recurring.data ?? []).length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma recorrência encontrada.</p>
-      ) : (
-        <ul className="space-y-2">
-          {(recurring.data ?? []).map((g: RecurringIssueRow) => (
-            <li key={`${g.registration_number}|${g.reason_name}`}>
-              <button
-                onClick={() => onPickMatricula(g.registration_number)}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-semibold">{g.registration_number}</span>
-                  <span className="shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
-                    {g.count}x
-                  </span>
-                </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{g.reason_name}</p>
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                  {g.team_names.join(", ")} · última em {formatDateBR(g.last_at)}
-                </p>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="space-y-3">
+      <Input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onPickMatricula(query);
+        }}
+        placeholder="Buscar por matrícula..."
+        inputMode="numeric"
+        className="h-11"
+      />
+      <div className="rounded-2xl bg-card shadow-md p-4">
+        <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+          <AlertTriangle className="size-4 text-destructive" />
+          Clientes recorrentes
+        </p>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Matrículas com o mesmo motivo de inviabilidade em 2 ou mais visitas.
+        </p>
+        {recurring.isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (recurring.data ?? []).length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma recorrência encontrada.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(recurring.data ?? []).map((g: RecurringIssueRow) => (
+              <li key={`${g.registration_number}|${g.reason_name}`}>
+                <button
+                  onClick={() => onPickMatricula(g.registration_number)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-semibold">{g.registration_number}</span>
+                    <span className="shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
+                      {g.count}x
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{g.reason_name}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                    {g.team_names.join(", ")} · última em {formatDateBR(g.last_at)}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
