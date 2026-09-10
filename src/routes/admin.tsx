@@ -1715,7 +1715,7 @@ function TeamDayReports({
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{formatDateBR(r.started_at)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {r.status === "closed" ? "Fechado" : "Aberto · ao vivo"}
+                      {r.status === "closed" ? "Fechado" : "Aberto"}
                     </p>
                   </div>
                   <div className="flex gap-1">

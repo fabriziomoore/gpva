@@ -402,7 +402,7 @@ function TeamDayReportsReadOnly({
               <summary className="cursor-pointer">
                 <span className="font-semibold">{formatDateBR(r.started_at)}</span>
                 <span className="ml-2 text-xs text-muted-foreground">
-                  {r.status === "closed" ? "Fechado" : "Aberto · ao vivo"}
+                  {r.status === "closed" ? "Fechado" : "Aberto"}
                 </span>
               </summary>
               <ShiftReportBody shift={r} team={team} />

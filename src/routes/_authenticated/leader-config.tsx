@@ -7,6 +7,8 @@ import { useIsLeader } from "@/hooks/use-is-leader";
 import { AppShell } from "@/components/layout/AppShell";
 import { LeaderMeta } from "@/components/layout/LeaderMeta";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { CheckUpdateDialog } from "@/components/layout/CheckUpdateDialog";
+import { useAppVersionInfo } from "@/hooks/use-app-version-info";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +32,7 @@ function LeaderConfigPage() {
   const navigate = useNavigate();
   const { userId, session } = useAuthSession();
   const isLeader = useIsLeader(userId);
+  const versionInfo = useAppVersionInfo();
 
   useEffect(() => {
     if (isLeader.data === false) navigate({ to: "/" });
@@ -142,6 +145,16 @@ function LeaderConfigPage() {
           >
             {saving ? <Loader2 className="size-4 animate-spin" /> : "Alterar senha"}
           </Button>
+        </section>
+
+        <section className="space-y-3 border-t border-border pt-6">
+          <CheckUpdateDialog />
+          {versionInfo && (
+            <p className="text-center text-xs text-muted-foreground">
+              Versão {versionInfo.version} ({versionInfo.build})
+              {versionInfo.otaBuild && ` · Atualização ${versionInfo.otaBuild}`}
+            </p>
+          )}
         </section>
       </div>
     </AppShell>
