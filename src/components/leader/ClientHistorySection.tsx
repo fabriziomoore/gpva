@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -63,6 +63,16 @@ export function ClientHistorySection() {
     if (!canNegotiate && tab === "negotiations") setTab("recurring");
   }, [canNegotiate, tab]);
 
+  // Volta pro histórico da matrícula com o botão físico/gesto de voltar do
+  // aparelho, em vez de um botão "Voltar" na tela (mesmo padrão do Ranking).
+  useEffect(() => {
+    if (typeof window === "undefined" || !searched) return;
+    window.history.pushState({ __clientHistory: true }, "");
+    const onPop = () => setSearched("");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [searched]);
+
   const runSearch = (value: string) => {
     const v = value.trim();
     if (v) setSearched(v);
@@ -75,7 +85,7 @@ export function ClientHistorySection() {
   });
 
   if (searched) {
-    return <ClientHistoryView searched={searched} history={history} onBack={() => setSearched("")} />;
+    return <ClientHistoryView searched={searched} history={history} />;
   }
 
   return (
@@ -271,11 +281,9 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
 function ClientHistoryView({
   searched,
   history,
-  onBack,
 }: {
   searched: string;
   history: UseQueryResult<ClientHistoryRow[]>;
-  onBack: () => void;
 }) {
   const rows = history.data ?? [];
   const negotiations = rows.filter((r) => r.is_negotiation && r.viable);
@@ -290,12 +298,6 @@ function ClientHistoryView({
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Voltar
-      </button>
       <p className="text-lg font-bold">{searched}</p>
 
       {history.isLoading ? (
