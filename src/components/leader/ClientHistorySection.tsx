@@ -82,12 +82,13 @@ export function ClientHistorySection() {
   );
 }
 
+const ALL = "all";
+
 function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: string) => void }) {
   const now = useMemo(() => new Date(), []);
-  const [mode, setMode] = useState<"day" | "month" | "year">("month");
   const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [day, setDay] = useState(now.getDate());
+  const [monthSel, setMonthSel] = useState<number | typeof ALL>(now.getMonth() + 1);
+  const [daySel, setDaySel] = useState<number | typeof ALL>(now.getDate());
   const [regFilter, setRegFilter] = useState("");
 
   const years = useMemo(() => {
@@ -95,11 +96,18 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
     for (let y = now.getFullYear(); y >= now.getFullYear() - 4; y--) arr.push(y);
     return arr;
   }, [now]);
-  const daysInMonth = new Date(year, month, 0).getDate();
+  const daysInMonth = monthSel === ALL ? 31 : new Date(year, monthSel, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const effectiveDay = Math.min(day, daysInMonth);
+  const effectiveDay = daySel === ALL ? ALL : Math.min(daySel, daysInMonth);
 
-  const { startISO, endISO } = periodRangeISO(mode, year, month, effectiveDay);
+  const mode: "day" | "month" | "year" =
+    monthSel === ALL ? "year" : effectiveDay === ALL ? "month" : "day";
+  const { startISO, endISO } = periodRangeISO(
+    mode,
+    year,
+    monthSel === ALL ? 1 : monthSel,
+    effectiveDay === ALL ? 1 : effectiveDay,
+  );
   const reg = regFilter.trim();
 
   const query = useQuery({
@@ -113,37 +121,32 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
 
   return (
     <div className="space-y-3">
-      <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="day">Dia</TabsTrigger>
-          <TabsTrigger value="month">Mês</TabsTrigger>
-          <TabsTrigger value="year">Ano</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <div className="flex flex-wrap gap-2">
-        {mode === "day" && (
-          <select
-            value={effectiveDay}
-            onChange={(e) => setDay(Number(e.target.value))}
-            className={`${selectCls} w-20 shrink-0`}
-          >
-            {days.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        )}
-        {mode !== "year" && (
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className={`${selectCls} min-w-0 flex-1`}
-          >
-            {MONTHS.map((n, i) => (
-              <option key={n} value={i + 1}>{n}</option>
-            ))}
-          </select>
-        )}
+      <div className="flex gap-2">
+        <select
+          value={effectiveDay}
+          disabled={monthSel === ALL}
+          onChange={(e) => setDaySel(e.target.value === ALL ? ALL : Number(e.target.value))}
+          className={`${selectCls} w-24 shrink-0 disabled:opacity-50`}
+        >
+          <option value={ALL}>Todos</option>
+          {days.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+        <select
+          value={monthSel}
+          onChange={(e) => {
+            const v = e.target.value === ALL ? ALL : Number(e.target.value);
+            setMonthSel(v);
+            if (v === ALL) setDaySel(ALL);
+          }}
+          className={`${selectCls} min-w-0 flex-1`}
+        >
+          <option value={ALL}>Todos</option>
+          {MONTHS.map((n, i) => (
+            <option key={n} value={i + 1}>{n}</option>
+          ))}
+        </select>
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
