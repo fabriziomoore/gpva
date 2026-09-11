@@ -777,12 +777,6 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       if (error) throw new Error(error.message);
       return data;
     }
-    case "adminSetGoogleFormMode": {
-      const { error } = await sb.from("google_form_settings")
-        .update({ mode: args.mode, updated_at: new Date().toISOString() }).eq("id", "singleton");
-      if (error) throw new Error(error.message);
-      return { ok: true };
-    }
     case "adminUpdateGoogleForm": {
       const formId = parseGoogleFormId(args.formIdOrUrl);
       const entries = await extractEntriesFromForm(formId);
@@ -793,6 +787,22 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         .update({ ...patch, updated_at: new Date().toISOString() }).eq("id", "singleton");
       if (error) throw new Error(error.message);
       return { ok: true, formId, entries };
+    }
+
+    // ---------- HD form (devolução de medidores) ----------
+    case "adminGetHdFormSettings": {
+      const { data, error } = await sb.from("hd_form_settings")
+        .select("prod_url,test_url,updated_at")
+        .eq("id", "singleton").maybeSingle();
+      if (error) throw new Error(error.message);
+      return data;
+    }
+    case "adminUpdateHdForm": {
+      const patch = args.target === "prod" ? { prod_url: args.url } : { test_url: args.url };
+      const { error } = await sb.from("hd_form_settings")
+        .update({ ...patch, updated_at: new Date().toISOString() }).eq("id", "singleton");
+      if (error) throw new Error(error.message);
+      return { ok: true };
     }
 
     // ---------- Audit ----------
@@ -994,7 +1004,7 @@ async function auditDb(sb: any) {
       severity: ms > 800 ? "warning" : "info", message: `Latência: ${ms}ms`, evidence: { latency_ms: ms },
       suggestion: ms > 800 ? "Latência acima de 800ms." : undefined });
   } catch (e) { results.push({ id: "db.connection", category: "banco", title: "Conexão com o banco", severity: "error", message: (e as Error).message }); }
-  const tables = ["servicos","expedientes","equipes","setores","tipos_servico","complementos_servico","vinculos_complementos","impactos","impactos_expediente","motivos_inviabilidade","user_roles","active_sessions","catalog_order","google_form_settings","audit_reports"];
+  const tables = ["servicos","expedientes","equipes","setores","tipos_servico","complementos_servico","vinculos_complementos","impactos","impactos_expediente","motivos_inviabilidade","user_roles","active_sessions","catalog_order","google_form_settings","hd_form_settings","audit_reports"];
   for (const t of tables) {
     try {
       const { count, error } = await sb.from(t).select("*", { count: "exact", head: true });
@@ -1057,6 +1067,18 @@ async function auditConfig(sb: any) {
       }
     }
   } catch (e) { results.push({ id: "cfg.form", category: "config", title: "Google Forms", severity: "error", message: (e as Error).message }); }
+  try {
+    const { data: hd } = await sb.from("hd_form_settings")
+      .select("prod_url,test_url").eq("id", "singleton").maybeSingle();
+    if (!hd) results.push({ id: "cfg.hdform.singleton", category: "config", title: "hd_form_settings singleton", severity: "error", message: "Singleton ausente" });
+    else {
+      const h: any = hd;
+      results.push({ id: "cfg.hdform.prod", category: "config", title: "Forms de HD (produção)",
+        severity: h.prod_url ? "info" : "error", message: h.prod_url ? "OK" : "URL vazia" });
+      results.push({ id: "cfg.hdform.test", category: "config", title: "Forms de HD (teste)",
+        severity: h.test_url ? "info" : "warning", message: h.test_url ? "OK" : "URL de teste não configurada — contas de teste não conseguem abrir o Forms de HD" });
+    }
+  } catch (e) { results.push({ id: "cfg.hdform", category: "config", title: "Forms de HD", severity: "error", message: (e as Error).message }); }
   return results;
 }
 

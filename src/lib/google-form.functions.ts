@@ -25,6 +25,8 @@ export type FormSettingsRow = {
   test_entries: FormEntries;
 };
 
+export type ActiveFormResult = { formId: string; entries: FormEntries; isTest: boolean } | null;
+
 function stripDiacritics(s: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 }
@@ -77,16 +79,32 @@ export async function extractEntriesFromForm(formId: string): Promise<FormEntrie
   };
 }
 
+// Contas de teste sempre recebem o formulário/entries de teste; equipes
+// reais sempre recebem o de produção. A decisão é do servidor (a partir de
+// equipes.is_test), não de um modo manual — evita esquecer de trocar de
+// volta pra produção depois de um teste.
 export const getGoogleFormSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<ActiveFormResult> => {
+    const { data: eq } = await context.supabase
+      .from("equipes")
+      .select("is_test,team_name")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const isTest = eq?.is_test === true || eq?.team_name === "TESTANDO";
+
     const { data, error } = await context.supabase
       .from("google_form_settings")
-      .select("mode,prod_form_id,test_form_id,prod_entries,test_entries")
+      .select("prod_form_id,test_form_id,prod_entries,test_entries")
       .eq("id", "singleton")
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return data as FormSettingsRow | null;
+    if (!data) return null;
+    return {
+      formId: isTest ? data.test_form_id : data.prod_form_id,
+      entries: (isTest ? data.test_entries : data.prod_entries) as FormEntries,
+      isTest,
+    };
   });
 
 export const adminGetGoogleFormSettings = createServerFn({ method: "POST" })
@@ -101,19 +119,6 @@ export const adminGetGoogleFormSettings = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     return row;
-  });
-
-export const adminSetGoogleFormMode = createServerFn({ method: "POST" })
-  .inputValidator((d: { adminPassword: string; mode: "prod" | "test" }) => d)
-  .handler(async ({ data }) => {
-    assertAdmin(data.adminPassword);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("google_form_settings")
-      .update({ mode: data.mode, updated_at: new Date().toISOString() })
-      .eq("id", "singleton");
-    if (error) throw new Error(error.message);
-    return { ok: true as const };
   });
 
 export const adminUpdateGoogleForm = createServerFn({ method: "POST" })

@@ -40,6 +40,10 @@ export default defineConfig({
         replacement: resolve(srcDir, "lib/google-form.functions.mobile.ts"),
       },
       {
+        find: /^@\/lib\/hd-form\.functions$/,
+        replacement: resolve(srcDir, "lib/hd-form.functions.mobile.ts"),
+      },
+      {
         find: /^@\/lib\/audit\/audit\.functions$/,
         replacement: resolve(srcDir, "lib/audit/audit.functions.mobile.ts"),
       },

@@ -1,6 +1,8 @@
 // Envia respostas ao Google Forms "DESCRITIVO NEGOCIAÇÃO" em segundo plano.
-// A configuração (form ativo + IDs de entry.*) vem do banco via server fn
-// `getGoogleFormSettings` e o admin pode trocar em Administração → Google Forms.
+// A configuração (IDs de entry.* de produção e de teste) vem do banco via
+// server fn `getGoogleFormSettings`, que já escolhe qual usar a partir de
+// equipes.is_test — contas de teste nunca caem no formulário real. O admin
+// só cadastra os dois formulários em Administração → Formulários.
 
 import { getGoogleFormSettings, type FormEntries } from "@/lib/google-form.functions";
 
@@ -13,12 +15,10 @@ const CACHE_KEY = "gpva-google-form-active";
 async function loadActiveForm(): Promise<ActiveForm> {
   const row = await getGoogleFormSettings();
   if (!row) throw new Error("Configuração do Google Forms ausente.");
-  const formId = row.mode === "test" ? row.test_form_id : row.prod_form_id;
-  const entries = (row.mode === "test" ? row.test_entries : row.prod_entries) as EntryIds;
   return {
-    formId,
-    endpoint: `https://docs.google.com/forms/d/e/${formId}/formResponse`,
-    entries,
+    formId: row.formId,
+    endpoint: `https://docs.google.com/forms/d/e/${row.formId}/formResponse`,
+    entries: row.entries,
   };
 }
 

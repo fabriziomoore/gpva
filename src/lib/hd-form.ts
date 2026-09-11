@@ -4,9 +4,9 @@
 // "Habilitar respostas pré-preenchidas" no editor). Em vez disso, copiamos
 // os dados que já temos (equipe/líder) para a área de transferência e
 // abrimos o formulário em branco para colar/selecionar o resto.
-
-export const HD_FORM_URL =
-  "https://forms.cloud.microsoft/pages/responsepage.aspx?id=TAWRiYfpl0Kjc_nPDgxH7IKRFzihJU1BsMdPlZRr6-9UNzBHOTlVVDBCSFJMQ0tEMDhTUEo4MVhXNy4u&route=shorturl";
+//
+// O link em si (produção vs. teste) vem do banco via `getHdFormUrl` — contas
+// de teste nunca recebem o link de produção, ver hd-form.functions.ts.
 
 export type HdSubmission = {
   equipe: string;
@@ -20,19 +20,24 @@ export function buildHdCaption(input: HdSubmission): string {
   return lines.join("\n");
 }
 
+export type HdFormOpenResult = "opened" | "not_configured" | "blocked";
+
 /**
  * Abre o formulário em branco (sem preenchimento automático — ver nota
  * acima). No app nativo abre num WebView próprio com toolbar customizada,
- * igual ao Forms de negociação; na web abre em nova aba. Retorna true se
- * conseguiu abrir.
+ * igual ao Forms de negociação; na web abre em nova aba.
  *
  * Em navegadores, o window.open precisa ser feito SÍNCRONO no gesto do
  * clique — senão o popup abre em about:blank e a navegação posterior é
- * bloqueada (mesmo cuidado do Forms de negociação, ver google-form.ts).
- * Por isso abrimos a aba em branco aqui já na primeira linha, antes de
- * qualquer await.
+ * bloqueada (mesmo cuidado do Forms de negociação, ver google-form.ts). Por
+ * isso abrimos a aba em branco já na primeira linha, ANTES de esperar
+ * `urlPromise` (que faz uma chamada ao servidor para saber se é conta de
+ * teste ou real) — só assim o navegador ainda reconhece isso como parte do
+ * clique do usuário.
  */
-export async function openHdForm(): Promise<boolean> {
+export async function openHdForm(
+  urlPromise: Promise<{ url: string | null; isTest: boolean } | null>,
+): Promise<HdFormOpenResult> {
   const isNativeGuess =
     typeof window !== "undefined" &&
     (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
@@ -41,7 +46,14 @@ export async function openHdForm(): Promise<boolean> {
   let win: Window | null = null;
   if (typeof window !== "undefined" && !isNativeGuess) {
     win = window.open("about:blank", "_blank");
-    if (!win) return false;
+    if (!win) return "blocked";
+  }
+
+  const info = await urlPromise;
+  const url = info?.url;
+  if (!url) {
+    win?.close();
+    return "not_configured";
   }
 
   try {
@@ -52,7 +64,7 @@ export async function openHdForm(): Promise<boolean> {
         "@capgo/inappbrowser"
       );
       await InAppBrowser.openWebView({
-        url: HD_FORM_URL,
+        url,
         title: "Forms Devolução de HD",
         toolbarType: ToolBarType.COMPACT,
         toolbarColor: "#1a2338",
@@ -65,16 +77,16 @@ export async function openHdForm(): Promise<boolean> {
         isPresentAfterPageLoad: false,
         isAnimated: true,
       });
-      return true;
+      return "opened";
     }
   } catch {
-    if (isNativeGuess) return false;
+    if (isNativeGuess) return "blocked";
   }
 
   if (!win) {
-    win = window.open(HD_FORM_URL, "_blank");
-    return !!win;
+    win = window.open(url, "_blank");
+    return win ? "opened" : "blocked";
   }
-  win.location.href = HD_FORM_URL;
-  return true;
+  win.location.href = url;
+  return "opened";
 }

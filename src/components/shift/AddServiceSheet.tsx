@@ -34,6 +34,7 @@ import { setFormsStatus, saveFailedPayload } from "@/lib/forms-status";
 import { tryGetGeoFix } from "@/lib/geo";
 import { isPosCorteName, isHdSubstituicaoName } from "@/lib/service-types";
 import { buildHdCaption, openHdForm } from "@/lib/hd-form";
+import { getHdFormUrl } from "@/lib/hd-form.functions";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck";
 
@@ -733,9 +734,14 @@ export function AddServiceSheet({
                       } catch {
                         /* alguns navegadores exigem gesto — ignorado */
                       }
-                      const [, opened] = await Promise.all([finalizeService(), openHdForm()]);
-                      if (opened) {
+                      const [, result] = await Promise.all([
+                        finalizeService(),
+                        openHdForm(getHdFormUrl().catch(() => null)),
+                      ]);
+                      if (result === "opened") {
                         toast.success("Forms aberto — dados da equipe copiados para colar");
+                      } else if (result === "not_configured") {
+                        toast.error("Forms de devolução de HD ainda não configurado — avise o admin em Formulários.");
                       } else {
                         toast.error("Permita pop-ups para abrir o Forms");
                       }

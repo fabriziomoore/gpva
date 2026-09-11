@@ -10,6 +10,7 @@ export type FormSettingsRow = {
   mode: "prod" | "test"; prod_form_id: string; test_form_id: string;
   prod_entries: FormEntries; test_entries: FormEntries;
 };
+export type ActiveFormResult = { formId: string; entries: FormEntries; isTest: boolean } | null;
 
 export function parseGoogleFormId(input: string): string {
   const s = input.trim();
@@ -60,13 +61,25 @@ export async function extractEntriesFromForm(formId: string): Promise<FormEntrie
   };
 }
 
-export const getGoogleFormSettings = async (): Promise<FormSettingsRow | null> => {
+export const getGoogleFormSettings = async (): Promise<ActiveFormResult> => {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  const { data: eq } = userId
+    ? await supabase.from("equipes").select("is_test,team_name").eq("id", userId).maybeSingle()
+    : { data: null };
+  const isTest = eq?.is_test === true || eq?.team_name === "TESTANDO";
+
   const { data, error } = await supabase
     .from("google_form_settings")
-    .select("mode,prod_form_id,test_form_id,prod_entries,test_entries")
+    .select("prod_form_id,test_form_id,prod_entries,test_entries")
     .eq("id", "singleton").maybeSingle();
   if (error) throw new Error(error.message);
-  return data as FormSettingsRow | null;
+  if (!data) return null;
+  return {
+    formId: isTest ? data.test_form_id : data.prod_form_id,
+    entries: (isTest ? data.test_entries : data.prod_entries) as FormEntries,
+    isTest,
+  };
 };
 
 type Args<T> = { data: T & { adminPassword: string } };
@@ -76,5 +89,4 @@ const call = <R,>(op: string) => async <T,>(arg: Args<T>): Promise<R> => {
 };
 
 export const adminGetGoogleFormSettings = call<(FormSettingsRow & { updated_at: string }) | null>("adminGetGoogleFormSettings");
-export const adminSetGoogleFormMode = call<{ ok: true }>("adminSetGoogleFormMode");
 export const adminUpdateGoogleForm = call<{ ok: true; formId: string; entries: FormEntries }>("adminUpdateGoogleForm");

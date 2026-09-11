@@ -58,9 +58,12 @@ import {
 } from "@/lib/admin.functions";
 import {
   adminGetGoogleFormSettings,
-  adminSetGoogleFormMode,
   adminUpdateGoogleForm,
 } from "@/lib/google-form.functions";
+import {
+  adminGetHdFormSettings,
+  adminUpdateHdForm,
+} from "@/lib/hd-form.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
@@ -110,7 +113,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   impactos: { id: "impactos", label: "Impactos", description: "Impactos registrados ao fim do expediente", icon: AlertTriangle },
   variable: { id: "variable", label: "Variável", description: "Taxa variável por equipe", icon: Percent },
   map_services: { id: "map_services", label: "Serviços no Mapa", description: "Marcações registradas — remoção seletiva", icon: MapPin },
-  google_form: { id: "google_form", label: "Google Forms", description: "Modo e link do formulário externo", icon: FileSpreadsheet },
+  google_form: { id: "google_form", label: "Formulários", description: "Negociação e devolução de HD — links de produção e teste", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
   devices: { id: "devices", label: "Dispositivos", description: "Sessões e versões — todas as contas", icon: Smartphone },
   trash: { id: "trash", label: "Lixeira", description: "Relatórios excluídos — restaurar ou apagar", icon: Trash },
@@ -327,7 +330,7 @@ function AdminPage() {
           ) : section === "supervisores" ? (
             <SupervisoresSection adminPw={adminPw} />
           ) : section === "google_form" ? (
-            <GoogleFormSection adminPw={adminPw} />
+            <FormsSection adminPw={adminPw} />
           ) : section === "test_account" ? (
             <TestAccountSection adminPw={adminPw} />
           ) : section === "map_services" ? (
@@ -2217,10 +2220,29 @@ function LeaderRowItem({
   );
 }
 
+function FormsSection({ adminPw }: { adminPw: string }) {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-lg font-semibold">Formulários</h2>
+        <p className="text-sm text-muted-foreground">
+          Contas marcadas como <strong>teste</strong> (criadas em "Conta de Teste") sempre abrem a
+          versão de <strong>teste</strong> destes formulários. Equipes reais sempre abrem a versão
+          de <strong>produção</strong>. Não existe mais um modo manual — assim ninguém esquece de
+          trocar de volta e envia dado de teste para a empresa.
+        </p>
+      </div>
+      <GoogleFormSection adminPw={adminPw} />
+      <div className="border-t pt-6">
+        <HdFormSection adminPw={adminPw} />
+      </div>
+    </div>
+  );
+}
+
 function GoogleFormSection({ adminPw }: { adminPw: string }) {
   const qc = useQueryClient();
   const getFn = useServerFn(adminGetGoogleFormSettings);
-  const setModeFn = useServerFn(adminSetGoogleFormMode);
   const updateFn = useServerFn(adminUpdateGoogleForm);
 
   const q = useQuery({
@@ -2230,16 +2252,6 @@ function GoogleFormSection({ adminPw }: { adminPw: string }) {
 
   const [prodInput, setProdInput] = useState("");
   const [testInput, setTestInput] = useState("");
-
-  const modeMut = useMutation({
-    mutationFn: (mode: "prod" | "test") =>
-      setModeFn({ data: { adminPassword: adminPw, mode } }),
-    onSuccess: () => {
-      toast.success("Formulário ativo atualizado");
-      qc.invalidateQueries({ queryKey: ["admin-google-form"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const updateMut = useMutation({
     mutationFn: (v: { target: "prod" | "test"; formIdOrUrl: string }) =>
@@ -2261,49 +2273,14 @@ function GoogleFormSection({ adminPw }: { adminPw: string }) {
     );
   }
   const row = q.data as
-    | { mode: "prod" | "test"; prod_form_id: string; test_form_id: string }
+    | { prod_form_id: string; test_form_id: string }
     | null
     | undefined;
   if (!row) return <p className="text-sm text-muted-foreground">Configuração não encontrada.</p>;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Google Forms</h2>
-        <p className="text-sm text-muted-foreground">
-          Escolha qual formulário recebe as respostas de negociação e cole uma nova URL/ID caso o
-          formulário mude.
-        </p>
-      </div>
-
-      <div className="rounded-xl border bg-card p-4">
-        <Label className="text-sm font-semibold">Formulário ativo</Label>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {(["prod", "test"] as const).map((m) => {
-            const on = row.mode === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                disabled={modeMut.isPending}
-                onClick={() => modeMut.mutate(m)}
-                className={
-                  "rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors " +
-                  (on
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border bg-card hover:border-primary/50")
-                }
-              >
-                {m === "prod" ? "Produção (real)" : "Teste"}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Ativo agora: <strong>{row.mode === "prod" ? "Produção" : "Teste"}</strong>
-        </p>
-      </div>
-
+    <div className="space-y-4">
+      <h3 className="text-base font-semibold">Negociação (Google Forms)</h3>
       {(["prod", "test"] as const).map((target) => {
         const currentId = target === "prod" ? row.prod_form_id : row.test_form_id;
         const value = target === "prod" ? prodInput : testInput;
@@ -2314,7 +2291,7 @@ function GoogleFormSection({ adminPw }: { adminPw: string }) {
               {target === "prod" ? "Formulário de produção" : "Formulário de teste"}
             </Label>
             <p className="text-xs text-muted-foreground break-all">
-              ID atual: <code>{currentId}</code>
+              ID atual: <code>{currentId || "—"}</code>
             </p>
             <Input
               value={value}
@@ -2325,6 +2302,85 @@ function GoogleFormSection({ adminPw }: { adminPw: string }) {
               className="w-full"
               disabled={updateMut.isPending || !value.trim()}
               onClick={() => updateMut.mutate({ target, formIdOrUrl: value.trim() })}
+            >
+              {updateMut.isPending && updateMut.variables?.target === target ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Salvar formulário"
+              )}
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function HdFormSection({ adminPw }: { adminPw: string }) {
+  const qc = useQueryClient();
+  const getFn = useServerFn(adminGetHdFormSettings);
+  const updateFn = useServerFn(adminUpdateHdForm);
+
+  const q = useQuery({
+    queryKey: ["admin-hd-form"],
+    queryFn: () => getFn({ data: { adminPassword: adminPw } }),
+  });
+
+  const [prodInput, setProdInput] = useState("");
+  const [testInput, setTestInput] = useState("");
+
+  const updateMut = useMutation({
+    mutationFn: (v: { target: "prod" | "test"; url: string }) =>
+      updateFn({ data: { adminPassword: adminPw, ...v } }),
+    onSuccess: (_r, v) => {
+      toast.success(`Forms de HD ${v.target === "prod" ? "de produção" : "de teste"} atualizado`);
+      if (v.target === "prod") setProdInput("");
+      else setTestInput("");
+      qc.invalidateQueries({ queryKey: ["admin-hd-form"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (q.isLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  const row = q.data as { prod_url: string; test_url: string | null } | null | undefined;
+  if (!row) return <p className="text-sm text-muted-foreground">Configuração não encontrada.</p>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-base font-semibold">Devolução de HD (Microsoft Forms)</h3>
+      {(["prod", "test"] as const).map((target) => {
+        const currentUrl = target === "prod" ? row.prod_url : row.test_url;
+        const value = target === "prod" ? prodInput : testInput;
+        const setValue = target === "prod" ? setProdInput : setTestInput;
+        return (
+          <div key={target} className="rounded-xl border bg-card p-4 space-y-2">
+            <Label className="text-sm font-semibold">
+              {target === "prod" ? "Forms de produção" : "Forms de teste"}
+            </Label>
+            <p className="text-xs text-muted-foreground break-all">
+              URL atual: <code>{currentUrl || "não configurada"}</code>
+            </p>
+            {target === "test" && !currentUrl && (
+              <p className="text-xs text-amber-600">
+                Sem essa URL, contas de teste recebem um aviso de erro ao tentar abrir o Forms de HD
+                (nunca caem na URL de produção).
+              </p>
+            )}
+            <Input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="Cole a URL do formulário no Microsoft Forms"
+            />
+            <Button
+              className="w-full"
+              disabled={updateMut.isPending || !value.trim()}
+              onClick={() => updateMut.mutate({ target, url: value.trim() })}
             >
               {updateMut.isPending && updateMut.variables?.target === target ? (
                 <Loader2 className="size-4 animate-spin" />

@@ -319,6 +319,27 @@ export type Database = {
         }
         Relationships: []
       }
+      hd_form_settings: {
+        Row: {
+          id: string
+          prod_url: string
+          test_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          prod_url: string
+          test_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          prod_url?: string
+          test_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       impactos: {
         Row: {
           active: boolean
