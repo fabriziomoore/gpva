@@ -85,7 +85,7 @@ export function LeaderMapSection() {
       if (error) throw error;
       type Row = { id: string; team_name: string; is_test: boolean | null };
       return ((data ?? []) as Row[])
-        .filter((r) => !r.is_test && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN)
+        .filter((r) => r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN)
         .map<TeamRow>((r) => ({ id: r.id, team_name: r.team_name }));
     },
   });

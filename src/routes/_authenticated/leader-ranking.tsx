@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
@@ -17,6 +17,7 @@ function LeaderRankingPage() {
   const navigate = useNavigate();
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
+  const [title, setTitle] = useState("Ranking & Perfis");
 
   useEffect(() => {
     if (isLeader.data === false) navigate({ to: "/" });
@@ -34,8 +35,8 @@ function LeaderRankingPage() {
   if (isLeader.data === false) return null;
 
   return (
-    <AppShell title="Ranking & Perfis" right={<LeaderMeta />} showSync={false} wide>
-      <LeaderRankingSection />
+    <AppShell title={title} right={<LeaderMeta />} showSync={false} wide>
+      <LeaderRankingSection onTitleChange={setTitle} />
     </AppShell>
   );
 }

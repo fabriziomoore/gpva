@@ -36,7 +36,7 @@ export const leaderListTeams: Callable<
   if (error) throw new Error(error.message);
   return (data ?? [])
     .filter(
-      (r) => !(r as { is_test?: boolean }).is_test && !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
+      (r) => !adminIds.has(r.id) && r.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
     )
     .map((r) => ({
       ...r,
@@ -70,11 +70,11 @@ export const leaderTeamsRanking: Callable<
     .select("id,team_name,is_test");
   if (teamsErr) throw new Error(teamsErr.message);
   const visibleTeams = (teams ?? []).filter(
-    (t) => !(t as { is_test?: boolean }).is_test && !adminIds.has(t.id) && t.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
+    (t) => !adminIds.has(t.id) && t.team_name.trim().toLowerCase() !== ADMIN_TEAM_LOGIN,
   );
   const hiddenIds = new Set(
     (teams ?? [])
-      .filter((t) => (t as { is_test?: boolean }).is_test || adminIds.has(t.id) || t.team_name.trim().toLowerCase() === ADMIN_TEAM_LOGIN)
+      .filter((t) => adminIds.has(t.id) || t.team_name.trim().toLowerCase() === ADMIN_TEAM_LOGIN)
       .map((t) => t.id),
   );
 
@@ -139,6 +139,68 @@ export const leaderTeamsRanking: Callable<
       byType,
     };
   });
+};
+
+export type TeamServiceRow = {
+  id: string;
+  registration_number: string | null;
+  service_type_name: string;
+  is_negotiation: boolean;
+  viable: boolean;
+  reason_name: string | null;
+  negotiated_value: number | null;
+  payment_methods: string[] | null;
+  valor_a_vista: number | null;
+  valor_parcelado: number | null;
+  qtd_parcelas: number | null;
+  created_at: string;
+};
+
+export const leaderTeamServiceList: Callable<
+  TeamServiceRow[],
+  {
+    teamId: string;
+    year: number;
+    month: number;
+    day?: number | null;
+    startISO?: string | null;
+    endISO?: string | null;
+  }
+> = async ({ data }) => {
+  const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
+  const start = data.startISO
+    ? data.startISO
+    : data.day
+      ? new Date(Date.UTC(data.year, data.month - 1, data.day) + TZ_OFFSET_MS).toISOString()
+      : new Date(Date.UTC(data.year, data.month - 1, 1)).toISOString();
+  const end = data.endISO
+    ? data.endISO
+    : data.day
+      ? new Date(Date.UTC(data.year, data.month - 1, data.day + 1) + TZ_OFFSET_MS).toISOString()
+      : new Date(Date.UTC(data.year, data.month, 1)).toISOString();
+
+  const rows: TeamServiceRow[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data: page, error } = await supabase
+      .from("servicos")
+      .select(
+        "id,registration_number,service_type_name,is_negotiation,viable,reason_name,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at",
+      )
+      .eq("team_id", data.teamId)
+      .gte("created_at", start)
+      .lt("created_at", end)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    if (!page?.length) break;
+    rows.push(...(page as unknown as TeamServiceRow[]));
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+  return rows;
 };
 
 export const leaderListShifts: Callable<

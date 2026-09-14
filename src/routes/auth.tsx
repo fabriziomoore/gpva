@@ -15,7 +15,8 @@ import { readStoredAuthSession, hydrateLocalStorageFromBackup } from "@/lib/sync
 import { hasSessionEjection } from "@/lib/session-guard";
 import { getRememberLoginPref, setRememberLogin } from "@/lib/remember-login";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, QrCode } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { AppLogo } from "@/components/brand/AppLogo";
 import { DisclaimerBanner } from "@/components/brand/DisclaimerBanner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +24,10 @@ import aguasDoRioLogoLightUrl from "@/assets/aguas-do-rio-logo-light.png?url";
 import aguasDoRioLogoDarkUrl from "@/assets/aguas-do-rio-logo-dark.png?url";
 
 const LOGIN_TIMEOUT_MS = 8_000;
+
+// Redireciona pro APK da release mais recente (supabase/functions/latest-apk)
+// — assim o QR não precisa ser trocado a cada nova versão publicada.
+const LATEST_APK_URL = "https://zerepuiyqbenogeyllxb.supabase.co/functions/v1/latest-apk";
 
 class OfflineLoginFallbackError extends Error {
   constructor() {
@@ -76,6 +81,7 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState<boolean>(false);
+  const [showApkQr, setShowApkQr] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -255,6 +261,27 @@ function AuthPage() {
               <img src={aguasDoRioLogoDarkUrl} alt="" aria-hidden="true" className="hidden h-10 w-auto dark:block" />
             </div>
         </form>
+
+        <div className="mt-3 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowApkQr((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            <QrCode className="size-3.5" />
+            {showApkQr ? "Ocultar QR do app" : "Baixar o app em um celular novo"}
+          </button>
+        </div>
+        {showApkQr && (
+          <div className="mt-2 flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card p-3">
+            <div className="rounded-md bg-white p-1">
+              <QRCodeSVG value={LATEST_APK_URL} size={76} fgColor="#000000" bgColor="#ffffff" />
+            </div>
+            <p className="text-center text-[10px] leading-snug text-muted-foreground">
+              Aponte a câmera pra baixar o .apk mais recente do ACP.
+            </p>
+          </div>
+        )}
 
         </div>
       </div>

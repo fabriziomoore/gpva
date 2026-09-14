@@ -230,6 +230,12 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       return { ok: true };
     }
     case "adminUpdateTeam": {
+      if (args.newLogin !== undefined) {
+        const slug = slugify(args.newLogin);
+        if (!slug || slug.length < 3) throw new Error("Login inválido.");
+        const { error } = await sb.auth.admin.updateUserById(args.teamId, { email: `${slug}@gpva.local` });
+        if (error) throw new Error(error.message);
+      }
       if (args.password !== undefined) {
         if (String(args.password).length < 6) throw new Error("Senha precisa ter ao menos 6 caracteres.");
         const { error: pwErr } = await sb.auth.admin.updateUserById(args.teamId, { password: String(args.password) });
@@ -362,6 +368,37 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
           total: mine.length, viable, inviable, negotiations, negotiationValue, byType,
         };
       });
+    }
+
+    case "adminTeamServiceList": {
+      const TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
+      let start: string, end: string;
+      if (args.startISO && args.endISO) {
+        start = args.startISO; end = args.endISO;
+      } else if (typeof args.day === "number" && args.day > 0) {
+        start = new Date(Date.UTC(args.year, args.month - 1, args.day) + TZ_OFFSET_MS).toISOString();
+        end = new Date(Date.UTC(args.year, args.month - 1, args.day + 1) + TZ_OFFSET_MS).toISOString();
+      } else {
+        start = new Date(Date.UTC(args.year, args.month - 1, 1)).toISOString();
+        end = new Date(Date.UTC(args.year, args.month, 1)).toISOString();
+      }
+      const rows: any[] = [];
+      const pageSize = 1000; let from = 0;
+      while (true) {
+        const { data: page, error } = await sb.from("servicos")
+          .select("id,registration_number,service_type_name,is_negotiation,viable,reason_name,negotiated_value,payment_methods,valor_a_vista,valor_parcelado,qtd_parcelas,created_at")
+          .eq("team_id", args.teamId)
+          .gte("created_at", start).lt("created_at", end)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) throw new Error(error.message);
+        if (!page?.length) break;
+        rows.push(...page);
+        if (page.length < pageSize) break;
+        from += pageSize;
+      }
+      return rows;
     }
 
     // ---------- Shifts ----------

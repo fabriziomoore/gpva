@@ -177,6 +177,7 @@ export type CatTeam = {
   setor_supervisor?: string | null;
   setor_variavel_ativo?: boolean;
   setor_negociacao_ativa?: boolean;
+  is_test?: boolean;
 };
 
 export async function getCachedTeam(teamId: string): Promise<CatTeam | null> {

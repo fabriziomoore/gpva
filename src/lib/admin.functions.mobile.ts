@@ -39,6 +39,22 @@ export const adminTeamsRanking = call<Array<{
   negotiations: number; negotiationValue: number; byType: Record<string, number>;
 }>>("adminTeamsRanking");
 
+export type TeamServiceRow = {
+  id: string;
+  registration_number: string | null;
+  service_type_name: string;
+  is_negotiation: boolean;
+  viable: boolean;
+  reason_name: string | null;
+  negotiated_value: number | null;
+  payment_methods: string[] | null;
+  valor_a_vista: number | null;
+  valor_parcelado: number | null;
+  qtd_parcelas: number | null;
+  created_at: string;
+};
+export const adminTeamServiceList = call<TeamServiceRow[]>("adminTeamServiceList");
+
 export const adminListShifts = call<Array<{
   id: string; started_at: string; ended_at: string | null; status: string; report_text: string | null;
 }>>("adminListShifts");

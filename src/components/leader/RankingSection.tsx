@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   leaderTeamsRanking,
   leaderListShifts,
   leaderListTeams,
   leaderShiftServices,
+  leaderTeamServiceList,
+  type TeamServiceRow,
 } from "@/lib/leader.functions";
 import { formatDateBR } from "@/lib/format";
 import { buildReport } from "@/lib/report";
+import { Button } from "@/components/ui/button";
 
 type TeamRow = {
   id: string;
@@ -24,7 +27,11 @@ type TeamRow = {
   supervisor: string | null;
 };
 
-export function LeaderRankingSection() {
+export function LeaderRankingSection({
+  onTitleChange,
+}: {
+  onTitleChange?: (title: string) => void;
+}) {
   const fn = useServerFn(leaderTeamsRanking);
   const teamsFn = useServerFn(leaderListTeams);
   const qc = useQueryClient();
@@ -35,6 +42,14 @@ export function LeaderRankingSection() {
   });
   const [selected, setSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<"day" | "week" | "month">("day");
+  const [filter, setFilter] = useState<"all" | "viable" | "inviable" | "negotiation" | null>(null);
+  useEffect(() => {
+    setFilter(null);
+    setMode("day");
+  }, [selected]);
+  useEffect(() => {
+    onTitleChange?.(selected ? "Perfil" : "Ranking & Perfis");
+  }, [selected, onTitleChange]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !selected) return;
@@ -127,6 +142,13 @@ export function LeaderRankingSection() {
       supabase.removeChannel(channel);
     };
   }, [qc]);
+
+  const serviceListFn = useServerFn(leaderTeamServiceList);
+  const serviceList = useQuery({
+    queryKey: ["leader-team-service-list", selected, year, month, day],
+    queryFn: () => serviceListFn({ data: { teamId: selected as string, year, month, day } }),
+    enabled: !!selected && !!filter,
+  });
 
   if (q.isLoading) {
     return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
@@ -226,12 +248,40 @@ export function LeaderRankingSection() {
         <TeamHeaderReadOnly team={teamMeta} />
         {periodSelector("day")}
         <TeamDayReportsReadOnly teamId={current.id} team={teamMeta} year={year} month={month} day={day} />
-        <div className="grid grid-cols-2 gap-3">
-          <Stat label="Total" value={current.total} />
-          <Stat label="Viáveis" value={current.viable} />
-          <Stat label="Inviáveis" value={current.inviable} />
-          <Stat label="Negociações" value={current.negotiations} />
+        <div className="grid grid-cols-4 gap-2">
+          <Stat
+            label="Total"
+            value={current.total}
+            active={filter === "all"}
+            onClick={() => setFilter(filter === "all" ? null : "all")}
+          />
+          <Stat
+            label="Viáveis"
+            value={current.viable}
+            active={filter === "viable"}
+            onClick={() => setFilter(filter === "viable" ? null : "viable")}
+          />
+          <Stat
+            label="Inviáveis"
+            value={current.inviable}
+            active={filter === "inviable"}
+            onClick={() => setFilter(filter === "inviable" ? null : "inviable")}
+          />
+          <Stat
+            label="Negociações"
+            value={current.negotiations}
+            active={filter === "negotiation"}
+            onClick={() => setFilter(filter === "negotiation" ? null : "negotiation")}
+          />
         </div>
+        {filter && (
+          <ServiceListSection
+            key={filter}
+            filter={filter}
+            rows={serviceList.data}
+            loading={serviceList.isLoading}
+          />
+        )}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-muted-foreground">Por tipo de serviço</h3>
           <div className="space-y-1">
@@ -320,10 +370,15 @@ export function LeaderRankingSection() {
 function TeamHeaderReadOnly({ team }: { team: TeamRow }) {
   return (
     <div className="flex items-center gap-3 rounded-xl bg-card shadow-md p-3">
-      <div className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+      <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
         {team.photo_url ? (
           <img src={team.photo_url} alt={team.team_name} className="h-full w-full object-cover" />
-        ) : null}
+        ) : (
+          <UserRound
+            strokeWidth={1.2}
+            className="absolute left-[-10%] top-0 h-[120%] w-[120%] text-muted-foreground"
+          />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold">{team.team_name}</p>
@@ -463,11 +518,107 @@ function ShiftReportBody({
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
-    <div className="rounded-xl bg-card shadow-md p-3">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl bg-card p-2 text-left shadow-md transition-colors ${
+        active ? "ring-2 ring-primary" : ""
+      }`}
+    >
+      <div className="text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-1 text-xl font-bold">{value}</div>
+    </button>
+  );
+}
+
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+const brlValue = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function ServiceListSection({
+  filter,
+  rows,
+  loading,
+}: {
+  filter: "all" | "viable" | "inviable" | "negotiation";
+  rows: TeamServiceRow[] | undefined;
+  loading: boolean;
+}) {
+  const [limit, setLimit] = useState(5);
+  const filtered = (rows ?? []).filter((r) => {
+    if (filter === "all") return true;
+    if (filter === "viable") return r.viable;
+    if (filter === "inviable") return !r.viable;
+    return r.is_negotiation && r.viable;
+  });
+  const title =
+    filter === "all"
+      ? "Todos os serviços"
+      : filter === "viable"
+        ? "Serviços viáveis"
+        : filter === "inviable"
+          ? "Serviços inviáveis"
+          : "Negociações";
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+      {loading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sem registros.</p>
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {filtered.slice(0, limit).map((r) => (
+              <li key={r.id} className="rounded-xl bg-card shadow-md p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-semibold">{r.service_type_name}</span>
+                  {r.is_negotiation && (
+                    <span className="shrink-0 text-sm font-bold text-success">
+                      {brlValue(Number(r.negotiated_value) || 0)}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {r.registration_number ? `${r.registration_number} · ` : ""}
+                  {fmtTime(r.created_at)}
+                </p>
+                {!r.viable && r.reason_name && (
+                  <p className="mt-1 text-[11px] text-destructive">{r.reason_name}</p>
+                )}
+                {r.is_negotiation && (r.payment_methods?.length || r.qtd_parcelas) && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {r.payment_methods?.join(" + ")}
+                    {r.valor_a_vista ? ` · à vista ${brlValue(r.valor_a_vista)}` : ""}
+                    {r.valor_parcelado ? ` · parcelado ${brlValue(r.valor_parcelado)}` : ""}
+                    {r.qtd_parcelas ? ` em ${r.qtd_parcelas}x` : ""}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+          {filtered.length > limit && (
+            <Button variant="outline" className="w-full" onClick={() => setLimit((n) => n + 5)}>
+              Ver mais
+            </Button>
+          )}
+        </>
+      )}
     </div>
   );
 }

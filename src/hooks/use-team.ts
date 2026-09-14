@@ -37,6 +37,7 @@ export type Team = {
   setor_supervisor?: string | null;
   setor_variavel_ativo: boolean;
   setor_negociacao_ativa: boolean;
+  is_test: boolean;
 };
 
 export function useTeam(userId: string | null) {
@@ -55,6 +56,7 @@ export function useTeam(userId: string | null) {
             ...cachedRaw,
             setor_variavel_ativo: cachedRaw.setor_variavel_ativo ?? true,
             setor_negociacao_ativa: cachedRaw.setor_negociacao_ativa ?? false,
+            is_test: cachedRaw.is_test ?? false,
           }
         : null;
       if (isOffline() && cached) return cached;
@@ -62,7 +64,7 @@ export function useTeam(userId: string | null) {
         const { data, error } = await withTimeout(
           supabase
             .from("equipes")
-            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,is_test,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
             .maybeSingle(),
         );
         if (error) throw error;
@@ -89,6 +91,7 @@ export function useTeam(userId: string | null) {
           setor_supervisor: setor?.supervisor_nome ?? null,
           setor_variavel_ativo: setor?.variavel_ativo ?? true,
           setor_negociacao_ativa: setor?.negociacao_ativa ?? false,
+          is_test: !!data.is_test,
         };
         await cacheTeam(team);
         return team;

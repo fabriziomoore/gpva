@@ -1,9 +1,16 @@
 import { useAuthSession } from "@/hooks/use-auth";
+import { useTeam } from "@/hooks/use-team";
 
+// Esse header é usado em telas compartilhadas entre líderes e equipes (ex.:
+// Clientes). Equipes têm linha em `equipes` — nesse caso mostramos o nome da
+// equipe, igual ao resto do app (ShiftMeta). Líderes não têm equipe própria,
+// então caem no nome de exibição/e-mail da conta logada.
 export function LeaderMeta() {
-  const { session } = useAuthSession();
+  const { session, userId } = useAuthSession();
+  const { data: team } = useTeam(userId);
   const meta = session?.user.user_metadata as { display_name?: string } | undefined;
-  const name = meta?.display_name?.trim() || session?.user.email?.split("@")[0] || "—";
+  const name =
+    team?.team_name || meta?.display_name?.trim() || session?.user.email?.split("@")[0] || "—";
   const today = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",

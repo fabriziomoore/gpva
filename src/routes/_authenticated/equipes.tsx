@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/equipes")({
 
 function EquipesPage() {
   return (
-    <AppShell title="Equipes" right={<ShiftMeta />} showSync={false} wide>
+    <AppShell title="Equipes" right={<ShiftMeta />} wide>
       <TeamsRankingSection />
     </AppShell>
   );

@@ -13,7 +13,7 @@ import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
   Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
-  Smartphone, Trash, RotateCcw, RefreshCw,
+  Smartphone, Trash, RotateCcw, RefreshCw, UserRound,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { requestUpdateCheck } from "@/components/layout/UpdateBanner";
@@ -27,6 +27,8 @@ import {
   adminListRows,
   adminUpdateRate,
   adminTeamsRanking,
+  adminTeamServiceList,
+  type TeamServiceRow,
   adminUpdateTeam,
   adminDeleteTeam,
   adminListTestTeams,
@@ -1093,6 +1095,11 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const [groupBy, setGroupBy] = useState<"equipe" | "setor" | "lider">("equipe");
   const [selectedSetorLabel, setSelectedSetorLabel] = useState("");
   const [selectedLiderLabel, setSelectedLiderLabel] = useState("");
+  const [filter, setFilter] = useState<"all" | "viable" | "inviable" | "negotiation" | null>(null);
+  useEffect(() => {
+    setFilter(null);
+    setMode("day");
+  }, [selected]);
 
   const weeks = useMemo(() => {
     const y = year;
@@ -1162,6 +1169,16 @@ function RankingSection({ adminPw }: { adminPw: string }) {
           endISO: weekRange?.endISO ?? null,
         },
       }),
+  });
+
+  const serviceListFn = useServerFn(adminTeamServiceList);
+  const serviceList = useQuery({
+    queryKey: ["admin-team-service-list", selected, year, month, day],
+    queryFn: () =>
+      serviceListFn({
+        data: { adminPassword: adminPw, teamId: selected as string, year, month, day },
+      }),
+    enabled: !!selected && !!filter,
   });
 
   if (q.isLoading) {
@@ -1278,12 +1295,40 @@ function RankingSection({ adminPw }: { adminPw: string }) {
         <TeamHeader adminPw={adminPw} team={teamMeta} onDeleted={() => setSelected(null)} />
         {periodSelector("day")}
         <TeamDayReports adminPw={adminPw} teamId={current.id} team={teamMeta} year={year} month={month} day={day} />
-        <div className="grid grid-cols-2 gap-3">
-          <Stat label="Total" value={current.total} />
-          <Stat label="Viáveis" value={current.viable} />
-          <Stat label="Inviáveis" value={current.inviable} />
-          <Stat label="Negociações" value={current.negotiations} />
+        <div className="grid grid-cols-4 gap-2">
+          <Stat
+            label="Total"
+            value={current.total}
+            active={filter === "all"}
+            onClick={() => setFilter(filter === "all" ? null : "all")}
+          />
+          <Stat
+            label="Viáveis"
+            value={current.viable}
+            active={filter === "viable"}
+            onClick={() => setFilter(filter === "viable" ? null : "viable")}
+          />
+          <Stat
+            label="Inviáveis"
+            value={current.inviable}
+            active={filter === "inviable"}
+            onClick={() => setFilter(filter === "inviable" ? null : "inviable")}
+          />
+          <Stat
+            label="Negociações"
+            value={current.negotiations}
+            active={filter === "negotiation"}
+            onClick={() => setFilter(filter === "negotiation" ? null : "negotiation")}
+          />
         </div>
+        {filter && (
+          <AdminServiceListSection
+            key={filter}
+            filter={filter}
+            rows={serviceList.data}
+            loading={serviceList.isLoading}
+          />
+        )}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-muted-foreground">Por tipo de serviço</h3>
           <div className="space-y-1">
@@ -1527,10 +1572,15 @@ function TeamHeader({
     <>
     <div className="flex flex-col gap-3 rounded-xl bg-card shadow-md p-3">
       <div className="flex items-center gap-3">
-        <div className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+        <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
           {team.photo_url ? (
             <img src={team.photo_url} alt={team.team_name} className="h-full w-full object-cover" />
-          ) : null}
+          ) : (
+            <UserRound
+              strokeWidth={1.2}
+              className="absolute left-[-10%] top-0 h-[120%] w-[120%] text-muted-foreground"
+            />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold">{team.team_name}</p>
@@ -1834,11 +1884,107 @@ function AdminShiftReportBody({
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
-    <div className="rounded-xl bg-card shadow-md p-3">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl bg-card p-2 text-left shadow-md transition-colors ${
+        active ? "ring-2 ring-primary" : ""
+      }`}
+    >
+      <div className="text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-1 text-xl font-bold">{value}</div>
+    </button>
+  );
+}
+
+function fmtServiceTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+const brlValue = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function AdminServiceListSection({
+  filter,
+  rows,
+  loading,
+}: {
+  filter: "all" | "viable" | "inviable" | "negotiation";
+  rows: TeamServiceRow[] | undefined;
+  loading: boolean;
+}) {
+  const [limit, setLimit] = useState(5);
+  const filtered = (rows ?? []).filter((r) => {
+    if (filter === "all") return true;
+    if (filter === "viable") return r.viable;
+    if (filter === "inviable") return !r.viable;
+    return r.is_negotiation && r.viable;
+  });
+  const title =
+    filter === "all"
+      ? "Todos os serviços"
+      : filter === "viable"
+        ? "Serviços viáveis"
+        : filter === "inviable"
+          ? "Serviços inviáveis"
+          : "Negociações";
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+      {loading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sem registros.</p>
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {filtered.slice(0, limit).map((r) => (
+              <li key={r.id} className="rounded-xl bg-card shadow-md p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-semibold">{r.service_type_name}</span>
+                  {r.is_negotiation && (
+                    <span className="shrink-0 text-sm font-bold text-success">
+                      {brlValue(Number(r.negotiated_value) || 0)}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {r.registration_number ? `${r.registration_number} · ` : ""}
+                  {fmtServiceTime(r.created_at)}
+                </p>
+                {!r.viable && r.reason_name && (
+                  <p className="mt-1 text-[11px] text-destructive">{r.reason_name}</p>
+                )}
+                {r.is_negotiation && (r.payment_methods?.length || r.qtd_parcelas) && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {r.payment_methods?.join(" + ")}
+                    {r.valor_a_vista ? ` · à vista ${brlValue(r.valor_a_vista)}` : ""}
+                    {r.valor_parcelado ? ` · parcelado ${brlValue(r.valor_parcelado)}` : ""}
+                    {r.qtd_parcelas ? ` em ${r.qtd_parcelas}x` : ""}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+          {filtered.length > limit && (
+            <Button variant="outline" className="w-full" onClick={() => setLimit((n) => n + 5)}>
+              Ver mais
+            </Button>
+          )}
+        </>
+      )}
     </div>
   );
 }

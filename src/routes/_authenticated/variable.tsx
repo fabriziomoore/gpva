@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { isPosCorteName } from "@/lib/service-types";
+import { generateFakeServiceRows } from "@/lib/demo-fake-data";
 
 export const Route = createFileRoute("/_authenticated/variable")({
   head: () => ({ meta: [{ title: "Variável" }] }),
@@ -45,6 +46,7 @@ function VariablePage() {
   const { userId } = useAuthSession();
   const { data: team } = useTeam(userId);
   const rate = team?.variable_rate ?? 7;
+  const isTest = !!team?.is_test;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,12 +71,23 @@ function VariablePage() {
     },
   });
 
+  // Contas de teste mostram números fictícios, gerados só no navegador, pra
+  // apresentação — nunca lido nem escrito no banco, então não tem como
+  // aparecer em painéis de líder, admin ou de outra equipe.
+  const fakeNegRows = useMemo(
+    () =>
+      isTest && userId
+        ? generateFakeServiceRows(userId).filter((r) => r.is_negotiation && r.viable)
+        : null,
+    [isTest, userId],
+  );
+
   // "Pós corte" negociado não soma na Variável (R$/negociação) — página
   // inteira é sobre esse cálculo, então exclui de tudo aqui (somas,
   // contagens e histórico), não só do valor final.
   const negRows = useMemo(
-    () => (neg.data ?? []).filter((r) => !isPosCorteName(r.service_type_name)),
-    [neg.data],
+    () => (fakeNegRows ?? neg.data ?? []).filter((r) => !isPosCorteName(r.service_type_name)),
+    [fakeNegRows, neg.data],
   );
 
   const sums = useMemo(() => {
@@ -119,15 +132,6 @@ function VariablePage() {
     return { buckets, counts };
   }, [negRows]);
 
-  const history = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of negRows) {
-      const d = new Date(r.created_at).toLocaleDateString("pt-BR");
-      m.set(d, (m.get(d) ?? 0) + (Number(r.negotiated_value) || 0));
-    }
-    return Array.from(m, ([date, value]) => ({ date, value })).reverse();
-  }, [negRows]);
-
   // Consulta período específico
   const now = new Date();
   const [customMode, setCustomMode] = useState<"day" | "month" | "year">("month");
@@ -142,47 +146,82 @@ function VariablePage() {
     return Array.from(set).sort((a, b) => b - a);
   }, [negRows, now]);
 
-  const custom = useMemo(() => {
-    let start: Date;
-    let end: Date;
-    let label: string;
+  // Faixa de datas do período selecionado em "Consultar período específico" —
+  // usada tanto pelo card de totais (`custom`) quanto pelo gráfico de
+  // Histórico financeiro logo abaixo, pra ele acompanhar a data escolhida
+  // em vez de sempre mostrar tudo.
+  const customRange = useMemo(() => {
     if (customMode === "day") {
       if (!customDay) return null;
-      start = new Date(customDay);
+      const start = new Date(customDay);
       start.setHours(0, 0, 0, 0);
-      end = new Date(start);
+      const end = new Date(start);
       end.setDate(end.getDate() + 1);
-      label = start.toLocaleDateString("pt-BR");
-    } else if (customMode === "month") {
-      start = new Date(customYear, customMonth, 1);
-      end = new Date(customYear, customMonth + 1, 1);
-      label = `${MONTHS[customMonth]} / ${customYear}`;
-    } else {
-      start = new Date(customYear, 0, 1);
-      end = new Date(customYear + 1, 0, 1);
-      label = String(customYear);
+      return { start, end, label: start.toLocaleDateString("pt-BR") };
     }
+    if (customMode === "month") {
+      const start = new Date(customYear, customMonth, 1);
+      const end = new Date(customYear, customMonth + 1, 1);
+      return { start, end, label: `${MONTHS[customMonth]} / ${customYear}` };
+    }
+    const start = new Date(customYear, 0, 1);
+    const end = new Date(customYear + 1, 0, 1);
+    return { start, end, label: String(customYear) };
+  }, [customMode, customDay, customMonth, customYear]);
+
+  const custom = useMemo(() => {
+    if (!customRange) return null;
     let count = 0;
     let total = 0;
     for (const r of negRows) {
       const t = new Date(r.created_at);
-      if (t >= start && t < end) {
+      if (t >= customRange.start && t < customRange.end) {
         count++;
         total += Number(r.negotiated_value) || 0;
       }
     }
-    return { label, count, total };
-  }, [customMode, customDay, customMonth, customYear, negRows]);
+    return { label: customRange.label, count, total };
+  }, [customRange, negRows]);
+
+  const history = useMemo(() => {
+    const rowsInRange = customRange
+      ? negRows.filter((r) => {
+          const t = new Date(r.created_at);
+          return t >= customRange.start && t < customRange.end;
+        })
+      : negRows;
+
+    // Dia selecionado: granularidade por hora, senão um único ponto não
+    // mostra tendência nenhuma.
+    if (customMode === "day" && customRange) {
+      const buckets = new Map<number, number>();
+      for (const r of rowsInRange) {
+        const h = new Date(r.created_at).getHours();
+        buckets.set(h, (buckets.get(h) ?? 0) + (Number(r.negotiated_value) || 0));
+      }
+      return Array.from({ length: 24 }, (_, h) => ({
+        date: `${String(h).padStart(2, "0")}h`,
+        value: buckets.get(h) ?? 0,
+      }));
+    }
+
+    const m = new Map<string, number>();
+    for (const r of rowsInRange) {
+      const d = new Date(r.created_at).toLocaleDateString("pt-BR");
+      m.set(d, (m.get(d) ?? 0) + (Number(r.negotiated_value) || 0));
+    }
+    return Array.from(m, ([date, value]) => ({ date, value })).reverse();
+  }, [negRows, customRange, customMode]);
 
   return (
     <AppShell title="Variável" right={<ShiftMeta />}>
-      {neg.isLoading ? (
+      {neg.isLoading && !isTest ? (
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="rounded-lg bg-destructive px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-white">
             Valor estimado. Não reflete o total real.
           </p>
 
@@ -292,7 +331,7 @@ function VariablePage() {
 
           <div className="rounded-2xl bg-card shadow-md p-3">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Histórico financeiro
+              Histórico financeiro{customRange ? ` — ${customRange.label}` : ""}
             </p>
             <div className="h-56">
               <ResponsiveContainer>

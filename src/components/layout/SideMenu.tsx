@@ -143,6 +143,23 @@ export function SideMenu() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Algumas telas (Ranking & Perfis, Clientes) empilham um estado de
+  // histórico ao abrir um detalhe "in place" (mesma rota), pra que o botão
+  // Voltar do celular feche o detalhe em vez de sair da tela. Clicar no
+  // próprio item do menu enquanto esse detalhe está aberto é uma navegação
+  // pra rota idêntica — o router não recarrega nada — então sem isso o
+  // clique parecia não fazer nada. Aqui fazemos o mesmo que o botão Voltar.
+  function handleNavClick(to: string, e: React.MouseEvent) {
+    const state = window.history.state as
+      | { __leaderRanking?: boolean; __clientHistory?: boolean }
+      | null;
+    if (window.location.pathname === to && (state?.__leaderRanking || state?.__clientHistory)) {
+      e.preventDefault();
+      window.history.back();
+    }
+    setOpen(false);
+  }
+
   function requestSignOut() {
     setOpen(false);
     window.setTimeout(() => setExitOpen(true), 80);
@@ -269,7 +286,7 @@ export function SideMenu() {
                   <Link
                     to={to}
                     activeOptions={{ exact }}
-                    onClick={() => setOpen(false)}
+                    onClick={(e) => handleNavClick(to, e)}
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:text-primary"
                   >
                     <Icon className="size-5" />

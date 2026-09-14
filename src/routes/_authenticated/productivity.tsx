@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
+import { useTeam } from "@/hooks/use-team";
+import { generateFakeServiceRows, generateFakeShiftHistory } from "@/lib/demo-fake-data";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -83,6 +85,8 @@ function QuantityTooltip({ active, payload, label }: QuantityTooltipProps) {
 
 function ProdPage() {
   const { userId } = useAuthSession();
+  const { data: team } = useTeam(userId);
+  const isTest = !!team?.is_test;
   const [historyLimit, setHistoryLimit] = useState(5);
   const queryClient = useQueryClient();
 
@@ -160,39 +164,59 @@ function ProdPage() {
     },
   });
 
+  // Contas de teste mostram um histórico fictício, gerado só no navegador,
+  // pra apresentação — nunca lido nem escrito no banco, então não tem como
+  // aparecer em painéis de líder, admin ou de outra equipe.
+  const fakeRows = useMemo(() => (isTest && userId ? generateFakeServiceRows(userId) : null), [isTest, userId]);
+  const fakeShifts = useMemo(() => (isTest && userId ? generateFakeShiftHistory(userId) : null), [isTest, userId]);
+  const rows = fakeRows ?? all.data ?? [];
+  const shiftHistory = fakeShifts ?? shifts.data ?? [];
+
   return (
     <AppShell title="Produtividade" right={<ShiftMeta />}>
-      {all.isLoading ? (
+      {all.isLoading && !isTest ? (
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <>
-          <PeriodSelector rows={all.data ?? []} />
+          <PeriodSelector rows={rows} />
 
           <div className="mt-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Histórico
             </h2>
             <div className="space-y-2">
-              {shifts.data?.length === 0 && (
+              {shiftHistory.length === 0 && (
                 <p className="text-sm text-muted-foreground">Sem expedientes anteriores.</p>
               )}
-              {shifts.data?.slice(0, historyLimit).map((s) => (
-                <Link
-                  key={s.id}
-                  to="/shift/$id/report"
-                  params={{ id: s.id }}
-                  className="flex items-center justify-between rounded-xl bg-card shadow-md p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="size-4 text-primary" />
-                    <span className="text-sm font-medium">{formatDateBR(s.started_at)}</span>
+              {shiftHistory.slice(0, historyLimit).map((s) =>
+                isTest ? (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between rounded-xl bg-card shadow-md p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="size-4 text-primary" />
+                      <span className="text-sm font-medium">{formatDateBR(s.started_at)}</span>
+                    </div>
                   </div>
-                  <span className="text-xs text-muted-foreground">→</span>
-                </Link>
-              ))}
-              {(shifts.data?.length ?? 0) > historyLimit && (
+                ) : (
+                  <Link
+                    key={s.id}
+                    to="/shift/$id/report"
+                    params={{ id: s.id }}
+                    className="flex items-center justify-between rounded-xl bg-card shadow-md p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="size-4 text-primary" />
+                      <span className="text-sm font-medium">{formatDateBR(s.started_at)}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">→</span>
+                  </Link>
+                ),
+              )}
+              {shiftHistory.length > historyLimit && (
                 <Button
                   variant="outline"
                   className="w-full"

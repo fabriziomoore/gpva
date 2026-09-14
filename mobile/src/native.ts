@@ -31,7 +31,17 @@ export function initNative(router: Router<any, any>) {
   void SplashScreen.hide().catch(() => undefined);
 
   // Hardware back button → router history. On root, close the app.
+  // Se houver um dialog/sheet/menu (Radix) aberto, o botão deve só fechar
+  // esse overlay — igual ao Escape — em vez de navegar a rota pra trás e
+  // fazer o usuário "perder o lugar" onde estava.
   void App.addListener("backButton", () => {
+    const openOverlay = document.querySelector(
+      '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+    );
+    if (openOverlay) {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      return;
+    }
     const history = router.history;
     if (history.length > 1) history.back();
     else void App.exitApp();
