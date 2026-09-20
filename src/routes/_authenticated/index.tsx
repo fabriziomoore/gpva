@@ -191,6 +191,31 @@ function HomePage() {
     );
   }
 
+  // A checagem de papel (líder/admin) falhou e não tem cache/metadata pra
+  // recorrer — sem isso não dá pra saber com segurança que tipo de conta é
+  // essa. Antes disso caía direto na home de equipe (mostrando "Setor/
+  // Supervisor/Líder" pra uma conta de líder, por exemplo). Mostra erro com
+  // opção de tentar de novo em vez de assumir um tipo de conta errado.
+  if (userId && (isLeader.isError || isAdmin.isError)) {
+    return (
+      <AppShell showBack={false}>
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+          <p className="text-sm text-muted-foreground">
+            Não foi possível confirmar o tipo de conta. Verifique sua conexão e tente de novo.
+          </p>
+          <Button
+            onClick={() => {
+              void isLeader.refetch();
+              void isAdmin.refetch();
+            }}
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell showBack={false}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />

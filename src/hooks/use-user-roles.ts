@@ -82,7 +82,9 @@ export function useUserRoles(userId: string | null) {
     queryKey: ["user-roles", userId],
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
-    retry: false,
+    // Uma falha de conexão é frequentemente passageira (rede de campo
+    // instável) — vale tentar de novo automaticamente antes de desistir.
+    retry: 2,
     networkMode: "always",
     refetchOnWindowFocus: false,
     initialData: () => readCachedRoles(userId) ?? readRolesFromCurrentSession(userId),
@@ -105,7 +107,13 @@ export function useUserRoles(userId: string | null) {
       } catch (error) {
         if (cached) return cached;
         if (metadataRoles) return metadataRoles;
-        return [];
+        // Sem cache, sem metadata e sem resposta do servidor: NÃO dá pra
+        // saber se é líder/admin/equipe. Devolver [] aqui fazia a tela cair
+        // silenciosamente no fallback de conta equipe (mostrando dados de
+        // "equipe" pra um líder) sempre que a checagem de papel falhava por
+        // conexão. Propaga o erro pra quem consome decidir (tela de erro /
+        // tentar de novo) em vez de fingir que sabe a resposta.
+        throw error instanceof Error ? error : new Error("Falha ao verificar o perfil do usuário");
       }
     },
   });

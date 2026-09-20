@@ -47,7 +47,12 @@ export function useTeam(userId: string | null) {
     networkMode: "always",
     retry: false,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    // Configurações do setor (variável, negociação) podem mudar no admin
+    // enquanto a equipe já está com o app aberto/em segundo plano — sem
+    // refetch aqui, o menu e a página Variável ficavam presos no valor
+    // antigo pelo resto da sessão (só corrigia com logout/login de novo).
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000,
     initialData: () => (userId ? undefined : null),
     queryFn: async (): Promise<Team | null> => {
       const cachedRaw = userId ? await getCachedTeam(userId) : null;
