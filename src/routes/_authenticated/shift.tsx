@@ -433,7 +433,14 @@ function Kpi({
         </>
       ) : (
         <div className="p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p
+            className={
+              "font-bold uppercase text-muted-foreground " +
+              (label.length > 9 ? "text-[8px] tracking-normal" : "text-[10px] tracking-wide")
+            }
+          >
+            {label}
+          </p>
           <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
         </div>
       )}
