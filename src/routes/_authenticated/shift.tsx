@@ -4,7 +4,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X, FileText } from "lucide-react";
+import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X, FileText, ChevronDown } from "lucide-react";
 import { repoDeleteService } from "@/lib/db/repos";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
@@ -509,7 +509,7 @@ function ServiceRow({
     <div
       {...pressHandlers}
       className={
-        "flex touch-pan-y items-center justify-between rounded-xl border bg-card p-3 select-none transition-colors " +
+        "flex touch-pan-y items-center justify-between rounded-xl border bg-card px-3 py-2 select-none transition-colors " +
         (selected ? "border-primary ring-2 ring-primary/40" : "border-border")
       }
     >
@@ -544,8 +544,11 @@ function ServiceRow({
                       <>
                         {"  "}
                         <Popover>
-                          <PopoverTrigger className="ml-2 text-foreground underline underline-offset-2">
-                            ver mais
+                          <PopoverTrigger
+                            aria-label="Ver mais complementos"
+                            className="ml-1 inline-flex size-4 shrink-0 translate-y-[3px] items-center justify-center text-foreground align-middle"
+                          >
+                            <ChevronDown className="size-4" strokeWidth={3} />
                           </PopoverTrigger>
                           <PopoverContent align="start" className="w-64">
                             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
