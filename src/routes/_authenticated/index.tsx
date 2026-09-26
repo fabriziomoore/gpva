@@ -5,6 +5,7 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -256,7 +257,7 @@ function HomePage() {
   }
 
   return (
-    <AppShell showBack={false}>
+    <AppShell showBack={false} right={<ThemeToggle />}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <div className="space-y-6">
         <div className="flex items-stretch gap-4 rounded-2xl bg-card shadow-md p-4 overflow-hidden">

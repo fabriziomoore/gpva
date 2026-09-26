@@ -7,7 +7,6 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useTeam } from "@/hooks/use-team";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { prepareAppSignOut, finalizePreparedSignOut } from "@/lib/auth";
 
 
@@ -272,15 +271,12 @@ export function SideMenu() {
             <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Menu
             </span>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Dialog.Close
-                aria-label="Fechar menu"
-                className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
-              >
-                <X className="size-5" />
-              </Dialog.Close>
-            </div>
+            <Dialog.Close
+              aria-label="Fechar menu"
+              className="inline-flex size-9 items-center justify-center rounded-lg bg-destructive text-white hover:bg-destructive/90"
+            >
+              <X className="size-5" />
+            </Dialog.Close>
           </header>
           <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ul className="space-y-1">
