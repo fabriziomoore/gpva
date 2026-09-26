@@ -394,7 +394,6 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
   const viaveis = viableRows.length;
   const inviaveis = total - viaveis;
   const pctV = total ? Math.round((viaveis / total) * 100) : 0;
-  const pctI = total ? 100 - pctV : 0;
 
   const byType = useMemo(() => {
     const m = new Map<string, { name: string; qty: number }>();
@@ -444,8 +443,8 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-2">
         <Card label="Total" value={String(total)} />
-        <Card label="Viáveis" value={`${viaveis} (${pctV}%)`} tone="success" />
-        <Card label="Inviáveis" value={`${inviaveis} (${pctI}%)`} tone="destructive" />
+        <Card label="Viáveis" value={String(viaveis)} tone="success" />
+        <Card label="Inviáveis" value={String(inviaveis)} tone="destructive" />
         <Card label="Efetividade" value={`${pctV}%`} tone="success" />
       </div>
 
@@ -543,7 +542,7 @@ function Card({
   const c =
     tone === "success" ? "text-success" : tone === "destructive" ? "text-destructive" : "text-foreground";
   return (
-    <div className="rounded-xl bg-card shadow-md p-3">
+    <div className="rounded-xl bg-card shadow-md p-3 text-center">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={"text-base font-bold " + c}>{value}</p>
     </div>
