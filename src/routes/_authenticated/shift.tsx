@@ -415,7 +415,7 @@ function Kpi({
     <div
       className={
         "rounded-xl bg-card shadow-md text-center" +
-        (centerValue ? " relative flex h-full min-h-16 flex-col overflow-hidden" : " overflow-hidden")
+        (centerValue ? " relative flex h-full flex-col overflow-hidden" : " overflow-hidden")
       }
     >
       {centerValue ? (
@@ -426,7 +426,10 @@ function Kpi({
               banner — se centralizasse só no espaço "sobrando" acima da
               faixa Estimativa, ficaria mais alto que o valor de Negociado. */}
           <p className={"absolute inset-0 flex items-center justify-center " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
-          <div className="flex-1" />
+          {/* min-h-16 aqui (não no card raiz) garante a MESMA altura de
+              conteúdo de antes — senão a faixa Estimativa "rouba" espaço
+              de dentro do mínimo, encolhendo o card inteiro. */}
+          <div className="min-h-16 flex-1" />
         </>
       ) : (
         <div className="p-3">
