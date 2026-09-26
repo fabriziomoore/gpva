@@ -280,7 +280,7 @@ function HomePage() {
             <div className="flex items-start justify-between gap-2">
               <p className="truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
               {monthEfetividade !== null && (
-                <div className="shrink-0 rounded-lg bg-success/10 px-2 py-1 text-center">
+                <div className="shrink-0 rounded-lg bg-muted px-2 py-1 text-center">
                   <p className="text-[8px] font-bold uppercase leading-none tracking-wide text-muted-foreground">
                     Efetividade
                   </p>
