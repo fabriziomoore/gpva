@@ -433,14 +433,12 @@ function Kpi({
         </>
       ) : (
         <div className="p-3">
-          <p
-            className={
-              "font-bold uppercase text-muted-foreground " +
-              (label.length > 9 ? "text-[8px] tracking-normal" : "text-[10px] tracking-wide")
-            }
-          >
-            {label}
-          </p>
+          {/* Margem negativa só no rótulo: com o padding cheio do card,
+              "Efetividade" (o rótulo mais longo do grupo) não cabia numa
+              linha sem cortar o tamanho da fonte — ganha espaço horizontal
+              só pro texto, sem reduzir a letra nem mexer no respiro do
+              valor/card. */}
+          <p className="-mx-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
           <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
         </div>
       )}
