@@ -301,7 +301,7 @@ export async function renderLeaderPdfBlob(input: LeaderPdfInput): Promise<Blob> 
   const kpiW = (CW - kpiGap * 4) / 5;
   const kpis: { label: string; value: string; d: ReturnType<typeof delta>; sub: string }[] = [
     { label: "Total", value: String(input.current.total), d: delta(input.current.total, input.previous.total), sub: `Ant.: ${input.previous.total}` },
-    { label: "Viabilidade", value: `${pctV}%`, d: delta(pctV, pctVPrev), sub: `${input.current.viable} viáveis / ${input.current.unviable} inviáveis` },
+    { label: "Efetividade", value: `${pctV}%`, d: delta(pctV, pctVPrev), sub: `${input.current.viable} viáveis / ${input.current.unviable} inviáveis` },
     { label: "Negociado", value: formatBRL(input.current.negotiated_value), d: delta(input.current.negotiated_value, input.previous.negotiated_value), sub: `${input.current.negotiations} negociações` },
     { label: "Expedientes", value: String(input.current.shifts), d: delta(input.current.shifts, input.previous.shifts), sub: "fechados no período" },
     { label: "Média / expediente", value: String(avgPerShift), d: delta(avgPerShift * 10, avgPerShiftPrev * 10), sub: "serviços por dia trabalhado" },

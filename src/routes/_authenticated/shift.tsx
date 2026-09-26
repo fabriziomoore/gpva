@@ -118,7 +118,10 @@ function ShiftPage() {
     // Variável Estimada (R$/negociação) — regra específica desse tipo.
     const negociacoesVariavel = negociacoes.filter((x) => !isPosCorteName(x.service_type_name));
     const variavel = negociacoesVariavel.length * Number(rate);
-    return { total, viaveis, inviaveis, totalNeg, variavel };
+    // Efetividade = serviços viáveis / total, em %. Mesma conta usada em
+    // toda tela que mostra Total/Viáveis/Inviáveis da equipe.
+    const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
+    return { total, viaveis, inviaveis, totalNeg, variavel, efetividade };
   }, [services, openShift, team]);
 
   function attemptFinish() {
@@ -228,9 +231,10 @@ function ShiftPage() {
           <Kpi label="Viáveis" value={String(kpis.viaveis).padStart(2, "0")} tone="success" />
           <Kpi label="Inviáveis" value={String(kpis.inviaveis).padStart(2, "0")} tone="destructive" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small />
-          <Kpi label="Variável estimada" value={formatBRL(kpis.variavel)} small tone="primary" />
+          <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" />
+          <Kpi label="Efetividade" value={`${kpis.efetividade}%`} small tone="success" />
         </div>
 
         <div className="space-y-2">
@@ -388,11 +392,13 @@ function Kpi({
   value,
   tone,
   small,
+  banner,
 }: {
   label: string;
   value: string;
   tone?: "success" | "destructive" | "primary";
   small?: boolean;
+  banner?: string;
 }) {
   const color =
     tone === "success"
@@ -403,9 +409,16 @@ function Kpi({
           ? "text-primary"
           : "text-foreground";
   return (
-    <div className="rounded-xl bg-card shadow-md p-3">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+    <div className="overflow-hidden rounded-xl bg-card shadow-md text-center">
+      <div className="p-3">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+      </div>
+      {banner ? (
+        <div className="bg-destructive py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+          {banner}
+        </div>
+      ) : null}
     </div>
   );
 }

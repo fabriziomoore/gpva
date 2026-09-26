@@ -2,12 +2,11 @@ import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText, RefreshCw, Users } from "lucide-react";
+import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText, Users } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useTeam } from "@/hooks/use-team";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { requestUpdateCheck } from "@/components/layout/UpdateBanner";
 import { prepareAppSignOut, finalizePreparedSignOut } from "@/lib/auth";
 
 
@@ -356,26 +355,6 @@ export function SideMenu() {
                 </p>
               </div>
             </button>
-            {isLeader.data === true && (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  requestUpdateCheck();
-                }}
-                className="mt-3 flex w-full items-center gap-3 rounded-xl bg-card p-3 text-left shadow-md transition-shadow hover:shadow-lg"
-              >
-                <RefreshCw className="size-5 text-primary shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Verificar atualização
-                  </div>
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Força uma nova checagem caso o app não tenha avisado sozinho.
-                  </p>
-                </div>
-              </button>
-            )}
 
           </main>
           <footer className="shrink-0 border-t border-border bg-destructive">

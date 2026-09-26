@@ -274,6 +274,12 @@ export function LeaderRankingSection({
             onClick={() => setFilter(filter === "negotiation" ? null : "negotiation")}
           />
         </div>
+        <div className="flex items-center justify-between rounded-xl bg-card shadow-md p-3">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">Efetividade</span>
+          <span className="text-xl font-bold text-success">
+            {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
+          </span>
+        </div>
         {filter && (
           <ServiceListSection
             key={filter}

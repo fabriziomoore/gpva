@@ -442,10 +442,11 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <Card label="Total" value={String(total)} />
         <Card label="Viáveis" value={`${viaveis} (${pctV}%)`} tone="success" />
         <Card label="Inviáveis" value={`${inviaveis} (${pctI}%)`} tone="destructive" />
+        <Card label="Efetividade" value={`${pctV}%`} tone="success" />
       </div>
 
       <div className="rounded-2xl bg-card shadow-md p-3">

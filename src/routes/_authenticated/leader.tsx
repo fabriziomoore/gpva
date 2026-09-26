@@ -823,7 +823,7 @@ function PeriodView({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
         <Kpi label="Total" value={fmtQty(stats.current.total)} delta={deltaPct(stats.current.total, stats.previous.total)} hint={`vs ${previousLabel(period)}: ${stats.previous.total}`} />
-        <Kpi label="Viabilidade" value={`${stats.pctV}%`} delta={deltaPct(stats.pctV, stats.pctVPrev)} hint={`${stats.current.viable} viáv. / ${stats.current.unviable} inviáv.`} tone="success" />
+        <Kpi label="Efetividade" value={`${stats.pctV}%`} delta={deltaPct(stats.pctV, stats.pctVPrev)} hint={`${stats.current.viable} viáv. / ${stats.current.unviable} inviáv.`} tone="success" />
         <Kpi label="Negociado" value={formatBRL(stats.current.negotiated_value)} delta={deltaPct(stats.current.negotiated_value, stats.previous.negotiated_value)} hint={`${stats.current.negotiations} negociações`} small />
         <Kpi label="Expedientes" value={String(stats.current.shifts)} hint="fechados no período" small />
         <Kpi label="Média/expediente" value={String(stats.avgPerShift)} hint="serviços por dia trabalhado" small />
