@@ -193,14 +193,14 @@ function AdminPage() {
 
   if (authLoading || (!isReservedAdminLogin && isAdmin.isLoading) || !hasAdminAccess) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <Loader2 className="size-6 animate-spin text-canvas-foreground/60" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-canvas">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur pt-[calc(env(safe-area-inset-top)+0.75rem)]">
         <div className="flex min-w-0 items-center gap-2">
           <button

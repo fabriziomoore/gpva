@@ -61,6 +61,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-canvas: var(--canvas);
+  --color-canvas-foreground: var(--canvas-foreground);
 }
 
 :root {
@@ -68,6 +70,18 @@
   /* GPVA Light — white / blue / black, soft & professional */
   --background: oklch(0.95 0.006 250);
   --foreground: oklch(0.20 0.02 260);
+  /*
+   * Fundo do "canvas" do app (o <div> raiz de cada tela, atrás dos
+   * cards/header) — fica preto igual ao dark o tempo todo (mesmo valor do
+   * --background do .dark), só o resto (cards, cor primária etc.) muda
+   * quando o tema é alternado. Não reaproveita --background porque essa
+   * variável também é usada como cor de fundo "neutra" em inputs, diálogos,
+   * sheets, toasts etc. espalhados pelo app — trocar ela também deixaria
+   * esses elementos pretos com texto escuro (ilegível) por cima. --canvas é
+   * usada só nos wrappers de página inteira (ver bg-canvas no código).
+   */
+  --canvas: oklch(0.16 0.018 250);
+  --canvas-foreground: oklch(0.985 0.005 240);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.20 0.02 260);
   --popover: oklch(1 0 0);

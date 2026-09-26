@@ -4,8 +4,8 @@ import { routeTree } from "./routeTree.gen";
 
 function BootSpinner() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+    <div className="flex min-h-screen items-center justify-center bg-canvas">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-canvas-foreground/20 border-t-canvas-foreground" />
     </div>
   );
 }

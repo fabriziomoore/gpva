@@ -44,7 +44,7 @@ export function AppShell({
   // trás dele por um instante.
   const headerBg = headerOverride ? (headerClassName ?? "bg-card") : "bg-card/95 supports-[backdrop-filter]:bg-card/80";
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-canvas">
       <header
         className="sticky top-0 z-30 backdrop-blur"
         style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}

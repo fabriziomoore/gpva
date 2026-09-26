@@ -20,7 +20,6 @@ import { QRCodeSVG } from "qrcode.react";
 import { AppLogo } from "@/components/brand/AppLogo";
 import { DisclaimerBanner } from "@/components/brand/DisclaimerBanner";
 import { Checkbox } from "@/components/ui/checkbox";
-import aguasDoRioLogoLightUrl from "@/assets/aguas-do-rio-logo-light.png?url";
 import aguasDoRioLogoDarkUrl from "@/assets/aguas-do-rio-logo-dark.png?url";
 
 const LOGIN_TIMEOUT_MS = 8_000;
@@ -177,11 +176,11 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background">
+    <div className="flex min-h-[100dvh] flex-col bg-canvas text-canvas-foreground">
       <DisclaimerBanner />
       <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto py-6">
         <div className="mb-8 w-full max-w-sm px-4 flex justify-center">
-          <AppLogo className="max-w-[280px]" />
+          <AppLogo className="max-w-[280px]" forceDark />
         </div>
         <div className="w-full max-w-sm px-4">
 
@@ -213,7 +212,7 @@ function AuthPage() {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted-foreground hover:text-foreground"
+                  className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-canvas-foreground/60 hover:text-canvas-foreground"
                 >
                   {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                 </button>
@@ -224,7 +223,7 @@ function AuthPage() {
                   checked={rememberLogin}
                   onCheckedChange={(v) => setRememberLoginChecked(v === true)}
                 />
-                <Label htmlFor="remember-login" className="cursor-pointer text-sm font-normal text-muted-foreground">
+                <Label htmlFor="remember-login" className="cursor-pointer text-sm font-normal text-canvas-foreground/70">
                   Lembrar acesso
                 </Label>
               </div>
@@ -257,8 +256,7 @@ function AuthPage() {
               )}
             </Button>
             <div className="flex justify-end">
-              <img src={aguasDoRioLogoLightUrl} alt="Águas do Rio" className="block h-10 w-auto dark:hidden" />
-              <img src={aguasDoRioLogoDarkUrl} alt="" aria-hidden="true" className="hidden h-10 w-auto dark:block" />
+              <img src={aguasDoRioLogoDarkUrl} alt="Águas do Rio" className="block h-10 w-auto" />
             </div>
         </form>
 
@@ -266,7 +264,7 @@ function AuthPage() {
           <button
             type="button"
             onClick={() => setShowApkQr((v) => !v)}
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1.5 text-xs font-medium text-canvas-foreground/60 hover:text-canvas-foreground"
           >
             <QrCode className="size-3.5" />
             {showApkQr ? "Ocultar QR do app" : "Baixar o app em um celular novo"}
@@ -285,7 +283,7 @@ function AuthPage() {
 
         </div>
       </div>
-      <p className="shrink-0 whitespace-nowrap overflow-hidden text-ellipsis px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] text-center text-[10px] uppercase tracking-[0.18em] text-foreground dark:text-muted-foreground/60">
+      <p className="shrink-0 whitespace-nowrap overflow-hidden text-ellipsis px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] text-center text-[10px] uppercase tracking-[0.18em] text-canvas-foreground dark:text-muted-foreground/60">
         Criado e desenvolvido por Fabrízio Moore
       </p>
     </div>

@@ -54,12 +54,12 @@ function Onboarding() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-canvas text-canvas-foreground px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Configuração inicial</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Equipe <span className="font-semibold text-foreground">{team?.team_name}</span>. Cadastre apenas uma vez.
+          <p className="mt-1 text-sm text-canvas-foreground/70">
+            Equipe <span className="font-semibold text-canvas-foreground">{team?.team_name}</span>. Cadastre apenas uma vez.
           </p>
         </div>
         <div className="space-y-3">
