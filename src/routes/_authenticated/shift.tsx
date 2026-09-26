@@ -433,13 +433,13 @@ function Kpi({
         </>
       ) : (
         <div className="p-3">
-          {/* Margem negativa só no rótulo: com o padding cheio do card,
-              "Efetividade" (o rótulo mais longo do grupo) não cabia numa
-              linha sem cortar o tamanho da fonte — ganha espaço horizontal
-              só pro texto, sem reduzir a letra nem mexer no respiro do
-              valor/card. */}
+          {/* Margem negativa no rótulo e no valor: com o padding cheio do
+              card, textos como "Efetividade" e "100%" não cabiam numa
+              linha sem cortar o tamanho da fonte — ganham espaço horizontal
+              extra, sem reduzir a letra nem mexer no respiro geral do
+              card. */}
           <p className="-mx-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+          <p className={"-mx-1.5 " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
         </div>
       )}
       {banner ? (
