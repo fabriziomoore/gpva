@@ -409,10 +409,10 @@ function Kpi({
           ? "text-primary"
           : "text-foreground";
   return (
-    <div className="overflow-hidden rounded-xl bg-card shadow-md text-center">
-      <div className="p-3">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl bg-card shadow-md text-center">
+      <div className="flex flex-1 flex-col p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+        <p className={"flex flex-1 items-center justify-center " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
       </div>
       {banner ? (
         <div className="bg-destructive py-1 text-[10px] font-bold uppercase tracking-wide text-white">
