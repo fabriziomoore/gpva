@@ -42,7 +42,7 @@ export function AppShell({
   // sticky), porque trocar o fundo do próprio elemento sticky+blur deixava
   // a camada de composição do navegador com um resíduo da cor anterior por
   // trás dele por um instante.
-  const headerBg = headerOverride ? (headerClassName ?? "bg-card") : "bg-card/95 supports-[backdrop-filter]:bg-card/80";
+  const headerBg = headerOverride ? (headerClassName ?? "bg-card") : "bg-card";
   return (
     <div className="min-h-screen bg-canvas">
       <header
