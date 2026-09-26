@@ -15,6 +15,7 @@ import { getLocalDB } from "@/lib/db/local-db";
 import { repoCreateShift } from "@/lib/db/repos";
 import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
+import { generateFakeServiceRows } from "@/lib/demo-fake-data";
 import { useIsLeader } from "@/hooks/use-is-leader";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
@@ -165,6 +166,44 @@ function HomePage() {
   const today = useMemo(() => formatDateBR(new Date()), []);
   const teamPhoto = useTeamPhoto(userId);
 
+  const isTest = !!team?.is_test;
+  const monthStart = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+  }, []);
+
+  const monthServices = useQuery({
+    queryKey: ["home-month-effectiveness", userId, monthStart],
+    enabled: !!userId && !isTest,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("servicos")
+        .select("viable,created_at")
+        .gte("created_at", monthStart)
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Contas de teste mostram um número fictício, gerado só no navegador, pra
+  // apresentação — mesma lógica de Produtividade/Variável.
+  const fakeMonthRows = useMemo(
+    () =>
+      isTest && userId
+        ? generateFakeServiceRows(userId).filter((r) => r.created_at >= monthStart)
+        : null,
+    [isTest, userId, monthStart],
+  );
+
+  const monthRows = fakeMonthRows ?? monthServices.data ?? [];
+  const monthEfetividade = useMemo(() => {
+    if (monthRows.length === 0) return null;
+    const viaveis = monthRows.filter((r) => r.viable).length;
+    return Math.round((viaveis / monthRows.length) * 100);
+  }, [monthRows]);
+
 
   // Enquanto papel (líder/admin) ainda carrega, ou o próprio usuário indica ser
   // líder/admin, não renderizamos o home de equipe para evitar o "flash" antes
@@ -237,7 +276,17 @@ function HomePage() {
             )}
           </div>
           <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
-            <p className="truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
+              {monthEfetividade !== null && (
+                <div className="shrink-0 rounded-lg bg-success/10 px-2 py-1 text-center">
+                  <p className="text-[8px] font-bold uppercase leading-none tracking-wide text-muted-foreground">
+                    Efetividade
+                  </p>
+                  <p className="text-sm font-bold leading-tight text-success">{monthEfetividade}%</p>
+                </div>
+              )}
+            </div>
             {(team?.collaborator1 || team?.collaborator2) && (
               <p className="mt-1.5 truncate text-xs font-medium text-foreground leading-tight">
                 {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
