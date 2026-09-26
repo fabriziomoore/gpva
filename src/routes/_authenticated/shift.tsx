@@ -232,9 +232,9 @@ function ShiftPage() {
           <Kpi label="Inviáveis" value={String(kpis.inviaveis).padStart(2, "0")} tone="destructive" />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small />
-          <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" />
-          <Kpi label="Efetividade" value={`${kpis.efetividade}%`} small tone="success" />
+          <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
+          <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" centerValue />
+          <Kpi label="Efetividade" value={`${kpis.efetividade}%`} small tone="success" centerValue />
         </div>
 
         <div className="space-y-2">
@@ -393,12 +393,15 @@ function Kpi({
   tone,
   small,
   banner,
+  centerValue,
 }: {
   label: string;
   value: string;
   tone?: "success" | "destructive" | "primary";
   small?: boolean;
   banner?: string;
+  /** Centraliza o valor no espaço total do card, em vez de ficar logo abaixo do rótulo. */
+  centerValue?: boolean;
 }) {
   const color =
     tone === "success"
@@ -409,11 +412,18 @@ function Kpi({
           ? "text-primary"
           : "text-foreground";
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl bg-card shadow-md text-center">
-      <div className="relative min-h-16 flex-1 px-3">
-        <p className="absolute inset-x-3 top-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className={"absolute inset-0 flex items-center justify-center " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
-      </div>
+    <div className={"overflow-hidden rounded-xl bg-card shadow-md text-center" + (centerValue ? " flex h-full flex-col" : "")}>
+      {centerValue ? (
+        <div className="relative min-h-16 flex-1 px-3">
+          <p className="absolute inset-x-3 top-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className={"absolute inset-0 flex items-center justify-center " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+        </div>
+      ) : (
+        <div className="p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className={(small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+        </div>
+      )}
       {banner ? (
         <div className="bg-destructive py-1 text-[10px] font-bold uppercase tracking-wide text-white">
           {banner}
