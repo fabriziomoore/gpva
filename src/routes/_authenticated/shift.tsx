@@ -226,15 +226,15 @@ function ShiftPage() {
       }
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <Kpi label="Total" value={String(kpis.total).padStart(2, "0")} />
           <Kpi label="Viáveis" value={String(kpis.viaveis).padStart(2, "0")} tone="success" />
           <Kpi label="Inviáveis" value={String(kpis.inviaveis).padStart(2, "0")} tone="destructive" />
+          <Kpi label="Efetividade" value={`${kpis.efetividade}%`} tone="success" />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
           <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" centerValue />
-          <Kpi label="Efetividade" value={`${kpis.efetividade}%`} small tone="success" centerValue />
         </div>
 
         <div className="space-y-2">
