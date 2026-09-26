@@ -412,12 +412,22 @@ function Kpi({
           ? "text-primary"
           : "text-foreground";
   return (
-    <div className={"overflow-hidden rounded-xl bg-card shadow-md text-center" + (centerValue ? " flex h-full flex-col" : "")}>
+    <div
+      className={
+        "rounded-xl bg-card shadow-md text-center" +
+        (centerValue ? " relative flex h-full min-h-16 flex-col overflow-hidden" : " overflow-hidden")
+      }
+    >
       {centerValue ? (
-        <div className="relative min-h-16 flex-1 px-3">
+        <>
           <p className="absolute inset-x-3 top-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+          {/* Cobre o card inteiro (não só o espaço acima do banner) pra o
+              valor centralizar na mesma altura dos cards vizinhos sem
+              banner — se centralizasse só no espaço "sobrando" acima da
+              faixa Estimativa, ficaria mais alto que o valor de Negociado. */}
           <p className={"absolute inset-0 flex items-center justify-center " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
-        </div>
+          <div className="flex-1" />
+        </>
       ) : (
         <div className="p-3">
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
