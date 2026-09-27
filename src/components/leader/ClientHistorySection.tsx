@@ -364,26 +364,30 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function NegotiationRow({ row, onClick }: { row: ClientHistoryRow; onClick?: () => void }) {
   const inner = (
     <>
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-semibold">
-          {row.registration_number || row.service_type_name}
-        </span>
-        <span className="shrink-0 text-sm font-bold text-success">{formatBRL(Number(row.negotiated_value) || 0)}</span>
-      </div>
+      <span className="block truncate text-sm font-semibold">
+        {row.registration_number || row.service_type_name}
+      </span>
       <p className="mt-0.5 text-xs text-muted-foreground">
         {row.team_name} · {fmtDateTime(row.created_at)}
       </p>
-      {(row.payment_methods?.length || row.qtd_parcelas) && (
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {row.payment_methods?.join(" + ")}
-          {/* "à vista" só é informação nova quando o pagamento é misto (tem
-              parcelado também) — sozinho, já duplica a própria descrição do
-              método (ex.: "PIX - À VISTA"). */}
-          {row.valor_a_vista && row.valor_parcelado ? ` · à vista ${formatBRL(row.valor_a_vista)}` : ""}
-          {row.valor_parcelado ? ` · parcelado ${formatBRL(row.valor_parcelado)}` : ""}
-          {row.qtd_parcelas ? ` em ${row.qtd_parcelas}x` : ""}
-        </p>
-      )}
+      {/* Valor alinhado ao modo de pagamento, na mesma linha (mesmo padrão
+          rótulo-à-esquerda/número-à-direita dos cards do Expediente). */}
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="truncate text-[11px] text-muted-foreground">
+          {row.payment_methods?.length ? (
+            <>
+              {row.payment_methods.join(" + ")}
+              {/* "à vista" só é informação nova quando o pagamento é misto
+                  (tem parcelado também) — sozinho, já duplica a própria
+                  descrição do método (ex.: "PIX - À VISTA"). */}
+              {row.valor_a_vista && row.valor_parcelado ? ` · à vista ${formatBRL(row.valor_a_vista)}` : ""}
+              {row.valor_parcelado ? ` · parcelado ${formatBRL(row.valor_parcelado)}` : ""}
+              {row.qtd_parcelas ? ` em ${row.qtd_parcelas}x` : ""}
+            </>
+          ) : null}
+        </span>
+        <span className="shrink-0 text-sm font-bold text-success">{formatBRL(Number(row.negotiated_value) || 0)}</span>
+      </div>
     </>
   );
   if (onClick) {
