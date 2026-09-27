@@ -72,8 +72,8 @@ export function TeamsRankingSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold">Ranking de Equipes</h2>
-        <p className="text-[11px] text-muted-foreground">
+        <h2 className="text-base font-semibold text-canvas-foreground">Ranking de Equipes</h2>
+        <p className="text-[11px] text-canvas-foreground/70">
           Hoje · atualizando em tempo real durante o expediente.
         </p>
       </div>
@@ -96,8 +96,8 @@ export function TeamsRankingSection() {
                   <span className="text-sm font-semibold">{t.team_name}</span>
                   <span className="text-xs text-muted-foreground">{brl(t.negotiation_value)}</span>
                 </div>
-                <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                <div className="relative h-6 w-full overflow-hidden rounded-none bg-muted">
+                  <div className="h-full rounded-none bg-primary transition-all" style={{ width: `${pct}%` }} />
                   <span className="absolute inset-y-0 right-2 flex items-center text-xs font-semibold text-foreground">
                     {t.viable}
                   </span>
