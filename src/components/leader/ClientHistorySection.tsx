@@ -343,9 +343,12 @@ function ClientHistoryView({
 
 function Stat({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
-    <div className="rounded-xl bg-card shadow-md p-3">
-      <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={"truncate font-bold text-foreground " + (small ? "text-sm" : "text-lg")} title={value}>
+    <div className="rounded-xl bg-card shadow-md p-3 text-center">
+      <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p
+        className={"truncate font-bold text-foreground " + (small ? "text-base" : "text-2xl")}
+        title={value}
+      >
         {value}
       </p>
     </div>
