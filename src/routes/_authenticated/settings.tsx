@@ -197,10 +197,10 @@ function SettingsPage() {
       <div className="space-y-8">
         <section className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground/70">Equipe</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground">Equipe</h2>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground/70">Modo</span>
-              <ThemeToggle />
+              <span className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground">Modo</span>
+              <ThemeToggle className="text-canvas-foreground hover:text-canvas-foreground" />
             </div>
           </div>
           <div className="space-y-3">
