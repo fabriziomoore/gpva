@@ -12,15 +12,15 @@ type ServiceRow = {
   created_at: string;
 };
 
-// Tempo médio entre o primeiro e o último serviço registrado no expediente
-// (da primeira O.S. até a última), dividido pelo número de intervalos —
-// equivale à média dos intervalos entre serviços consecutivos.
-function averageDisplacementMin(services: { created_at: string }[]): number {
-  if (services.length < 2) return 0;
+// Tempo médio entre as 7h da manhã (início padrão do expediente) e a
+// última O.S. registrada, dividido pela quantidade de serviços.
+function averageDisplacementMin(services: { created_at: string }[], startedAt: string): number {
+  if (services.length === 0) return 0;
   const sorted = [...services].sort((a, b) => a.created_at.localeCompare(b.created_at));
-  const first = new Date(sorted[0].created_at).getTime();
   const last = new Date(sorted[sorted.length - 1].created_at).getTime();
-  return (last - first) / (sorted.length - 1) / 60000;
+  const day = new Date(startedAt);
+  const sevenAM = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 7, 0, 0, 0).getTime();
+  return last > sevenAM ? (last - sevenAM) / sorted.length / 60000 : 0;
 }
 
 type ShiftInput = {
@@ -52,7 +52,7 @@ export function buildReport(s: ShiftInput): string {
   const inviaveisList = s.services.filter((x) => !x.viable);
 
   const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
-  const mediaDeslocamento = averageDisplacementMin(s.services);
+  const mediaDeslocamento = averageDisplacementMin(s.services, s.started_at);
 
   const complementCounts = new Map<string, number>();
   for (const c of s.complements ?? []) {
