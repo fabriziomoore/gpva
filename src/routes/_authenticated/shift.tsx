@@ -244,8 +244,8 @@ function ShiftPage() {
           <Kpi label="Efetividade" value={`${kpis.efetividade}%`} tone="success" />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
           <Kpi label="M. Deslocamento" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
+          <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
           <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" centerValue />
         </div>
 
