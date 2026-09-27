@@ -221,6 +221,7 @@ export type ShiftServiceRow = {
   reason_name: string | null;
   registration_number: string | null;
   negotiated_value: number | null;
+  created_at: string;
 };
 
 // Serviços/complementos/impactos de um expediente ainda ABERTO — usado pra
@@ -234,7 +235,7 @@ export const leaderShiftServices = createServerFn({ method: "POST" })
     const [servicesRes, linksRes, impactsRes] = await Promise.all([
       context.supabase
         .from("servicos")
-        .select("service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value")
+        .select("service_type_name,is_negotiation,viable,reason_name,registration_number,negotiated_value,created_at")
         .eq("shift_id", data.shiftId),
       context.supabase
         .from("vinculos_complementos")

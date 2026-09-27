@@ -1,4 +1,4 @@
-import { formatBRL, formatDateBR, pad2 } from "./format";
+import { formatBRL, formatDateBR, formatDurationMin, pad2 } from "./format";
 import type { Period } from "./analytics";
 import { deltaPct, previousLabel, projectionLabel } from "./analytics";
 
@@ -9,7 +9,19 @@ type ServiceRow = {
   reason_name: string | null;
   registration_number: string | null;
   negotiated_value: number | null;
+  created_at: string;
 };
+
+// Tempo médio entre o primeiro e o último serviço registrado no expediente
+// (da primeira O.S. até a última), dividido pelo número de intervalos —
+// equivale à média dos intervalos entre serviços consecutivos.
+function averageDisplacementMin(services: { created_at: string }[]): number {
+  if (services.length < 2) return 0;
+  const sorted = [...services].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const first = new Date(sorted[0].created_at).getTime();
+  const last = new Date(sorted[sorted.length - 1].created_at).getTime();
+  return (last - first) / (sorted.length - 1) / 60000;
+}
 
 type ShiftInput = {
   started_at: string;
@@ -39,6 +51,9 @@ export function buildReport(s: ShiftInput): string {
 
   const inviaveisList = s.services.filter((x) => !x.viable);
 
+  const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
+  const mediaDeslocamento = averageDisplacementMin(s.services);
+
   const complementCounts = new Map<string, number>();
   for (const c of s.complements ?? []) {
     complementCounts.set(c.complement_name, (complementCounts.get(c.complement_name) ?? 0) + 1);
@@ -53,6 +68,8 @@ export function buildReport(s: ShiftInput): string {
   lines.push(`*Total de Serviços:* ${pad2(total)}`);
   lines.push(`*Viáveis:* ${pad2(viaveis)}`);
   lines.push(`*Inviáveis:* ${pad2(inviaveis)}`);
+  lines.push(`*Efetividade:* ${efetividade}%`);
+  lines.push(`*Média de deslocamento:* ${formatDurationMin(mediaDeslocamento)}`);
   lines.push("");
   for (const [name, count] of byType) {
     lines.push(`*${name}:* ${pad2(count)}`);

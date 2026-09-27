@@ -9,7 +9,7 @@ import { repoDeleteService } from "@/lib/db/repos";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatDurationMin } from "@/lib/format";
 import { isPosCorteName } from "@/lib/service-types";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
@@ -121,7 +121,17 @@ function ShiftPage() {
     // Efetividade = serviços viáveis / total, em %. Mesma conta usada em
     // toda tela que mostra Total/Viáveis/Inviáveis da equipe.
     const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
-    return { total, viaveis, inviaveis, totalNeg, variavel, efetividade };
+    // Média de deslocamento: tempo entre a primeira e a última O.S.
+    // registrada, dividido pelos intervalos entre elas — equivale à média
+    // dos intervalos entre serviços consecutivos. `list` vem ordenada do
+    // mais novo pro mais antigo, daí list[0]=última e list[total-1]=primeira.
+    const mediaDeslocamentoMin =
+      total > 1
+        ? (new Date(list[0].created_at).getTime() - new Date(list[total - 1].created_at).getTime()) /
+          (total - 1) /
+          60000
+        : 0;
+    return { total, viaveis, inviaveis, totalNeg, variavel, efetividade, mediaDeslocamentoMin };
   }, [services, openShift, team]);
 
   function attemptFinish() {
@@ -232,8 +242,9 @@ function ShiftPage() {
           <Kpi label="Inviáveis" value={String(kpis.inviaveis).padStart(2, "0")} tone="destructive" />
           <Kpi label="Efetividade" value={`${kpis.efetividade}%`} tone="success" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
+          <Kpi label="Média deslocamento" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
           <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" centerValue />
         </div>
 
