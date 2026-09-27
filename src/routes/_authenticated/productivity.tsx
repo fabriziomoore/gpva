@@ -20,7 +20,7 @@ import {
   Legend,
 } from "recharts";
 import { formatDateBR } from "@/lib/format";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/productivity")({
@@ -326,8 +326,12 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
     });
   }, [rows, customRange]);
 
+  // appearance-none remove a seta nativa do navegador — no Android ela
+  // desenha por cima do canto direito do campo, cortando o último
+  // caractere do texto centralizado (ex.: o "9" de "27/09"). O pr-4
+  // reserva o espaço certinho pro ChevronDown desenhado à parte.
   const slotCls =
-    "h-11 min-w-0 flex-1 rounded-lg bg-card text-foreground shadow-md px-1 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
+    "h-11 w-full min-w-0 appearance-none rounded-lg bg-card text-foreground shadow-md pl-1 pr-4 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
 
   // Troca de campo (clique num campo que não é o modo atual) sempre reseta
   // pros dados de hoje, em vez de manter um valor antigo escolhido antes —
@@ -350,49 +354,61 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
           não é o modo atual reresenta pros dados de hoje (jumpTo); trocar o
           valor dentro do campo já ativo não mexe nos outros campos. */}
       <div className="flex gap-1.5">
-        <select
-          value={day}
-          onClick={() => jumpTo("day")}
-          onChange={(e) => { setDay(Number(e.target.value)); setMode("day"); }}
-          className={slotCls}
-        >
-          {daysArr.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
+        <div className="relative min-w-0 flex-1">
+          <select
+            value={day}
+            onClick={() => jumpTo("day")}
+            onChange={(e) => { setDay(Number(e.target.value)); setMode("day"); }}
+            className={slotCls}
+          >
+            {daysArr.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        </div>
 
-        <select
-          value={weekIdx}
-          onClick={() => jumpTo("week")}
-          onChange={(e) => { setWeekIdx(Number(e.target.value)); setMode("week"); }}
-          className={slotCls}
-        >
-          {weeks.map((w, i) => (
-            <option key={i} value={i}>{w.label}</option>
-          ))}
-        </select>
+        <div className="relative min-w-0 flex-1">
+          <select
+            value={weekIdx}
+            onClick={() => jumpTo("week")}
+            onChange={(e) => { setWeekIdx(Number(e.target.value)); setMode("week"); }}
+            className={slotCls}
+          >
+            {weeks.map((w, i) => (
+              <option key={i} value={i}>{w.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        </div>
 
-        <select
-          value={month}
-          onClick={() => jumpTo("month")}
-          onChange={(e) => { setMonth(Number(e.target.value)); setMode("month"); }}
-          className={slotCls}
-        >
-          {monthNames.map((n, i) => (
-            <option key={i} value={i + 1}>{n}</option>
-          ))}
-        </select>
+        <div className="relative min-w-0 flex-1">
+          <select
+            value={month}
+            onClick={() => jumpTo("month")}
+            onChange={(e) => { setMonth(Number(e.target.value)); setMode("month"); }}
+            className={slotCls}
+          >
+            {monthNames.map((n, i) => (
+              <option key={i} value={i + 1}>{n}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        </div>
 
-        <select
-          value={year}
-          onClick={() => jumpTo("year")}
-          onChange={(e) => { setYear(Number(e.target.value)); setMode("year"); }}
-          className={slotCls}
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+        <div className="relative min-w-0 flex-1">
+          <select
+            value={year}
+            onClick={() => jumpTo("year")}
+            onChange={(e) => { setYear(Number(e.target.value)); setMode("year"); }}
+            className={slotCls}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        </div>
       </div>
 
       <PeriodView rows={filtered} period={mode} />
