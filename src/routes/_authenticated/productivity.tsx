@@ -321,10 +321,8 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
     });
   }, [rows, customRange]);
 
-  const activeCls = "bg-primary text-primary-foreground shadow-md";
-  const inactiveCls = "bg-card text-foreground shadow-md";
   const slotCls =
-    "h-11 min-w-0 flex-1 rounded-lg px-1 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
+    "h-11 min-w-0 flex-1 rounded-lg bg-card text-foreground shadow-md px-1 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
 
   return (
     <div className="space-y-4">
@@ -337,14 +335,14 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
           <select
             value={day}
             onChange={(e) => setDay(Number(e.target.value))}
-            className={`${slotCls} ${activeCls}`}
+            className={slotCls}
           >
             {daysArr.map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
         ) : (
-          <button type="button" onClick={() => setMode("day")} className={`${slotCls} ${inactiveCls}`}>
+          <button type="button" onClick={() => setMode("day")} className={slotCls}>
             Dia
           </button>
         )}
@@ -353,27 +351,27 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
           <select
             value={weekIdx}
             onChange={(e) => setWeekIdx(Number(e.target.value))}
-            className={`${slotCls} ${activeCls}`}
+            className={slotCls}
           >
             {weeks.map((w, i) => (
               <option key={i} value={i}>{w.label}</option>
             ))}
           </select>
         ) : (
-          <button type="button" onClick={() => setMode("week")} className={`${slotCls} ${inactiveCls}`}>
+          <button type="button" onClick={() => setMode("week")} className={slotCls}>
             Semana
           </button>
         )}
 
         {mode === "year" ? (
-          <button type="button" onClick={() => setMode("month")} className={`${slotCls} ${inactiveCls}`}>
+          <button type="button" onClick={() => setMode("month")} className={slotCls}>
             Mês
           </button>
         ) : (
           <select
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
-            className={`${slotCls} ${mode === "month" ? activeCls : inactiveCls}`}
+            className={slotCls}
           >
             {monthNames.map((n, i) => (
               <option key={i} value={i + 1}>{n}</option>
@@ -385,7 +383,7 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
           onClick={() => setMode("year")}
-          className={`${slotCls} ${mode === "year" ? activeCls : inactiveCls}`}
+          className={slotCls}
         >
           {years.map((y) => (
             <option key={y} value={y}>{y}</option>
