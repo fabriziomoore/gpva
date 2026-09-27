@@ -121,17 +121,16 @@ function ShiftPage() {
     // Efetividade = serviços viáveis / total, em %. Mesma conta usada em
     // toda tela que mostra Total/Viáveis/Inviáveis da equipe.
     const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
-    // Média de deslocamento: tempo entre as 7h da manhã (início padrão do
-    // expediente) e a última O.S. registrada, dividido pela quantidade de
-    // serviços — `list` vem ordenada do mais novo pro mais antigo, daí
-    // list[0] é a última O.S.
-    let mediaDeslocamentoMin = 0;
-    if (total > 0 && openShift) {
-      const day = new Date(openShift.started_at);
-      const sevenAM = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 7, 0, 0, 0).getTime();
-      const last = new Date(list[0].created_at).getTime();
-      mediaDeslocamentoMin = last > sevenAM ? (last - sevenAM) / total / 60000 : 0;
-    }
+    // Tempo médio entre O.S.: intervalo entre o registro da primeira e da
+    // última O.S. do expediente, dividido pelos intervalos entre elas —
+    // `list` vem ordenada do mais novo pro mais antigo, daí list[0]=última
+    // e list[total-1]=primeira.
+    const mediaDeslocamentoMin =
+      total > 1
+        ? (new Date(list[0].created_at).getTime() - new Date(list[total - 1].created_at).getTime()) /
+          (total - 1) /
+          60000
+        : 0;
     return { total, viaveis, inviaveis, totalNeg, variavel, efetividade, mediaDeslocamentoMin };
   }, [services, openShift, team]);
 
@@ -244,7 +243,7 @@ function ShiftPage() {
           <Kpi label="Efetividade" value={`${kpis.efetividade}%`} tone="success" />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <Kpi label="M. Deslocamento" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
+          <Kpi label="Tempo M. entre O.S" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
           <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
           <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" centerValue />
         </div>
