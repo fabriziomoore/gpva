@@ -195,7 +195,7 @@ function SettingsPage() {
   return (
     <AppShell title="Configurações" right={<ShiftMeta />}>
       <div className="space-y-8">
-        <section className="space-y-6">
+        <section className="space-y-6 rounded-2xl bg-card p-4 shadow-md">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
             <div className="flex items-center gap-2">
