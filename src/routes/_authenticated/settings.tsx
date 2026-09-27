@@ -195,17 +195,17 @@ function SettingsPage() {
   return (
     <AppShell title="Configurações" right={<ShiftMeta />}>
       <div className="space-y-8">
-        <section className="space-y-6 rounded-2xl bg-card p-4 shadow-md">
+        <section className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Equipe</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground/70">Equipe</h2>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Modo</span>
+              <span className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground/70">Modo</span>
               <ThemeToggle />
             </div>
           </div>
           <div className="space-y-3">
             <div>
-              <Label>Foto da equipe</Label>
+              <Label className="text-canvas-foreground">Foto da equipe</Label>
               <div className="mt-2 flex items-center gap-3">
                 <div className="size-16 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
                   {teamPhoto ? (
@@ -226,7 +226,7 @@ function SettingsPage() {
                     {teamPhoto ? "Alterar foto" : "Adicionar foto"}
                   </Button>
                   {teamPhoto && (
-                    <Button type="button" variant="ghost" className="h-9" onClick={removePhoto}>
+                    <Button type="button" variant="ghost" className="h-9 text-canvas-foreground" onClick={removePhoto}>
                       Remover
                     </Button>
                   )}
@@ -234,62 +234,62 @@ function SettingsPage() {
               </div>
             </div>
             <div>
-              <Label>Nome da equipe</Label>
+              <Label className="text-canvas-foreground">Nome da equipe</Label>
               <Input
                 value={isTestAccount ? teamName : team.team_name}
                 disabled={!isTestAccount}
                 onChange={(e) => setTeamName(e.target.value)}
-                className="h-11"
+                className="h-11 bg-card"
               />
             </div>
             <div>
-              <Label>Placa do veículo</Label>
+              <Label className="text-canvas-foreground">Placa do veículo</Label>
               <Input
                 value={vehiclePlate}
                 onChange={(e) => setVehiclePlate(e.target.value)}
                 placeholder="Ex: ABC1D23"
-                className="h-11 uppercase"
+                className="h-11 bg-card uppercase"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-canvas-foreground/60">
                 Usada para preencher automaticamente o Forms de início de expediente.
               </p>
             </div>
             <div>
-              <Label>Colaborador 1</Label>
+              <Label className="text-canvas-foreground">Colaborador 1</Label>
               <Input
                 value={collab1}
                 onChange={(e) => setCollab1(e.target.value)}
                 placeholder="Nome do primeiro colaborador"
-                className="h-11"
+                className="h-11 bg-card"
               />
             </div>
             <div>
-              <Label>Colaborador 2</Label>
+              <Label className="text-canvas-foreground">Colaborador 2</Label>
               <Input
                 value={collab2}
                 onChange={(e) => setCollab2(e.target.value)}
                 placeholder="Nome do segundo colaborador"
-                className="h-11"
+                className="h-11 bg-card"
               />
             </div>
             <div>
-              <Label htmlFor="sup">Supervisor</Label>
+              <Label htmlFor="sup" className="text-canvas-foreground">Supervisor</Label>
               <Input
                 id="sup"
                 value={supervisor}
                 onChange={(e) => setSupervisor(e.target.value)}
                 disabled={!isTestAccount}
-                className="h-11"
+                className="h-11 bg-card"
               />
             </div>
             <div>
-              <Label htmlFor="lid">Líder</Label>
+              <Label htmlFor="lid" className="text-canvas-foreground">Líder</Label>
               <Input
                 id="lid"
                 value={leader}
                 onChange={(e) => setLeader(e.target.value)}
                 disabled={!isTestAccount}
-                className="h-11"
+                className="h-11 bg-card"
               />
             </div>
             <Button onClick={saveTeam} disabled={saving} className="h-11 w-full">
@@ -298,20 +298,20 @@ function SettingsPage() {
           </div>
 
           <div className="space-y-3 border-t border-border pt-6">
-            <p className="text-sm font-semibold">Alterar senha</p>
+            <p className="text-sm font-semibold text-canvas-foreground">Alterar senha</p>
             <Input
               type="password"
               placeholder="Nova senha"
               value={pw1}
               onChange={(e) => setPw1(e.target.value)}
-              className="h-11"
+              className="h-11 bg-card"
             />
             <Input
               type="password"
               placeholder="Confirmar senha"
               value={pw2}
               onChange={(e) => setPw2(e.target.value)}
-              className="h-11"
+              className="h-11 bg-card"
             />
             <Button onClick={changePassword} disabled={saving} variant="outline" className="h-11 w-full">
               Alterar senha
@@ -321,7 +321,7 @@ function SettingsPage() {
           {isTestAccount && (
             <div className="space-y-2 border-t border-border pt-6">
               <p className="text-sm font-semibold text-destructive">Conta de teste</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-canvas-foreground/60">
                 Apaga todos os expedientes, serviços, complementos e impactos criados por esta conta.
               </p>
               <Button
@@ -338,7 +338,7 @@ function SettingsPage() {
           <div className="space-y-3 border-t border-border pt-6">
             <CheckUpdateDialog />
             {versionInfo && (
-              <p className="text-center text-xs text-muted-foreground">
+              <p className="text-center text-xs text-canvas-foreground/60">
                 Versão {versionInfo.version} ({versionInfo.build})
                 {versionInfo.otaBuild && ` · Atualização ${versionInfo.otaBuild}`}
               </p>
