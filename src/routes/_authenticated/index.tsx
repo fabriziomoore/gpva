@@ -7,7 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText, ChevronRight } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDateBR } from "@/lib/format";
@@ -337,10 +337,6 @@ function HomePage() {
                 </p>
               </div>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary py-1.5 pl-3 pr-2 text-xs font-semibold text-background transition-colors">
-              Abrir
-              <ChevronRight className="size-3.5" />
-            </span>
           </Link>
         )}
       </div>
