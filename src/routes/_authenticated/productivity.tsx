@@ -266,10 +266,15 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
       e.setDate(e.getDate() + 6);
       if (s.getMonth() === m || e.getMonth() === m) {
         const pad = (n: number) => n.toString().padStart(2, "0");
+        // Só repete o mês nos dois lados quando a semana cruza a virada do
+        // mês — dentro do mesmo mês, o dia sozinho já é suficiente e ocupa
+        // bem menos espaço no campo.
+        const startLabel =
+          s.getMonth() === e.getMonth() ? pad(s.getDate()) : `${pad(s.getDate())}/${pad(s.getMonth() + 1)}`;
         list.push({
           start: s,
           end: e,
-          label: `${pad(s.getDate())}/${pad(s.getMonth() + 1)} – ${pad(e.getDate())}/${pad(e.getMonth() + 1)}`,
+          label: `${startLabel} – ${pad(e.getDate())}/${pad(e.getMonth() + 1)}`,
         });
       }
       cur.setDate(cur.getDate() + 7);
