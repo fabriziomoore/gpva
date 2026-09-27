@@ -14,6 +14,7 @@ import { formatDateBR } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import { repoCreateShift } from "@/lib/db/repos";
+import { openShiftStartForm } from "@/lib/shift-start-form";
 import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
 import { generateFakeServiceRows } from "@/lib/demo-fake-data";
@@ -151,6 +152,16 @@ function HomePage() {
       if (openShift) {
         navigate({ to: "/shift" });
         return;
+      }
+      // Chamada síncrona (antes do await abaixo) — o window.open interno
+      // só escapa do bloqueador de pop-up dentro do próprio gesto de
+      // clique. Contas de teste não abrem o Forms real.
+      if (!team?.is_test) {
+        openShiftStartForm({
+          leader: team?.leader,
+          teamName: team?.team_name,
+          plate: team?.vehicle_plate,
+        });
       }
       await repoCreateShift({
         team_id: userId,

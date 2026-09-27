@@ -32,6 +32,7 @@ export type Team = {
   photo_url: string | null;
   collaborator1: string | null;
   collaborator2: string | null;
+  vehicle_plate: string | null;
   setor_id?: string | null;
   setor_nome?: string | null;
   setor_supervisor?: string | null;
@@ -59,6 +60,7 @@ export function useTeam(userId: string | null) {
       const cached: Team | null = cachedRaw
         ? {
             ...cachedRaw,
+            vehicle_plate: cachedRaw.vehicle_plate ?? null,
             setor_variavel_ativo: cachedRaw.setor_variavel_ativo ?? true,
             setor_negociacao_ativa: cachedRaw.setor_negociacao_ativa ?? false,
             is_test: cachedRaw.is_test ?? false,
@@ -69,7 +71,7 @@ export function useTeam(userId: string | null) {
         const { data, error } = await withTimeout(
           supabase
             .from("equipes")
-            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,setor_id,is_test,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,vehicle_plate,setor_id,is_test,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
             .maybeSingle(),
         );
         if (error) throw error;
@@ -91,6 +93,7 @@ export function useTeam(userId: string | null) {
           photo_url: data.photo_url,
           collaborator1: data.collaborator1,
           collaborator2: data.collaborator2,
+          vehicle_plate: data.vehicle_plate,
           setor_id: data.setor_id,
           setor_nome: setor?.nome ?? null,
           setor_supervisor: setor?.supervisor_nome ?? null,

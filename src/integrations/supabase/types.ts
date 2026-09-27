@@ -180,6 +180,7 @@ export type Database = {
           supervisor_id: string | null
           team_name: string
           variable_rate: number
+          vehicle_plate: string | null
           version_reported_at: string | null
           web_bundle_version: number | null
         }
@@ -199,6 +200,7 @@ export type Database = {
           supervisor_id?: string | null
           team_name: string
           variable_rate?: number
+          vehicle_plate?: string | null
           version_reported_at?: string | null
           web_bundle_version?: number | null
         }
@@ -218,6 +220,7 @@ export type Database = {
           supervisor_id?: string | null
           team_name?: string
           variable_rate?: number
+          vehicle_plate?: string | null
           version_reported_at?: string | null
           web_bundle_version?: number | null
         }

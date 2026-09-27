@@ -37,6 +37,7 @@ function SettingsPage() {
   const [leader, setLeader] = useState("");
   const [collab1, setCollab1] = useState("");
   const [collab2, setCollab2] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
   const [teamName, setTeamName] = useState("");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
@@ -124,6 +125,7 @@ function SettingsPage() {
       setLeader(team.leader);
       setCollab1(team.collaborator1 || "");
       setCollab2(team.collaborator2 || "");
+      setVehiclePlate(team.vehicle_plate || "");
       setTeamName(team.team_name);
     }
   }, [team]);
@@ -131,11 +133,12 @@ function SettingsPage() {
   async function saveTeam() {
     setSaving(true);
     try {
-      const patch: Partial<Team> = { 
-        supervisor, 
+      const patch: Partial<Team> = {
+        supervisor,
         leader,
         collaborator1: collab1.trim() || null,
-        collaborator2: collab2.trim() || null
+        collaborator2: collab2.trim() || null,
+        vehicle_plate: vehiclePlate.trim().toUpperCase() || null,
       };
       
       if (isTestAccount) {
@@ -256,6 +259,18 @@ function SettingsPage() {
                 placeholder="Nome do segundo colaborador"
                 className="h-11"
               />
+            </div>
+            <div>
+              <Label>Placa do veículo</Label>
+              <Input
+                value={vehiclePlate}
+                onChange={(e) => setVehiclePlate(e.target.value)}
+                placeholder="Ex: ABC1D23"
+                className="h-11 uppercase"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Usada para preencher automaticamente o Forms de início de expediente.
+              </p>
             </div>
             <div>
               <Label htmlFor="sup">Supervisor</Label>
