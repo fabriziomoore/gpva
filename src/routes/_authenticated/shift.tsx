@@ -244,7 +244,7 @@ function ShiftPage() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
-          <Kpi label="Média deslocamento" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
+          <Kpi label="M. Deslocamento" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
           <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" centerValue />
         </div>
 
@@ -431,7 +431,7 @@ function Kpi({
     >
       {centerValue ? (
         <>
-          <p className="absolute inset-x-3 top-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="absolute inset-x-0.5 top-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
           {/* Cobre o card inteiro (não só o espaço acima do banner) pra o
               valor centralizar na mesma altura dos cards vizinhos sem
               banner — se centralizasse só no espaço "sobrando" acima da
