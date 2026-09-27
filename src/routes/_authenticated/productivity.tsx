@@ -7,7 +7,6 @@ import { useTeam } from "@/hooks/use-team";
 import { generateFakeServiceRows, generateFakeShiftHistory } from "@/lib/demo-fake-data";
 import { AppShell } from "@/components/layout/AppShell";
 import { ShiftMeta } from "@/components/layout/ShiftMeta";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ResponsiveContainer,
   BarChart,
@@ -322,49 +321,59 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
     });
   }, [rows, customRange]);
 
-  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
+  const activeCls = "bg-primary text-primary-foreground shadow-md";
+  const inactiveCls = "bg-card text-foreground shadow-md";
+  const slotCls =
+    "h-11 min-w-0 flex-1 rounded-lg px-1 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
 
   return (
     <div className="space-y-4">
-      <Tabs value={mode} onValueChange={(v) => setMode(v as Period)}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="day">Dia</TabsTrigger>
-          <TabsTrigger value="week">Semana</TabsTrigger>
-          <TabsTrigger value="month">Mês</TabsTrigger>
-          <TabsTrigger value="year">Ano</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <div className="flex flex-wrap gap-2">
-        {mode === "day" && (
+      {/* Uma barra só: cada item mostra seu próprio valor (dropdown) quando
+          é o modo ativo ou quando o modo ativo depende dele (mês/ano são
+          usados por Dia e Semana também); senão mostra só o nome e serve
+          pra trocar de modo. */}
+      <div className="flex gap-1.5">
+        {mode === "day" ? (
           <select
             value={day}
             onChange={(e) => setDay(Number(e.target.value))}
-            className={`${selectCls} w-20 shrink-0`}
+            className={`${slotCls} ${activeCls}`}
           >
             {daysArr.map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
+        ) : (
+          <button type="button" onClick={() => setMode("day")} className={`${slotCls} ${inactiveCls}`}>
+            Dia
+          </button>
         )}
 
-        {mode === "week" && (
+        {mode === "week" ? (
           <select
             value={weekIdx}
             onChange={(e) => setWeekIdx(Number(e.target.value))}
-            className={`${selectCls} min-w-0 flex-1`}
+            className={`${slotCls} ${activeCls}`}
           >
             {weeks.map((w, i) => (
               <option key={i} value={i}>{w.label}</option>
             ))}
           </select>
+        ) : (
+          <button type="button" onClick={() => setMode("week")} className={`${slotCls} ${inactiveCls}`}>
+            Semana
+          </button>
         )}
 
-        {mode !== "year" && (
+        {mode === "year" ? (
+          <button type="button" onClick={() => setMode("month")} className={`${slotCls} ${inactiveCls}`}>
+            Mês
+          </button>
+        ) : (
           <select
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
-            className={`${selectCls} min-w-0 flex-1`}
+            className={`${slotCls} ${mode === "month" ? activeCls : inactiveCls}`}
           >
             {monthNames.map((n, i) => (
               <option key={i} value={i + 1}>{n}</option>
@@ -375,7 +384,8 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className={`${selectCls} w-24 shrink-0`}
+          onClick={() => setMode("year")}
+          className={`${slotCls} ${mode === "year" ? activeCls : inactiveCls}`}
         >
           {years.map((y) => (
             <option key={y} value={y}>{y}</option>
