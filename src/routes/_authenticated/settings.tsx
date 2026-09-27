@@ -313,7 +313,7 @@ function SettingsPage() {
               onChange={(e) => setPw2(e.target.value)}
               className="h-11 bg-card"
             />
-            <Button onClick={changePassword} disabled={saving} variant="outline" className="h-11 w-full">
+            <Button onClick={changePassword} disabled={saving} className="h-11 w-full">
               Alterar senha
             </Button>
           </div>

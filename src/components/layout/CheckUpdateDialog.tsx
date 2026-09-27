@@ -85,7 +85,7 @@ export function CheckUpdateDialog() {
 
   return (
     <>
-      <Button type="button" variant="outline" className="h-11 w-full" onClick={() => handleOpenChange(true)}>
+      <Button type="button" className="h-11 w-full" onClick={() => handleOpenChange(true)}>
         <RefreshCw className="mr-2 size-4" />
         Verificar atualização
       </Button>
