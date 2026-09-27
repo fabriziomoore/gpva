@@ -505,7 +505,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
                 <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={10} interval={0} angle={-20} textAnchor="end" height={60} />
                 <YAxis stroke="var(--color-muted-foreground)" fontSize={10} allowDecimals={false} />
                 <Tooltip content={<QuantityTooltip />} />
-                <Bar dataKey="qty" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="qty" name="Qtd" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
