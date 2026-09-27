@@ -324,65 +324,64 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
   const slotCls =
     "h-11 min-w-0 flex-1 rounded-lg bg-card text-foreground shadow-md px-1 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
 
+  // Troca de campo (clique num campo que não é o modo atual) sempre reseta
+  // pros dados de hoje, em vez de manter um valor antigo escolhido antes —
+  // cada campo é um atalho pra "ver [período] de hoje", não uma memória do
+  // que foi navegado da última vez.
+  function jumpTo(next: Period) {
+    if (mode === next) return;
+    setDay(now.getDate());
+    setMonth(now.getMonth() + 1);
+    setYear(now.getFullYear());
+    setMode(next);
+  }
+
   return (
     <div className="space-y-4">
-      {/* Uma barra só: cada item mostra seu próprio valor (dropdown) quando
-          é o modo ativo ou quando o modo ativo depende dele (mês/ano são
-          usados por Dia e Semana também); senão mostra só o nome e serve
-          pra trocar de modo. */}
+      {/* Uma barra só, sempre com os mesmos 4 <select> (nunca troca pra
+          <button> e volta) — trocar o tipo do elemento no clique fazia o
+          próprio clique "sumir" antes do novo elemento existir, exigindo um
+          segundo clique pra realmente abrir a lista. Clicar num campo que
+          não é o modo atual reresenta pros dados de hoje (jumpTo); trocar o
+          valor dentro do campo já ativo não mexe nos outros campos. */}
       <div className="flex gap-1.5">
-        {mode === "day" ? (
-          <select
-            value={day}
-            onChange={(e) => setDay(Number(e.target.value))}
-            className={slotCls}
-          >
-            {daysArr.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        ) : (
-          <button type="button" onClick={() => setMode("day")} className={slotCls}>
-            Dia
-          </button>
-        )}
+        <select
+          value={day}
+          onClick={() => jumpTo("day")}
+          onChange={(e) => { setDay(Number(e.target.value)); setMode("day"); }}
+          className={slotCls}
+        >
+          {daysArr.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
 
-        {mode === "week" ? (
-          <select
-            value={weekIdx}
-            onChange={(e) => setWeekIdx(Number(e.target.value))}
-            className={slotCls}
-          >
-            {weeks.map((w, i) => (
-              <option key={i} value={i}>{w.label}</option>
-            ))}
-          </select>
-        ) : (
-          <button type="button" onClick={() => setMode("week")} className={slotCls}>
-            Semana
-          </button>
-        )}
+        <select
+          value={weekIdx}
+          onClick={() => jumpTo("week")}
+          onChange={(e) => { setWeekIdx(Number(e.target.value)); setMode("week"); }}
+          className={slotCls}
+        >
+          {weeks.map((w, i) => (
+            <option key={i} value={i}>{w.label}</option>
+          ))}
+        </select>
 
-        {mode === "year" ? (
-          <button type="button" onClick={() => setMode("month")} className={slotCls}>
-            Mês
-          </button>
-        ) : (
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className={slotCls}
-          >
-            {monthNames.map((n, i) => (
-              <option key={i} value={i + 1}>{n}</option>
-            ))}
-          </select>
-        )}
+        <select
+          value={month}
+          onClick={() => jumpTo("month")}
+          onChange={(e) => { setMonth(Number(e.target.value)); setMode("month"); }}
+          className={slotCls}
+        >
+          {monthNames.map((n, i) => (
+            <option key={i} value={i + 1}>{n}</option>
+          ))}
+        </select>
 
         <select
           value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          onClick={() => setMode("year")}
+          onClick={() => jumpTo("year")}
+          onChange={(e) => { setYear(Number(e.target.value)); setMode("year"); }}
           className={slotCls}
         >
           {years.map((y) => (
