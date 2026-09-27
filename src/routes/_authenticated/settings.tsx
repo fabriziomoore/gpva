@@ -250,9 +250,6 @@ function SettingsPage() {
                 placeholder="Ex: ABC1D23"
                 className="h-11 bg-card uppercase"
               />
-              <p className="mt-1 text-xs text-canvas-foreground/60">
-                Usada para preencher automaticamente o Forms de início de expediente.
-              </p>
             </div>
             <div>
               <Label className="text-canvas-foreground">Colaborador 1</Label>
