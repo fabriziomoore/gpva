@@ -243,6 +243,18 @@ function SettingsPage() {
               />
             </div>
             <div>
+              <Label>Placa do veículo</Label>
+              <Input
+                value={vehiclePlate}
+                onChange={(e) => setVehiclePlate(e.target.value)}
+                placeholder="Ex: ABC1D23"
+                className="h-11 uppercase"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Usada para preencher automaticamente o Forms de início de expediente.
+              </p>
+            </div>
+            <div>
               <Label>Colaborador 1</Label>
               <Input
                 value={collab1}
@@ -259,18 +271,6 @@ function SettingsPage() {
                 placeholder="Nome do segundo colaborador"
                 className="h-11"
               />
-            </div>
-            <div>
-              <Label>Placa do veículo</Label>
-              <Input
-                value={vehiclePlate}
-                onChange={(e) => setVehiclePlate(e.target.value)}
-                placeholder="Ex: ABC1D23"
-                className="h-11 uppercase"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Usada para preencher automaticamente o Forms de início de expediente.
-              </p>
             </div>
             <div>
               <Label htmlFor="sup">Supervisor</Label>
