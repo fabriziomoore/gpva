@@ -83,7 +83,7 @@ const teamItems = [
   { to: "/productivity" as const, label: "Produtividade", icon: BarChart3, exact: false },
   { to: "/variable" as const, label: "Variável", icon: Wallet, exact: false },
   { to: "/equipes" as const, label: "Equipes", icon: Users, exact: false },
-  { to: "/leader-clients" as const, label: "Clientes", icon: Search, exact: false },
+  { to: "/leader-clients" as const, label: "Consultas", icon: Search, exact: false },
   { to: "/procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
   { to: "/settings" as const, label: "Configurações", icon: Settings, exact: false },
 ];
@@ -91,7 +91,7 @@ const teamItems = [
 const leaderItems = [
   { to: "/leader" as const, label: "Painel", icon: BarChart3, exact: true },
   { to: "/leader-ranking" as const, label: "Ranking & Perfis", icon: Trophy, exact: true },
-  { to: "/leader-clients" as const, label: "Clientes", icon: Search, exact: true },
+  { to: "/leader-clients" as const, label: "Consultas", icon: Search, exact: true },
   { to: "/leader-map" as const, label: "Mapa", icon: Map, exact: true },
   { to: "/leader-procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
   { to: "/leader-config" as const, label: "Configuração", icon: Settings, exact: false },

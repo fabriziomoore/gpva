@@ -186,7 +186,7 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
       <Input
         value={regFilter}
         onChange={(e) => setRegFilter(e.target.value)}
-        placeholder="Filtrar por matrícula (opcional)"
+        placeholder="Filtrar por matrícula"
         inputMode="numeric"
         className="h-10"
       />
