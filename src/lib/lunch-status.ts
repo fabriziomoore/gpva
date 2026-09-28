@@ -1,10 +1,10 @@
 // Persiste (por expediente, neste dispositivo) se a equipe já confirmou o
 // almoço. Enquanto o expediente está aberto, o "Tempo M. O.S" só desconta a
-// 1h de almoço depois da confirmação; ao finalizar, o relatório sempre
-// desconta (se o almoço não foi identificado durante o dia, aplica mesmo assim).
+// 1h de almoço depois da confirmação; se ela não confirmar, o relatório
+// aplica o desconto ao finalizar (uma única vez em qualquer caso).
 //
-// `dismissed` guarda as O.S. em que a pergunta já foi respondida com "Não",
-// pra não repetir a pergunta sobre o mesmo intervalo.
+// `dismissed` guarda as O.S. que abriram um intervalo em que a pergunta já
+// foi respondida com "Não", pra não repetir a pergunta sobre ele.
 
 import { useSyncExternalStore } from "react";
 

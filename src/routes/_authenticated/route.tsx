@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { hasSessionEjection, verifyActiveSession } from "@/lib/session-guard";
 import { readStoredAuthSession } from "@/lib/sync/session-backup";
 import { hasValidOfflineUnlock } from "@/lib/offline-auth";
+import { LunchPrompt } from "@/components/shift/LunchPrompt";
 
 const AUTH_ROUTE_TIMEOUT_MS = 800;
 
@@ -93,5 +94,10 @@ export const Route = createFileRoute("/_authenticated")({
     bootLog("beforeLoad:redirect->/auth");
     throw redirect({ to: "/auth" });
   },
-  component: () => <Outlet />,
+  component: () => (
+    <>
+      <Outlet />
+      <LunchPrompt />
+    </>
+  ),
 });
