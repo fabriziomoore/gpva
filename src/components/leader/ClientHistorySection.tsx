@@ -193,7 +193,7 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
 
       <div className="grid grid-cols-2 gap-2">
         <Stat label="Negociações" value={String(rows.length)} />
-        <Stat label="Total do período" value={formatBRL(total)} small />
+        <Stat label="Total do período" value={formatBRL(total)} />
       </div>
 
       {query.isLoading ? (
