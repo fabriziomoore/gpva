@@ -237,15 +237,12 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
         className="h-11"
       />
       <div className="space-y-3">
-        <div>
-          <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-canvas-foreground">
-            <AlertTriangle className="size-4 text-destructive" />
-            Clientes recorrentes
-          </p>
-          <p className="text-xs text-canvas-foreground/70">
-            Matrículas com o mesmo motivo de inviabilidade em 2 ou mais visitas.
-          </p>
-        </div>
+        <p className="flex items-center gap-2 text-sm font-semibold text-canvas-foreground">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-destructive">
+            <AlertTriangle className="size-3.5 text-white" />
+          </span>
+          EXOC'S RECORRENTES
+        </p>
         {recurring.isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="size-5 animate-spin text-canvas-foreground/60" />
@@ -262,7 +259,7 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-semibold">{g.registration_number}</span>
-                    <span className="shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
+                    <span className="shrink-0 rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold text-white">
                       {g.count}x
                     </span>
                   </div>
