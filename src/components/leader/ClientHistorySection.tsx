@@ -335,7 +335,7 @@ function Stat({ label, value, small }: { label: string; value: string; small?: b
     <div className="rounded-xl bg-card shadow-md p-3 text-center">
       <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p
-        className={"truncate font-bold text-foreground " + (small ? "text-base" : "text-2xl")}
+        className={"truncate font-bold text-foreground " + (small ? "text-base" : "text-xl")}
         title={value}
       >
         {value}
