@@ -51,7 +51,7 @@ function ShiftPage() {
     const db = getLocalDB();
     const row = await db.shifts
       .where("[team_id+status+started_at]")
-      .between([userId, "open", ""], [userId, "open", "￿"])
+      .between([userId, "open", ""], [userId, "open", "\uffff"])
       .last();
     return row ?? null;
   }, [userId]);
