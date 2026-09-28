@@ -309,10 +309,10 @@ function ClientHistoryView({
         <div className="space-y-4">
           <div className="flex gap-2">
             <div className="w-24 shrink-0">
-              <Stat label="Serviços" value={String(rows.length)} />
+              <Stat label="Serviços" value={String(rows.length)} compact />
             </div>
             <div className="w-24 shrink-0">
-              <Stat label="Negociações" value={String(negotiations.length)} />
+              <Stat label="Negociações" value={String(negotiations.length)} compact />
             </div>
             <div className="min-w-0 flex-1">
               <Stat label="Total negociado" value={formatBRL(totalNegotiated)} compact />
