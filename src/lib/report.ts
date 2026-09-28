@@ -12,14 +12,18 @@ type ServiceRow = {
   created_at: string;
 };
 
+// Pausa de almoço das equipes, descontada do tempo médio entre O.S.
+export const LUNCH_BREAK_MIN = 60;
+
 // Tempo médio entre O.S.: intervalo entre a primeira e a última O.S.
-// registrada, dividido pelos intervalos entre elas.
-function averageDisplacementMin(services: { created_at: string }[]): number {
+// registrada, menos 1h de almoço, dividido pelos intervalos entre elas.
+export function averageDisplacementMin(services: { created_at: string }[]): number {
   if (services.length < 2) return 0;
   const sorted = [...services].sort((a, b) => a.created_at.localeCompare(b.created_at));
   const first = new Date(sorted[0].created_at).getTime();
   const last = new Date(sorted[sorted.length - 1].created_at).getTime();
-  return (last - first) / (sorted.length - 1) / 60000;
+  const workedMin = Math.max(0, (last - first) / 60000 - LUNCH_BREAK_MIN);
+  return workedMin / (sorted.length - 1);
 }
 
 type ShiftInput = {
