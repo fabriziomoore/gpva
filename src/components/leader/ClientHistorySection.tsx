@@ -226,23 +226,23 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
 
   return (
     <div className="space-y-3">
-      <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onPickMatricula(query);
-        }}
-        placeholder="Buscar por matrícula..."
-        inputMode="numeric"
-        className="h-11"
-      />
       <div className="space-y-3">
         <p className="flex items-center gap-2 text-sm font-semibold text-canvas-foreground">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-destructive">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive">
             <AlertTriangle className="size-3.5 text-white" />
           </span>
           EXOC'S RECORRENTES
         </p>
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onPickMatricula(query);
+          }}
+          placeholder="Buscar por matrícula..."
+          inputMode="numeric"
+          className="h-11"
+        />
         {recurring.isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="size-5 animate-spin text-canvas-foreground/60" />
@@ -259,7 +259,7 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-semibold">{g.registration_number}</span>
-                    <span className="shrink-0 rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold text-white">
+                    <span className="shrink-0 rounded-md bg-destructive px-2 py-0.5 text-xs font-semibold text-white">
                       {g.count}x
                     </span>
                   </div>
