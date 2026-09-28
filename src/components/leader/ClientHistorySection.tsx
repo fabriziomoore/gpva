@@ -307,12 +307,16 @@ function ClientHistoryView({
         </p>
       ) : (
         <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="flex gap-2">
+            <div className="w-24 shrink-0">
               <Stat label="Serviços" value={String(rows.length)} />
+            </div>
+            <div className="w-24 shrink-0">
               <Stat label="Negociações" value={String(negotiations.length)} />
             </div>
-            <Stat label="Total negociado" value={formatBRL(totalNegotiated)} />
+            <div className="min-w-0 flex-1">
+              <Stat label="Total negociado" value={formatBRL(totalNegotiated)} compact />
+            </div>
           </div>
 
           {negotiations.length > 0 && (
@@ -336,11 +340,14 @@ function ClientHistoryView({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, compact }: { label: string; value: string; compact?: boolean }) {
   return (
     <div className="rounded-xl bg-card shadow-md p-3 text-center">
       <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="truncate text-xl font-bold text-foreground" title={value}>
+      <p
+        className={"truncate font-bold text-foreground " + (compact ? "text-sm" : "text-xl")}
+        title={value}
+      >
         {value}
       </p>
     </div>
