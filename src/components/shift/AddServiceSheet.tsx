@@ -389,7 +389,7 @@ export function AddServiceSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" hideClose className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
+      <SheetContent side="bottom" hideClose className="h-[90vh] overflow-y-auto rounded-t-3xl border-t-0 p-0">
         <SheetHeader
           className={"p-4 " + (useColoredHeader ? "bg-primary" : "border-b border-border")}
         >

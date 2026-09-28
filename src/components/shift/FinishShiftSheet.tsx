@@ -124,7 +124,7 @@ export function FinishShiftSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" hideClose className="h-[85vh] overflow-y-auto rounded-t-3xl p-0">
+      <SheetContent side="bottom" hideClose className="h-[85vh] overflow-y-auto rounded-t-3xl border-t-0 p-0">
         <SheetHeader className="border-b border-primary bg-primary p-4">
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="text-left text-primary-foreground">Impactos do dia</SheetTitle>
