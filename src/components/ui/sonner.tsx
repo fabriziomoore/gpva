@@ -36,9 +36,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
           padding: "10px 16px",
         },
         classNames: {
+          // Fundo sempre escuro (preto) e texto sempre branco, nos dois
+          // temas — no claro, bg-background/text-foreground davam um toast
+          // branco com texto escuro, destoando do resto do app.
           toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
+            "group toast group-[.toaster]:bg-black group-[.toaster]:text-white group-[.toaster]:border-white/10 group-[.toaster]:shadow-lg",
+          description: "group-[.toast]:text-white/70",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
         },
