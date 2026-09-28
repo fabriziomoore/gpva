@@ -297,14 +297,14 @@ function ClientHistoryView({
 
   return (
     <div className="space-y-4">
-      <p className="text-lg font-bold">{searched}</p>
+      <p className="text-lg font-bold text-canvas-foreground">{searched}</p>
 
       {history.isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <Loader2 className="size-6 animate-spin text-canvas-foreground/60" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">
+        <p className="py-10 text-center text-sm text-canvas-foreground/70">
           Nenhum serviço encontrado para "{searched}".
         </p>
       ) : (
@@ -356,8 +356,8 @@ function Stat({ label, value, small }: { label: string; value: string; small?: b
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-card shadow-md p-3">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wide text-canvas-foreground/70">{title}</p>
       <ul className="space-y-2">{children}</ul>
     </div>
   );
