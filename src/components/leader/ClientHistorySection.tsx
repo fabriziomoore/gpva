@@ -236,20 +236,22 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
         inputMode="numeric"
         className="h-11"
       />
-      <div className="rounded-2xl bg-card shadow-md p-4">
-        <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
-          <AlertTriangle className="size-4 text-destructive" />
-          Clientes recorrentes
-        </p>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Matrículas com o mesmo motivo de inviabilidade em 2 ou mais visitas.
-        </p>
+      <div className="space-y-3">
+        <div>
+          <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-canvas-foreground">
+            <AlertTriangle className="size-4 text-destructive" />
+            Clientes recorrentes
+          </p>
+          <p className="text-xs text-canvas-foreground/70">
+            Matrículas com o mesmo motivo de inviabilidade em 2 ou mais visitas.
+          </p>
+        </div>
         {recurring.isLoading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Loader2 className="size-5 animate-spin text-canvas-foreground/60" />
           </div>
         ) : (recurring.data ?? []).length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma recorrência encontrada.</p>
+          <p className="py-6 text-center text-sm text-canvas-foreground/70">Nenhuma recorrência encontrada.</p>
         ) : (
           <ul className="space-y-2">
             {(recurring.data ?? []).map((g: RecurringIssueRow) => (
