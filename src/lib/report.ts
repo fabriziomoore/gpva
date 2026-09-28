@@ -12,14 +12,25 @@ type ServiceRow = {
   created_at: string;
 };
 
+// Pausa de almoço das equipes, descontada do tempo médio entre O.S.
+export const LUNCH_BREAK_MIN = 60;
+
 // Tempo médio entre O.S.: intervalo entre a primeira e a última O.S.
-// registrada, dividido pelos intervalos entre elas.
-function averageDisplacementMin(services: { created_at: string }[]): number {
+// registrada, menos 1h de almoço, dividido pelos intervalos entre elas.
+// A 1h é descontada uma única vez: durante o expediente, a partir de quando a
+// equipe confirma o almoço (`lunchDiscount`); se ela não confirmar, o desconto
+// é aplicado ao finalizar (relatório usa o padrão `true`).
+export function averageDisplacementMin(
+  services: { created_at: string }[],
+  lunchDiscount = true,
+): number {
   if (services.length < 2) return 0;
   const sorted = [...services].sort((a, b) => a.created_at.localeCompare(b.created_at));
   const first = new Date(sorted[0].created_at).getTime();
   const last = new Date(sorted[sorted.length - 1].created_at).getTime();
-  return (last - first) / (sorted.length - 1) / 60000;
+  const lunchMin = lunchDiscount ? LUNCH_BREAK_MIN : 0;
+  const workedMin = Math.max(0, (last - first) / 60000 - lunchMin);
+  return workedMin / (sorted.length - 1);
 }
 
 type ShiftInput = {

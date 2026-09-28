@@ -11,6 +11,8 @@ import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatBRL, formatDurationMin } from "@/lib/format";
 import { isPosCorteName } from "@/lib/service-types";
+import { averageDisplacementMin } from "@/lib/report";
+import { useLunchStatus } from "@/lib/lunch-status";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import type { LocalService } from "@/lib/db/local-db";
@@ -105,6 +107,7 @@ function ShiftPage() {
   }
 
   const loading = openShift === undefined || services === undefined;
+  const lunch = useLunchStatus(openShift?.id);
 
   const kpis = useMemo(() => {
     const list = services ?? [];
@@ -121,18 +124,12 @@ function ShiftPage() {
     // Efetividade = serviços viáveis / total, em %. Mesma conta usada em
     // toda tela que mostra Total/Viáveis/Inviáveis da equipe.
     const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
-    // Tempo médio entre O.S.: intervalo entre o registro da primeira e da
-    // última O.S. do expediente, dividido pelos intervalos entre elas —
-    // `list` vem ordenada do mais novo pro mais antigo, daí list[0]=última
-    // e list[total-1]=primeira.
-    const mediaDeslocamentoMin =
-      total > 1
-        ? (new Date(list[0].created_at).getTime() - new Date(list[total - 1].created_at).getTime()) /
-          (total - 1) /
-          60000
-        : 0;
+    // Tempo médio entre O.S. — mesma conta do relatório; a 1h de almoço só
+    // é descontada aqui depois que a equipe confirma que almoçou (se ela
+    // não confirmar, o desconto entra ao finalizar o expediente).
+    const mediaDeslocamentoMin = averageDisplacementMin(list, lunch.taken);
     return { total, viaveis, inviaveis, totalNeg, variavel, efetividade, mediaDeslocamentoMin };
-  }, [services, openShift, team]);
+  }, [services, openShift, team, lunch.taken]);
 
   function attemptFinish() {
     const list = services ?? [];
