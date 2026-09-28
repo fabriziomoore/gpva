@@ -10,7 +10,7 @@ import { useIsLeader } from "@/hooks/use-is-leader";
 // logado (líder vê suas equipes, equipe vê só a si mesma).
 export const Route = createFileRoute("/_authenticated/leader-clients")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Consultas — ACP" }] }),
+  head: () => ({ meta: [{ title: "Consulta — ACP" }] }),
   component: LeaderClientsPage,
 });
 
@@ -21,7 +21,7 @@ function LeaderClientsPage() {
   // resto das telas dele (Painel, Ranking, Configuração, Mapa). Conta
   // equipe usa essa fila pra registrar serviços, então precisa ver a linha.
   return (
-    <AppShell title="Consultas" right={<LeaderMeta />} showSync={!isLeader.data} wide>
+    <AppShell title="Consulta" right={<LeaderMeta />} showSync={!isLeader.data} wide>
       <ClientHistorySection />
     </AppShell>
   );
