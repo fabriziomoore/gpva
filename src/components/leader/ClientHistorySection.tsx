@@ -255,7 +255,7 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
               <li key={`${g.registration_number}|${g.reason_name}`}>
                 <button
                   onClick={() => onPickMatricula(g.registration_number)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-semibold">{g.registration_number}</span>
@@ -388,19 +388,19 @@ function NegotiationRow({ row, onClick }: { row: ClientHistoryRow; onClick?: () 
         <button
           type="button"
           onClick={onClick}
-          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50"
+          className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50"
         >
           {inner}
         </button>
       </li>
     );
   }
-  return <li className="rounded-xl border border-border bg-background px-3 py-2.5">{inner}</li>;
+  return <li className="rounded-xl border border-border bg-card px-3 py-2.5">{inner}</li>;
 }
 
 function InviableRow({ row }: { row: ClientHistoryRow }) {
   return (
-    <li className="rounded-xl border border-border bg-background px-3 py-2.5">
+    <li className="rounded-xl border border-border bg-card px-3 py-2.5">
       <span className="truncate text-sm font-semibold">{row.reason_name || "Motivo não especificado"}</span>
       <p className="mt-0.5 text-xs text-muted-foreground">
         {row.team_name} · {row.service_type_name} · {fmtDateTime(row.created_at)}
