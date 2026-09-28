@@ -65,7 +65,7 @@ export const ProcedurePlayer = forwardRef<ProcedurePlayerHandle, ProcedurePlayer
       <div className="space-y-4">
         {node.type === "question" ? (
           <div className="space-y-3">
-            <p className="text-lg font-semibold leading-snug text-foreground">{node.text}</p>
+            <p className="text-lg leading-snug text-foreground">{node.text}</p>
             <div className={cn("gap-2", node.answers.length === 2 ? "grid grid-cols-2" : "space-y-2")}>
               {node.answers.map((ans, i) => (
                 <Button
