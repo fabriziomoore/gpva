@@ -2,10 +2,9 @@ import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Home, BarChart3, Wallet, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText, Users } from "lucide-react";
+import { Home, BarChart3, Settings, Menu, X, LogOut, Map, Search, AlertTriangle, ExternalLink, Trophy, RotateCcw, FileText, Users } from "lucide-react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useIsLeader } from "@/hooks/use-is-leader";
-import { useTeam } from "@/hooks/use-team";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { prepareAppSignOut, finalizePreparedSignOut } from "@/lib/auth";
 
@@ -81,7 +80,6 @@ async function openArcgisInNativeWebView(url: string, title: string): Promise<vo
 const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
   { to: "/productivity" as const, label: "Produtividade", icon: BarChart3, exact: false },
-  { to: "/variable" as const, label: "Variável", icon: Wallet, exact: false },
   { to: "/equipes" as const, label: "Equipes", icon: Users, exact: false },
   { to: "/leader-clients" as const, label: "Consulta", icon: Search, exact: false },
   { to: "/procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
@@ -100,7 +98,6 @@ const leaderItems = [
 export function SideMenu() {
   const { userId } = useAuthSession();
   const isLeader = useIsLeader(userId);
-  const { data: team } = useTeam(userId);
   const [open, setOpen] = useState(false);
   const [fixedHeight, setFixedHeight] = useState<string | null>(null);
   const [orientation, setOrientation] = useState(0);
@@ -188,11 +185,8 @@ export function SideMenu() {
   }
   const items = useMemo(() => {
     if (isLeader.data === true) return leaderItems;
-    if (team && team.setor_variavel_ativo === false) {
-      return teamItems.filter((item) => item.to !== "/variable");
-    }
     return teamItems;
-  }, [isLeader.data, team]);
+  }, [isLeader.data]);
   const [arcgisQuery, setArcgisQuery] = useState("");
   const [arcgisEmbedUrl, setArcgisEmbedUrl] = useState<string | null>(null);
   const [arcgisTitle, setArcgisTitle] = useState<string>("Consulta ArcGIS");
