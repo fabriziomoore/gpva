@@ -288,12 +288,6 @@ function ClientHistoryView({
   const negotiations = rows.filter((r) => r.is_negotiation && r.viable);
   const inviable = rows.filter((r) => !r.viable);
   const totalNegotiated = negotiations.reduce((s, r) => s + (Number(r.negotiated_value) || 0), 0);
-  const reasonCounts = new Map<string, number>();
-  for (const r of inviable) {
-    const k = (r.reason_name || "").trim();
-    if (!k) continue;
-    reasonCounts.set(k, (reasonCounts.get(k) ?? 0) + 1);
-  }
 
   return (
     <div className="space-y-4">
@@ -324,13 +318,9 @@ function ClientHistoryView({
           )}
 
           {inviable.length > 0 && (
-            <Section title="Tentativas inviáveis">
+            <Section title="Motivos de inviabilidade">
               {inviable.map((r) => (
-                <InviableRow
-                  key={r.id}
-                  row={r}
-                  repeated={(reasonCounts.get((r.reason_name || "").trim()) ?? 0) > 1}
-                />
+                <InviableRow key={r.id} row={r} />
               ))}
             </Section>
           )}
@@ -408,17 +398,10 @@ function NegotiationRow({ row, onClick }: { row: ClientHistoryRow; onClick?: () 
   return <li className="rounded-xl border border-border bg-background px-3 py-2.5">{inner}</li>;
 }
 
-function InviableRow({ row, repeated }: { row: ClientHistoryRow; repeated: boolean }) {
+function InviableRow({ row }: { row: ClientHistoryRow }) {
   return (
     <li className="rounded-xl border border-border bg-background px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-semibold">{row.reason_name || "Motivo não especificado"}</span>
-        {repeated && (
-          <span className="shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
-            Recorrente
-          </span>
-        )}
-      </div>
+      <span className="truncate text-sm font-semibold">{row.reason_name || "Motivo não especificado"}</span>
       <p className="mt-0.5 text-xs text-muted-foreground">
         {row.team_name} · {row.service_type_name} · {fmtDateTime(row.created_at)}
       </p>
