@@ -391,7 +391,7 @@ export function AddServiceSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" hideClose className="h-[90vh] overflow-y-auto rounded-t-3xl p-0">
         <SheetHeader
-          className={"border-b border-border p-4 " + (useColoredHeader ? "border-primary bg-primary" : "")}
+          className={"p-4 " + (useColoredHeader ? "bg-primary" : "border-b border-border")}
         >
           <div className="flex items-center justify-between gap-2">
             <SheetTitle
