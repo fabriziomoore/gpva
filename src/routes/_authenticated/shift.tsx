@@ -11,7 +11,8 @@ import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatBRL, formatDurationMin } from "@/lib/format";
 import { isPosCorteName } from "@/lib/service-types";
-import { averageDisplacementMin } from "@/lib/report";
+import { averageDisplacementMin, LUNCH_BREAK_MIN } from "@/lib/report";
+import { useLunchStatus, setLunchTaken, dismissLunchPrompt } from "@/lib/lunch-status";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import type { LocalService } from "@/lib/db/local-db";
@@ -50,7 +51,7 @@ function ShiftPage() {
     const db = getLocalDB();
     const row = await db.shifts
       .where("[team_id+status+started_at]")
-      .between([userId, "open", ""], [userId, "open", "\uffff"])
+      .between([userId, "open", ""], [userId, "open", "￿"])
       .last();
     return row ?? null;
   }, [userId]);
@@ -106,6 +107,7 @@ function ShiftPage() {
   }
 
   const loading = openShift === undefined || services === undefined;
+  const lunch = useLunchStatus(openShift?.id);
 
   const kpis = useMemo(() => {
     const list = services ?? [];
@@ -122,11 +124,25 @@ function ShiftPage() {
     // Efetividade = serviços viáveis / total, em %. Mesma conta usada em
     // toda tela que mostra Total/Viáveis/Inviáveis da equipe.
     const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
-    // Tempo médio entre O.S. (já descontando 1h de almoço) — mesma conta
-    // usada no relatório do expediente.
-    const mediaDeslocamentoMin = averageDisplacementMin(list);
+    // Tempo médio entre O.S. — mesma conta do relatório; a 1h de almoço só
+    // é descontada aqui depois que a equipe confirma que almoçou (se ela
+    // não confirmar, o desconto entra ao finalizar o expediente).
+    const mediaDeslocamentoMin = averageDisplacementMin(list, lunch.taken);
     return { total, viaveis, inviaveis, totalNeg, variavel, efetividade, mediaDeslocamentoMin };
-  }, [services, openShift, team]);
+  }, [services, openShift, team, lunch.taken]);
+
+  // Pergunta se a equipe almoçou quando a O.S. mais recente foi registrada
+  // mais de 1h depois da anterior (`services` vem do mais novo pro mais
+  // antigo). Não pergunta de novo sobre um intervalo já respondido com "Não".
+  const lunchPromptServiceId = useMemo(() => {
+    const list = services ?? [];
+    if (lunch.taken || list.length < 2) return null;
+    const gapMin =
+      (new Date(list[0].created_at).getTime() - new Date(list[1].created_at).getTime()) / 60000;
+    if (gapMin <= LUNCH_BREAK_MIN || lunch.dismissed.includes(list[0].id)) return null;
+    return list[0].id;
+  }, [services, lunch]);
+  const showLunchPrompt = lunchPromptServiceId !== null && !addOpen && editTarget === null;
 
   function attemptFinish() {
     const list = services ?? [];
@@ -343,6 +359,35 @@ function ShiftPage() {
               Finalizar mesmo assim
             </Button>
             <Button onClick={() => void sendFirstPending()}>Enviar</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showLunchPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>A equipe já almoçou?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Passou mais de 1h desde a O.S. anterior. Se a equipe já almoçou, 1h será descontada do
+              tempo médio entre O.S.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (openShift && lunchPromptServiceId) dismissLunchPrompt(openShift.id, lunchPromptServiceId);
+              }}
+            >
+              Não
+            </Button>
+            <Button
+              onClick={() => {
+                if (openShift) setLunchTaken(openShift.id);
+              }}
+            >
+              Sim
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
