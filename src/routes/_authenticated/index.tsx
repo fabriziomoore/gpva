@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
@@ -320,51 +320,69 @@ function HomePage() {
         onConfirm={confirmStartShift}
       />
       <div className="space-y-6">
-        <div className="flex items-stretch gap-4 rounded-2xl bg-card shadow-md p-4 overflow-hidden">
-          <div className="relative w-1/3 shrink-0 overflow-hidden rounded-xl border border-border bg-muted aspect-square">
-            {teamPhoto ? (
-              <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
-            ) : (
-              // Ampliado e encostado no rodapé do quadrado (sem margem,
-              // sem "flutuar"). Deslocado pra baixo o suficiente pra a
-              // ponta arredondada do traço (round linecap) ficar recortada
-              // pelo overflow-hidden — some a bolinha, o traço reto do
-              // ombro é o que fica visível encostando no canto.
-              <UserRound
-                strokeWidth={1.2}
-                className="absolute left-[-10%] top-0 h-[120%] w-[120%] text-muted-foreground"
-              />
-            )}
-          </div>
-          <div className="flex flex-col justify-between min-w-0 flex-1 py-0.5">
-            <div className="flex items-start justify-between gap-2">
-              <p className="truncate text-lg font-bold leading-tight tracking-tight">{team?.team_name}</p>
-              {monthEfetividade !== null && (
-                <div className="shrink-0 rounded-lg bg-muted px-2 py-1 text-center">
-                  <p className="text-[8px] font-bold uppercase leading-none tracking-wide text-muted-foreground">
-                    Efetividade
-                  </p>
-                  <p className="text-sm font-bold leading-tight text-success">{monthEfetividade}%</p>
-                </div>
+        {/* Card da equipe todo em unidades do container (cqw = 1% da
+            largura do card): em qualquer tela ele é a mesma "foto", só maior
+            ou menor. Referência: 1cqw ≈ 3,28px num celular de 360px. */}
+        <div className="@container">
+          <div className="flex items-stretch gap-[3.66cqw] overflow-hidden rounded-[4.88cqw] bg-card p-[4.88cqw] shadow-md">
+            <div className="relative w-[30%] shrink-0 overflow-hidden rounded-[3.66cqw] border border-border bg-muted aspect-square">
+              {teamPhoto ? (
+                <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
+              ) : (
+                // Ampliado e encostado no rodapé do quadrado (sem margem,
+                // sem "flutuar"). Deslocado pra baixo o suficiente pra a
+                // ponta arredondada do traço (round linecap) ficar recortada
+                // pelo overflow-hidden — some a bolinha, o traço reto do
+                // ombro é o que fica visível encostando no canto.
+                <UserRound
+                  strokeWidth={1.2}
+                  className="absolute left-[-10%] top-0 h-[120%] w-[120%] text-muted-foreground"
+                />
               )}
             </div>
-            {(team?.collaborator1 || team?.collaborator2) && (
-              <p className="mt-1.5 truncate text-xs font-medium text-foreground leading-tight">
-                {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
-              </p>
-            )}
-            {team?.supervisor && (
-              <div className="mt-1.5 text-[11px] leading-tight text-muted-foreground space-y-1.5">
-                <div className="space-y-0.5">
-                  {team.setor_nome && (
-                    <p className="truncate">Setor: <span className="font-semibold text-foreground">{team.setor_nome}</span></p>
+            <div className="min-w-0 flex-1 py-[0.61cqw] leading-tight">
+              {/* Nome + colaboradores à esquerda, selo de efetividade à
+                  direita. O selo é sempre renderizado com tamanho fixo — só o
+                  valor carrega depois, sem o card mudar de altura — e é mais
+                  baixo que as duas linhas juntas, então não cria espaço em
+                  branco acima dos colaboradores. */}
+              <div className="flex items-start gap-[1.83cqw]">
+                <div className="min-w-0 flex-1">
+                  <FitTeamName name={team?.team_name ?? ""} />
+                  {(team?.collaborator1 || team?.collaborator2) && (
+                    <p className="mt-[1.22cqw] truncate text-[length:3.66cqw] font-medium text-foreground">
+                      {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
+                    </p>
                   )}
-                  <p className="truncate">Supervisor: <span className="font-semibold text-foreground">{team.supervisor}</span></p>
-                  <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
                 </div>
-                <p className="font-medium">{today}</p>
+                <div className="w-[18.9cqw] shrink-0 rounded-[2.44cqw] bg-muted px-[1.22cqw] py-[1.22cqw] text-center">
+                  <p className="text-[length:2.44cqw] font-bold uppercase leading-none text-muted-foreground">
+                    Efetividade
+                  </p>
+                  <div className="flex h-[5.49cqw] items-center justify-center">
+                    {monthServices.isLoading ? (
+                      <span className="h-[3.66cqw] w-[9.76cqw] animate-pulse rounded bg-muted-foreground/20" />
+                    ) : monthEfetividade !== null ? (
+                      <span className="text-[length:4.27cqw] font-bold leading-none text-success">{monthEfetividade}%</span>
+                    ) : (
+                      <span className="text-[length:4.27cqw] font-bold leading-none text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
+              <div className="mt-[1.83cqw] text-[length:3.35cqw] text-muted-foreground">
+                {team?.supervisor && (
+                  <div className="space-y-[0.61cqw]">
+                    {team.setor_nome && (
+                      <p className="truncate">Setor: <span className="font-semibold text-foreground">{team.setor_nome}</span></p>
+                    )}
+                    <p className="truncate">Supervisor: <span className="font-semibold text-foreground">{team.supervisor}</span></p>
+                    <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
+                  </div>
+                )}
+                <p className="mt-[1.83cqw] font-medium">{today}</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -401,5 +419,39 @@ function HomePage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+// Nome da equipe no card da Home: nunca corta. Tamanho padrão proporcional à
+// largura do card (5.49cqw ≈ 18px num celular de 360px); se um nome mais
+// longo não couber ao lado do selo de efetividade, a fonte diminui só o
+// necessário pra caber inteiro.
+function FitTeamName({ name }: { name: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.setProperty("--fit", "1");
+      if (el.scrollWidth <= el.clientWidth) return;
+      // Folga pra arredondamento de subpixel não deixar 1px cortado.
+      el.style.setProperty("--fit", String((el.clientWidth - 1) / el.scrollWidth));
+    };
+    fit();
+    // Recalcula quando a largura muda (rotação, tela) e quando a fonte Inter
+    // termina de carregar (muda a largura do texto).
+    const ro = new ResizeObserver(fit);
+    if (el.parentElement) ro.observe(el.parentElement);
+    void document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  }, [name]);
+  return (
+    <p
+      ref={ref}
+      className="overflow-hidden whitespace-nowrap font-bold tracking-tight"
+      style={{ fontSize: "calc(5.49cqw * var(--fit, 1))" }}
+    >
+      {name}
+    </p>
   );
 }
