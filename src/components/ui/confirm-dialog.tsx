@@ -9,7 +9,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ConfirmOptions = {
@@ -80,32 +79,18 @@ export function ConfirmDialogHost() {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <div className="flex items-start gap-3">
-            {destructive && (
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-                <AlertTriangle className="size-5" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <AlertDialogTitle className="uppercase">
-                {pending?.title ?? "Confirmar ação"}
-              </AlertDialogTitle>
-              {pending?.description && (
-                <AlertDialogDescription className="mt-1">
-                  {pending.description}
-                </AlertDialogDescription>
-              )}
-            </div>
-          </div>
+          <AlertDialogTitle className="uppercase">
+            {pending?.title ?? "Confirmar ação"}
+          </AlertDialogTitle>
+          {pending?.description && (
+            <AlertDialogDescription>{pending.description}</AlertDialogDescription>
+          )}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{pending?.cancelText ?? "Cancelar"}</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => close(true)}
-            className={cn(
-              destructive &&
-                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-            )}
+            className={cn(destructive && "text-destructive")}
           >
             {pending?.confirmText ?? "Confirmar"}
           </AlertDialogAction>

@@ -82,7 +82,27 @@ function ReportPage() {
   }
 
   return (
-    <AppShell title="Relatório">
+    <AppShell
+      title="Relatório"
+      right={
+        canReopen ? (
+          <button
+            type="button"
+            onClick={reopenShift}
+            disabled={reopening}
+            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {reopening ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <>
+                <RotateCcw className="size-3.5" /> Reabrir
+              </>
+            )}
+          </button>
+        ) : undefined
+      }
+    >
       {q.isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -92,22 +112,6 @@ function ReportPage() {
           <pre className="whitespace-pre-wrap rounded-2xl bg-card shadow-md p-4 font-mono text-sm leading-relaxed">
             {text}
           </pre>
-          {canReopen && (
-            <Button
-              variant="outline"
-              className="h-12 w-full"
-              onClick={reopenShift}
-              disabled={reopening}
-            >
-              {reopening ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>
-                  <RotateCcw className="mr-2 size-4" /> Reabrir expediente
-                </>
-              )}
-            </Button>
-          )}
         </div>
       )}
 

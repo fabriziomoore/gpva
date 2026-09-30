@@ -2,13 +2,14 @@ import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuthSession } from "@/hooks/use-auth";
 import { getLocalDB } from "@/lib/db/local-db";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { LUNCH_BREAK_MIN } from "@/lib/report";
 import { useLunchStatus, setLunchTaken, dismissLunchPrompt } from "@/lib/lunch-status";
@@ -69,11 +70,14 @@ export function LunchPrompt() {
             A equipe já almoçou?
           </AlertDialogTitle>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="destructive" onClick={() => dismissLunchPrompt(openShift.id, gapStartId)}>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            className="text-destructive"
+            onClick={() => dismissLunchPrompt(openShift.id, gapStartId)}
+          >
             Não
-          </Button>
-          <Button onClick={() => setLunchTaken(openShift.id)}>Sim</Button>
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={() => setLunchTaken(openShift.id)}>Sim</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
