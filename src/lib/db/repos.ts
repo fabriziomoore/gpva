@@ -93,6 +93,39 @@ export async function repoCreateShift(input: {
   return row;
 }
 
+/**
+ * Reabre um expediente fechado por engano — volta status pra "open" e limpa
+ * ended_at/report_text (o relatório antigo não reflete mais o expediente,
+ * que agora pode receber novos serviços). Não mexe nos impactos do dia já
+ * registrados; se a equipe fechar de novo, seleciona os impactos daquela
+ * vez normalmente pela FinishShiftSheet.
+ */
+export async function repoReopenShift(shiftId: string): Promise<void> {
+  await assertActiveSession();
+  const db = getLocalDB();
+  const shift = await db.shifts.get(shiftId);
+  if (!shift) throw new Error("Shift not found locally");
+  const updated: LocalShift = {
+    ...shift,
+    status: "open",
+    ended_at: null,
+    report_text: null,
+    updated_at: nowIso(),
+    sync_state: "pending",
+  };
+  await db.shifts.put(updated);
+  await db.outbox.add({
+    table: "expedientes",
+    op: "upsert",
+    row_id: updated.id,
+    payload: toShiftPayload(updated),
+    tries: 0,
+    created_at: nowIso(),
+  });
+  await refreshPendingCount();
+  scheduleSync();
+}
+
 export async function repoCloseShift(opts: {
   shift_id: string;
   report_text: string;

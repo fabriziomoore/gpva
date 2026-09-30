@@ -1,10 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLiveQuery } from "dexie-react-hooks";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDB } from "@/lib/db/local-db";
+import { repoReopenShift } from "@/lib/db/repos";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Copy, Share2, Loader2 } from "lucide-react";
+import { confirmAction } from "@/components/ui/confirm-dialog";
+import { Copy, Share2, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/shift_/$id/report")({
@@ -14,6 +18,9 @@ export const Route = createFileRoute("/_authenticated/shift_/$id/report")({
 
 function ReportPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [reopening, setReopening] = useState(false);
 
   const q = useQuery({
     queryKey: ["shift-report", id],
@@ -27,7 +34,7 @@ function ReportPage() {
       }
       const { data, error } = await supabase
         .from("expedientes")
-        .select("id,report_text,started_at")
+        .select("id,report_text,started_at,status,team_id")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -36,6 +43,44 @@ function ReportPage() {
   });
 
   const text = q.data?.report_text ?? "";
+  const teamId = q.data?.team_id ?? null;
+
+  // Só deixa reabrir se não houver outro expediente aberto no momento —
+  // reabrir com um já em andamento criaria dois expedientes "open" ao
+  // mesmo tempo, o que quebraria as telas que assumem só um.
+  const otherOpenShift = useLiveQuery(async () => {
+    if (!teamId) return null;
+    const db = getLocalDB();
+    const row = await db.shifts
+      .where("[team_id+status+started_at]")
+      .between([teamId, "open", ""], [teamId, "open", "￿"])
+      .last();
+    return row && row.id !== id ? row : null;
+  }, [teamId, id]);
+
+  const canReopen = q.data?.status === "closed" && !otherOpenShift;
+
+  async function reopenShift() {
+    if (!canReopen) return;
+    const ok = await confirmAction({
+      title: "Reabrir expediente?",
+      description: "Você volta a poder registrar serviços nele. O relatório atual será substituído quando finalizar de novo.",
+      confirmText: "Reabrir",
+      cancelText: "Cancelar",
+      destructive: false,
+    });
+    if (!ok) return;
+    setReopening(true);
+    try {
+      await repoReopenShift(id);
+      await queryClient.invalidateQueries();
+      navigate({ to: "/shift" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao reabrir");
+    } finally {
+      setReopening(false);
+    }
+  }
 
   return (
     <AppShell title="Relatório">
@@ -48,6 +93,22 @@ function ReportPage() {
           <pre className="whitespace-pre-wrap rounded-2xl bg-card shadow-md p-4 font-mono text-sm leading-relaxed">
             {text}
           </pre>
+          {canReopen && (
+            <Button
+              variant="outline"
+              className="h-12 w-full"
+              onClick={reopenShift}
+              disabled={reopening}
+            >
+              {reopening ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <>
+                  <RotateCcw className="mr-2 size-4" /> Reabrir expediente
+                </>
+              )}
+            </Button>
+          )}
         </div>
       )}
 
