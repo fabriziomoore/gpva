@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { hasSessionEjection, verifyActiveSession } from "@/lib/session-guard";
@@ -5,6 +6,7 @@ import { readStoredAuthSession } from "@/lib/sync/session-backup";
 import { hasValidOfflineUnlock } from "@/lib/offline-auth";
 import { LunchPrompt } from "@/components/shift/LunchPrompt";
 import { ProfileCompletionPrompt } from "@/components/layout/ProfileCompletionPrompt";
+import { flushPendingLogins } from "@/lib/login-history";
 
 const AUTH_ROUTE_TIMEOUT_MS = 800;
 
@@ -95,11 +97,19 @@ export const Route = createFileRoute("/_authenticated")({
     bootLog("beforeLoad:redirect->/auth");
     throw redirect({ to: "/auth" });
   },
-  component: () => (
+  component: AuthenticatedLayout,
+});
+
+function AuthenticatedLayout() {
+  // Sobe logins offline que ficaram na fila de uma abertura anterior.
+  useEffect(() => {
+    void flushPendingLogins();
+  }, []);
+  return (
     <>
       <Outlet />
       <LunchPrompt />
       <ProfileCompletionPrompt />
     </>
-  ),
-});
+  );
+}

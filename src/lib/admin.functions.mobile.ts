@@ -137,6 +137,16 @@ export type DevicesOverview = {
 export const adminListDevices = call<DevicesOverview>("adminListDevices");
 export const adminSignOutDevice = call<{ ok: true }>("adminSignOutDevice");
 
+export type LoginAccountRow = {
+  user_id: string;
+  label: string;
+  kind: "admin" | "leader" | "team" | "unknown";
+  is_test: boolean;
+  setor_nome: string | null;
+  logins: { at: string; offline: boolean }[];
+};
+export const adminListLogins = call<LoginAccountRow[]>("adminListLogins");
+
 // Lixeira (soft-delete)
 export type TrashShiftRow = {
   id: string; team_id: string; team_name: string;

@@ -980,6 +980,62 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       return { ok: true };
     }
 
+    case "adminListLogins": {
+      const date = String(args.date ?? "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Data inválida.");
+      const start = new Date(`${date}T00:00:00-03:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+      const [loginsRes, teamsRes, rolesRes, leadersRes, usersList] = await Promise.all([
+        sb.from("login_history")
+          .select("user_id,logged_at,offline")
+          .gte("logged_at", start.toISOString())
+          .lt("logged_at", end.toISOString())
+          .order("logged_at", { ascending: true }),
+        sb.from("equipes").select("id,team_name,is_test,setores(nome)"),
+        sb.from("user_roles").select("user_id,role"),
+        sb.from("lideres_estrutura").select("user_id,nome"),
+        sb.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      ]);
+      if (loginsRes.error) throw new Error(loginsRes.error.message);
+      if (teamsRes.error) throw new Error(teamsRes.error.message);
+      const roleMap = new Map((rolesRes.data ?? []).map((r: any) => [r.user_id, r.role]));
+      const leaderName = new Map((leadersRes.data ?? []).filter((l: any) => l.user_id).map((l: any) => [l.user_id, l.nome]));
+      const emailMap = new Map<string, string>();
+      if (!usersList.error) for (const u of usersList.data.users) emailMap.set(u.id, u.email ?? "");
+      const teams = (teamsRes.data ?? []) as any[];
+      const teamMap = new Map(teams.map((t) => [t.id, t]));
+      const byUser = new Map<string, { at: string; offline: boolean }[]>();
+      for (const l of (loginsRes.data ?? []) as any[]) {
+        const list = byUser.get(l.user_id) ?? [];
+        list.push({ at: l.logged_at, offline: l.offline });
+        byUser.set(l.user_id, list);
+      }
+      const ids = new Set<string>([
+        ...teams.filter((t) => String(t.team_name).trim().toLowerCase() !== "adm").map((t) => t.id),
+        ...(rolesRes.data ?? []).filter((r: any) => r.role === "admin" || r.role === "leader").map((r: any) => r.user_id),
+        ...byUser.keys(),
+      ]);
+      return [...ids].map((id) => {
+        const role = roleMap.get(id);
+        const team = teamMap.get(id);
+        const email = emailMap.get(id) ?? "";
+        let kind = "unknown";
+        let label = team?.team_name ?? "";
+        if (role === "admin" || email.toLowerCase() === "adm@gpva.local") { kind = "admin"; label = "Administrador"; }
+        else if (role === "leader") { kind = "leader"; label = leaderName.get(id) ?? email.split("@")[0].toUpperCase(); }
+        else if (label) kind = "team";
+        else label = email.split("@")[0].toUpperCase() || id.slice(0, 8);
+        return {
+          user_id: id,
+          label,
+          kind,
+          is_test: team?.is_test ?? false,
+          setor_nome: kind === "team" ? (team?.setores?.nome ?? null) : null,
+          logins: byUser.get(id) ?? [],
+        };
+      });
+    }
+
     // ---------- Lixeira (soft-delete) ----------
     case "adminListTrashShifts": {
       const { data: rows, error } = await sb.from("expedientes")

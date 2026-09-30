@@ -1676,6 +1676,103 @@ export const adminSignOutDevice = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+// ============= Histórico de login =============
+
+export type LoginAccountRow = {
+  user_id: string;
+  label: string;
+  kind: "admin" | "leader" | "team" | "unknown";
+  is_test: boolean;
+  setor_nome: string | null;
+  logins: { at: string; offline: boolean }[];
+};
+
+// Todas as contas (equipes, líderes e admin) com os logins de um dia
+// (YYYY-MM-DD, horário de Brasília) — inclusive quem não entrou, com lista
+// vazia, pra dar pra ver quem ficou sem acessar.
+export const adminListLogins = createServerFn({ method: "POST" })
+  .inputValidator((data: { adminPassword: string; date: string }) => data)
+  .handler(async ({ data }): Promise<LoginAccountRow[]> => {
+    assertAdmin(data.adminPassword);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) throw new Error("Data inválida.");
+    const start = new Date(`${data.date}T00:00:00-03:00`);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [loginsRes, teamsRes, rolesRes, leadersRes, usersList] = await Promise.all([
+      supabaseAdmin
+        .from("login_history")
+        .select("user_id,logged_at,offline")
+        .gte("logged_at", start.toISOString())
+        .lt("logged_at", end.toISOString())
+        .order("logged_at", { ascending: true }),
+      supabaseAdmin.from("equipes").select("id,team_name,is_test,setores(nome)"),
+      supabaseAdmin.from("user_roles").select("user_id,role"),
+      supabaseAdmin.from("lideres_estrutura").select("user_id,nome"),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ]);
+    if (loginsRes.error) throw new Error(loginsRes.error.message);
+    if (teamsRes.error) throw new Error(teamsRes.error.message);
+    return buildLoginAccounts({
+      logins: loginsRes.data ?? [],
+      teams: (teamsRes.data ?? []) as unknown as LoginTeam[],
+      roles: rolesRes.data ?? [],
+      leaders: leadersRes.data ?? [],
+      emails: usersList.error ? [] : usersList.data.users.map((u) => ({ id: u.id, email: u.email ?? "" })),
+    });
+  });
+
+type LoginTeam = { id: string; team_name: string; is_test: boolean | null; setores: { nome: string } | null };
+
+function buildLoginAccounts(src: {
+  logins: { user_id: string; logged_at: string; offline: boolean }[];
+  teams: LoginTeam[];
+  roles: { user_id: string; role: string }[];
+  leaders: { user_id: string | null; nome: string }[];
+  emails: { id: string; email: string }[];
+}): LoginAccountRow[] {
+  const roleMap = new Map(src.roles.map((r) => [r.user_id, r.role]));
+  const leaderName = new Map(src.leaders.filter((l) => l.user_id).map((l) => [l.user_id as string, l.nome]));
+  const emailMap = new Map(src.emails.map((u) => [u.id, u.email]));
+  const teamMap = new Map(src.teams.map((t) => [t.id, t]));
+  const byUser = new Map<string, { at: string; offline: boolean }[]>();
+  for (const l of src.logins) {
+    const list = byUser.get(l.user_id) ?? [];
+    list.push({ at: l.logged_at, offline: l.offline });
+    byUser.set(l.user_id, list);
+  }
+  const ids = new Set<string>([
+    ...src.teams.filter((t) => t.team_name.trim().toLowerCase() !== ADMIN_LOGIN).map((t) => t.id),
+    ...src.roles.filter((r) => r.role === "admin" || r.role === "leader").map((r) => r.user_id),
+    ...byUser.keys(),
+  ]);
+  return [...ids].map((id): LoginAccountRow => {
+    const role = roleMap.get(id);
+    const team = teamMap.get(id);
+    const email = emailMap.get(id) ?? "";
+    let kind: LoginAccountRow["kind"] = "unknown";
+    let label = team?.team_name ?? "";
+    if (role === "admin" || email.toLowerCase() === ADMIN_EMAIL) {
+      kind = "admin";
+      label = "Administrador";
+    } else if (role === "leader") {
+      kind = "leader";
+      label = leaderName.get(id) ?? email.split("@")[0].toUpperCase();
+    } else if (label) {
+      kind = "team";
+    } else {
+      label = email.split("@")[0].toUpperCase() || id.slice(0, 8);
+    }
+    return {
+      user_id: id,
+      label,
+      kind,
+      is_test: team?.is_test ?? false,
+      setor_nome: kind === "team" ? (team?.setores?.nome ?? null) : null,
+      logins: byUser.get(id) ?? [],
+    };
+  });
+}
+
 // ============= Lixeira (soft-delete) =============
 
 export type TrashShiftRow = {

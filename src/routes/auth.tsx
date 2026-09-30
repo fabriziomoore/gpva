@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import {
   tryOfflineLogin,
   hasValidOfflineUnlock,
+  getLastUserId,
   offlineErrorMessage,
   type OfflineLoginReason,
 } from "@/lib/offline-auth";
 import { readStoredAuthSession, hydrateLocalStorageFromBackup } from "@/lib/sync/session-backup";
 import { hasSessionEjection } from "@/lib/session-guard";
 import { getRememberLoginPref, setRememberLogin } from "@/lib/remember-login";
+import { recordLogin } from "@/lib/login-history";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -165,6 +167,8 @@ function AuthPage() {
       // sb-…-auth-token e deixando useAuthSession com userId=null (spinner
       // eterno na Home). A revalidação online acontece depois, em background.
       try { await hydrateLocalStorageFromBackup(); } catch { /* ignore */ }
+      const lastUserId = await getLastUserId().catch(() => null);
+      if (lastUserId) recordLogin(lastUserId, true);
       toast.success("Acesso offline autorizado");
       navigate({ to: "/" });
       return;

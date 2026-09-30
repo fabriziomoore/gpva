@@ -495,6 +495,33 @@ export type Database = {
           },
         ]
       }
+      login_history: {
+        Row: {
+          created_at: string
+          id: string
+          logged_at: string
+          offline: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          offline?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          offline?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       motivos_inviabilidade: {
         Row: {
           active: boolean

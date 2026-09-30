@@ -16,6 +16,7 @@ import {
   performLocalDemoReset
 } from "./demo-reset";
 import type { QueryClient } from "@tanstack/react-query";
+import { recordLogin } from "@/lib/login-history";
 
 const AUTH_STORAGE_PATTERNS = ["sb-", "supabase.auth", "gpva.loginAt", "gpva.sessionId"];
 const FORCE_SIGNED_OUT_KEY = "gpva.forceSignedOut";
@@ -110,6 +111,7 @@ export async function signInTeam(teamName: string, password: string) {
 
   await saveCredentialFromOnlineLogin(teamName, password).catch(() => undefined);
   if (data.user?.id) await saveLastUserId(data.user.id).catch(() => undefined);
+  if (data.user?.id) recordLogin(data.user.id, false);
   return data;
 }
 

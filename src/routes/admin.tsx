@@ -13,7 +13,7 @@ import {
   Loader2, Plus, Trash2, LogOut, Menu, X, LayoutDashboard,
   Building2, Users, UserCog, ClipboardList, Ban, ListPlus, AlertTriangle,
   Percent, MapPin, FileSpreadsheet, FlaskConical, ShieldCheck, ChevronRight,
-  Smartphone, Trash, RotateCcw, RefreshCw, UserRound,
+  Smartphone, Trash, RotateCcw, RefreshCw, UserRound, History, ChevronLeft,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { requestUpdateCheck } from "@/components/layout/UpdateBanner";
@@ -54,6 +54,7 @@ import {
   adminListDevices,
   adminSignOutDevice,
   type DeviceRow,
+  adminListLogins,
   adminListTrashShifts,
   adminRestoreShift,
   adminPurgeShift,
@@ -94,6 +95,7 @@ type SectionId =
   | "test_account"
   | "map_services"
   | "devices"
+  | "logins"
   | "trash"
   | "audit";
 
@@ -118,6 +120,7 @@ const SECTION_INFO: Record<SectionId, SectionMeta> = {
   google_form: { id: "google_form", label: "Formulários", description: "Negociação e devolução de HD — links de produção e teste", icon: FileSpreadsheet },
   test_account: { id: "test_account", label: "Conta de Teste", description: "Equipe fictícia para validações", icon: FlaskConical },
   devices: { id: "devices", label: "Dispositivos", description: "Sessões e versões — todas as contas", icon: Smartphone },
+  logins: { id: "logins", label: "Histórico de Login", description: "Quem entrou no app por dia — todas as contas", icon: History },
   trash: { id: "trash", label: "Lixeira", description: "Relatórios excluídos — restaurar ou apagar", icon: Trash },
   audit: { id: "audit", label: "Auditoria Inteligente", description: "Diagnóstico automatizado do sistema", icon: ShieldCheck },
 };
@@ -135,7 +138,7 @@ const SECTION_GROUPS: SectionGroup[] = [
   { id: "catalogos", label: "Catálogos", icon: ClipboardList,
     items: ["tipos_servico", "motivos_inviabilidade", "complementos_servico", "impactos"] },
   { id: "dados", label: "Dados & Configuração", icon: ShieldCheck,
-    items: ["variable", "map_services", "google_form", "test_account", "devices", "trash", "audit"] },
+    items: ["variable", "map_services", "google_form", "test_account", "devices", "logins", "trash", "audit"] },
 ];
 
 function groupOf(id: SectionId): SectionGroup | undefined {
@@ -339,6 +342,8 @@ function AdminPage() {
             <MapServicesSection adminPw={adminPw} />
           ) : section === "devices" ? (
             <DevicesSection adminPw={adminPw} />
+          ) : section === "logins" ? (
+            <LoginHistorySection adminPw={adminPw} />
           ) : section === "trash" ? (
             <TrashSection adminPw={adminPw} />
           ) : section === "audit" ? (
@@ -3050,6 +3055,201 @@ function DevicesSection({ adminPw }: { adminPw: string }) {
             );
           })}
         </ul>
+      )}
+    </div>
+  );
+}
+
+// Dia de hoje (YYYY-MM-DD) no horário de Brasília.
+function todaySP(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+}
+
+function shiftDay(date: string, delta: number): string {
+  const d = new Date(`${date}T12:00:00-03:00`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
+}
+
+function timeSP(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+type LoginKindFilter = "all" | "team" | "leader" | "admin";
+
+function LoginHistorySection({ adminPw }: { adminPw: string }) {
+  const listFn = useServerFn(adminListLogins);
+  const today = todaySP();
+  const [date, setDate] = useState(today);
+  const [kind, setKind] = useState<LoginKindFilter>("all");
+  const [showTest, setShowTest] = useState(false);
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const logins = useQuery({
+    queryKey: ["admin-logins", date],
+    queryFn: () => listFn({ data: { adminPassword: adminPw, date } }),
+    enabled: !!date,
+  });
+
+  const rows = (logins.data ?? [])
+    .filter((r) => showTest || !r.is_test)
+    .filter((r) => kind === "all" || r.kind === kind)
+    .sort((a, b) => b.logins.length - a.logins.length || a.label.localeCompare(b.label));
+  const visible = onlyMissing ? rows.filter((r) => r.logins.length === 0) : rows;
+  const entered = rows.filter((r) => r.logins.length > 0).length;
+  const total = rows.reduce((n, r) => n + r.logins.length, 0);
+
+  const kindChips: { id: LoginKindFilter; label: string }[] = [
+    { id: "all", label: "Todos" },
+    { id: "team", label: "Equipes" },
+    { id: "leader", label: "Líderes" },
+    { id: "admin", label: "Admin" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Histórico de Login</h2>
+          <p className="text-xs text-muted-foreground">Quem entrou no app no dia e quantas vezes.</p>
+        </div>
+        <Button
+          variant="outline"
+          className="h-9"
+          onClick={() => logins.refetch()}
+          disabled={logins.isFetching}
+        >
+          {logins.isFetching ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="outline" className="h-10 w-10 shrink-0 p-0" onClick={() => setDate(shiftDay(date, -1))} aria-label="Dia anterior">
+          <ChevronLeft className="size-4" />
+        </Button>
+        <input
+          type="date"
+          value={date}
+          max={today}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
+          className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+        />
+        <Button
+          variant="outline"
+          className="h-10 w-10 shrink-0 p-0"
+          onClick={() => setDate(shiftDay(date, 1))}
+          disabled={date >= today}
+          aria-label="Próximo dia"
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {kindChips.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => setKind(c.id)}
+            className={
+              kind === c.id
+                ? "rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                : "rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            }
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Switch checked={onlyMissing} onCheckedChange={setOnlyMissing} />
+          Só quem não entrou
+        </label>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Switch checked={showTest} onCheckedChange={setShowTest} />
+          Contas de teste
+        </label>
+      </div>
+
+      {logins.isLoading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : logins.isError ? (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-destructive">
+          {(logins.error as Error).message}
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{entered}</span> de {rows.length} conta(s) entraram
+            {" · "}
+            <span className="font-semibold text-foreground">{total}</span> login(s) no dia
+          </p>
+          {visible.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              {onlyMissing ? "Todas as contas entraram neste dia." : "Nenhuma conta encontrada."}
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {visible.map((r) => {
+                const n = r.logins.length;
+                const expanded = open === r.user_id && n > 0;
+                const offlineCount = r.logins.filter((l) => l.offline).length;
+                return (
+                  <li key={r.user_id} className="rounded-xl bg-card shadow-md">
+                    <button
+                      type="button"
+                      onClick={() => setOpen(expanded ? null : r.user_id)}
+                      disabled={n === 0}
+                      className="flex w-full items-center justify-between gap-3 p-3 text-left disabled:cursor-default"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="truncate text-sm font-medium text-foreground">{r.label}</span>
+                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            {accountKindLabel({ account_kind: r.kind, is_test: r.is_test })}
+                          </span>
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {n > 0
+                            ? `Primeiro ${timeSP(r.logins[0].at)} · último ${timeSP(r.logins[n - 1].at)}${offlineCount ? ` · ${offlineCount} offline` : ""}`
+                            : (r.setor_nome ?? "")}
+                        </div>
+                      </div>
+                      <span
+                        className={
+                          n > 0
+                            ? "shrink-0 rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success"
+                            : "shrink-0 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
+                        }
+                      >
+                        {n > 0 ? `${n} login${n > 1 ? "s" : ""}` : "Não entrou"}
+                      </span>
+                    </button>
+                    {expanded && (
+                      <div className="flex flex-wrap gap-1.5 border-t border-border px-3 py-2.5">
+                        {r.logins.map((l, i) => (
+                          <span
+                            key={l.at + i}
+                            className="rounded-md bg-muted px-2 py-1 text-xs tabular-nums text-foreground"
+                          >
+                            {timeSP(l.at)}
+                            {l.offline ? <span className="ml-1 text-[10px] text-muted-foreground">offline</span> : null}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );
