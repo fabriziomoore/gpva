@@ -50,7 +50,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "#ffffff",
         } as React.CSSProperties,
         classNames: {
-          toast: "group toast group-[.toaster]:shadow-lg",
+          // O CSS do sonner dá flex:1 pro data-content (pra título/descrição
+          // longos não ficarem limitados à largura do ícone) — isso ocupa
+          // todo o espaço restante e anula o justify-center do toast, que só
+          // centraliza grupos que não preenchem o espaço. !flex-none reverte
+          // isso (precisa de !important pra vencer a regra do sonner, que
+          // tem mais seletores de atributo que uma classe só).
+          toast: "group toast group-[.toaster]:shadow-lg group-[.toaster]:justify-center",
+          content: "!flex-none",
           description: "group-[.toast]:text-white/80",
           actionButton: "group-[.toast]:bg-white group-[.toast]:text-primary",
           cancelButton: "group-[.toast]:bg-white/15 group-[.toast]:text-white",
