@@ -74,7 +74,7 @@ export function ConfirmDialogHost() {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="uppercase">
+          <AlertDialogTitle>
             {pending?.title ?? "Confirmar ação"}
           </AlertDialogTitle>
           {pending?.description && (

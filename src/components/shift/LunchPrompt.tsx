@@ -100,7 +100,7 @@ export function LunchPrompt() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle
-            className="uppercase whitespace-nowrap"
+            className="whitespace-nowrap"
             style={{ fontSize: "clamp(0.75rem, 4.5vw, 1.125rem)" }}
           >
             A equipe já almoçou?
