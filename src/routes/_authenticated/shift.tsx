@@ -5,7 +5,8 @@ import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X, FileText, ChevronDown } from "lucide-react";
-import { repoDeleteService } from "@/lib/db/repos";
+import { repoDeleteService, repoDeleteShift } from "@/lib/db/repos";
+import { confirmAction } from "@/components/ui/confirm-dialog";
 import { AddServiceSheet } from "@/components/shift/AddServiceSheet";
 import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,6 +46,7 @@ function ShiftPage() {
   const [editTarget, setEditTarget] = useState<LocalService | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LocalService | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
 
   const openShift = useLiveQuery(async () => {
     if (!userId) return null;
@@ -133,6 +135,10 @@ function ShiftPage() {
 
   function attemptFinish() {
     const list = services ?? [];
+    if (list.length === 0) {
+      void discardEmptyShift();
+      return;
+    }
     const pending = list.filter(
       (s) => s.is_negotiation && getFormsStatus(s.id) === "failed",
     );
@@ -141,6 +147,29 @@ function ShiftPage() {
       return;
     }
     setFinishOpen(true);
+  }
+
+  // Expediente sem nenhum serviço não gera relatório — não há o que
+  // finalizar, então descarta o registro em vez de fechar com tudo zerado.
+  async function discardEmptyShift() {
+    if (!openShift) return;
+    const ok = await confirmAction({
+      title: "Finalizar sem nenhum serviço?",
+      description: "Nenhum serviço foi registrado neste expediente. Ele será descartado (não gera relatório).",
+      confirmText: "Descartar",
+      cancelText: "Cancelar",
+      destructive: true,
+    });
+    if (!ok) return;
+    setDiscarding(true);
+    try {
+      await repoDeleteShift(openShift.id);
+      navigate({ to: "/" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao descartar");
+    } finally {
+      setDiscarding(false);
+    }
   }
 
   async function sendFirstPending() {
@@ -267,9 +296,16 @@ function ShiftPage() {
       >
           <Button
             onClick={attemptFinish}
+            disabled={discarding}
             className="h-14 flex-1 border-0 bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90"
           >
-            <Flag className="mr-2 size-5" /> Finalizar
+            {discarding ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <>
+                <Flag className="mr-2 size-5" /> Finalizar
+              </>
+            )}
           </Button>
           <Button onClick={() => setAddOpen(true)} className="h-14 flex-1 text-base font-semibold">
             <Plus className="mr-2 size-5" /> Serviço

@@ -126,6 +126,62 @@ export async function repoReopenShift(shiftId: string): Promise<void> {
   scheduleSync();
 }
 
+/**
+ * Descarta um expediente sem nenhum serviço registrado — em vez de fechar
+ * com um relatório vazio, apaga o expediente (e eventuais impactos do dia
+ * já selecionados num ciclo fechar/reabrir anterior) por completo. Mesmo
+ * padrão de repoDeleteService: linha ainda não sincronizada só sai do
+ * outbox; já sincronizada ganha um delete.
+ */
+export async function repoDeleteShift(shiftId: string): Promise<void> {
+  await assertActiveSession();
+  const db = getLocalDB();
+  const shift = await db.shifts.get(shiftId);
+  if (!shift) return;
+
+  const impacts = await db.shift_impacts.where("shift_id").equals(shiftId).toArray();
+  for (const imp of impacts) {
+    await db.shift_impacts.delete(imp.id);
+    const impPending = await db.outbox
+      .where("table")
+      .equals("impactos_expediente")
+      .and((r) => r.row_id === imp.id)
+      .toArray();
+    for (const p of impPending) if (p.id != null) await db.outbox.delete(p.id);
+    if (imp.sync_state === "synced") {
+      await db.outbox.add({
+        table: "impactos_expediente",
+        op: "delete",
+        row_id: imp.id,
+        payload: { id: imp.id },
+        tries: 0,
+        created_at: nowIso(),
+      });
+    }
+  }
+
+  await db.shifts.delete(shiftId);
+  const shiftPending = await db.outbox
+    .where("table")
+    .equals("expedientes")
+    .and((r) => r.row_id === shiftId)
+    .toArray();
+  for (const p of shiftPending) if (p.id != null) await db.outbox.delete(p.id);
+  if (shift.sync_state === "synced") {
+    await db.outbox.add({
+      table: "expedientes",
+      op: "delete",
+      row_id: shiftId,
+      payload: { id: shiftId },
+      tries: 0,
+      created_at: nowIso(),
+    });
+  }
+
+  await refreshPendingCount();
+  scheduleSync();
+}
+
 export async function repoCloseShift(opts: {
   shift_id: string;
   report_text: string;
