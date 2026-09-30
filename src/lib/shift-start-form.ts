@@ -10,7 +10,9 @@ const ENTRIES = {
   data: "entry.1510574985",
   lider: "entry.473844939",
   equipe: "entry.641738426",
+  condutor: "entry.692123863",
   placa: "entry.1242811779",
+  km: "entry.1866284048",
 };
 
 // Opções exatas do campo LÍDER no Forms (múltipla escolha — precisa bater
@@ -52,6 +54,8 @@ export type ShiftStartFormInput = {
   leader: string | null | undefined;
   teamName: string | null | undefined;
   plate?: string | null;
+  condutor?: string | null;
+  km?: string | null;
 };
 
 function buildUrl(input: ShiftStartFormInput): string {
@@ -64,7 +68,9 @@ function buildUrl(input: ShiftStartFormInput): string {
   const leader = matchLeader(input.leader);
   if (leader) params.set(ENTRIES.lider, leader);
   if (input.teamName) params.set(ENTRIES.equipe, input.teamName);
+  if (input.condutor) params.set(ENTRIES.condutor, input.condutor);
   if (input.plate) params.set(ENTRIES.placa, input.plate);
+  if (input.km) params.set(ENTRIES.km, input.km);
 
   return `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${params.toString()}`;
 }

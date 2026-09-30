@@ -37,6 +37,8 @@ function SettingsPage() {
   const [leader, setLeader] = useState("");
   const [collab1, setCollab1] = useState("");
   const [collab2, setCollab2] = useState("");
+  const [collab1Last, setCollab1Last] = useState("");
+  const [collab2Last, setCollab2Last] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [teamName, setTeamName] = useState("");
   const [pw1, setPw1] = useState("");
@@ -125,6 +127,8 @@ function SettingsPage() {
       setLeader(team.leader);
       setCollab1(team.collaborator1 || "");
       setCollab2(team.collaborator2 || "");
+      setCollab1Last(team.collaborator1_lastname || "");
+      setCollab2Last(team.collaborator2_lastname || "");
       setVehiclePlate(team.vehicle_plate || "");
       setTeamName(team.team_name);
     }
@@ -138,6 +142,8 @@ function SettingsPage() {
         leader,
         collaborator1: collab1.trim() || null,
         collaborator2: collab2.trim() || null,
+        collaborator1_lastname: collab1Last.trim() || null,
+        collaborator2_lastname: collab2Last.trim() || null,
         vehicle_plate: vehiclePlate.trim().toUpperCase() || null,
       };
       
@@ -253,21 +259,37 @@ function SettingsPage() {
             </div>
             <div>
               <Label className="text-canvas-foreground">Colaborador 1</Label>
-              <Input
-                value={collab1}
-                onChange={(e) => setCollab1(e.target.value)}
-                placeholder="Nome do primeiro colaborador"
-                className="h-11 bg-card"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={collab1}
+                  onChange={(e) => setCollab1(e.target.value)}
+                  placeholder="Nome"
+                  className="h-11 bg-card"
+                />
+                <Input
+                  value={collab1Last}
+                  onChange={(e) => setCollab1Last(e.target.value)}
+                  placeholder="Sobrenome"
+                  className="h-11 bg-card"
+                />
+              </div>
             </div>
             <div>
               <Label className="text-canvas-foreground">Colaborador 2</Label>
-              <Input
-                value={collab2}
-                onChange={(e) => setCollab2(e.target.value)}
-                placeholder="Nome do segundo colaborador"
-                className="h-11 bg-card"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={collab2}
+                  onChange={(e) => setCollab2(e.target.value)}
+                  placeholder="Nome"
+                  className="h-11 bg-card"
+                />
+                <Input
+                  value={collab2Last}
+                  onChange={(e) => setCollab2Last(e.target.value)}
+                  placeholder="Sobrenome"
+                  className="h-11 bg-card"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="sup" className="text-canvas-foreground">Supervisor</Label>

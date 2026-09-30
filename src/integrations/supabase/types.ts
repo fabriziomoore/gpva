@@ -166,7 +166,9 @@ export type Database = {
       equipes: {
         Row: {
           collaborator1: string | null
+          collaborator1_lastname: string | null
           collaborator2: string | null
+          collaborator2_lastname: string | null
           created_at: string
           id: string
           is_test: boolean
@@ -186,7 +188,9 @@ export type Database = {
         }
         Insert: {
           collaborator1?: string | null
+          collaborator1_lastname?: string | null
           collaborator2?: string | null
+          collaborator2_lastname?: string | null
           created_at?: string
           id: string
           is_test?: boolean
@@ -206,7 +210,9 @@ export type Database = {
         }
         Update: {
           collaborator1?: string | null
+          collaborator1_lastname?: string | null
           collaborator2?: string | null
+          collaborator2_lastname?: string | null
           created_at?: string
           id?: string
           is_test?: boolean

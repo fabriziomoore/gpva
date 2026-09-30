@@ -32,6 +32,8 @@ export type Team = {
   photo_url: string | null;
   collaborator1: string | null;
   collaborator2: string | null;
+  collaborator1_lastname: string | null;
+  collaborator2_lastname: string | null;
   vehicle_plate: string | null;
   setor_id?: string | null;
   setor_nome?: string | null;
@@ -61,6 +63,8 @@ export function useTeam(userId: string | null) {
         ? {
             ...cachedRaw,
             vehicle_plate: cachedRaw.vehicle_plate ?? null,
+            collaborator1_lastname: cachedRaw.collaborator1_lastname ?? null,
+            collaborator2_lastname: cachedRaw.collaborator2_lastname ?? null,
             setor_variavel_ativo: cachedRaw.setor_variavel_ativo ?? true,
             setor_negociacao_ativa: cachedRaw.setor_negociacao_ativa ?? false,
             is_test: cachedRaw.is_test ?? false,
@@ -71,7 +75,7 @@ export function useTeam(userId: string | null) {
         const { data, error } = await withTimeout(
           supabase
             .from("equipes")
-            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,vehicle_plate,setor_id,is_test,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,collaborator1_lastname,collaborator2_lastname,vehicle_plate,setor_id,is_test,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
             .maybeSingle(),
         );
         if (error) throw error;
@@ -93,6 +97,8 @@ export function useTeam(userId: string | null) {
           photo_url: data.photo_url,
           collaborator1: data.collaborator1,
           collaborator2: data.collaborator2,
+          collaborator1_lastname: data.collaborator1_lastname,
+          collaborator2_lastname: data.collaborator2_lastname,
           vehicle_plate: data.vehicle_plate,
           setor_id: data.setor_id,
           setor_nome: setor?.nome ?? null,

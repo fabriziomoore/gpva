@@ -15,6 +15,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import { repoCreateShift } from "@/lib/db/repos";
 import { openShiftStartForm } from "@/lib/shift-start-form";
+import { StartShiftDialog, type Condutor } from "@/components/home/StartShiftDialog";
 import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
 import { generateFakeServiceRows } from "@/lib/demo-fake-data";
@@ -37,6 +38,7 @@ function HomePage() {
   const { data: team, isLoading } = useTeam(userId);
   const [starting, setStarting] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
   const isReservedAdminLogin =
     session?.user.email?.toLowerCase() === "adm@gpva.local" ||
     session?.user.user_metadata?.is_admin === true;
@@ -145,26 +147,30 @@ function HomePage() {
 
   const lastClosed = lastClosedLocal ?? lastClosedRemote.data;
 
-  async function startShift() {
-    if (!userId) return;
+  // Opções de condutor do popup de início de expediente — primeiro nome
+  // como rótulo do botão, nome completo (com sobrenome) pro Forms.
+  const collaborators: Condutor[] = useMemo(() => {
+    const list: Condutor[] = [];
+    if (team?.collaborator1) {
+      list.push({
+        label: team.collaborator1,
+        fullName: [team.collaborator1, team.collaborator1_lastname].filter(Boolean).join(" "),
+      });
+    }
+    if (team?.collaborator2) {
+      list.push({
+        label: team.collaborator2,
+        fullName: [team.collaborator2, team.collaborator2_lastname].filter(Boolean).join(" "),
+      });
+    }
+    return list;
+  }, [team]);
+
+  async function createShiftAndGo() {
     setStarting(true);
     try {
-      if (openShift) {
-        navigate({ to: "/shift" });
-        return;
-      }
-      // Chamada síncrona (antes do await abaixo) — o window.open interno
-      // só escapa do bloqueador de pop-up dentro do próprio gesto de
-      // clique. Contas de teste não abrem o Forms real.
-      if (!team?.is_test) {
-        openShiftStartForm({
-          leader: team?.leader,
-          teamName: team?.team_name,
-          plate: team?.vehicle_plate,
-        });
-      }
       await repoCreateShift({
-        team_id: userId,
+        team_id: userId!,
         variable_rate_snapshot: team?.variable_rate ?? 7,
       });
       navigate({ to: "/shift" });
@@ -173,6 +179,43 @@ function HomePage() {
     } finally {
       setStarting(false);
     }
+  }
+
+  function startShift() {
+    if (!userId) return;
+    if (openShift) {
+      navigate({ to: "/shift" });
+      return;
+    }
+    // Contas de teste não abrem o Forms real, e sem colaborador cadastrado
+    // não há o que escolher como condutor — segue o fluxo antigo direto.
+    if (team?.is_test || collaborators.length === 0) {
+      if (!team?.is_test) {
+        openShiftStartForm({
+          leader: team?.leader,
+          teamName: team?.team_name,
+          plate: team?.vehicle_plate,
+        });
+      }
+      void createShiftAndGo();
+      return;
+    }
+    setStartDialogOpen(true);
+  }
+
+  // Chamado de dentro do clique em "Iniciar expediente" do popup — precisa
+  // continuar síncrono até aqui (mesmo gesto de clique) pro Forms abrir sem
+  // ser bloqueado como pop-up.
+  function confirmStartShift(condutorFullName: string, km: string) {
+    openShiftStartForm({
+      leader: team?.leader,
+      teamName: team?.team_name,
+      plate: team?.vehicle_plate,
+      condutor: condutorFullName,
+      km,
+    });
+    setStartDialogOpen(false);
+    void createShiftAndGo();
   }
 
   const today = useMemo(() => formatDateBR(new Date()), []);
@@ -270,6 +313,12 @@ function HomePage() {
   return (
     <AppShell showBack={false} right={<ThemeToggle />}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
+      <StartShiftDialog
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
+        collaborators={collaborators}
+        onConfirm={confirmStartShift}
+      />
       <div className="space-y-6">
         <div className="flex items-stretch gap-4 rounded-2xl bg-card shadow-md p-4 overflow-hidden">
           <div className="relative w-1/3 shrink-0 overflow-hidden rounded-xl border border-border bg-muted aspect-square">

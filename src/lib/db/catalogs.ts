@@ -172,6 +172,8 @@ export type CatTeam = {
   photo_url: string | null;
   collaborator1: string | null;
   collaborator2: string | null;
+  collaborator1_lastname?: string | null;
+  collaborator2_lastname?: string | null;
   vehicle_plate?: string | null;
   setor_id?: string | null;
   setor_nome?: string | null;
