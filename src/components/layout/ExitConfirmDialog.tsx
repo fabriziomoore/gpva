@@ -31,9 +31,7 @@ export function ExitConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Não</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="text-destructive">
-            Sim
-          </AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm}>Sim</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

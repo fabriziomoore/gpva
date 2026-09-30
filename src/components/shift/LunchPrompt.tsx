@@ -72,7 +72,6 @@ export function LunchPrompt() {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
-            className="text-destructive"
             onClick={() => dismissLunchPrompt(openShift.id, gapStartId)}
           >
             Não

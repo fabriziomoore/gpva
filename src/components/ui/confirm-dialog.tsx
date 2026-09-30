@@ -9,14 +9,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
 
 type ConfirmOptions = {
   title?: string;
   description?: string;
   confirmText?: string;
   cancelText?: string;
-  destructive?: boolean;
 };
 
 type Pending = ConfirmOptions & { resolve: (value: boolean) => void };
@@ -40,7 +38,7 @@ export function confirmAction(options: ConfirmOptions = {}): Promise<boolean> {
 
 /** Atalho para ações destrutivas (exclusões). */
 export function confirmDelete(
-  options: Omit<ConfirmOptions, "destructive"> = {},
+  options: ConfirmOptions = {},
 ): Promise<boolean> {
   return confirmAction({
     title: options.title ?? "Excluir registro?",
@@ -49,7 +47,6 @@ export function confirmDelete(
       "Esta ação é permanente e não poderá ser desfeita. Deseja continuar?",
     confirmText: options.confirmText ?? "Excluir",
     cancelText: options.cancelText ?? "Cancelar",
-    destructive: true,
   });
 }
 
@@ -67,8 +64,6 @@ export function ConfirmDialogHost() {
     if (pending) pending.resolve(result);
     setPending(null);
   };
-
-  const destructive = pending?.destructive ?? true;
 
   return (
     <AlertDialog
@@ -88,10 +83,7 @@ export function ConfirmDialogHost() {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{pending?.cancelText ?? "Cancelar"}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => close(true)}
-            className={cn(destructive && "text-destructive")}
-          >
+          <AlertDialogAction onClick={() => close(true)}>
             {pending?.confirmText ?? "Confirmar"}
           </AlertDialogAction>
         </AlertDialogFooter>

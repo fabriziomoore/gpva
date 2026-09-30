@@ -66,7 +66,6 @@ function ReportPage() {
       title: "Reabrir expediente?",
       confirmText: "Reabrir",
       cancelText: "Cancelar",
-      destructive: false,
     });
     if (!ok) return;
     setReopening(true);

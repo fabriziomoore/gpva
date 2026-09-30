@@ -27,6 +27,8 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { getFormsStatus } from "@/lib/forms-status";
 
@@ -158,7 +160,6 @@ function ShiftPage() {
       description: "Nenhum serviço foi registrado neste expediente. Ele será descartado (não gera relatório).",
       confirmText: "Descartar",
       cancelText: "Cancelar",
-      destructive: true,
     });
     if (!ok) return;
     setDiscarding(true);
@@ -371,17 +372,23 @@ function ShiftPage() {
                 : "Há uma negociação com o Forms ainda não enviado. Deseja enviar agora ou finalizar assim mesmo?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
+          <AlertDialogFooter>
+            <AlertDialogCancel
               onClick={() => {
                 setPendingForms(null);
                 setFinishOpen(true);
               }}
             >
               Finalizar mesmo assim
-            </Button>
-            <Button onClick={() => void sendFirstPending()}>Enviar</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void sendFirstPending();
+              }}
+            >
+              Enviar
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -401,13 +408,17 @@ function ShiftPage() {
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" disabled={deleting} onClick={() => void confirmDelete()}>
-              {deleting ? <Loader2 className="size-4 animate-spin" /> : "Excluir"}
-            </Button>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+            >
+              {deleting ? <Loader2 className="mx-auto size-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

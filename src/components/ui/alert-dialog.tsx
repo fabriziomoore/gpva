@@ -15,7 +15,7 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-[10000] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[10000] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -33,12 +33,11 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        // Card sempre na cor OPOSTA ao tema atual do app — claro quando o
-        // app está no escuro, escuro quando o app está no claro (mesmos
-        // tons já usados pro card de cada tema, só invertidos). Modelo
-        // pedido a partir do diálogo nativo do WebView (confirm()): cartão
-        // simples, sem borda, título à esquerda, ações em texto.
-        "fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-3 rounded-xl bg-[oklch(0.34_0.04_250)] text-[oklch(0.985_0.005_240)] p-5 shadow-xl duration-200 dark:bg-[oklch(1_0_0)] dark:text-[oklch(0.20_0.02_260)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        // Réplica do diálogo nativo do Android (o confirm() do WebView):
+        // cinza #424242 fixo nos dois temas, cantos quase retos, sombra de
+        // elevação alta, fonte Roboto do sistema, margem de 24px nas
+        // laterais da tela e ações em texto verde-água alinhadas à direita.
+        "fixed left-[50%] top-[50%] z-[10001] flex w-[calc(100%-48px)] max-w-[420px] translate-x-[-50%] translate-y-[-50%] flex-col rounded-[2px] bg-[#424242] text-white font-[Roboto,system-ui,sans-serif] shadow-[0_11px_15px_-7px_rgba(0,0,0,0.2),0_24px_38px_3px_rgba(0,0,0,0.14),0_9px_46px_8px_rgba(0,0,0,0.12)] duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -48,12 +47,12 @@ const AlertDialogContent = React.forwardRef<
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col gap-1.5 text-left", className)} {...props} />
+  <div className={cn("flex flex-col gap-3 px-6 pt-6 text-left", className)} {...props} />
 );
 AlertDialogHeader.displayName = "AlertDialogHeader";
 
 const AlertDialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex justify-end gap-4", className)} {...props} />
+  <div className={cn("flex justify-end px-2 pb-2 pt-4", className)} {...props} />
 );
 AlertDialogFooter.displayName = "AlertDialogFooter";
 
@@ -63,7 +62,7 @@ const AlertDialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Title
     ref={ref}
-    className={cn("text-base font-semibold", className)}
+    className={cn("text-xl font-medium leading-tight text-white", className)}
     {...props}
   />
 ));
@@ -75,17 +74,16 @@ const AlertDialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm opacity-75", className)}
+    className={cn("text-base leading-[1.4] text-white/90", className)}
     {...props}
   />
 ));
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName;
 
-// Ação em texto, sem fundo (padrão CANCEL/OK do diálogo nativo do Android) —
-// cor primária já inverte azul/laranja com o tema, então contrasta bem
-// nos dois casos do card invertido.
+// Ação em texto, sem fundo — botão "flat" do Android (CANCEL/OK): verde-
+// água #80CBC4, caixa alta, 14px medium, área de toque de 36px de altura.
 const alertDialogLinkCls =
-  "rounded-md px-2 py-1.5 -mx-2 text-sm font-semibold uppercase tracking-wide transition-opacity hover:opacity-70 outline-none focus-visible:ring-2 focus-visible:ring-current/50 disabled:pointer-events-none disabled:opacity-40 cursor-pointer";
+  "min-h-9 min-w-16 rounded-[2px] px-2 text-sm font-medium uppercase tracking-[0.03em] text-[#80CBC4] transition-colors hover:bg-white/10 active:bg-white/15 outline-none focus-visible:bg-white/15 disabled:pointer-events-none disabled:opacity-40 cursor-pointer";
 
 const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
@@ -93,7 +91,7 @@ const AlertDialogAction = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Action
     ref={ref}
-    className={cn(alertDialogLinkCls, "text-primary", className)}
+    className={cn(alertDialogLinkCls, className)}
     {...props}
   />
 ));
@@ -105,7 +103,7 @@ const AlertDialogCancel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Cancel
     ref={ref}
-    className={cn(alertDialogLinkCls, "opacity-70", className)}
+    className={cn(alertDialogLinkCls, className)}
     {...props}
   />
 ));
