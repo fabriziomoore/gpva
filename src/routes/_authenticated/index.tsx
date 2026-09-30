@@ -325,7 +325,7 @@ function HomePage() {
             ou menor. Referência: 1cqw ≈ 3,28px num celular de 360px. */}
         <div className="@container">
           <div className="flex items-stretch gap-[3.66cqw] overflow-hidden rounded-[4.88cqw] bg-card p-[4.88cqw] shadow-md">
-            <div className="relative w-[30%] shrink-0 overflow-hidden rounded-[3.66cqw] border border-border bg-muted aspect-square">
+            <div className="relative w-1/3 shrink-0 overflow-hidden rounded-[3.66cqw] border border-border bg-muted aspect-square">
               {teamPhoto ? (
                 <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
               ) : (
@@ -340,7 +340,7 @@ function HomePage() {
                 />
               )}
             </div>
-            <div className="min-w-0 flex-1 py-[0.61cqw] leading-tight">
+            <div className="min-w-0 flex-1 leading-tight">
               {/* Nome + colaboradores à esquerda, selo de efetividade à
                   direita. O selo é sempre renderizado com tamanho fixo — só o
                   valor carrega depois, sem o card mudar de altura — e é mais
@@ -350,7 +350,7 @@ function HomePage() {
                 <div className="min-w-0 flex-1">
                   <FitTeamName name={team?.team_name ?? ""} />
                   {(team?.collaborator1 || team?.collaborator2) && (
-                    <p className="mt-[1.22cqw] truncate text-[length:3.66cqw] font-medium text-foreground">
+                    <p className="mt-[0.61cqw] truncate text-[length:3.66cqw] font-medium text-foreground">
                       {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
                     </p>
                   )}
@@ -370,9 +370,9 @@ function HomePage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-[1.83cqw] text-[length:3.35cqw] text-muted-foreground">
+              <div className="mt-[1.22cqw] text-[length:3.35cqw] leading-[1.2] text-muted-foreground">
                 {team?.supervisor && (
-                  <div className="space-y-[0.61cqw]">
+                  <div className="space-y-[0.3cqw]">
                     {team.setor_nome && (
                       <p className="truncate">Setor: <span className="font-semibold text-foreground">{team.setor_nome}</span></p>
                     )}
@@ -380,7 +380,7 @@ function HomePage() {
                     <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
                   </div>
                 )}
-                <p className="mt-[1.83cqw] font-medium">{today}</p>
+                <p className="mt-[1.22cqw] font-medium">{today}</p>
               </div>
             </div>
           </div>
@@ -423,7 +423,7 @@ function HomePage() {
 }
 
 // Nome da equipe no card da Home: nunca corta. Tamanho padrão proporcional à
-// largura do card (5.49cqw ≈ 18px num celular de 360px); se um nome mais
+// largura do card (4.88cqw ≈ 16px num celular de 360px); se um nome mais
 // longo não couber ao lado do selo de efetividade, a fonte diminui só o
 // necessário pra caber inteiro.
 function FitTeamName({ name }: { name: string }) {
@@ -449,7 +449,7 @@ function FitTeamName({ name }: { name: string }) {
     <p
       ref={ref}
       className="overflow-hidden whitespace-nowrap font-bold tracking-tight"
-      style={{ fontSize: "calc(5.49cqw * var(--fit, 1))" }}
+      style={{ fontSize: "calc(4.88cqw * var(--fit, 1))" }}
     >
       {name}
     </p>
