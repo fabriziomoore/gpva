@@ -70,7 +70,7 @@ export function LunchPrompt() {
           </AlertDialogTitle>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={() => dismissLunchPrompt(openShift.id, gapStartId)}>
+          <Button variant="destructive" onClick={() => dismissLunchPrompt(openShift.id, gapStartId)}>
             Não
           </Button>
           <Button onClick={() => setLunchTaken(openShift.id)}>Sim</Button>
