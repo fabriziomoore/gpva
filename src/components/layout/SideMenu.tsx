@@ -81,7 +81,6 @@ const teamItems = [
   { to: "/" as const, label: "Início", icon: Home, exact: true },
   { to: "/productivity" as const, label: "Produtividade", icon: BarChart3, exact: false },
   { to: "/equipes" as const, label: "Equipes", icon: Users, exact: false },
-  { to: "/leader-clients" as const, label: "Consulta", icon: Search, exact: false },
   { to: "/procedures" as const, label: "Procedimentos", icon: FileText, exact: false },
   { to: "/settings" as const, label: "Configurações", icon: Settings, exact: false },
 ];
