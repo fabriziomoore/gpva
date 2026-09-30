@@ -1,4 +1,4 @@
-import { formatBRL, formatDateBR, formatDurationMin, pad2 } from "./format";
+import { formatBRL, formatDateBR, pad2 } from "./format";
 import type { Period } from "./analytics";
 import { deltaPct, previousLabel, projectionLabel } from "./analytics";
 
@@ -61,9 +61,6 @@ export function buildReport(s: ShiftInput): string {
 
   const inviaveisList = s.services.filter((x) => !x.viable);
 
-  const efetividade = total > 0 ? Math.round((viaveis / total) * 100) : 0;
-  const mediaDeslocamento = averageDisplacementMin(s.services);
-
   const complementCounts = new Map<string, number>();
   for (const c of s.complements ?? []) {
     complementCounts.set(c.complement_name, (complementCounts.get(c.complement_name) ?? 0) + 1);
@@ -78,8 +75,6 @@ export function buildReport(s: ShiftInput): string {
   lines.push(`*Total de Serviços:* ${pad2(total)}`);
   lines.push(`*Viáveis:* ${pad2(viaveis)}`);
   lines.push(`*Inviáveis:* ${pad2(inviaveis)}`);
-  lines.push(`*Efetividade:* ${efetividade}%`);
-  lines.push(`*Tempo M. entre O.S:* ${formatDurationMin(mediaDeslocamento)}`);
   lines.push("");
   for (const [name, count] of byType) {
     lines.push(`*${name}:* ${pad2(count)}`);
