@@ -355,17 +355,17 @@ function HomePage() {
                     </p>
                   )}
                 </div>
-                <div className="w-[18.9cqw] shrink-0 rounded-[2.44cqw] bg-muted px-[1.22cqw] py-[1.22cqw] text-center">
-                  <p className="text-[length:2.44cqw] font-bold uppercase leading-none text-muted-foreground">
+                <div className="flex h-[10.37cqw] w-[18.9cqw] shrink-0 flex-col items-center justify-center gap-[0.61cqw] rounded-[2.44cqw] bg-muted px-[1.22cqw] text-center">
+                  <p className="text-[length:2.13cqw] font-bold uppercase leading-none text-muted-foreground">
                     Efetividade
                   </p>
-                  <div className="flex h-[5.49cqw] items-center justify-center">
+                  <div className="flex h-[4.27cqw] items-center justify-center">
                     {monthServices.isLoading ? (
-                      <span className="h-[3.66cqw] w-[9.76cqw] animate-pulse rounded bg-muted-foreground/20" />
+                      <span className="h-[3.05cqw] w-[8.54cqw] animate-pulse rounded bg-muted-foreground/20" />
                     ) : monthEfetividade !== null ? (
-                      <span className="text-[length:4.27cqw] font-bold leading-none text-success">{monthEfetividade}%</span>
+                      <span className="text-[length:3.66cqw] font-bold leading-none text-success">{monthEfetividade}%</span>
                     ) : (
-                      <span className="text-[length:4.27cqw] font-bold leading-none text-muted-foreground">—</span>
+                      <span className="text-[length:3.66cqw] font-bold leading-none text-muted-foreground">—</span>
                     )}
                   </div>
                 </div>
