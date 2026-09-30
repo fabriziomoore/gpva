@@ -65,18 +65,19 @@ export function ProfileCompletionPrompt() {
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Preencha os dados abaixo</DialogTitle>
+          <DialogTitle className="uppercase">Preencha os dados abaixo</DialogTitle>
           <DialogDescription>
-            Usados para preencher automaticamente o Forms de início de expediente.
+            Usado para preencher automaticamente o Forms de condutor.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           {needsCollab1Last && (
             <div>
-              <Label>Sobrenome do {team.collaborator1}</Label>
+              <Label>{team.collaborator1}</Label>
               <Input
                 value={last1}
                 onChange={(e) => setLast1(e.target.value)}
+                placeholder="Sobrenome"
                 className="h-11"
                 autoFocus
               />
@@ -84,8 +85,13 @@ export function ProfileCompletionPrompt() {
           )}
           {needsCollab2Last && (
             <div>
-              <Label>Sobrenome do {team.collaborator2}</Label>
-              <Input value={last2} onChange={(e) => setLast2(e.target.value)} className="h-11" />
+              <Label>{team.collaborator2}</Label>
+              <Input
+                value={last2}
+                onChange={(e) => setLast2(e.target.value)}
+                placeholder="Sobrenome"
+                className="h-11"
+              />
             </div>
           )}
           {needsPlate && (
