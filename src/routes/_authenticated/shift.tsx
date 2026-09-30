@@ -232,7 +232,7 @@ function ShiftPage() {
         ) : undefined
       }
     >
-      <div className="space-y-4 pb-24">
+      <div className="space-y-4 pb-14">
         <div className="grid grid-cols-4 gap-2">
           <Kpi label="Total" value={String(kpis.total).padStart(2, "0")} />
           <Kpi label="Viáveis" value={String(kpis.viaveis).padStart(2, "0")} tone="success" />
