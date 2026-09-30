@@ -87,7 +87,7 @@ export function ConfirmDialogHost() {
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <AlertDialogTitle>
+              <AlertDialogTitle className="uppercase">
                 {pending?.title ?? "Confirmar ação"}
               </AlertDialogTitle>
               {pending?.description && (
