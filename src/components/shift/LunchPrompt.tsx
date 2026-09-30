@@ -62,7 +62,7 @@ export function LunchPrompt() {
     <AlertDialog open>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="uppercase">A equipe já almoçou?</AlertDialogTitle>
+          <AlertDialogTitle className="uppercase whitespace-nowrap">A equipe já almoçou?</AlertDialogTitle>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => dismissLunchPrompt(openShift.id, gapStartId)}>
