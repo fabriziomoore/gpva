@@ -64,7 +64,6 @@ function ReportPage() {
     if (!canReopen) return;
     const ok = await confirmAction({
       title: "Reabrir expediente?",
-      description: "Você volta a poder registrar serviços nele. O relatório atual será substituído quando finalizar de novo.",
       confirmText: "Reabrir",
       cancelText: "Cancelar",
       destructive: false,
