@@ -8,7 +8,6 @@ import {
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 import { LUNCH_BREAK_MIN } from "@/lib/report";
@@ -63,11 +62,7 @@ export function LunchPrompt() {
     <AlertDialog open>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>A equipe já almoçou?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Passou mais de 1h desde a O.S. anterior. Se a equipe já almoçou, 1h será descontada do
-            tempo médio entre O.S.
-          </AlertDialogDescription>
+          <AlertDialogTitle className="uppercase">A equipe já almoçou?</AlertDialogTitle>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => dismissLunchPrompt(openShift.id, gapStartId)}>
