@@ -72,6 +72,7 @@ import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
 import { formatDateBR } from "@/lib/format";
 import { SHIFT_KPIS } from "@/lib/shift-kpis";
+import { useBackHandler } from "@/lib/back-handler";
 import { buildReport } from "@/lib/report";
 import { confirmDelete } from "@/components/ui/confirm-dialog";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
@@ -160,6 +161,12 @@ function AdminPage() {
     session?.user.email?.toLowerCase() === "adm@gpva.local" ||
     session?.user.user_metadata?.is_admin === true;
   const hasAdminAccess = isReservedAdminLogin || isAdmin.data === true;
+
+  // Voltar do Android (APK): seção → menu do admin; no menu, confirma saída.
+  useBackHandler(hasAdminAccess, () => {
+    if (view !== "menu") setView("menu");
+    else setExitOpen(true);
+  });
 
   useEffect(() => {
     if (typeof window === "undefined" || !hasAdminAccess) return;

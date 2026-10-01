@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
+import { isCorteSector } from "@/lib/sector";
 import { getLocalDB } from "@/lib/db/local-db";
 import {
   AlertDialog,
@@ -17,16 +18,6 @@ import { useLunchStatus, setLunchTaken, dismissLunchPrompt } from "@/lib/lunch-s
 
 // A pergunta só é feita a partir desse horário (hora local do aparelho).
 const LUNCH_PROMPT_FROM_HOUR = 13;
-
-// Setor de Corte e Religa, identificado pelo nome (sem acento/caixa).
-function isCorteSector(nome: string | null | undefined): boolean {
-  if (!nome) return false;
-  return nome
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .includes("corte");
-}
 
 // true a partir das 13h de hoje; agenda a virada pra re-renderizar na hora.
 function useAfterLunchHour(): boolean {

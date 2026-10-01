@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import { NegotiationPaymentLine } from "./NegotiationPaymentLine";
+import { useBackHandler } from "@/lib/back-handler";
 import {
   leaderClientHistory,
   leaderNegotiations,
@@ -53,6 +54,8 @@ export function ClientHistorySection() {
 
   // Volta pro histórico da matrícula com o botão físico/gesto de voltar do
   // aparelho, em vez de um botão "Voltar" na tela (mesmo padrão do Ranking).
+  useBackHandler(!!searched, () => setSearched(""));
+
   useEffect(() => {
     if (typeof window === "undefined" || !searched) return;
     window.history.pushState({ __clientHistory: true }, "");

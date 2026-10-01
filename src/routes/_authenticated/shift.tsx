@@ -12,10 +12,12 @@ import { FinishShiftSheet } from "@/components/shift/FinishShiftSheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatBRL, formatDurationMin } from "@/lib/format";
 import { isPosCorteName } from "@/lib/service-types";
-import { averageDisplacementMin } from "@/lib/report";
+import { averageDisplacementMin, LUNCH_BREAK_MIN } from "@/lib/report";
 import { useLunchStatus } from "@/lib/lunch-status";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { ShiftKpiKey } from "@/lib/shift-kpis";
+import { isCorteSector } from "@/lib/sector";
+import { FitText } from "@/components/ui/fit-text";
 import { getLocalDB } from "@/lib/db/local-db";
 import type { LocalService } from "@/lib/db/local-db";
 import { useFormsStatus, getFailedPayload, setFormsStatus } from "@/lib/forms-status";
@@ -136,7 +138,18 @@ function ShiftPage() {
     // é descontada aqui depois que a equipe confirma que almoçou (se ela
     // não confirmar, o desconto entra ao finalizar o expediente).
     const mediaDeslocamentoMin = averageDisplacementMin(list, lunch.taken);
-    return { total, viaveis, inviaveis, totalNeg, variavel, efetividade, mediaDeslocamentoMin };
+    // Só no setor Corte: quantos serviços a equipe fecha até as 16h se
+    // mantiver o ritmo atual. Janela = do primeiro serviço do dia até 16h,
+    // menos 1h de almoço; cada O.S. leva em média `mediaDeslocamentoMin`.
+    let projecao16h: number | null = null;
+    if (isCorteSector(team?.setor_nome) && total >= 2 && mediaDeslocamentoMin > 0) {
+      const first = Math.min(...list.map((x) => new Date(x.created_at).getTime()));
+      const fim = new Date(first);
+      fim.setHours(16, 0, 0, 0);
+      const janelaMin = (fim.getTime() - first) / 60000 - LUNCH_BREAK_MIN;
+      projecao16h = janelaMin > 0 ? Math.max(total, 1 + Math.floor(janelaMin / mediaDeslocamentoMin)) : total;
+    }
+    return { total, viaveis, inviaveis, totalNeg, variavel, efetividade, mediaDeslocamentoMin, projecao16h };
   }, [services, openShift, team, lunch.taken]);
 
   function attemptFinish() {
@@ -286,7 +299,17 @@ function ShiftPage() {
           ].filter(Boolean);
           const bottom = [
             show("tempo_os") && (
-              <Kpi key="tempo_os" label="Tempo M. O.S" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
+              <Kpi
+                key="tempo_os"
+                label="Tempo M. O.S"
+                value={
+                  kpis.projecao16h !== null
+                    ? `${formatDurationMin(kpis.mediaDeslocamentoMin)} / ${kpis.projecao16h}`
+                    : formatDurationMin(kpis.mediaDeslocamentoMin)
+                }
+                small
+                centerValue
+              />
             ),
             canNegotiate && <Kpi key="negociado" label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />,
             canVariable && (
@@ -522,11 +545,16 @@ function Kpi({
               valor centralizar na mesma altura dos cards vizinhos sem
               banner — se centralizasse só no espaço "sobrando" acima da
               faixa Estimativa, ficaria mais alto que o valor de Negociado. */}
-          <p className={"absolute inset-0 flex items-center justify-center " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+          {/* pt-4 tira o rótulo do topo do cálculo de centro — sem isso, em
+              linhas sem a faixa Estimativa (card mais baixo) o valor encostava
+              no rótulo. */}
+          <p className={"absolute inset-0 flex items-center justify-center px-2 pt-4 " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>
+            <FitText>{value}</FitText>
+          </p>
           {/* min-h-16 aqui (não no card raiz) garante a MESMA altura de
               conteúdo de antes — senão a faixa Estimativa "rouba" espaço
               de dentro do mínimo, encolhendo o card inteiro. */}
-          <div className="min-h-16 flex-1" />
+          <div className="min-h-[72px] flex-1" />
         </>
       ) : (
         <div className="p-3">
@@ -536,7 +564,9 @@ function Kpi({
               extra, sem reduzir a letra nem mexer no respiro geral do
               card. */}
           <p className="-mx-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className={"-mx-1.5 " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>{value}</p>
+          <p className={"-mx-1.5 " + (small ? "text-base" : "text-2xl") + " font-bold " + color}>
+            <FitText>{value}</FitText>
+          </p>
         </div>
       )}
       {banner ? (

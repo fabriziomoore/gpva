@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useBackHandler } from "@/lib/back-handler";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
@@ -87,6 +88,9 @@ function HomePage() {
       navigate({ to: "/admin", replace: true });
     }
   }, [isAdmin.data, isReservedAdminLogin, navigate]);
+
+  // Voltar do Android (APK) na Home pergunta se quer sair do app.
+  useBackHandler(true, () => setExitOpen(true));
 
   useEffect(() => {
     if (typeof window === "undefined") return;

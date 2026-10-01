@@ -14,6 +14,7 @@ import {
 import { formatDateBR } from "@/lib/format";
 import { buildReport } from "@/lib/report";
 import { Button } from "@/components/ui/button";
+import { useBackHandler } from "@/lib/back-handler";
 import { NegotiationPaymentLine } from "./NegotiationPaymentLine";
 
 type TeamRow = {
@@ -51,6 +52,9 @@ export function LeaderRankingSection({
   useEffect(() => {
     onTitleChange?.(selected ? "Perfil" : "Ranking & Perfis");
   }, [selected, onTitleChange]);
+
+  // Voltar do Android (APK) fecha o Perfil e volta pro ranking.
+  useBackHandler(!!selected, () => setSelected(null));
 
   useEffect(() => {
     if (typeof window === "undefined" || !selected) return;

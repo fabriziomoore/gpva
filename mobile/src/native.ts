@@ -5,6 +5,7 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import type { Router } from "@tanstack/react-router";
 import { notifyOtaReady } from "@/lib/ota/check-update";
+import { runBackHandler } from "@/lib/back-handler";
 
 // Native lifecycle wiring for the Android shell. Pure plugin usage — no
 // WebView hacks, no DOM listeners on focus, no JS-driven layout work.
@@ -42,8 +43,14 @@ export function initNative(router: Router<any, any>) {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
       return;
     }
+    // Detalhe aberto "no lugar" (Perfil, histórico do cliente, seção do
+    // admin) ou confirmação de saída da Home — ver lib/back-handler.
+    if (runBackHandler()) return;
+    // Histórico em memória: length nunca diminui ao voltar, então usa o
+    // índice da entrada atual pra saber se ainda há tela anterior.
     const history = router.history;
-    if (history.length > 1) history.back();
+    const index = (history.location.state as { __TSR_index?: number } | undefined)?.__TSR_index ?? 0;
+    if (index > 0) history.back();
     else void App.exitApp();
   });
 }
