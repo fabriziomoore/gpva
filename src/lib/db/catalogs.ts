@@ -180,6 +180,7 @@ export type CatTeam = {
   setor_supervisor?: string | null;
   setor_variavel_ativo?: boolean;
   setor_negociacao_ativa?: boolean;
+  setor_kpis_ocultos?: string[];
   is_test?: boolean;
 };
 

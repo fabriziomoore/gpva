@@ -71,6 +71,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
 import { formatDateBR } from "@/lib/format";
+import { SHIFT_KPIS } from "@/lib/shift-kpis";
 import { buildReport } from "@/lib/report";
 import { confirmDelete } from "@/components/ui/confirm-dialog";
 import { prepareLocalSignOut, signOutApp } from "@/lib/auth";
@@ -521,7 +522,13 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
   });
 
   const updateMut = useMutation({
-    mutationFn: (payload: { setorId: string; nome?: string; variavelAtivo?: boolean; negociacaoAtiva?: boolean }) =>
+    mutationFn: (payload: {
+      setorId: string;
+      nome?: string;
+      variavelAtivo?: boolean;
+      negociacaoAtiva?: boolean;
+      kpisOcultos?: string[];
+    }) =>
       updateFn({ data: { adminPassword: adminPw, ...payload } }),
     onSuccess: () => {
       toast.success("Setor atualizado");
@@ -595,8 +602,8 @@ function SetorEditRow({
   onDelete,
   saving,
 }: {
-  setor: { id: string; nome: string; variavel_ativo: boolean; negociacao_ativa: boolean };
-  onSave: (patch: { nome?: string; variavelAtivo?: boolean; negociacaoAtiva?: boolean }) => void;
+  setor: { id: string; nome: string; variavel_ativo: boolean; negociacao_ativa: boolean; kpis_ocultos?: string[] };
+  onSave: (patch: { nome?: string; variavelAtivo?: boolean; negociacaoAtiva?: boolean; kpisOcultos?: string[] }) => void;
   onDelete: () => void;
   saving: boolean;
 }) {
@@ -631,6 +638,34 @@ function SetorEditRow({
           disabled={saving}
           onCheckedChange={(checked) => onSave({ negociacaoAtiva: checked })}
         />
+      </div>
+      {/* Quais cards do topo da tela de Expediente o setor vê. Negociado e
+          Variável / dia seguem os dois interruptores acima. */}
+      <div className="rounded-md bg-muted/40 px-3 py-2">
+        <p className="text-sm font-medium">Cards do expediente</p>
+        <p className="text-[11px] text-muted-foreground">
+          Desative os cards que o setor não deve ver. Negociado e Variável / dia seguem os interruptores acima.
+        </p>
+        <div className="mt-2 space-y-1.5">
+          {SHIFT_KPIS.map((k) => {
+            const hidden = (setor.kpis_ocultos ?? []).includes(k.key);
+            return (
+              <div key={k.key} className="flex items-center justify-between">
+                <span className="text-sm">{k.label}</span>
+                <Switch
+                  checked={!hidden}
+                  disabled={saving}
+                  onCheckedChange={(checked) => {
+                    const current = setor.kpis_ocultos ?? [];
+                    onSave({
+                      kpisOcultos: checked ? current.filter((x) => x !== k.key) : [...current, k.key],
+                    });
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div className="flex justify-end gap-2">
         <Button

@@ -791,6 +791,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          kpis_ocultos: string[]
           negociacao_ativa: boolean
           nome: string
           supervisor_nome: string
@@ -801,6 +802,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          kpis_ocultos?: string[]
           negociacao_ativa?: boolean
           nome: string
           supervisor_nome?: string
@@ -811,6 +813,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          kpis_ocultos?: string[]
           negociacao_ativa?: boolean
           nome?: string
           supervisor_nome?: string

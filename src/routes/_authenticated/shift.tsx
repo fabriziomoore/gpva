@@ -15,6 +15,7 @@ import { isPosCorteName } from "@/lib/service-types";
 import { averageDisplacementMin } from "@/lib/report";
 import { useLunchStatus } from "@/lib/lunch-status";
 import { useLiveQuery } from "dexie-react-hooks";
+import type { ShiftKpiKey } from "@/lib/shift-kpis";
 import { getLocalDB } from "@/lib/db/local-db";
 import type { LocalService } from "@/lib/db/local-db";
 import { useFormsStatus, getFailedPayload, setFormsStatus } from "@/lib/forms-status";
@@ -41,6 +42,9 @@ function ShiftPage() {
   const { userId } = useAuthSession();
   const navigate = useNavigate();
   const { data: team } = useTeam(userId);
+  const canVariable = team ? team.setor_variavel_ativo !== false : true;
+  const canNegotiate = team ? team.setor_negociacao_ativa === true : true;
+  const hiddenKpis = team?.setor_kpis_ocultos ?? [];
   const [addOpen, setAddOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [pendingForms, setPendingForms] = useState<LocalService[] | null>(null);
@@ -263,17 +267,55 @@ function ShiftPage() {
       }
     >
       <div className="space-y-4 pb-14">
-        <div className="grid grid-cols-4 gap-2">
-          <Kpi label="Total" value={String(kpis.total).padStart(2, "0")} />
-          <Kpi label="Viáveis" value={String(kpis.viaveis).padStart(2, "0")} tone="success" />
-          <Kpi label="Inviáveis" value={String(kpis.inviaveis).padStart(2, "0")} tone="destructive" />
-          <Kpi label="Efetividade" value={`${kpis.efetividade}%`} tone="success" />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <Kpi label="Tempo M. O.S" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
-          <Kpi label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />
-          <Kpi label="Variável / dia" value={formatBRL(kpis.variavel)} small tone="primary" banner="Estimativa" centerValue />
-        </div>
+        {/* Cards configuráveis por setor (Admin → Setores): cada linha mostra
+            só os liberados e divide a largura entre eles. Negociado segue
+            "Aba de negociações" e Variável / dia segue "Sistema de variável". */}
+        {(() => {
+          const show = (key: ShiftKpiKey) => !hiddenKpis.includes(key);
+          const top = [
+            show("total") && <Kpi key="total" label="Total" value={String(kpis.total).padStart(2, "0")} />,
+            show("viaveis") && (
+              <Kpi key="viaveis" label="Viáveis" value={String(kpis.viaveis).padStart(2, "0")} tone="success" />
+            ),
+            show("inviaveis") && (
+              <Kpi key="inviaveis" label="Inviáveis" value={String(kpis.inviaveis).padStart(2, "0")} tone="destructive" />
+            ),
+            show("efetividade") && (
+              <Kpi key="efetividade" label="Efetividade" value={`${kpis.efetividade}%`} tone="success" />
+            ),
+          ].filter(Boolean);
+          const bottom = [
+            show("tempo_os") && (
+              <Kpi key="tempo_os" label="Tempo M. O.S" value={formatDurationMin(kpis.mediaDeslocamentoMin)} small centerValue />
+            ),
+            canNegotiate && <Kpi key="negociado" label="Negociado" value={formatBRL(kpis.totalNeg)} small centerValue />,
+            canVariable && (
+              <Kpi
+                key="variavel"
+                label="Variável / dia"
+                value={formatBRL(kpis.variavel)}
+                small
+                tone="primary"
+                banner="Estimativa"
+                centerValue
+              />
+            ),
+          ].filter(Boolean);
+          return (
+            <>
+              {top.length > 0 && (
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${top.length}, minmax(0, 1fr))` }}>
+                  {top}
+                </div>
+              )}
+              {bottom.length > 0 && (
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${bottom.length}, minmax(0, 1fr))` }}>
+                  {bottom}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         <div className="space-y-2">
           {services.length === 0 && (

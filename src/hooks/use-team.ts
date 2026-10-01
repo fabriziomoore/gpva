@@ -40,6 +40,8 @@ export type Team = {
   setor_supervisor?: string | null;
   setor_variavel_ativo: boolean;
   setor_negociacao_ativa: boolean;
+  /** Cards do Expediente ocultos pro setor (Admin → Setores). */
+  setor_kpis_ocultos: string[];
   is_test: boolean;
 };
 
@@ -67,6 +69,7 @@ export function useTeam(userId: string | null) {
             collaborator2_lastname: cachedRaw.collaborator2_lastname ?? null,
             setor_variavel_ativo: cachedRaw.setor_variavel_ativo ?? true,
             setor_negociacao_ativa: cachedRaw.setor_negociacao_ativa ?? false,
+            setor_kpis_ocultos: cachedRaw.setor_kpis_ocultos ?? [],
             is_test: cachedRaw.is_test ?? false,
           }
         : null;
@@ -75,12 +78,12 @@ export function useTeam(userId: string | null) {
         const { data, error } = await withTimeout(
           supabase
             .from("equipes")
-            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,collaborator1_lastname,collaborator2_lastname,vehicle_plate,setor_id,is_test,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa),supervisores(nome),lideres_estrutura(nome)")
+            .select("id,team_name,supervisor,leader,variable_rate,onboarded,photo_url,collaborator1,collaborator2,collaborator1_lastname,collaborator2_lastname,vehicle_plate,setor_id,is_test,setores(nome,supervisor_nome,variavel_ativo,negociacao_ativa,kpis_ocultos),supervisores(nome),lideres_estrutura(nome)")
             .maybeSingle(),
         );
         if (error) throw error;
         if (!data) return cached;
-        const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string; variavel_ativo: boolean; negociacao_ativa: boolean } | null }).setores;
+        const setor = (data as unknown as { setores: { nome: string; supervisor_nome: string; variavel_ativo: boolean; negociacao_ativa: boolean; kpis_ocultos: string[] | null } | null }).setores;
         // supervisor_id/leader_id (estrutura canonica) sao a fonte da verdade
         // desde a A5; equipes criadas depois nunca tem o texto legado
         // preenchido (so o admin escreve os IDs). Cai pro texto so em
@@ -105,6 +108,7 @@ export function useTeam(userId: string | null) {
           setor_supervisor: setor?.supervisor_nome ?? null,
           setor_variavel_ativo: setor?.variavel_ativo ?? true,
           setor_negociacao_ativa: setor?.negociacao_ativa ?? false,
+          setor_kpis_ocultos: setor?.kpis_ocultos ?? [],
           is_test: !!data.is_test,
         };
         await cacheTeam(team);
