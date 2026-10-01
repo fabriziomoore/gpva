@@ -173,7 +173,7 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
         onChange={(e) => setRegFilter(e.target.value)}
         placeholder="Filtrar por matrícula"
         inputMode="numeric"
-        className="h-10"
+        className="h-10 bg-card"
       />
 
       <div className="flex gap-2">
@@ -230,7 +230,7 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
           }}
           placeholder="Buscar por matrícula..."
           inputMode="numeric"
-          className="h-11"
+          className="h-11 bg-card"
         />
         {recurring.isLoading ? (
           <div className="flex justify-center py-8">

@@ -246,7 +246,7 @@ export function LeaderMapSection() {
       </div>
 
       <div>
-        <label htmlFor="leader-map-team" className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <label htmlFor="leader-map-team" className="text-[10px] uppercase tracking-wide text-canvas-foreground/70">
           Equipe
         </label>
         <select
@@ -306,7 +306,7 @@ export function LeaderMapSection() {
       </div>
 
       {points.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-canvas-foreground/70">
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (

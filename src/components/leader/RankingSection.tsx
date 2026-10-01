@@ -151,7 +151,7 @@ export function LeaderRankingSection({
   });
 
   if (q.isLoading) {
-    return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
+    return <Loader2 className="mx-auto size-5 animate-spin text-canvas-foreground/60" />;
   }
 
   const sorted = [...(q.data ?? [])].sort(
@@ -289,7 +289,7 @@ export function LeaderRankingSection({
           />
         )}
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">Por tipo de serviço</h3>
+          <h3 className="text-sm font-semibold text-canvas-foreground/70">Por tipo de serviço</h3>
           <div className="space-y-1">
             {Object.entries(current.byType)
               .sort((a, b) => b[1] - a[1])
@@ -303,7 +303,7 @@ export function LeaderRankingSection({
                 </div>
               ))}
             {Object.keys(current.byType).length === 0 && (
-              <p className="text-sm text-muted-foreground">Sem registros.</p>
+              <p className="text-sm text-canvas-foreground/70">Sem registros.</p>
             )}
           </div>
         </div>
@@ -314,7 +314,7 @@ export function LeaderRankingSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Ranking de Equipes</h2>
+        <h2 className="text-base font-semibold text-canvas-foreground">Ranking de Equipes</h2>
         <div className="inline-flex overflow-hidden rounded-lg border border-border">
           {(["day", "week", "month"] as const).map((m) => (
             <button
@@ -329,7 +329,7 @@ export function LeaderRankingSection({
       </div>
       {periodSelector(mode)}
       {mode === "day" && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[11px] text-canvas-foreground/70">
           Atualizando em tempo real durante o expediente.
         </p>
       )}
@@ -366,7 +366,7 @@ export function LeaderRankingSection({
           );
         })}
         {sorted.length === 0 && (
-          <p className="text-sm text-muted-foreground md:col-span-full">Sem equipes cadastradas.</p>
+          <p className="text-sm text-canvas-foreground/70 md:col-span-full">Sem equipes cadastradas.</p>
         )}
       </div>
     </div>
@@ -451,11 +451,11 @@ function TeamDayReportsReadOnly({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
+      <h3 className="text-sm font-semibold text-canvas-foreground/70">Relatórios do dia</h3>
       {q.isLoading ? (
-        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+        <Loader2 className="mx-auto size-5 animate-spin text-canvas-foreground/60" />
       ) : filtered.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nenhum relatório neste dia.</p>
+        <p className="text-xs text-canvas-foreground/70">Nenhum relatório neste dia.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((r) => (
@@ -582,11 +582,11 @@ function ServiceListSection({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+      <h3 className="text-sm font-semibold text-canvas-foreground/70">{title}</h3>
       {loading ? (
-        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+        <Loader2 className="mx-auto size-5 animate-spin text-canvas-foreground/60" />
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sem registros.</p>
+        <p className="text-sm text-canvas-foreground/70">Sem registros.</p>
       ) : (
         <>
           <ul className="space-y-2">

@@ -204,44 +204,54 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur pt-[calc(env(safe-area-inset-top)+0.75rem)]">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
-            aria-label="Abrir menu"
-          >
-            <Menu className="size-6" />
-          </button>
-          <nav className="min-w-0 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wider">
-            <button
-              type="button"
-              onClick={() => setView("menu")}
-              className={view === "menu" ? "text-foreground" : "text-muted-foreground hover:text-foreground truncate"}
-            >
-              Administração
-            </button>
-            {view === "ranking" && (
-              <>
-                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate text-foreground normal-case tracking-normal">Painel</span>
-              </>
-            )}
-            {view === "section" && (
-              <>
-                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="hidden sm:inline text-muted-foreground normal-case tracking-normal">
-                  {groupOf(section)?.label}
-                </span>
-                <ChevronRight className="hidden sm:inline size-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate text-foreground normal-case tracking-normal">
-                  {SECTION_INFO[section].label}
-                </span>
-              </>
-            )}
-          </nav>
+      {/* Mesmo cabeçalho das telas do app (AppShell): faixa na cor do card +
+          linha fina embaixo, título no mesmo peso/tamanho. */}
+      <header
+        className="sticky top-0 z-10 backdrop-blur"
+        style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}
+      >
+        <div className="bg-card">
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                onClick={() => setMenuOpen(true)}
+                className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted"
+                aria-label="Abrir menu"
+              >
+                <Menu className="size-6" />
+              </button>
+              <nav className="min-w-0 flex items-center gap-1.5 text-sm font-semibold tracking-tight sm:text-base">
+                <button
+                  type="button"
+                  onClick={() => setView("menu")}
+                  className={view === "menu" ? "text-foreground" : "text-muted-foreground hover:text-foreground truncate"}
+                >
+                  Administração
+                </button>
+                {view === "ranking" && (
+                  <>
+                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-foreground normal-case tracking-normal">Painel</span>
+                  </>
+                )}
+                {view === "section" && (
+                  <>
+                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="hidden sm:inline text-muted-foreground normal-case tracking-normal">
+                      {groupOf(section)?.label}
+                    </span>
+                    <ChevronRight className="hidden sm:inline size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-foreground normal-case tracking-normal">
+                      {SECTION_INFO[section].label}
+                    </span>
+                  </>
+                )}
+              </nav>
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
-        <ThemeToggle />
+        <div className="h-[2px] w-full bg-border/60" />
       </header>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
 
@@ -1187,7 +1197,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   });
 
   if (q.isLoading) {
-    return <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />;
+    return <Loader2 className="mx-auto size-5 animate-spin text-canvas-foreground/60" />;
   }
 
   const sorted = [...(q.data ?? [])]
@@ -1341,7 +1351,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
           />
         )}
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">Por tipo de serviço</h3>
+          <h3 className="text-sm font-semibold text-canvas-foreground/70">Por tipo de serviço</h3>
           <div className="space-y-1">
             {Object.entries(current.byType)
               .sort((a, b) => b[1] - a[1])
@@ -1355,7 +1365,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
                 </div>
               ))}
             {Object.keys(current.byType).length === 0 && (
-              <p className="text-sm text-muted-foreground">Sem registros.</p>
+              <p className="text-sm text-canvas-foreground/70">Sem registros.</p>
             )}
           </div>
         </div>
@@ -1366,7 +1376,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Ranking de Equipes</h2>
+        <h2 className="text-base font-semibold text-canvas-foreground">Ranking de Equipes</h2>
         <div className="inline-flex overflow-hidden rounded-lg border border-border">
           {(["day", "week", "month"] as const).map((m) => (
             <button
@@ -1430,7 +1440,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
             );
           })}
           {sorted.length === 0 && (
-            <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>
+            <p className="text-sm text-canvas-foreground/70">Sem equipes cadastradas.</p>
           )}
         </div>
       ) : (
@@ -1442,7 +1452,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
           const active = rows.find((g) => g.label === activeLabel) ?? null;
 
           if (rows.length === 0) {
-            return <p className="text-sm text-muted-foreground">Sem equipes cadastradas.</p>;
+            return <p className="text-sm text-canvas-foreground/70">Sem equipes cadastradas.</p>;
           }
 
           return (
@@ -1460,7 +1470,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
               </select>
               {active && (
                 <>
-                  <p className="px-1 text-xs text-muted-foreground">
+                  <p className="px-1 text-xs text-canvas-foreground/70">
                     {active.teams.length} {active.teams.length === 1 ? "equipe" : "equipes"} · {brl(active.negotiationValue)}
                   </p>
                   <div className="space-y-3">

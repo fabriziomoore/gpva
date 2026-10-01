@@ -95,47 +95,47 @@ function LeaderConfigPage() {
       <div className="space-y-8">
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground">
               Dados do líder
             </h2>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="text-sm font-semibold uppercase tracking-wide text-canvas-foreground">
                 Modo
               </span>
-              <ThemeToggle />
+              <ThemeToggle className="text-canvas-foreground hover:text-canvas-foreground" />
             </div>
           </div>
           <div className="space-y-3">
             <div>
-              <Label>Nome do líder</Label>
-              <Input value={leaderName} disabled className="h-11" />
+              <Label className="text-canvas-foreground">Nome do líder</Label>
+              <Input value={leaderName} disabled className="h-11 bg-card" />
             </div>
             <div>
-              <Label>Supervisor</Label>
-              <Input value={supervisores.join(", ") || "—"} disabled className="h-11" />
+              <Label className="text-canvas-foreground">Supervisor</Label>
+              <Input value={supervisores.join(", ") || "—"} disabled className="h-11 bg-card" />
             </div>
             <div>
-              <Label>Setor</Label>
-              <Input value={setores.join(", ") || "—"} disabled className="h-11" />
+              <Label className="text-canvas-foreground">Setor</Label>
+              <Input value={setores.join(", ") || "—"} disabled className="h-11 bg-card" />
             </div>
           </div>
         </section>
 
         <section className="space-y-3 border-t border-border pt-6">
-          <p className="text-sm font-semibold">Alterar senha</p>
+          <p className="text-sm font-semibold text-canvas-foreground">Alterar senha</p>
           <Input
             type="password"
             placeholder="Nova senha"
             value={pw1}
             onChange={(e) => setPw1(e.target.value)}
-            className="h-11"
+            className="h-11 bg-card"
           />
           <Input
             type="password"
             placeholder="Confirmar senha"
             value={pw2}
             onChange={(e) => setPw2(e.target.value)}
-            className="h-11"
+            className="h-11 bg-card"
           />
           <Button
             onClick={changePassword}
@@ -150,7 +150,7 @@ function LeaderConfigPage() {
         <section className="space-y-3 border-t border-border pt-6">
           <CheckUpdateDialog />
           {versionInfo && (
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-canvas-foreground/60">
               Versão {versionInfo.version} ({versionInfo.build})
               {versionInfo.otaBuild && ` · Atualização ${versionInfo.otaBuild}`}
             </p>
