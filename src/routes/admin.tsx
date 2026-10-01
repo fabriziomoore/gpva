@@ -333,7 +333,9 @@ function AdminPage() {
         </main>
       ) : (
         <main className="mx-auto max-w-2xl px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          <div className="rounded-2xl bg-card p-4 shadow-md sm:p-5">
+          {/* Sem card em volta: fundo preto do app e só os cards de cada
+              seção, na largura toda (margem lateral padrão do <main>). */}
+          <div className="on-canvas">
           {section === "create_team" ? (
             <CreateTeamSection adminPw={adminPw} />
           ) : section === "variable" ? (

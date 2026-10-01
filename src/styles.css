@@ -206,6 +206,45 @@
     color: var(--color-foreground);
     transition: background-color 200ms ease, color 200ms ease;
   }
+
+  /*
+   * .on-canvas — conteúdo solto direto sobre o canvas (sempre escuro), sem
+   * card em volta (usado nas seções do admin). Texto e texto secundário
+   * passam a usar as cores claras do canvas; qualquer superfície clara lá
+   * dentro (card, campo, botão neutro…) volta às cores normais do tema.
+   * Fica em @layer base pra que classes text-* explícitas sempre ganhem.
+   * --theme-* guardam as cores do tema (resolvidas no <html>, já sabendo se
+   * é claro ou escuro) pra poder restaurá-las dentro das superfícies.
+   */
+  :root {
+    --theme-foreground: var(--foreground);
+    --theme-muted-foreground: var(--muted-foreground);
+  }
+  .on-canvas {
+    --foreground: var(--canvas-foreground);
+    --muted-foreground: color-mix(in oklch, var(--canvas-foreground) 70%, transparent);
+    color: var(--foreground);
+  }
+  .on-canvas :where(.bg-card, .bg-background, .bg-popover, .bg-muted, .bg-secondary, .bg-accent, .bg-white) {
+    --foreground: var(--theme-foreground);
+    --muted-foreground: var(--theme-muted-foreground);
+    color: var(--foreground);
+  }
+}
+
+/*
+ * Campos transparentes (padrão do <Input>/<Textarea>) dentro de .on-canvas
+ * ganham fundo de card, como os campos das telas do app sobre o canvas
+ * (className "bg-card"). Fora de @layer de propósito: precisa vencer o
+ * utilitário bg-transparent do componente. Dentro de um card o resultado é
+ * o mesmo de antes (fundo do campo = fundo do card).
+ */
+.on-canvas input.bg-transparent,
+.on-canvas textarea.bg-transparent {
+  --foreground: var(--theme-foreground);
+  --muted-foreground: var(--theme-muted-foreground);
+  background-color: var(--color-card);
+  color: var(--foreground);
 }
 
 /* === GPVA Sync Indicator — GPU-accelerated keyframes === */
