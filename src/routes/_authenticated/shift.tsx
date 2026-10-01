@@ -301,10 +301,12 @@ function ShiftPage() {
             show("tempo_os") && (
               <Kpi
                 key="tempo_os"
-                label="Tempo M. O.S"
+                // Previsão (PRV) só existe no setor Corte — nos demais o card
+                // mostra só o tempo médio, com o nome antigo.
+                label={isCorteSector(team?.setor_nome) ? "TMEOS / PRV" : "Tempo M. O.S"}
                 value={
                   kpis.projecao16h !== null
-                    ? `${formatDurationMin(kpis.mediaDeslocamentoMin)} / ${kpis.projecao16h}`
+                    ? `${formatDurationMin(kpis.mediaDeslocamentoMin)} / ${String(kpis.projecao16h).padStart(2, "0")}`
                     : formatDurationMin(kpis.mediaDeslocamentoMin)
                 }
                 small
