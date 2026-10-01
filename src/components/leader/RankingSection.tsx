@@ -11,7 +11,7 @@ import {
   leaderTeamServiceList,
   type TeamServiceRow,
 } from "@/lib/leader.functions";
-import { formatDateBR } from "@/lib/format";
+import { formatDateBR, formatDurationMin } from "@/lib/format";
 import { buildReport } from "@/lib/report";
 import { Button } from "@/components/ui/button";
 import { useBackHandler } from "@/lib/back-handler";
@@ -299,12 +299,13 @@ export function LeaderRankingSection({
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {/* A que horas a equipe começou a produzir no dia — o tempo médio
-              e a projeção contam a partir daqui, então o atraso no começo
-              (reunião + ida ao campo) fica visível só por este número. */}
+          {/* Quanto tempo, desde o início do expediente (7h), a equipe levou
+              pra registrar a 1ª O.S. — o tempo médio e a projeção contam a
+              partir dela, então o atraso no começo (reunião + ida ao campo)
+              fica visível só por este número. */}
           <div className="rounded-xl bg-card shadow-md p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">1ª O.S. do dia</p>
-            <p className="text-xl font-bold">{current.firstAt ? fmtTime(current.firstAt) : "—"}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Até a 1ª O.S.</p>
+            <p className="text-xl font-bold">{current.firstAt ? sinceWorkdayStart(current.firstAt, true) : "—"}</p>
           </div>
           <div className="rounded-xl bg-card shadow-md p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Efetividade do dia</p>
@@ -386,7 +387,7 @@ export function LeaderRankingSection({
                   {/* Modo Dia: a que horas a equipe começou a produzir. */}
                   {mode === "day" && (
                     <span className="block text-[11px] text-muted-foreground">
-                      {t.firstAt ? `1ª O.S. ${fmtTime(t.firstAt)}` : "Sem O.S. no dia"}
+                      {t.firstAt ? `1ª O.S. ${sinceWorkdayStart(t.firstAt)}` : "Sem O.S. no dia"}
                     </span>
                   )}
                 </div>
@@ -609,6 +610,20 @@ function Stat({
       <div className="mt-1 text-xl font-bold">{value}</div>
     </button>
   );
+}
+
+// Início do expediente das equipes (reunião às 7h).
+const WORKDAY_START_HOUR = 7;
+
+/** Tempo entre as 7h do dia e a 1ª O.S. ("1h12 após 7h", ou só "1h12"). */
+function sinceWorkdayStart(iso: string, short = false): string {
+  const at = new Date(iso);
+  const start = new Date(at);
+  start.setHours(WORKDAY_START_HOUR, 0, 0, 0);
+  const min = Math.round((at.getTime() - start.getTime()) / 60000);
+  if (min <= 0) return "antes das 7h";
+  const dur = formatDurationMin(min);
+  return short ? dur : `${dur} após 7h`;
 }
 
 function fmtTime(iso: string): string {
