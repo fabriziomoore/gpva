@@ -14,7 +14,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDateBR } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
-import { repoCreateShift } from "@/lib/db/repos";
+import { repoCreateShift, repoReopenShift } from "@/lib/db/repos";
+import { confirmAction } from "@/components/ui/confirm-dialog";
 import { openShiftStartForm } from "@/lib/shift-start-form";
 import { StartShiftDialog, type Condutor } from "@/components/home/StartShiftDialog";
 import { useTeamPhoto } from "@/lib/team-photo";
@@ -132,6 +133,21 @@ function HomePage() {
     return row ?? null;
   }, [userId]);
 
+  // Expediente já finalizado hoje (iniciado a partir da meia-noite local) —
+  // se existir, "Iniciar Expediente" avisa e reabre ele em vez de criar outro.
+  const closedToday = useLiveQuery(async () => {
+    if (!userId) return null;
+    const db = getLocalDB();
+    const rows = await db.shifts
+      .where("[team_id+status+started_at]")
+      .between([userId, "closed", ""], [userId, "closed", "￿"])
+      .toArray();
+    const d = new Date();
+    const startOfToday = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const today = rows.filter((r) => new Date(r.started_at).getTime() >= startOfToday);
+    return today.length ? today[today.length - 1] : null;
+  }, [userId]);
+
   const lastClosedRemote = useQuery({
     queryKey: ["last-closed-shift", userId],
     enabled: !!userId && !!team?.onboarded && !lastClosedLocal,
@@ -185,10 +201,39 @@ function HomePage() {
     }
   }
 
+  async function reopenClosedToday(shiftId: string, startedAt: string) {
+    const hora = new Date(startedAt).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const ok = await confirmAction({
+      title: "Expediente já finalizado hoje",
+      description: `Um expediente iniciado hoje às ${hora} já foi finalizado. Continuar irá reabrir esse expediente finalizado.`,
+      confirmText: "Continuar",
+      cancelText: "Cancelar",
+      singleLineTitle: true,
+    });
+    if (!ok) return;
+    setStarting(true);
+    try {
+      await repoReopenShift(shiftId);
+      await queryClient.invalidateQueries();
+      navigate({ to: "/shift" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao reabrir");
+    } finally {
+      setStarting(false);
+    }
+  }
+
   function startShift() {
     if (!userId) return;
     if (openShift) {
       navigate({ to: "/shift" });
+      return;
+    }
+    if (closedToday) {
+      void reopenClosedToday(closedToday.id, closedToday.started_at);
       return;
     }
     // Contas de teste não abrem o Forms real, e sem colaborador cadastrado
