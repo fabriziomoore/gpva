@@ -538,6 +538,11 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
         if (!n) throw new Error("Nome do líder obrigatório.");
         const { error } = await sb.from("lideres_estrutura").update({ nome: n }).eq("id", atual.id);
         if (error) throw new Error(error.message);
+        // Nome da conta (display_name) usado no app do líder — mantém igual.
+        const { error: metaErr } = await sb.auth.admin.updateUserById(atual.user_id, {
+          user_metadata: { is_leader: true, display_name: n },
+        });
+        if (metaErr) throw new Error(metaErr.message);
       }
 
       if (args.setorIds !== undefined || args.supervisorId !== undefined) {

@@ -894,6 +894,13 @@ export const adminUpdateLeader = createServerFn({ method: "POST" })
         .update({ nome })
         .eq("id", atual.id);
       if (error) throw new Error(error.message);
+      // O app do líder (cabeçalho, Configuração) mostra o nome da conta
+      // (user_metadata.display_name), gravado junto na criação — atualiza
+      // os dois pra correção de grafia valer em todo lugar.
+      const { error: metaErr } = await supabaseAdmin.auth.admin.updateUserById(atual.user_id, {
+        user_metadata: { is_leader: true, display_name: nome },
+      });
+      if (metaErr) throw new Error(metaErr.message);
     }
 
     const structuralTouched = data.setorIds !== undefined || data.supervisorId !== undefined;
