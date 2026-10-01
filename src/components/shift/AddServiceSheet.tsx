@@ -35,6 +35,7 @@ import { tryGetGeoFix } from "@/lib/geo";
 import { isPosCorteName, isHdSubstituicaoName } from "@/lib/service-types";
 import { buildHdCaption, openHdForm } from "@/lib/hd-form";
 import { getHdFormUrl } from "@/lib/hd-form.functions";
+import { DesdobroCadastralDialog, requiresDesdobroCadastral } from "./DesdobroCadastralDialog";
 
 type Step = "type" | "viability" | "reason" | "registration" | "payment" | "complements" | "negotiationCheck";
 
@@ -71,6 +72,9 @@ export function AddServiceSheet({
   const [registration, setRegistration] = useState("");
   const [selectedComplements, setSelectedComplements] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  // Lembrete de desdobro de CADASTRAL (motivos específicos de inviabilidade),
+  // mostrado depois que o serviço é salvo e o sheet fecha.
+  const [desdobroOpen, setDesdobroOpen] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
   const [payments, setPayments] = useState<Set<PaymentOption>>(new Set());
   const [valorAVista, setValorAVista] = useState("");
@@ -229,6 +233,9 @@ export function AddServiceSheet({
         await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
         toast.success("Serviço atualizado");
         onOpenChange(false);
+        if (requiresDesdobroCadastral(opts.reasonName) && opts.reasonName !== editService.reason_name) {
+          setDesdobroOpen(true);
+        }
         return updated.id;
       }
       // Captura GPS em paralelo: espera pouco para gravar junto; se o Android
@@ -273,6 +280,7 @@ export function AddServiceSheet({
       await qc.invalidateQueries({ queryKey: ["all-services", teamId] });
       toast.success("Serviço registrado");
       onOpenChange(false);
+      if (requiresDesdobroCadastral(opts.reasonName)) setDesdobroOpen(true);
       return created.id;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar");
@@ -388,6 +396,8 @@ export function AddServiceSheet({
     });
 
   return (
+    <>
+    <DesdobroCadastralDialog open={desdobroOpen} onConfirm={() => setDesdobroOpen(false)} />
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" hideClose className="h-[90vh] overflow-y-auto rounded-t-3xl border-t-0 p-0">
         <SheetHeader
@@ -815,5 +825,6 @@ export function AddServiceSheet({
         </div>
       </SheetContent>
     </Sheet>
+    </>
   );
 }
