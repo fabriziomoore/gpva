@@ -225,12 +225,12 @@ function ProductivityTab() {
       <PeriodSelector rows={rows} />
 
       <div className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-canvas-foreground/70">
           Histórico
         </h2>
         <div className="space-y-2">
           {shiftHistory.length === 0 && (
-            <p className="text-sm text-muted-foreground">Sem expedientes anteriores.</p>
+            <p className="text-sm text-canvas-foreground/70">Sem expedientes anteriores.</p>
           )}
           {shiftHistory.slice(0, historyLimit).map((s) =>
             isTest ? (

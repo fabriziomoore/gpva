@@ -143,6 +143,15 @@ export function LeaderRankingSection({
     };
   }, [qc]);
 
+  // Efetividade do mês da equipe aberta no Perfil — acompanha o mês/ano
+  // selecionados. Mesma chave da consulta do modo "Mês" do ranking, então
+  // reaproveita o cache quando ele já foi carregado.
+  const monthQ = useQuery({
+    queryKey: ["leader-ranking", year, month, null, "month", null],
+    queryFn: () => fn({ data: { year, month, day: null, startISO: null, endISO: null } }),
+    enabled: !!selected,
+  });
+
   const serviceListFn = useServerFn(leaderTeamServiceList);
   const serviceList = useQuery({
     queryKey: ["leader-team-service-list", selected, year, month, day],
@@ -245,10 +254,20 @@ export function LeaderRankingSection({
     };
     return (
       <div className="space-y-4">
-        <TeamHeaderReadOnly team={teamMeta} />
+        <TeamHeaderReadOnly
+          team={teamMeta}
+          monthEfficiency={(() => {
+            const m = (monthQ.data ?? []).find((t) => t.id === current.id);
+            return m && m.total > 0 ? Math.round((m.viable / m.total) * 100) : null;
+          })()}
+          monthLoading={monthQ.isLoading}
+        />
         {periodSelector("day")}
         <TeamDayReportsReadOnly teamId={current.id} team={teamMeta} year={year} month={month} day={day} />
-        <div className="grid grid-cols-4 gap-2">
+        {/* Negociações com a largura exata do rótulo (auto); os outros três
+            dividem o resto por igual, nunca mais estreitos que o próprio
+            rótulo (min-content) — todos os rótulos ficam em 10px. */}
+        <div className="grid grid-cols-[repeat(3,minmax(min-content,1fr))_auto] gap-2">
           <Stat
             label="Total"
             value={current.total}
@@ -275,7 +294,7 @@ export function LeaderRankingSection({
           />
         </div>
         <div className="flex items-center justify-between rounded-xl bg-card shadow-md p-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">Efetividade</span>
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">Efetividade do dia</span>
           <span className="text-xl font-bold text-success">
             {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
           </span>
@@ -353,7 +372,7 @@ export function LeaderRankingSection({
                   {brl(t.negotiationValue)}
                 </span>
               </div>
-              <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
+              <div className="relative h-6 w-full overflow-hidden rounded-none bg-muted">
                 <div
                   className="h-full bg-primary transition-all"
                   style={{ width: `${pct}%` }}
@@ -373,7 +392,15 @@ export function LeaderRankingSection({
   );
 }
 
-function TeamHeaderReadOnly({ team }: { team: TeamRow }) {
+function TeamHeaderReadOnly({
+  team,
+  monthEfficiency,
+  monthLoading,
+}: {
+  team: TeamRow;
+  monthEfficiency: number | null;
+  monthLoading: boolean;
+}) {
   return (
     <div className="flex items-center gap-3 rounded-xl bg-card shadow-md p-3">
       <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
@@ -395,6 +422,20 @@ function TeamHeaderReadOnly({ team }: { team: TeamRow }) {
         {team.leader && (
           <p className="truncate text-xs text-muted-foreground">Líder: {team.leader}</p>
         )}
+      </div>
+      {/* Efetividade do mês selecionado — mesmo selo do card da Home: sempre
+          presente com tamanho fixo, só o valor carrega depois. */}
+      <div className="flex h-[34px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 self-start rounded-lg bg-muted px-1 text-center">
+        <p className="text-[7px] font-bold uppercase leading-none text-muted-foreground">Efetividade</p>
+        <div className="flex h-[14px] items-center justify-center">
+          {monthLoading ? (
+            <span className="h-2.5 w-7 animate-pulse rounded bg-muted-foreground/20" />
+          ) : monthEfficiency !== null ? (
+            <span className="text-xs font-bold leading-none text-success">{monthEfficiency}%</span>
+          ) : (
+            <span className="text-xs font-bold leading-none text-muted-foreground">—</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -539,11 +580,13 @@ function Stat({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl bg-card p-2 text-left shadow-md transition-colors ${
+      className={`min-w-0 rounded-xl bg-card p-2 text-left shadow-md transition-colors ${
         active ? "ring-2 ring-primary" : ""
       }`}
     >
-      <div className="text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{label}</div>
+      <div className="whitespace-nowrap text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">
+        {label}
+      </div>
       <div className="mt-1 text-xl font-bold">{value}</div>
     </button>
   );

@@ -12,7 +12,7 @@ import { CheckUpdateDialog } from "@/components/layout/CheckUpdateDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { translateAuthError } from "@/lib/auth-errors";
 import { getLocalDB } from "@/lib/db/local-db";
@@ -213,11 +213,17 @@ function SettingsPage() {
             <div>
               <Label className="text-canvas-foreground">Foto da equipe</Label>
               <div className="mt-2 flex items-center gap-3">
-                <div className="size-16 overflow-hidden rounded-xl border border-border bg-muted flex items-center justify-center">
+                <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
                   {teamPhoto ? (
                     <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-xs text-muted-foreground">Sem foto</span>
+                    // Mesmo placeholder do card da Home — ícone em vez de
+                    // texto, que quebrava de linha com fonte grande do celular.
+                    <UserRound
+                      strokeWidth={1.2}
+                      aria-label="Sem foto"
+                      className="absolute left-[-10%] top-0 h-[120%] w-[120%] text-muted-foreground"
+                    />
                   )}
                 </div>
                 <div className="flex flex-col gap-2">

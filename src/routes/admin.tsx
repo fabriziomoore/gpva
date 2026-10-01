@@ -1429,7 +1429,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
                 <p className="mb-1 truncate text-[11px] text-muted-foreground">
                   {t.setor_nome ?? "Sem setor"} · {t.leader_name ?? "Sem líder"}
                 </p>
-                <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
+                <div className="relative h-6 w-full overflow-hidden rounded-none bg-muted">
                   <div
                     className="h-full bg-primary transition-all"
                     style={{ width: `${pct}%` }}
@@ -1498,7 +1498,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
                           <p className="mb-1 truncate text-[11px] text-muted-foreground">
                             {groupBy === "setor" ? (t.leader_name ?? "Sem líder") : (t.setor_nome ?? "Sem setor")}
                           </p>
-                          <div className="relative h-6 w-full overflow-hidden rounded-full bg-muted">
+                          <div className="relative h-6 w-full overflow-hidden rounded-none bg-muted">
                             <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                             <span className="absolute inset-y-0 right-2 flex items-center text-xs font-semibold text-foreground">
                               {t.viable}

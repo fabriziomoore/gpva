@@ -104,7 +104,7 @@ function ReportPage() {
     >
       {q.isLoading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <Loader2 className="size-6 animate-spin text-canvas-foreground/60" />
         </div>
       ) : (
         <div className="space-y-4 pb-24">

@@ -40,13 +40,13 @@ import {
   historicalRanges,
   previousLabel,
   projectionLabel,
-  elapsedRatio,
 } from "@/lib/analytics";
 import { buildPeriodReport } from "@/lib/report";
 import { renderLeaderPdfBlob, type PeriodAgg, type TeamBreakdown } from "@/lib/leader-pdf";
 import { downloadOrShare, openSavedFile, slugFilename, type SavedFile } from "@/lib/download";
 import { FileDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FitText } from "@/components/ui/fit-text";
 
 
 export const Route = createFileRoute("/_authenticated/leader")({
@@ -590,15 +590,22 @@ function PeriodView({
     const previous = agg(prevSvc);
     // Média histórica dos últimos 3 períodos equivalentes (mês/semana/dia/ano),
     // usada como âncora estável na projeção ponderada.
-    const histRanges = historicalRanges(period, new Date(), 3);
+    // Referência "agora" dentro do período selecionado: período já
+    // encerrado (ex.: setembro visto em outubro) conta como 100% decorrido —
+    // a projeção vira o valor real; período futuro, 0%. Antes usava sempre a
+    // data de hoje, e um mês fechado era extrapolado como se mal tivesse
+    // começado (1.428 serviços viravam 10.177 "projetados").
+    const now = new Date();
+    const ref = now < cur.start ? cur.start : now > cur.end ? cur.end : now;
+    const histRanges = historicalRanges(period, ref, 3);
     const histAggs = histRanges.map((r) => agg(services.filter((s) => inRange(s.created_at, r))));
     const avg = (arr: number[]) =>
       arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
     const histAvgTotal = avg(histAggs.map((h) => h.total));
     const histAvgNeg = avg(histAggs.map((h) => h.negotiated_value));
     const projected = {
-      total: blendedProjection(current.total, histAvgTotal, period),
-      negotiated_value: blendedProjection(current.negotiated_value, histAvgNeg, period),
+      total: blendedProjection(current.total, histAvgTotal, period, ref),
+      negotiated_value: blendedProjection(current.negotiated_value, histAvgNeg, period, ref),
     };
     // "Pós corte" negociado conta em "Negociações"/"Negociado" (via agg()
     // acima), mas não soma na Variável Estimada (R$/negociação).
@@ -835,16 +842,20 @@ function PeriodView({
           <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="flex min-w-0 flex-col justify-center rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
               <p className="truncate text-xs text-white/80">Serviços</p>
-              <p className="truncate text-xl font-bold text-white md:text-2xl" title={String(stats.projected.total)}>{stats.projected.total}</p>
+              <p className="text-xl font-bold text-white md:text-2xl" title={String(stats.projected.total)}>
+                <FitText>{stats.projected.total}</FitText>
+              </p>
               <ProjectionDelta projected={stats.projected.total} previous={stats.previous.total} />
             </div>
             <div className="flex min-w-0 flex-col justify-center rounded-xl bg-orange-500 p-3 text-white [&_p:last-child]:!text-black [&_p:last-child_*]:!text-black">
               <p className="truncate text-xs text-white/80">Negociado</p>
-              <p className="truncate text-xl font-bold text-white md:text-2xl" title={formatBRL(stats.projected.negotiated_value)}>{formatBRL(stats.projected.negotiated_value)}</p>
+              <p className="text-xl font-bold text-white md:text-2xl" title={formatBRL(stats.projected.negotiated_value)}>
+                <FitText>{formatBRL(stats.projected.negotiated_value)}</FitText>
+              </p>
               <ProjectionDelta projected={stats.projected.negotiated_value} previous={stats.previous.negotiated_value} currency />
             </div>
           </div>
-          <PaceBar current={stats.current.total} projected={stats.projected.total} period={period} />
+          <PaceBar current={stats.current.total} projected={stats.projected.total} />
           <p className="mt-2 text-[10px] text-muted-foreground">Baseado no ritmo atual. Não é meta oficial.</p>
         </div>
       )}
@@ -932,10 +943,8 @@ function PeriodView({
   );
 }
 
-function PaceBar({ current, projected, period }: { current: number; projected: number; period: Period }) {
-  const elapsed = elapsedRatio(period);
+function PaceBar({ current, projected }: { current: number; projected: number }) {
   const paceRatio = projected > 0 ? Math.min(1, current / projected) : 0;
-  const elapsedPct = Math.round(elapsed * 100);
   const paceCount = Math.round(paceRatio * 100);
   const reached = paceCount >= 100;
   return (
@@ -977,11 +986,13 @@ function ProjectionDelta({ projected, previous, currency }: { projected: number;
   const Icon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;
   const sign = diff > 0 ? "+" : "";
   return (
-    <p className={cn("mt-1 flex items-center gap-1 truncate text-[11px]", tone)}>
-      <Icon className="size-3" />
-      {sign}
-      {currency ? formatBRL(diff) : diff}
-      {pct !== null && <span className="opacity-70"> ({sign}{pct}%)</span>}
+    <p className={cn("mt-1 flex min-w-0 items-center gap-1 text-[11px]", tone)}>
+      <Icon className="size-3 shrink-0" />
+      <FitText className="flex-1">
+        {sign}
+        {currency ? formatBRL(diff) : diff}
+        {pct !== null && <span className="opacity-70"> ({sign}{pct}%)</span>}
+      </FitText>
     </p>
   );
 }
@@ -993,7 +1004,9 @@ function Kpi({ label, value, delta, hint, tone, small }: { label: string; value:
   return (
     <div className="flex min-w-0 flex-col rounded-xl bg-card shadow-md p-3">
       <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={cn("truncate font-bold", small ? "text-sm md:text-base" : "text-lg md:text-xl", color)} title={value}>{value}</p>
+      <p className={cn("font-bold", small ? "text-sm md:text-base" : "text-lg md:text-xl", color)} title={value}>
+        <FitText>{value}</FitText>
+      </p>
       {delta !== undefined && delta !== null && (
         <p className={`mt-0.5 flex items-center gap-1 text-[10px] ${dTone}`}>
           <Icon className="size-3" />

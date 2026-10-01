@@ -45,7 +45,7 @@ function ProceduresPage() {
             placeholder="Buscar por título, categoria ou setor..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-11 pl-9"
+            className="h-11 bg-card pl-9"
           />
         </div>
 

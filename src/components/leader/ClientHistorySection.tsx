@@ -178,7 +178,7 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
 
       <div className="flex gap-2">
         <div className="w-24 shrink-0">
-          <Stat label="Negociações" value={String(rows.length)} />
+          <Stat label="Qtd" value={String(rows.length)} keepCase />
         </div>
         <div className="min-w-0 flex-1">
           <Stat label="Total do período" value={formatBRL(total)} />
@@ -187,10 +187,10 @@ function NegotiationsPeriodList({ onPickMatricula }: { onPickMatricula: (v: stri
 
       {query.isLoading ? (
         <div className="flex justify-center py-10">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <Loader2 className="size-6 animate-spin text-canvas-foreground/60" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma negociação no período.</p>
+        <p className="py-8 text-center text-sm text-canvas-foreground/70">Nenhuma negociação no período.</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => (
@@ -325,10 +325,27 @@ function ClientHistoryView({
   );
 }
 
-function Stat({ label, value, compact }: { label: string; value: string; compact?: boolean }) {
+function Stat({
+  label,
+  value,
+  compact,
+  keepCase,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+  /** Mostra o rótulo como escrito, sem forçar caixa alta (ex.: "Qtd"). */
+  keepCase?: boolean;
+}) {
   return (
     <div className="rounded-xl bg-card shadow-md p-3 text-center">
-      <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p
+        className={
+          "truncate text-[10px] font-bold tracking-wide text-muted-foreground " + (keepCase ? "" : "uppercase")
+        }
+      >
+        {label}
+      </p>
       <p
         className={"truncate font-bold text-foreground " + (compact ? "text-sm" : "text-xl")}
         title={value}
@@ -357,21 +374,33 @@ function NegotiationRow({ row, onClick }: { row: ClientHistoryRow; onClick?: () 
       <p className="mt-0.5 text-xs text-muted-foreground">
         {row.team_name} · {fmtDateTime(row.created_at)}
       </p>
-      {/* Valor alinhado ao modo de pagamento, na mesma linha (mesmo padrão
-          rótulo-à-esquerda/número-à-direita dos cards do Expediente). */}
-      <div className="mt-1 flex items-center justify-between gap-2">
-        <span className="truncate text-[11px] text-muted-foreground">
-          {row.payment_methods?.length ? (
-            <>
-              {row.payment_methods.join(" + ")}
-              {/* "à vista" só é informação nova quando o pagamento é misto
-                  (tem parcelado também) — sozinho, já duplica a própria
-                  descrição do método (ex.: "PIX - À VISTA"). */}
-              {row.valor_a_vista && row.valor_parcelado ? ` · à vista ${formatBRL(row.valor_a_vista)}` : ""}
-              {row.valor_parcelado ? ` · parcelado ${formatBRL(row.valor_parcelado)}` : ""}
-              {row.qtd_parcelas ? ` em ${row.qtd_parcelas}x` : ""}
-            </>
-          ) : null}
+      {/* Modo de pagamento à esquerda, valor à direita (mesmo padrão dos
+          cards do Expediente). O detalhe quebra linha em vez de cortar com
+          "…" — pagamento misto (à vista + parcelado) não cabe numa linha. */}
+      <div className="mt-1 flex items-end justify-between gap-2">
+        <span className="min-w-0 flex-1 break-words text-[11px] text-muted-foreground">
+          {row.payment_methods?.length
+            ? [
+                row.payment_methods.join(" + "),
+                // "à vista" só é informação nova quando o pagamento é misto
+                // (tem parcelado também) — sozinho, já duplica a própria
+                // descrição do método (ex.: "PIX - À VISTA").
+                row.valor_a_vista && row.valor_parcelado ? `à vista ${formatBRL(row.valor_a_vista)}` : null,
+                row.valor_parcelado
+                  ? `parcelado ${formatBRL(row.valor_parcelado)}${row.qtd_parcelas ? ` em ${row.qtd_parcelas}x` : ""}`
+                  : null,
+              ]
+                .filter(Boolean)
+                // Cada parte inteira numa linha: a quebra só acontece entre
+                // as partes (depois do "·"), nunca no meio de um valor.
+                .flatMap((part, i, parts) => [
+                  i > 0 ? " " : null,
+                  <span key={i} className="whitespace-nowrap">
+                    {part}
+                    {i < parts.length - 1 ? "\u00A0·" : ""}
+                  </span>,
+                ])
+            : null}
         </span>
         <span className="shrink-0 text-sm font-bold text-success">{formatBRL(Number(row.negotiated_value) || 0)}</span>
       </div>
