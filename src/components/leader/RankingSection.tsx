@@ -14,6 +14,7 @@ import {
 import { formatDateBR } from "@/lib/format";
 import { buildReport } from "@/lib/report";
 import { Button } from "@/components/ui/button";
+import { NegotiationPaymentLine } from "./NegotiationPaymentLine";
 
 type TeamRow = {
   id: string;
@@ -419,9 +420,6 @@ function TeamHeaderReadOnly({
           {[team.collaborator1, team.collaborator2].filter(Boolean).join(" e ") ||
             "Sem colaboradores"}
         </p>
-        {team.leader && (
-          <p className="truncate text-xs text-muted-foreground">Líder: {team.leader}</p>
-        )}
       </div>
       {/* Efetividade do mês selecionado — mesmo selo do card da Home: sempre
           presente com tamanho fixo, só o valor carrega depois. */}
@@ -596,7 +594,6 @@ function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-const brlValue = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function ServiceListSection({
   filter,
@@ -635,14 +632,7 @@ function ServiceListSection({
           <ul className="space-y-2">
             {filtered.slice(0, limit).map((r) => (
               <li key={r.id} className="rounded-xl bg-card shadow-md p-3 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-semibold">{r.service_type_name}</span>
-                  {r.is_negotiation && (
-                    <span className="shrink-0 text-sm font-bold text-success">
-                      {brlValue(Number(r.negotiated_value) || 0)}
-                    </span>
-                  )}
-                </div>
+                <span className="block truncate font-semibold">{r.service_type_name}</span>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {r.registration_number ? `${r.registration_number} · ` : ""}
                   {fmtTime(r.created_at)}
@@ -650,13 +640,16 @@ function ServiceListSection({
                 {!r.viable && r.reason_name && (
                   <p className="mt-1 text-[11px] text-destructive">{r.reason_name}</p>
                 )}
-                {r.is_negotiation && (r.payment_methods?.length || r.qtd_parcelas) && (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {r.payment_methods?.join(" + ")}
-                    {r.valor_a_vista ? ` · à vista ${brlValue(r.valor_a_vista)}` : ""}
-                    {r.valor_parcelado ? ` · parcelado ${brlValue(r.valor_parcelado)}` : ""}
-                    {r.qtd_parcelas ? ` em ${r.qtd_parcelas}x` : ""}
-                  </p>
+                {/* Mesmo rodapé dos cards da Consulta: pagamento à esquerda,
+                    valor à direita, "à vista" só quando o pagamento é misto. */}
+                {r.is_negotiation && (
+                  <NegotiationPaymentLine
+                    payment_methods={r.payment_methods}
+                    valor_a_vista={r.valor_a_vista}
+                    valor_parcelado={r.valor_parcelado}
+                    qtd_parcelas={r.qtd_parcelas}
+                    negotiated_value={r.negotiated_value}
+                  />
                 )}
               </li>
             ))}

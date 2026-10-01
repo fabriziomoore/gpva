@@ -42,6 +42,11 @@ function LeaderConfigPage() {
   const leaderName =
     meta?.display_name?.trim() || session?.user.email?.split("@")[0] || "—";
 
+  // Equipes do líder: o RLS de equipes (op_hierarchy_select) já devolve só
+  // as equipes vinculadas a ele no cadastro (equipes.leader_id). Antes
+  // filtrava também comparando o texto do nome, e qualquer diferença de
+  // grafia entre o nome da conta e o campo "líder" da equipe (ex.: "Aráujo"
+  // x "Araújo") zerava a lista — Supervisor e Setor apareciam "—".
   const teams = useQuery({
     queryKey: ["leader-config-teams", userId],
     enabled: !!userId && isLeader.data === true,
@@ -50,9 +55,7 @@ function LeaderConfigPage() {
         .from("equipes")
         .select("leader,supervisor,setores(nome,supervisor_nome)");
       if (error) throw error;
-      return ((data ?? []) as unknown as Row[]).filter(
-        (r) => (r.leader ?? "").trim() === leaderName,
-      );
+      return (data ?? []) as unknown as Row[];
     },
   });
 

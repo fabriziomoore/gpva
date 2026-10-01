@@ -220,14 +220,16 @@ export function LeaderMapSection() {
         <select
           value={viabilityFilter}
           onChange={(e) => setViabilityFilter(e.target.value as "all" | "viable" | "unviable")}
-          className={cn(selectCls, "min-w-0 flex-1 font-semibold")}
+          className={cn(selectCls, "min-w-0 flex-1 px-2 font-semibold")}
           aria-label="Filtro de viabilidade"
         >
-          <option value="all">Mapa de Serviços ({counts.all})</option>
+          {/* Rótulos curtos pro número caber ao lado de Dia/Semana/Mês
+              (o cabeçalho da tela já diz "Mapa"). */}
+          <option value="all">Todos ({counts.all})</option>
           <option value="viable">Viáveis ({counts.viable})</option>
           <option value="unviable">Inviáveis ({counts.unviable})</option>
         </select>
-        <div className="inline-flex overflow-hidden rounded-lg border border-border">
+        <div className="inline-flex shrink-0 overflow-hidden rounded-lg border border-border">
           {(["day", "week", "month"] as Period[]).map((p) => {
             const active = periodFilter === p;
             const label = p === "day" ? "Dia" : p === "week" ? "Semana" : "Mês";
@@ -236,7 +238,7 @@ export function LeaderMapSection() {
                 key={p}
                 type="button"
                 onClick={() => setPeriodFilter(p)}
-                className={`px-3 py-1 text-xs font-semibold ${active ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                className={`px-2 py-1 text-xs font-semibold ${active ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
               >
                 {label}
               </button>
