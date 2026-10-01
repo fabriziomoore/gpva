@@ -299,18 +299,18 @@ export function LeaderRankingSection({
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-card shadow-md p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Efetividade do dia</p>
-            <p className="text-xl font-bold text-success">
-              {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
-            </p>
-          </div>
           {/* A que horas a equipe começou a produzir no dia — o tempo médio
               e a projeção contam a partir daqui, então o atraso no começo
               (reunião + ida ao campo) fica visível só por este número. */}
           <div className="rounded-xl bg-card shadow-md p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">1ª O.S. do dia</p>
             <p className="text-xl font-bold">{current.firstAt ? fmtTime(current.firstAt) : "—"}</p>
+          </div>
+          <div className="rounded-xl bg-card shadow-md p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Efetividade do dia</p>
+            <p className="text-xl font-bold text-success">
+              {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
+            </p>
           </div>
         </div>
         {filter && (
