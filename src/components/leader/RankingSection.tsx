@@ -298,11 +298,20 @@ export function LeaderRankingSection({
             onClick={() => setFilter(filter === "negotiation" ? null : "negotiation")}
           />
         </div>
-        <div className="flex items-center justify-between rounded-xl bg-card shadow-md p-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">Efetividade do dia</span>
-          <span className="text-xl font-bold text-success">
-            {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
-          </span>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-card shadow-md p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Efetividade do dia</p>
+            <p className="text-xl font-bold text-success">
+              {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
+            </p>
+          </div>
+          {/* A que horas a equipe começou a produzir no dia — o tempo médio
+              e a projeção contam a partir daqui, então o atraso no começo
+              (reunião + ida ao campo) fica visível só por este número. */}
+          <div className="rounded-xl bg-card shadow-md p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">1ª O.S. do dia</p>
+            <p className="text-xl font-bold">{current.firstAt ? fmtTime(current.firstAt) : "—"}</p>
+          </div>
         </div>
         {filter && (
           <ServiceListSection
@@ -371,9 +380,17 @@ export function LeaderRankingSection({
                   : "border border-border hover:border-primary"
               }`}
             >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-semibold">{t.team_name}</span>
-                <span className="text-xs text-muted-foreground">
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{t.team_name}</span>
+                  {/* Modo Dia: a que horas a equipe começou a produzir. */}
+                  {mode === "day" && (
+                    <span className="block text-[11px] text-muted-foreground">
+                      {t.firstAt ? `1ª O.S. ${fmtTime(t.firstAt)}` : "Sem O.S. no dia"}
+                    </span>
+                  )}
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
                   {brl(t.negotiationValue)}
                 </span>
               </div>

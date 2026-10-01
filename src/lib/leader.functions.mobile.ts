@@ -54,6 +54,7 @@ export const leaderTeamsRanking: Callable<
     negotiations: number;
     negotiationValue: number;
     byType: Record<string, number>;
+    firstAt: string | null;
   }>,
   {
     year: number;
@@ -96,13 +97,14 @@ export const leaderTeamsRanking: Callable<
     is_negotiation: boolean;
     service_type_name: string;
     negotiated_value: number | null;
+    created_at: string;
   }> = [];
   const pageSize = 1000;
   let from = 0;
   while (true) {
     const { data: rows, error } = await supabase
       .from("servicos")
-      .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
+      .select("team_id,viable,is_negotiation,service_type_name,negotiated_value,created_at")
       .gte("created_at", start)
       .lt("created_at", end)
       .range(from, from + pageSize - 1);
@@ -137,6 +139,9 @@ export const leaderTeamsRanking: Callable<
       negotiations,
       negotiationValue,
       byType,
+      // Horário da 1ª O.S. no período (no modo Dia, a 1ª do dia) — mostra ao
+      // líder a que horas cada equipe começou a produzir.
+      firstAt: mine.reduce<string | null>((min, s) => (!min || s.created_at < min ? s.created_at : min), null),
     };
   });
 };
