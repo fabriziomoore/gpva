@@ -249,7 +249,7 @@ export function DecisionTreeEditor({ value, onChange, isReadOnly }: DecisionTree
             </CardContent>
           </Card>
         ) : (
-          <div className="h-full flex items-center justify-center border-2 border-dashed border-primary/10 rounded-2xl bg-muted/5 p-8 text-center">
+          <div className="h-full flex items-center justify-center border-2 border-dashed border-primary/10 rounded-card bg-muted/5 p-8 text-center">
             <div>
               <HelpCircle className="size-12 text-muted-foreground mx-auto mb-4 opacity-20" />
               <h3 className="text-lg font-semibold text-muted-foreground">Nenhum nó selecionado</h3>

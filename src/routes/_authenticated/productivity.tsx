@@ -88,7 +88,7 @@ function QuantityTooltip({ active, payload, label }: QuantityTooltipProps) {
   const title = first.payload?.name ?? first.payload?.date ?? label;
 
   return (
-    <div className="rounded-lg bg-card px-3 py-2 text-xs shadow-xl">
+    <div className="rounded-card bg-card px-3 py-2 text-xs shadow-xl">
       {title && <p className="mb-1 font-semibold text-foreground">{title}</p>}
       {payload.map((item, i) => (
         <p key={i} className="font-mono" style={{ color: item.color }}>
@@ -236,7 +236,7 @@ function ProductivityTab() {
             isTest ? (
               <div
                 key={s.id}
-                className="flex items-center justify-between rounded-xl bg-card shadow-md p-3"
+                className="flex items-center justify-between rounded-card bg-card shadow-md p-3"
               >
                 <div className="flex items-center gap-3">
                   <FileText className="size-4 text-primary" />
@@ -248,7 +248,7 @@ function ProductivityTab() {
                 key={s.id}
                 to="/shift/$id/report"
                 params={{ id: s.id }}
-                className="flex items-center justify-between rounded-xl bg-card shadow-md p-3"
+                className="flex items-center justify-between rounded-card bg-card shadow-md p-3"
               >
                 <div className="flex items-center gap-3">
                   <FileText className="size-4 text-primary" />
@@ -369,7 +369,7 @@ function PeriodSelector({ rows }: { rows: SvcRow[] }) {
   // caractere do texto centralizado (ex.: o "9" de "27/09"). O pr-4
   // reserva o espaço certinho pro ChevronDown desenhado à parte.
   const slotCls =
-    "h-11 w-full min-w-0 appearance-none rounded-lg bg-card text-foreground shadow-md pl-1 pr-4 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
+    "h-11 w-full min-w-0 appearance-none rounded-card bg-card text-foreground shadow-md pl-1 pr-4 text-center text-xs outline-none focus:ring-1 focus:ring-primary sm:text-sm";
 
   // Troca de campo (clique num campo que não é o modo atual) sempre reseta
   // pros dados de hoje, em vez de manter um valor antigo escolhido antes —
@@ -514,7 +514,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
         <Card label="Efetividade" value={`${pctV}%`} tone="success" />
       </div>
 
-      <div className="rounded-2xl bg-card shadow-md p-3">
+      <div className="rounded-card bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Evolução
         </p>
@@ -555,7 +555,7 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
         </div>
       </div>
 
-      <div className="rounded-2xl bg-card shadow-md p-3">
+      <div className="rounded-card bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Por tipo de serviço
         </p>
@@ -580,12 +580,12 @@ function PeriodView({ rows, period }: { rows: SvcRow[]; period: Period }) {
 
       {byType.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-card shadow-md p-3">
+          <div className="rounded-card bg-card shadow-md p-3">
             <p className="text-xs uppercase text-muted-foreground">Mais executado</p>
             <p className="text-sm font-semibold truncate">{byType[0]?.name}</p>
             <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[0]?.qty ?? 0)}</p>
           </div>
-          <div className="rounded-xl bg-card shadow-md p-3">
+          <div className="rounded-card bg-card shadow-md p-3">
             <p className="text-xs uppercase text-muted-foreground">Menos executado</p>
             <p className="text-sm font-semibold truncate">{byType[byType.length - 1]?.name}</p>
             <p className="text-xs text-muted-foreground">{serviceCountLabel(byType[byType.length - 1]?.qty ?? 0)}</p>
@@ -608,7 +608,7 @@ function Card({
   const c =
     tone === "success" ? "text-success" : tone === "destructive" ? "text-destructive" : "text-foreground";
   return (
-    <div className="rounded-xl bg-card shadow-md p-3 text-center">
+    <div className="rounded-card bg-card shadow-md p-3 text-center">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={"text-base font-bold " + c}>{value}</p>
     </div>
@@ -785,7 +785,7 @@ function VariableTab() {
 
       <div className="grid grid-cols-2 gap-2">
         {(["day", "week", "month", "year"] as const).map((p) => (
-          <div key={p} className="rounded-2xl bg-card shadow-md p-4">
+          <div key={p} className="rounded-card bg-card shadow-md p-4">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {p === "day" ? "Hoje" : p === "week" ? "Semana" : p === "month" ? "Mês" : "Ano"}
             </p>
@@ -799,7 +799,7 @@ function VariableTab() {
         ))}
       </div>
 
-      <div className="rounded-2xl bg-card shadow-md p-3">
+      <div className="rounded-card bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Consultar período específico
         </p>
@@ -868,7 +868,7 @@ function VariableTab() {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-3 rounded-xl border border-border bg-background p-3">
+        <div className="mt-3 rounded-card border border-border bg-background p-3">
           {custom ? (
             <>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -887,7 +887,7 @@ function VariableTab() {
         </div>
       </div>
 
-      <div className="rounded-2xl bg-card shadow-md p-3">
+      <div className="rounded-card bg-card shadow-md p-3">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Histórico financeiro{customRange ? ` — ${customRange.label}` : ""}
         </p>

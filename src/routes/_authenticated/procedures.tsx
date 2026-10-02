@@ -54,7 +54,7 @@ function ProceduresPage() {
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+          <div className="rounded-card border border-dashed border-border p-8 text-center">
             <FileText className="mx-auto mb-3 size-10 text-muted-foreground opacity-40" />
             <p className="text-sm font-medium text-foreground">
               {search ? "Nenhum procedimento encontrado" : "Nenhum procedimento publicado ainda"}
@@ -72,7 +72,7 @@ function ProceduresPage() {
                 <button
                   type="button"
                   onClick={() => setSelected(proc)}
-                  className="group flex w-full items-center gap-3 rounded-xl bg-card p-3 text-left shadow-md transition-shadow hover:shadow-lg"
+                  className="group flex w-full items-center gap-3 rounded-card bg-card p-3 text-left shadow-md transition-shadow hover:shadow-lg"
                 >
                   <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                     <FileText className="size-5" />

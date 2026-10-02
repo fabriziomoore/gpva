@@ -181,7 +181,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
     // ---------- Teams ----------
     case "listTeams": {
       const { data, error } = await sb.from("equipes")
-        .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,supervisor_id,leader_id,supervisor,leader,is_test")
+        .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,vehicle_plate,setor_id,supervisor_id,leader_id,supervisor,leader,is_test")
         .order("team_name");
       if (error) throw new Error(error.message);
       const { data: adminRoles } = await sb.from("user_roles").select("user_id").eq("role", "admin");
@@ -337,7 +337,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
       const pageSize = 1000; let from = 0;
       while (true) {
         const { data: rows, error } = await sb.from("servicos")
-          .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
+          .select("team_id,viable,is_negotiation,service_type_name,negotiated_value,created_at")
           .gte("created_at", start).lt("created_at", end)
           .is("deleted_at", null)
           .range(from, from + pageSize - 1);
@@ -366,6 +366,7 @@ async function dispatch(sb: any, op: string, args: any): Promise<any> {
           setor_nome: t.setores?.nome ?? null,
           leader_name: (t.lideres_estrutura?.nome ?? "").trim() || (t.leader ?? "").trim() || null,
           total: mine.length, viable, inviable, negotiations, negotiationValue, byType,
+          firstAt: mine.reduce((min: string | null, s: any) => (!min || s.created_at < min ? s.created_at : min), null),
         };
       });
     }

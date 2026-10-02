@@ -15,7 +15,7 @@ const call = <R,>(op: string) => async <T,>(arg: Args<T>): Promise<R> => {
 
 export type TeamListRow = {
   id: string; team_name: string; variable_rate: number; photo_url: string | null;
-  collaborator1: string | null; collaborator2: string | null; setor_id: string | null;
+  collaborator1: string | null; collaborator2: string | null; vehicle_plate: string | null; setor_id: string | null;
   supervisor_id: string | null; leader_id: string | null;
   supervisor: string | null; leader: string | null; is_test: boolean | null;
 };
@@ -37,6 +37,7 @@ export const adminTeamsRanking = call<Array<{
   id: string; team_name: string; setor_nome: string | null; leader_name: string | null;
   total: number; viable: number; inviable: number;
   negotiations: number; negotiationValue: number; byType: Record<string, number>;
+  firstAt: string | null;
 }>>("adminTeamsRanking");
 
 export type TeamServiceRow = {

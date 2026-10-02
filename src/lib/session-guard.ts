@@ -199,7 +199,8 @@ async function forceSignOut(reason: EjectReason): Promise<void> {
     if (reason === "expired") {
       toast.error("Sessão expirada. Faça login novamente.", { id: "gpva-session-ejected" });
     } else if (reason === "idle") {
-      toast.error("Sessão encerrada por inatividade. Faça login novamente.", { id: "gpva-session-ejected" });
+      // toast() simples (não .error): aviso sem o ícone de exclamação.
+      toast("Sessão encerrada por inatividade. Faça login novamente.", { id: "gpva-session-ejected" });
     } else if (reason === "admin_disconnect") {
       toast.error("Seu aparelho foi deslogado pelo administrador.", { id: "gpva-session-ejected" });
     } else {

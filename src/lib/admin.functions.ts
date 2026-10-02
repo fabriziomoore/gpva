@@ -99,7 +99,7 @@ export const listTeams = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("equipes")
-      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,supervisor_id,leader_id,supervisor,leader,is_test")
+      .select("id,team_name,variable_rate,photo_url,collaborator1,collaborator2,vehicle_plate,setor_id,supervisor_id,leader_id,supervisor,leader,is_test")
       .order("team_name");
     if (error) throw new Error(error.message);
     // Exclui contas administrativas (usuários com role admin) da lista de equipes.
@@ -478,13 +478,14 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
       is_negotiation: boolean;
       service_type_name: string;
       negotiated_value: number | null;
+      created_at: string;
     }[] = [];
     const pageSize = 1000;
     let from = 0;
     while (true) {
       const { data: rows, error } = await supabaseAdmin
         .from("servicos")
-        .select("team_id,viable,is_negotiation,service_type_name,negotiated_value")
+        .select("team_id,viable,is_negotiation,service_type_name,negotiated_value,created_at")
         .gte("created_at", start)
         .lt("created_at", end)
         .is("deleted_at", null)
@@ -523,6 +524,8 @@ export const adminTeamsRanking = createServerFn({ method: "POST" })
         negotiations,
         negotiationValue,
         byType,
+        // Horário da 1ª O.S. no período — mesmo campo do ranking do líder.
+        firstAt: mine.reduce<string | null>((min, s) => (!min || s.created_at < min ? s.created_at : min), null),
       };
     });
   });

@@ -212,7 +212,7 @@ export function LeaderMapSection() {
       (w) => refDate >= w.start && refDate <= new Date(w.end.getFullYear(), w.end.getMonth(), w.end.getDate(), 23, 59, 59),
     ),
   );
-  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm";
+  const selectCls = "h-10 rounded-card bg-card shadow-md px-3 text-sm";
 
   return (
     <div className="space-y-3 pb-24">
@@ -308,7 +308,7 @@ export function LeaderMapSection() {
       </div>
 
       {points.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-canvas-foreground/70">
+        <div className="rounded-card border border-dashed border-border p-8 text-center text-sm text-canvas-foreground/70">
           Nenhum registro com localização para os filtros selecionados.
         </div>
       ) : (

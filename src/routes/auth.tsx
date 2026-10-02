@@ -277,7 +277,7 @@ function AuthPage() {
           </button>
         </div>
         {showApkQr && (
-          <div className="mt-2 flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card p-3">
+          <div className="mt-2 flex flex-col items-center gap-1.5 rounded-card border border-border bg-card p-3">
             <div className="rounded-md bg-white p-1">
               <QRCodeSVG value={LATEST_APK_URL} size={76} fgColor="#000000" bgColor="#ffffff" />
             </div>

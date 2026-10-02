@@ -232,7 +232,7 @@ function ShiftPage() {
   if (!openShift) {
     return (
       <AppShell title="Expediente" right={<ShiftMeta teamName={team?.team_name} />}>
-        <div className="rounded-2xl bg-card shadow-md p-6 text-center">
+        <div className="rounded-card bg-card shadow-md p-6 text-center">
           <p className="text-muted-foreground">Nenhum expediente em andamento.</p>
         </div>
       </AppShell>
@@ -344,7 +344,7 @@ function ShiftPage() {
 
         <div className="space-y-2">
           {services.length === 0 && (
-            <p className="whitespace-nowrap rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+            <p className="whitespace-nowrap rounded-card border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
               Nenhum serviço registrado. Toque em + para começar.
             </p>
           )}
@@ -536,7 +536,7 @@ function Kpi({
   return (
     <div
       className={
-        "rounded-xl bg-card shadow-md text-center" +
+        "rounded-card bg-card shadow-md text-center" +
         (centerValue ? " relative flex h-full flex-col overflow-hidden" : " overflow-hidden")
       }
     >
@@ -638,7 +638,7 @@ function ServiceRow({
     <div
       {...pressHandlers}
       className={
-        "flex touch-pan-y items-center justify-between rounded-xl border bg-card px-3 py-2 select-none transition-colors " +
+        "flex touch-pan-y items-center justify-between rounded-card border bg-card px-3 py-2 select-none transition-colors " +
         (selected ? "border-primary ring-2 ring-primary/40" : "border-border")
       }
     >

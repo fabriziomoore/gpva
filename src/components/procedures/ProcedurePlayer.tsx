@@ -84,7 +84,7 @@ export const ProcedurePlayer = forwardRef<ProcedurePlayerHandle, ProcedurePlayer
             </div>
           </div>
         ) : (
-          <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className="space-y-4 rounded-card border border-primary/20 bg-primary/5 p-4">
             <div className="flex items-center gap-2 text-primary">
               <CheckCircle2 className="size-5 shrink-0" />
               <p className="text-xs font-bold uppercase tracking-wide">Procedimento indicado</p>

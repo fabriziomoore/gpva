@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDateBR } from "@/lib/format";
+import { collaboratorsLabel, firstName, formatDateBR } from "@/lib/format";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getLocalDB } from "@/lib/db/local-db";
 import { repoCreateShift, repoReopenShift } from "@/lib/db/repos";
@@ -173,13 +173,13 @@ function HomePage() {
     const list: Condutor[] = [];
     if (team?.collaborator1) {
       list.push({
-        label: team.collaborator1,
+        label: firstName(team.collaborator1),
         fullName: [team.collaborator1, team.collaborator1_lastname].filter(Boolean).join(" "),
       });
     }
     if (team?.collaborator2) {
       list.push({
-        label: team.collaborator2,
+        label: firstName(team.collaborator2),
         fullName: [team.collaborator2, team.collaborator2_lastname].filter(Boolean).join(" "),
       });
     }
@@ -373,8 +373,8 @@ function HomePage() {
             largura do card): em qualquer tela ele é a mesma "foto", só maior
             ou menor. Referência: 1cqw ≈ 3,28px num celular de 360px. */}
         <div className="@container">
-          <div className="flex items-stretch gap-[3.66cqw] overflow-hidden rounded-[4.88cqw] bg-card p-[4.88cqw] shadow-md">
-            <div className="relative w-1/3 shrink-0 overflow-hidden rounded-[3.66cqw] border border-border bg-muted aspect-square">
+          <div className="flex items-stretch gap-[3.66cqw] overflow-hidden rounded-[2.44cqw] bg-card p-[4.88cqw] shadow-md">
+            <div className="relative w-1/3 shrink-0 overflow-hidden rounded-[1.83cqw] border border-border bg-muted aspect-square">
               {teamPhoto ? (
                 <img src={teamPhoto} alt="Foto da equipe" className="h-full w-full object-cover" />
               ) : (
@@ -400,11 +400,11 @@ function HomePage() {
                   <FitTeamName name={team?.team_name ?? ""} />
                   {(team?.collaborator1 || team?.collaborator2) && (
                     <p className="mt-[0.61cqw] truncate text-[length:3.66cqw] font-medium text-foreground">
-                      {[team?.collaborator1, team?.collaborator2].filter(Boolean).join(" e ")}
+                      {collaboratorsLabel(team?.collaborator1, team?.collaborator2)}
                     </p>
                   )}
                 </div>
-                <div className="flex h-[10.37cqw] w-[18.9cqw] shrink-0 flex-col items-center justify-center gap-[0.61cqw] rounded-[2.44cqw] bg-muted px-[1.22cqw] text-center">
+                <div className="flex h-[10.37cqw] w-[18.9cqw] shrink-0 flex-col items-center justify-center gap-[0.61cqw] rounded-[1.22cqw] bg-muted px-[1.22cqw] text-center">
                   <p className="text-[length:2.13cqw] font-bold uppercase leading-none text-muted-foreground">
                     Efetividade
                   </p>
@@ -423,10 +423,10 @@ function HomePage() {
                 {team?.supervisor && (
                   <div className="space-y-[0.3cqw]">
                     {team.setor_nome && (
-                      <p className="truncate">Setor: <span className="font-semibold text-foreground">{team.setor_nome}</span></p>
+                      <p className="truncate"><span className="font-semibold text-foreground">Setor:</span> {team.setor_nome}</p>
                     )}
-                    <p className="truncate">Supervisor: <span className="font-semibold text-foreground">{team.supervisor}</span></p>
-                    <p className="truncate">Líder: <span className="font-semibold text-foreground">{team.leader}</span></p>
+                    <p className="truncate"><span className="font-semibold text-foreground">Supervisor:</span> {team.supervisor}</p>
+                    <p className="truncate"><span className="font-semibold text-foreground">Líder:</span> {team.leader}</p>
                   </div>
                 )}
                 <p className="mt-[1.22cqw] font-medium">{today}</p>
@@ -438,7 +438,7 @@ function HomePage() {
         <Button
           onClick={startShift}
           disabled={starting}
-          className="h-24 w-full rounded-2xl text-xl font-bold shadow-lg"
+          className="h-24 w-full rounded-card text-xl font-bold shadow-lg"
         >
           {starting ? (
             <Loader2 className="size-7 animate-spin" />
@@ -453,7 +453,7 @@ function HomePage() {
           <Link
             to="/shift/$id/report"
             params={{ id: lastClosed.id }}
-            className="group flex items-center justify-between rounded-xl bg-card shadow-md p-4 transition-shadow hover:shadow-lg"
+            className="group flex items-center justify-between rounded-card bg-card shadow-md p-4 transition-shadow hover:shadow-lg"
           >
             <div className="flex items-center gap-3">
               <FileText className="size-5 text-primary" />

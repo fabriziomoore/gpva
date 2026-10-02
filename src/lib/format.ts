@@ -22,3 +22,12 @@ export function formatDurationMin(totalMinutes: number): string {
   const m = mins % 60;
   return h > 0 ? `${h}h ${pad2(m)}min` : `${m}min`;
 }
+/** Primeiro nome de um nome cadastrado (alguns colaboradores foram salvos com o nome completo). */
+export function firstName(name: string | null | undefined): string {
+  return (name ?? "").trim().split(/\s+/)[0] ?? "";
+}
+
+/** "André e Marcley" — só o primeiro nome de cada colaborador, como nos cards de equipe. */
+export function collaboratorsLabel(c1: string | null | undefined, c2: string | null | undefined): string {
+  return [firstName(c1), firstName(c2)].filter(Boolean).join(" e ");
+}

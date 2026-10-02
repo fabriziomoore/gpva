@@ -20,7 +20,7 @@ const MONTHS = [
 ];
 
 const selectCls =
-  "h-10 rounded-lg bg-card shadow-md px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
+  "h-10 rounded-card bg-card shadow-md px-3 text-sm focus:ring-1 focus:ring-primary outline-none";
 
 function fmtDateTime(iso: string): string {
   const d = new Date(iso);
@@ -248,7 +248,7 @@ function RecurringIssuesPanel({ onPickMatricula }: { onPickMatricula: (v: string
               <li key={`${g.registration_number}|${g.reason_name}`}>
                 <button
                   onClick={() => onPickMatricula(g.registration_number)}
-                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50"
+                  className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-semibold">{g.registration_number}</span>
@@ -342,7 +342,7 @@ function Stat({
   keepCase?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-card shadow-md p-3 text-center">
+    <div className="rounded-card bg-card shadow-md p-3 text-center">
       <p
         className={
           "truncate text-[10px] font-bold tracking-wide text-muted-foreground " + (keepCase ? "" : "uppercase")
@@ -393,19 +393,19 @@ function NegotiationRow({ row, onClick }: { row: ClientHistoryRow; onClick?: () 
         <button
           type="button"
           onClick={onClick}
-          className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50"
+          className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50"
         >
           {inner}
         </button>
       </li>
     );
   }
-  return <li className="rounded-xl border border-border bg-card px-3 py-2.5">{inner}</li>;
+  return <li className="rounded-card border border-border bg-card px-3 py-2.5">{inner}</li>;
 }
 
 function InviableRow({ row }: { row: ClientHistoryRow }) {
   return (
-    <li className="rounded-xl border border-border bg-card px-3 py-2.5">
+    <li className="rounded-card border border-border bg-card px-3 py-2.5">
       <span className="truncate text-sm font-semibold">{row.reason_name || "Motivo não especificado"}</span>
       <p className="mt-0.5 text-xs text-muted-foreground">
         {row.team_name} · {row.service_type_name} · {fmtDateTime(row.created_at)}

@@ -11,7 +11,7 @@ import {
   leaderTeamServiceList,
   type TeamServiceRow,
 } from "@/lib/leader.functions";
-import { formatDateBR, formatDurationMin } from "@/lib/format";
+import { collaboratorsLabel, formatDateBR, formatDurationMin } from "@/lib/format";
 import { buildReport } from "@/lib/report";
 import { Button } from "@/components/ui/button";
 import { useBackHandler } from "@/lib/back-handler";
@@ -23,6 +23,7 @@ type TeamRow = {
   photo_url: string | null;
   collaborator1: string | null;
   collaborator2: string | null;
+  vehicle_plate: string | null;
   variable_rate: number;
   setor_id: string | null;
   leader: string | null;
@@ -189,7 +190,7 @@ export function LeaderRankingSection({
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm";
+  const selectCls = "h-10 rounded-card bg-card shadow-md px-3 text-sm";
   const periodSelector = (variant: "day" | "week" | "month") => (
     <div className="flex gap-2 min-w-0">
       {variant === "day" ? (
@@ -252,6 +253,7 @@ export function LeaderRankingSection({
       photo_url: null,
       collaborator1: null,
       collaborator2: null,
+      vehicle_plate: null,
       variable_rate: 0,
       setor_id: null,
       leader: null,
@@ -303,11 +305,11 @@ export function LeaderRankingSection({
               pra registrar a 1ª O.S. — o tempo médio e a projeção contam a
               partir dela, então o atraso no começo (reunião + ida ao campo)
               fica visível só por este número. */}
-          <div className="rounded-xl bg-card shadow-md p-3">
+          <div className="rounded-card bg-card shadow-md p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Tempo até a 1ª O.S.</p>
             <p className="text-xl font-bold">{current.firstAt ? sinceWorkdayStart(current.firstAt) : "—"}</p>
           </div>
-          <div className="rounded-xl bg-card shadow-md p-3">
+          <div className="rounded-card bg-card shadow-md p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Efetividade do dia</p>
             <p className="text-xl font-bold text-success">
               {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
@@ -330,7 +332,7 @@ export function LeaderRankingSection({
               .map(([name, qty]) => (
                 <div
                   key={name}
-                  className="flex items-center justify-between rounded-lg bg-card shadow-md px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-card bg-card shadow-md px-3 py-2 text-sm"
                 >
                   <span>{name}</span>
                   <span className="font-semibold">{qty}</span>
@@ -375,7 +377,7 @@ export function LeaderRankingSection({
             <button
               key={t.id}
               onClick={() => setSelected(t.id)}
-              className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
+              className={`block w-full rounded-card bg-card p-3 text-left transition-colors ${
                 isTopNeg
                   ? "border-0 ring-2 ring-blue-500"
                   : "border border-border hover:border-primary"
@@ -424,8 +426,10 @@ function TeamHeaderReadOnly({
   monthEfficiency: number | null;
   monthLoading: boolean;
 }) {
+  // Nome e colaboradores alinhados ao topo da foto (não centralizados na
+  // altura dela) — mesmo layout do card da equipe na Home.
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-card shadow-md p-3">
+    <div className="flex items-start gap-3 rounded-card bg-card shadow-md p-3">
       <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
         {team.photo_url ? (
           <img src={team.photo_url} alt={team.team_name} className="h-full w-full object-cover" />
@@ -436,26 +440,35 @@ function TeamHeaderReadOnly({
           />
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-semibold">{team.team_name}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {[team.collaborator1, team.collaborator2].filter(Boolean).join(" e ") ||
-            "Sem colaboradores"}
-        </p>
-      </div>
-      {/* Efetividade do mês selecionado — mesmo selo do card da Home: sempre
-          presente com tamanho fixo, só o valor carrega depois. */}
-      <div className="flex h-[34px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 self-start rounded-lg bg-muted px-1 text-center">
-        <p className="text-[7px] font-bold uppercase leading-none text-muted-foreground">Efetividade</p>
-        <div className="flex h-[14px] items-center justify-center">
-          {monthLoading ? (
-            <span className="h-2.5 w-7 animate-pulse rounded bg-muted-foreground/20" />
-          ) : monthEfficiency !== null ? (
-            <span className="text-xs font-bold leading-none text-success">{monthEfficiency}%</span>
-          ) : (
-            <span className="text-xs font-bold leading-none text-muted-foreground">—</span>
-          )}
+      <div className="min-w-0 flex-1 leading-tight">
+        {/* Nome + colaboradores ao lado do selo de efetividade (as duas
+            linhas têm a altura do selo, sem buraco embaixo do nome); o
+            veículo vem abaixo, na largura toda — mesmo arranjo da Home. */}
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-semibold">{team.team_name}</p>
+            <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
+              {collaboratorsLabel(team.collaborator1, team.collaborator2) || "Sem colaboradores"}
+            </p>
+          </div>
+          {/* Efetividade do mês selecionado — mesmo selo do card da Home: sempre
+              presente com tamanho fixo, só o valor carrega depois. */}
+          <div className="flex h-[34px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg bg-muted px-1 text-center">
+            <p className="text-[7px] font-bold uppercase leading-none text-muted-foreground">Efetividade</p>
+            <div className="flex h-[14px] items-center justify-center">
+              {monthLoading ? (
+                <span className="h-2.5 w-7 animate-pulse rounded bg-muted-foreground/20" />
+              ) : monthEfficiency !== null ? (
+                <span className="text-xs font-bold leading-none text-success">{monthEfficiency}%</span>
+              ) : (
+                <span className="text-xs font-bold leading-none text-muted-foreground">—</span>
+              )}
+            </div>
+          </div>
         </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">Veículo:</span> {team.vehicle_plate || "—"}
+        </p>
       </div>
     </div>
   );
@@ -520,7 +533,7 @@ function TeamDayReportsReadOnly({
       ) : (
         <div className="space-y-2">
           {filtered.map((r) => (
-            <details key={r.id} className="rounded-xl bg-card shadow-md p-3 text-sm">
+            <details key={r.id} className="rounded-card bg-card shadow-md p-3 text-sm">
               <summary className="cursor-pointer">
                 <span className="font-semibold">{formatDateBR(r.started_at)}</span>
                 <span className="ml-2 text-xs text-muted-foreground">
@@ -585,7 +598,7 @@ function ShiftReportBody({
   );
 }
 
-function Stat({
+export function Stat({
   label,
   value,
   active,
@@ -600,7 +613,7 @@ function Stat({
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-0 rounded-xl bg-card p-2 text-left shadow-md transition-colors ${
+      className={`min-w-0 rounded-card bg-card p-2 text-left shadow-md transition-colors ${
         active ? "ring-2 ring-primary" : ""
       }`}
     >
@@ -616,7 +629,7 @@ function Stat({
 const WORKDAY_START_HOUR = 7;
 
 /** Tempo entre as 7h do dia e a 1ª O.S. (ex.: "1h 12min"). */
-function sinceWorkdayStart(iso: string): string {
+export function sinceWorkdayStart(iso: string): string {
   const at = new Date(iso);
   const start = new Date(at);
   start.setHours(WORKDAY_START_HOUR, 0, 0, 0);
@@ -630,7 +643,7 @@ function fmtTime(iso: string): string {
 }
 
 
-function ServiceListSection({
+export function ServiceListSection({
   filter,
   rows,
   loading,
@@ -666,7 +679,7 @@ function ServiceListSection({
         <>
           <ul className="space-y-2">
             {filtered.slice(0, limit).map((r) => (
-              <li key={r.id} className="rounded-xl bg-card shadow-md p-3 text-sm">
+              <li key={r.id} className="rounded-card bg-card shadow-md p-3 text-sm">
                 <span className="block truncate font-semibold">{r.service_type_name}</span>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {r.registration_number ? `${r.registration_number} · ` : ""}

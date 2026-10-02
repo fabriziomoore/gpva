@@ -70,7 +70,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AuditSection } from "@/components/admin/AuditSection";
 import { MapServicesSection } from "@/components/admin/MapServicesSection";
-import { formatDateBR } from "@/lib/format";
+import { collaboratorsLabel, formatDateBR } from "@/lib/format";
+// Mesmos componentes da página da equipe no líder (a do Admin é igual a ela).
+import { ServiceListSection, Stat, sinceWorkdayStart } from "@/components/leader/RankingSection";
 import { SHIFT_KPIS } from "@/lib/shift-kpis";
 import { useBackHandler } from "@/lib/back-handler";
 import { buildReport } from "@/lib/report";
@@ -279,7 +281,7 @@ function AdminPage() {
           <button
             type="button"
             onClick={() => setView("ranking")}
-            className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-5 text-left shadow-md transition-all hover:border-primary hover:shadow-xl"
+            className="group flex w-full items-center gap-4 rounded-card border border-border bg-card p-5 text-left shadow-md transition-all hover:border-primary hover:shadow-xl"
           >
             <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
               <LayoutDashboard className="size-6" />
@@ -298,7 +300,7 @@ function AdminPage() {
               return (
                 <section
                   key={group.id}
-                  className="min-w-0 overflow-hidden rounded-2xl bg-card p-4 shadow-md"
+                  className="min-w-0 overflow-hidden rounded-card bg-card p-4 shadow-md"
                 >
                   <div className="mb-3 flex items-center gap-2">
                     <GIcon className="size-4 text-primary" />
@@ -481,7 +483,7 @@ function CrudSection({
               rows.data?.map((r) => (
                 <div
                   key={r.id}
-                  className="flex items-center justify-between rounded-lg bg-card shadow-md px-3 py-2"
+                  className="flex items-center justify-between rounded-card bg-card shadow-md px-3 py-2"
                 >
                   <span className="text-sm">{r.name}</span>
                   <button
@@ -562,7 +564,7 @@ function SetoresSection({ adminPw }: { adminPw: string }) {
         vinculados ao setor na seção Supervisores.
       </p>
 
-      <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
+      <div className="space-y-2 rounded-card bg-card shadow-md p-3">
         <Label>Novo setor</Label>
         <Input
           value={nome}
@@ -618,7 +620,7 @@ function SetorEditRow({
   const dirty = nome !== setor.nome;
 
   return (
-    <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
+    <div className="space-y-2 rounded-card bg-card shadow-md p-3">
       <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
       <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
         <div>
@@ -911,7 +913,7 @@ function SupervisoresSection({ adminPw }: { adminPw: string }) {
         supervisor por identificador — nenhum nome é inferido por texto.
       </p>
 
-      <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
+      <div className="space-y-2 rounded-card bg-card shadow-md p-3">
         <Label>Novo supervisor</Label>
         <Input
           value={nome}
@@ -1015,7 +1017,7 @@ function SupervisorEditRow({
   const dirty = nome !== supervisor.nome || !sameIds(setorIds, supervisor.setor_ids);
 
   return (
-    <div className="space-y-2 rounded-lg bg-card shadow-md p-3">
+    <div className="space-y-2 rounded-card bg-card shadow-md p-3">
       <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-10" />
       <p className="text-[11px] font-semibold uppercase text-muted-foreground">Setores</p>
       <SetorMultiSelect setores={setores} selected={setorIds} onChange={setSetorIds} />
@@ -1230,6 +1232,13 @@ function RankingSection({ adminPw }: { adminPw: string }) {
       }),
   });
 
+  const monthQ = useQuery({
+    queryKey: ["admin-ranking", year, month, null, "month", null],
+    queryFn: () =>
+      fn({ data: { adminPassword: adminPw, year, month, day: null, startISO: null, endISO: null } }),
+    enabled: !!selected,
+  });
+
   const serviceListFn = useServerFn(adminTeamServiceList);
   const serviceList = useQuery({
     queryKey: ["admin-team-service-list", selected, year, month, day],
@@ -1293,7 +1302,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const selectCls = "h-10 rounded-lg bg-card shadow-md px-3 text-sm";
+  const selectCls = "h-10 rounded-card bg-card shadow-md px-3 text-sm";
   const periodSelector = (variant: "day" | "week" | "month") => (
     <div className="flex gap-2 min-w-0">
       {variant === "day" ? (
@@ -1348,13 +1357,23 @@ function RankingSection({ adminPw }: { adminPw: string }) {
 
   if (current) {
     const teamFull = teams.data?.find((t) => t.id === current.id);
-    const teamMeta = teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, variable_rate: 0, setor_id: null, supervisor_id: null, leader_id: null, supervisor: null, leader: null };
+    const teamMeta = teamFull ?? { id: current.id, team_name: current.team_name, photo_url: null, collaborator1: null, collaborator2: null, vehicle_plate: null, variable_rate: 0, setor_id: null, supervisor_id: null, leader_id: null, supervisor: null, leader: null };
+    // Selo de efetividade do mês, igual ao card do Perfil do líder.
+    const monthRow = (monthQ.data ?? []).find((t) => t.id === current.id);
     return (
       <div className="space-y-4">
-        <TeamHeader adminPw={adminPw} team={teamMeta} onDeleted={() => setSelected(null)} />
+        <TeamHeader
+          adminPw={adminPw}
+          team={teamMeta}
+          monthEfficiency={monthRow && monthRow.total > 0 ? Math.round((monthRow.viable / monthRow.total) * 100) : null}
+          monthLoading={monthQ.isLoading}
+          onDeleted={() => setSelected(null)}
+        />
         {periodSelector("day")}
         <TeamDayReports adminPw={adminPw} teamId={current.id} team={teamMeta} year={year} month={month} day={day} />
-        <div className="grid grid-cols-4 gap-2">
+        {/* Negociações com a largura exata do rótulo (auto); os outros três
+            dividem o resto por igual — mesmo arranjo do líder. */}
+        <div className="grid grid-cols-[repeat(3,minmax(min-content,1fr))_auto] gap-2">
           <Stat
             label="Total"
             value={current.total}
@@ -1380,14 +1399,20 @@ function RankingSection({ adminPw }: { adminPw: string }) {
             onClick={() => setFilter(filter === "negotiation" ? null : "negotiation")}
           />
         </div>
-        <div className="flex items-center justify-between rounded-xl bg-card shadow-md p-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">Efetividade</span>
-          <span className="text-xl font-bold text-success">
-            {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
-          </span>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-card bg-card shadow-md p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Tempo até a 1ª O.S.</p>
+            <p className="text-xl font-bold">{current.firstAt ? sinceWorkdayStart(current.firstAt) : "—"}</p>
+          </div>
+          <div className="rounded-card bg-card shadow-md p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Efetividade do dia</p>
+            <p className="text-xl font-bold text-success">
+              {current.total > 0 ? Math.round((current.viable / current.total) * 100) : 0}%
+            </p>
+          </div>
         </div>
         {filter && (
-          <AdminServiceListSection
+          <ServiceListSection
             key={filter}
             filter={filter}
             rows={serviceList.data}
@@ -1402,7 +1427,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
               .map(([name, qty]) => (
                 <div
                   key={name}
-                  className="flex items-center justify-between rounded-lg bg-card shadow-md px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-card bg-card shadow-md px-3 py-2 text-sm"
                 >
                   <span>{name}</span>
                   <span className="font-semibold">{qty}</span>
@@ -1456,7 +1481,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
               <button
                 key={t.id}
                 onClick={() => setSelected(t.id)}
-                className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
+                className={`block w-full rounded-card bg-card p-3 text-left transition-colors ${
                   isTopNeg
                     ? "border-0 ring-2 ring-blue-500"
                     : "border border-border hover:border-primary"
@@ -1525,7 +1550,7 @@ function RankingSection({ adminPw }: { adminPw: string }) {
                         <button
                           key={t.id}
                           onClick={() => setSelected(t.id)}
-                          className={`block w-full rounded-xl bg-card p-3 text-left transition-colors ${
+                          className={`block w-full rounded-card bg-card p-3 text-left transition-colors ${
                             isTopNeg
                               ? "border-0 ring-2 ring-blue-500"
                               : "border border-border hover:border-primary"
@@ -1566,6 +1591,7 @@ type TeamRow = {
   photo_url: string | null;
   collaborator1: string | null;
   collaborator2: string | null;
+  vehicle_plate: string | null;
   variable_rate: number;
   setor_id: string | null;
   supervisor_id: string | null;
@@ -1577,10 +1603,14 @@ type TeamRow = {
 function TeamHeader({
   adminPw,
   team,
+  monthEfficiency,
+  monthLoading,
   onDeleted,
 }: {
   adminPw: string;
   team: TeamRow;
+  monthEfficiency: number | null;
+  monthLoading: boolean;
   onDeleted: () => void;
 }) {
   const qc = useQueryClient();
@@ -1635,8 +1665,10 @@ function TeamHeader({
 
   return (
     <>
-    <div className="flex flex-col gap-3 rounded-xl bg-card shadow-md p-3">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-3 rounded-card bg-card shadow-md p-3">
+      {/* Mesmo card do Perfil do líder (RankingSection → TeamHeaderReadOnly),
+          com Editar/Excluir no canto direito, embaixo do selo. */}
+      <div className="flex items-start gap-3">
         <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
           {team.photo_url ? (
             <img src={team.photo_url} alt={team.team_name} className="h-full w-full object-cover" />
@@ -1647,13 +1679,32 @@ function TeamHeader({
             />
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold">{team.team_name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {[team.collaborator1, team.collaborator2].filter(Boolean).join(" e ") || "Sem colaboradores"}
+        <div className="flex min-h-20 min-w-0 flex-1 flex-col leading-tight">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-semibold">{team.team_name}</p>
+              <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
+                {collaboratorsLabel(team.collaborator1, team.collaborator2) || "Sem colaboradores"}
+              </p>
+            </div>
+            <div className="flex h-[34px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg bg-muted px-1 text-center">
+              <p className="text-[7px] font-bold uppercase leading-none text-muted-foreground">Efetividade</p>
+              <div className="flex h-[14px] items-center justify-center">
+                {monthLoading ? (
+                  <span className="h-2.5 w-7 animate-pulse rounded bg-muted-foreground/20" />
+                ) : monthEfficiency !== null ? (
+                  <span className="text-xs font-bold leading-none text-success">{monthEfficiency}%</span>
+                ) : (
+                  <span className="text-xs font-bold leading-none text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Veículo:</span> {team.vehicle_plate || "—"}
           </p>
           {!editing && (
-            <div className="mt-2 flex gap-1">
+            <div className="mt-auto flex justify-end gap-1 pt-1">
               <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => setEditing(true)}>
                 Editar
               </Button>
@@ -1818,30 +1869,34 @@ function TeamDayReports({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground">Relatórios do dia</h3>
+      <h3 className="text-sm font-semibold text-canvas-foreground/70">Relatórios do dia</h3>
       {q.isLoading ? (
-        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+        <Loader2 className="mx-auto size-5 animate-spin text-canvas-foreground/60" />
       ) : filtered.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nenhum relatório neste dia.</p>
+        <p className="text-xs text-canvas-foreground/70">Nenhum relatório neste dia.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((r) => {
             const isEditing = editingId === r.id;
             return (
-              <div key={r.id} className="rounded-xl bg-card shadow-md p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">{formatDateBR(r.started_at)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {r.status === "closed" ? "Fechado" : "Aberto"}
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
+              // Recolhível como no líder (▶ data · status); Editar/Excluir no
+              // canto direito. Os botões ficam dentro do <summary>, então param
+              // o clique pra não abrir/fechar o relatório junto.
+              <details key={r.id} open={isEditing || undefined} className="group rounded-card bg-card shadow-md p-3 text-sm">
+                <summary className="flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+                  <span className="inline-block text-[10px] text-muted-foreground transition-transform group-open:rotate-90">▶</span>
+                  <span className="font-semibold">{formatDateBR(r.started_at)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {r.status === "closed" ? "Fechado" : "Aberto"}
+                  </span>
+                  <span className="ml-auto flex gap-1">
                     {!isEditing && (
                       <Button
                         variant="outline"
-                        className="h-9 px-3 text-xs"
-                        onClick={() => {
+                        className="h-8 px-3 text-xs"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setEditingId(r.id);
                           setText(r.report_text ?? "");
                         }}
@@ -1850,19 +1905,21 @@ function TeamDayReports({
                       </Button>
                     )}
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         void confirmDelete({
                           title: "Excluir relatório?",
                           description: "Todos os serviços e impactos vinculados serão apagados. Esta ação não poderá ser desfeita.",
                         }).then((ok) => { if (ok) delMut.mutate(r.id); });
                       }}
-                      className="rounded p-2 text-muted-foreground hover:text-destructive"
+                      className="rounded p-1.5 text-muted-foreground hover:text-destructive"
                       aria-label="Excluir"
                     >
                       <Trash2 className="size-4" />
                     </button>
-                  </div>
-                </div>
+                  </span>
+                </summary>
                 {!isEditing && (
                   <AdminShiftReportBody adminPw={adminPw} shift={r} team={team} />
                 )}
@@ -1889,7 +1946,7 @@ function TeamDayReports({
                     </div>
                   </div>
                 )}
-              </div>
+              </details>
             );
           })}
         </div>
@@ -1946,111 +2003,6 @@ function AdminShiftReportBody({
     <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
       Sem texto de relatório.
     </p>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  active,
-  onClick,
-}: {
-  label: string;
-  value: number;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl bg-card p-2 text-left shadow-md transition-colors ${
-        active ? "ring-2 ring-primary" : ""
-      }`}
-    >
-      <div className="text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-bold">{value}</div>
-    </button>
-  );
-}
-
-function fmtServiceTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-}
-
-const brlValue = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-function AdminServiceListSection({
-  filter,
-  rows,
-  loading,
-}: {
-  filter: "all" | "viable" | "inviable" | "negotiation";
-  rows: TeamServiceRow[] | undefined;
-  loading: boolean;
-}) {
-  const [limit, setLimit] = useState(5);
-  const filtered = (rows ?? []).filter((r) => {
-    if (filter === "all") return true;
-    if (filter === "viable") return r.viable;
-    if (filter === "inviable") return !r.viable;
-    return r.is_negotiation && r.viable;
-  });
-  const title =
-    filter === "all"
-      ? "Todos os serviços"
-      : filter === "viable"
-        ? "Serviços viáveis"
-        : filter === "inviable"
-          ? "Serviços inviáveis"
-          : "Negociações";
-
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
-      {loading ? (
-        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sem registros.</p>
-      ) : (
-        <>
-          <ul className="space-y-2">
-            {filtered.slice(0, limit).map((r) => (
-              <li key={r.id} className="rounded-xl bg-card shadow-md p-3 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-semibold">{r.service_type_name}</span>
-                  {r.is_negotiation && (
-                    <span className="shrink-0 text-sm font-bold text-success">
-                      {brlValue(Number(r.negotiated_value) || 0)}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {r.registration_number ? `${r.registration_number} · ` : ""}
-                  {fmtServiceTime(r.created_at)}
-                </p>
-                {!r.viable && r.reason_name && (
-                  <p className="mt-1 text-[11px] text-destructive">{r.reason_name}</p>
-                )}
-                {r.is_negotiation && (r.payment_methods?.length || r.qtd_parcelas) && (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {r.payment_methods?.join(" + ")}
-                    {r.valor_a_vista ? ` · à vista ${brlValue(r.valor_a_vista)}` : ""}
-                    {r.valor_parcelado ? ` · parcelado ${brlValue(r.valor_parcelado)}` : ""}
-                    {r.qtd_parcelas ? ` em ${r.qtd_parcelas}x` : ""}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-          {filtered.length > limit && (
-            <Button variant="outline" className="w-full" onClick={() => setLimit((n) => n + 5)}>
-              Ver mais
-            </Button>
-          )}
-        </>
-      )}
-    </div>
   );
 }
 
@@ -2348,7 +2300,7 @@ function LeaderRowItem({
   const canSubmit = !!nome.trim() && hier.setorIds.length > 0 && !!hier.supervisorId;
 
   return (
-    <li className="rounded-xl bg-card shadow-md p-3">
+    <li className="rounded-card bg-card shadow-md p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{leader.nome || leader.login}</p>
@@ -2497,7 +2449,7 @@ function GoogleFormSection({ adminPw }: { adminPw: string }) {
         const value = target === "prod" ? prodInput : testInput;
         const setValue = target === "prod" ? setProdInput : setTestInput;
         return (
-          <div key={target} className="rounded-xl border bg-card p-4 space-y-2">
+          <div key={target} className="rounded-card border bg-card p-4 space-y-2">
             <Label className="text-sm font-semibold">
               {target === "prod" ? "Formulário de produção" : "Formulário de teste"}
             </Label>
@@ -2570,7 +2522,7 @@ function HdFormSection({ adminPw }: { adminPw: string }) {
         const value = target === "prod" ? prodInput : testInput;
         const setValue = target === "prod" ? setProdInput : setTestInput;
         return (
-          <div key={target} className="rounded-xl border bg-card p-4 space-y-2">
+          <div key={target} className="rounded-card border bg-card p-4 space-y-2">
             <Label className="text-sm font-semibold">
               {target === "prod" ? "Forms de produção" : "Forms de teste"}
             </Label>
@@ -2735,7 +2687,6 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
   const [password, setPassword] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const createMut = useMutation({
     mutationFn: () => createFn({ data: { adminPassword: adminPw, teamName, password } }),
@@ -2763,7 +2714,6 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
     mutationFn: (teamId: string) => deleteFn({ data: { adminPassword: adminPw, teamId } }),
     onSuccess: () => {
       toast.success("Conta de teste excluída");
-      setConfirmDeleteId(null);
       qc.invalidateQueries({ queryKey: ["admin-test-teams"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -2778,7 +2728,7 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
         </p>
       </div>
 
-      <div className="space-y-3 rounded-xl bg-card shadow-md p-4">
+      <div className="space-y-3 rounded-card bg-card shadow-md p-4">
         <h3 className="text-sm font-semibold">Criar nova conta de teste</h3>
         <div className="space-y-2">
           <Label htmlFor="tt-name">Nome da equipe</Label>
@@ -2822,7 +2772,7 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
             {(list.data ?? []).map((t) => (
               <li
                 key={t.id}
-                className="flex flex-col gap-2 rounded-xl bg-card shadow-md p-3"
+                className="flex flex-col gap-2 rounded-card bg-card shadow-md p-3"
               >
                 {editingId === t.id ? (
                   <div className="flex flex-col gap-2">
@@ -2868,7 +2818,13 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
                         Editar
                       </Button>
                       <button
-                        onClick={() => setConfirmDeleteId(t.id)}
+                        onClick={() => {
+                          // Mesmo diálogo de confirmação do resto do app.
+                          void confirmDelete({
+                            title: "Excluir conta de teste?",
+                            description: "Todos os dados vinculados a esta conta serão removidos.",
+                          }).then((ok) => { if (ok) deleteMut.mutate(t.id); });
+                        }}
                         className="rounded p-1.5 text-muted-foreground hover:text-destructive"
                         aria-label="Excluir"
                       >
@@ -2883,36 +2839,6 @@ function TestAccountSection({ adminPw }: { adminPw: string }) {
         )}
       </div>
 
-      <Dialog.Root
-        open={confirmDeleteId !== null}
-        onOpenChange={(o) => !o && setConfirmDeleteId(null)}
-      >
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-card p-5 shadow-xl">
-            <Dialog.Title className="text-base font-semibold">Excluir conta de teste?</Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-              Todos os dados vinculados a esta conta serão removidos.
-            </Dialog.Description>
-            <div className="mt-4 flex gap-2">
-              <Button
-                variant="outline"
-                className="h-10 flex-1"
-                onClick={() => setConfirmDeleteId(null)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="h-10 flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                disabled={deleteMut.isPending}
-                onClick={() => confirmDeleteId && deleteMut.mutate(confirmDeleteId)}
-              >
-                {deleteMut.isPending ? <Loader2 className="size-4 animate-spin" /> : "Excluir"}
-              </Button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
     </div>
   );
 }
@@ -3042,7 +2968,7 @@ function DevicesSection({ adminPw }: { adminPw: string }) {
       {devices.isLoading ? (
         <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
       ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded-card border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           Nenhum dispositivo conectado no momento.
         </div>
       ) : (
@@ -3057,7 +2983,7 @@ function DevicesSection({ adminPw }: { adminPw: string }) {
             return (
               <li
                 key={d.user_id + d.session_id}
-                className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3"
+                className="flex items-start justify-between gap-3 rounded-card bg-card shadow-md p-3"
               >
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
@@ -3234,7 +3160,7 @@ function LoginHistorySection({ adminPw }: { adminPw: string }) {
       {logins.isLoading ? (
         <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
       ) : logins.isError ? (
-        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-destructive">
+        <div className="rounded-card border border-dashed border-border p-6 text-center text-sm text-destructive">
           {(logins.error as Error).message}
         </div>
       ) : (
@@ -3245,7 +3171,7 @@ function LoginHistorySection({ adminPw }: { adminPw: string }) {
             <span className="font-semibold text-foreground">{total}</span> login(s) no dia
           </p>
           {visible.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-card border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               {onlyMissing ? "Todas as contas entraram neste dia." : "Nenhuma conta encontrada."}
             </div>
           ) : (
@@ -3255,7 +3181,7 @@ function LoginHistorySection({ adminPw }: { adminPw: string }) {
                 const expanded = open === r.user_id && n > 0;
                 const offlineCount = r.logins.filter((l) => l.offline).length;
                 return (
-                  <li key={r.user_id} className="rounded-xl bg-card shadow-md">
+                  <li key={r.user_id} className="rounded-card bg-card shadow-md">
                     <button
                       type="button"
                       onClick={() => setOpen(expanded ? null : r.user_id)}
@@ -3353,13 +3279,13 @@ function TrashSection({ adminPw }: { adminPw: string }) {
       {trash.isLoading ? (
         <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
       ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded-card border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           Nenhum relatório na lixeira.
         </div>
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => (
-            <li key={r.id} className="flex items-start justify-between gap-3 rounded-xl bg-card shadow-md p-3">
+            <li key={r.id} className="flex items-start justify-between gap-3 rounded-card bg-card shadow-md p-3">
               <div className="flex min-w-0 flex-1 items-start gap-3">
                 <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
                   <Trash className="size-4" />

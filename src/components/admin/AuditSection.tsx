@@ -145,7 +145,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
       </div>
 
       {/* Header status */}
-      <div className="rounded-xl border bg-card p-4">
+      <div className="rounded-card border bg-card p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Status geral</div>
@@ -181,11 +181,11 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
       {/* Relatório */}
       {report && (
         <>
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-card border bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">Notas por categoria</h3>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {(Object.keys(report.category_scores) as Category[]).map((c) => (
-                <div key={c} className="rounded-lg border p-3">
+                <div key={c} className="rounded-card border p-3">
                   <div className="text-xs text-muted-foreground">{CATEGORY_LABELS[c]}</div>
                   <div className="text-xl font-bold">{report.category_scores[c]}%</div>
                 </div>
@@ -193,7 +193,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
             </div>
           </div>
 
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-card border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Resultados ({report.results.length})</h3>
               <div className="text-xs text-muted-foreground">
@@ -202,7 +202,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
             </div>
             <ul className="max-h-[420px] space-y-2 overflow-y-auto">
               {report.results.map((r) => (
-                <li key={r.id} className="rounded-lg border p-3">
+                <li key={r.id} className="rounded-card border p-3">
                   <div className="flex items-center gap-2">
                     <SevBadge sev={r.severity} />
                     <span className="text-sm font-medium">{r.title}</span>
@@ -242,14 +242,14 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
             </Button>
           </div>
 
-          <div className="rounded-xl border bg-muted/40 p-3 text-xs text-muted-foreground">
+          <div className="rounded-card border bg-muted/40 p-3 text-xs text-muted-foreground">
             <strong>Fora do escopo runtime:</strong> {OUT_OF_SCOPE.join(", ")}.
           </div>
         </>
       )}
 
       {/* Histórico */}
-      <div className="rounded-xl border bg-card p-4">
+      <div className="rounded-card border bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold">Histórico</h3>
         {history.isLoading ? (
           <div className="flex justify-center py-4"><Loader2 className="size-4 animate-spin text-muted-foreground" /></div>
@@ -260,7 +260,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
             {history.data.map((h) => {
               const c = (h.counts ?? {}) as { errors?: number; warnings?: number; improvements?: number };
               return (
-                <li key={h.id} className="flex items-center justify-between rounded-lg border p-2 text-sm">
+                <li key={h.id} className="flex items-center justify-between rounded-card border p-2 text-sm">
                   <button
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
@@ -335,7 +335,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
               </div>
               <ul className="space-y-2">
                 {viewing.results.map((r) => (
-                  <li key={r.id} className="rounded-lg border p-3">
+                  <li key={r.id} className="rounded-card border p-3">
                     <div className="flex items-center gap-2">
                       <SevBadge sev={r.severity} />
                       <span className="text-sm font-medium">{r.title}</span>

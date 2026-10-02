@@ -454,7 +454,7 @@ export function AddServiceSheet({
                 <button
                   key={t.id}
                   onClick={() => pickType(t)}
-                  className="flex h-24 items-center justify-center rounded-2xl bg-card p-3 text-center text-base font-semibold shadow-md transition-shadow hover:bg-accent hover:shadow-lg"
+                  className="flex h-24 items-center justify-center rounded-card bg-card p-3 text-center text-base font-semibold shadow-md transition-shadow hover:bg-accent hover:shadow-lg"
                 >
                   {t.name}
                 </button>
@@ -474,7 +474,7 @@ export function AddServiceSheet({
                 <button
                   disabled={saving}
                   onClick={() => onViabilityChosen(true)}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-success transition-colors hover:border-success hover:bg-success/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-card bg-card shadow-md font-bold text-success transition-colors hover:border-success hover:bg-success/10"
                 >
                   <CheckCircle2 className="size-12" />
                   <span className="text-xl">Viável</span>
@@ -482,7 +482,7 @@ export function AddServiceSheet({
                 <button
                   disabled={saving}
                   onClick={() => onViabilityChosen(false)}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-card bg-card shadow-md font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
                 >
                   <XCircle className="size-12" />
                   <span className="text-xl">Inviável</span>
@@ -500,7 +500,7 @@ export function AddServiceSheet({
                     setNegotiatedOverride(true);
                     setStep("registration");
                   }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-success transition-colors hover:border-success hover:bg-success/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-card bg-card shadow-md font-bold text-success transition-colors hover:border-success hover:bg-success/10"
                 >
                   <Banknote className="size-12" />
                   <span className="text-xl">Sim</span>
@@ -511,7 +511,7 @@ export function AddServiceSheet({
                     setNegotiatedOverride(false);
                     setStep("complements");
                   }}
-                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-card shadow-md font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
+                  className="flex h-40 flex-col items-center justify-center gap-3 rounded-card bg-card shadow-md font-bold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10"
                 >
                   <XCircle className="size-12" />
                   <span className="text-xl">Não</span>
@@ -536,7 +536,7 @@ export function AddServiceSheet({
                     setReason(r);
                     setStep("registration");
                   }}
-                  className="rounded-xl bg-card shadow-md px-4 py-4 text-left text-base font-medium hover:border-primary hover:bg-accent"
+                  className="rounded-card bg-card shadow-md px-4 py-4 text-left text-base font-medium hover:border-primary hover:bg-accent"
                 >
                   {r.name}
                 </button>

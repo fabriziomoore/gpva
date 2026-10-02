@@ -108,7 +108,7 @@ function ReportPage() {
         </div>
       ) : (
         <div className="space-y-4 pb-24">
-          <pre className="whitespace-pre-wrap rounded-2xl bg-card shadow-md p-4 font-mono text-sm leading-relaxed">
+          <pre className="whitespace-pre-wrap rounded-card bg-card shadow-md p-4 font-mono text-sm leading-relaxed">
             {text}
           </pre>
         </div>

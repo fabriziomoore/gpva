@@ -88,7 +88,7 @@ export function TeamsRankingSection() {
             return (
               <div
                 key={t.team_id}
-                className={`block w-full rounded-xl bg-card p-3 text-left ${
+                className={`block w-full rounded-card bg-card p-3 text-left ${
                   isTopNeg ? "border-0 ring-2 ring-blue-500" : "border border-border"
                 }`}
               >

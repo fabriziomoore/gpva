@@ -211,7 +211,7 @@ export function ServicesMap({
   }, [spread, GREEN, RED]);
 
   return (
-    <div className={hideLegend ? "relative z-0" : "relative z-0 overflow-hidden rounded-xl border border-border"}>
+    <div className={hideLegend ? "relative z-0" : "relative z-0 overflow-hidden rounded-card border border-border"}>
       {disposedForSignOut ? (
         <div className="relative z-0 bg-background" style={{ height }} />
       ) : (

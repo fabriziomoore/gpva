@@ -19,6 +19,7 @@ export const leaderListTeams: Callable<
     photo_url: string | null;
     collaborator1: string | null;
     collaborator2: string | null;
+    vehicle_plate: string | null;
     setor_id: string | null;
     leader: string | null;
     supervisor: string | null;
@@ -30,7 +31,7 @@ export const leaderListTeams: Callable<
   const { data, error } = await supabase
     .from("equipes")
     .select(
-      "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,supervisor,is_test,supervisores(nome)",
+      "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,vehicle_plate,setor_id,leader,supervisor,is_test,supervisores(nome)",
     )
     .order("team_name");
   if (error) throw new Error(error.message);

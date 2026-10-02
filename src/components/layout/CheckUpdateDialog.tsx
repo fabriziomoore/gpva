@@ -116,7 +116,7 @@ export function CheckUpdateDialog() {
           {state === "found" && (
             <div className="space-y-4 py-2">
               {webUpdate && (
-                <div className="space-y-2 rounded-xl border border-border p-4">
+                <div className="space-y-2 rounded-card border border-border p-4">
                   <div>
                     <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
                     <p className="text-xs text-muted-foreground">{webUpdate.releaseType ?? "Atualização"}</p>
@@ -131,7 +131,7 @@ export function CheckUpdateDialog() {
                 </div>
               )}
               {nativeUpdate && (
-                <div className="space-y-2 rounded-xl border border-border p-4">
+                <div className="space-y-2 rounded-card border border-border p-4">
                   <div>
                     <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
                     <p className="text-xs text-muted-foreground">

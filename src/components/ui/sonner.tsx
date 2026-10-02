@@ -46,8 +46,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           minHeight: "auto",
           padding: "10px 16px",
           border: "none",
-          "--normal-bg": "#2563eb",
-          "--normal-text": "#ffffff",
+          "--normal-bg": "var(--toast-bg)",
+          "--normal-text": "var(--toast-fg)",
         } as React.CSSProperties,
         classNames: {
           // O CSS do sonner dá flex:1 pro data-content (pra título/descrição
@@ -58,9 +58,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           // tem mais seletores de atributo que uma classe só).
           toast: "group toast group-[.toaster]:shadow-lg group-[.toaster]:justify-center",
           content: "!flex-none",
-          description: "group-[.toast]:text-white/80",
-          actionButton: "group-[.toast]:bg-white group-[.toast]:text-primary",
-          cancelButton: "group-[.toast]:bg-white/15 group-[.toast]:text-white",
+          description: "group-[.toast]:text-(--toast-fg)/80",
+          actionButton: "group-[.toast]:bg-(--toast-fg) group-[.toast]:text-(--toast-bg)",
+          cancelButton: "group-[.toast]:bg-(--toast-fg)/10 group-[.toast]:text-(--toast-fg)",
         },
       }}
       {...props}

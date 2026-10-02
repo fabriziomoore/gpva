@@ -24,7 +24,7 @@ export const leaderListTeams = createServerFn({ method: "POST" })
     const { data, error } = await context.supabase
       .from("equipes")
       .select(
-        "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,setor_id,leader,supervisor,is_test,supervisores(nome)",
+        "id,team_name,variable_rate,photo_url,collaborator1,collaborator2,vehicle_plate,setor_id,leader,supervisor,is_test,supervisores(nome)",
       )
       .order("team_name");
     if (error) throw new Error(error.message);

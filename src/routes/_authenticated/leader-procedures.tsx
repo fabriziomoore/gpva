@@ -566,7 +566,7 @@ function LeaderProceduresPage() {
             ))}
           </div>
         ) : procedures?.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-2xl bg-muted/5">
+          <div className="text-center py-20 border-2 border-dashed border-primary/10 rounded-card bg-muted/5">
             <FileText className="size-12 text-muted-foreground mx-auto mb-4 opacity-20" />
             <h3 className="text-lg font-semibold text-muted-foreground">Nenhum procedimento encontrado</h3>
             <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
