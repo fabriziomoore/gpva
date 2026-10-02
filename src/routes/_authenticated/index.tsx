@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useBackHandler } from "@/lib/back-handler";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
+import { FitText } from "@/components/ui/fit-text";
 import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -473,34 +474,12 @@ function HomePage() {
 
 // Nome da equipe no card da Home: nunca corta. Tamanho padrão proporcional à
 // largura do card (4.88cqw ≈ 16px num celular de 360px); se um nome mais
-// longo não couber ao lado do selo de efetividade, a fonte diminui só o
-// necessário pra caber inteiro.
+// longo não couber ao lado do selo de efetividade, FitText diminui a fonte só
+// o necessário pra caber inteiro.
 function FitTeamName({ name }: { name: string }) {
-  const ref = useRef<HTMLParagraphElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const fit = () => {
-      el.style.setProperty("--fit", "1");
-      if (el.scrollWidth <= el.clientWidth) return;
-      // Folga pra arredondamento de subpixel não deixar 1px cortado.
-      el.style.setProperty("--fit", String((el.clientWidth - 1) / el.scrollWidth));
-    };
-    fit();
-    // Recalcula quando a largura muda (rotação, tela) e quando a fonte Inter
-    // termina de carregar (muda a largura do texto).
-    const ro = new ResizeObserver(fit);
-    if (el.parentElement) ro.observe(el.parentElement);
-    void document.fonts?.ready.then(fit);
-    return () => ro.disconnect();
-  }, [name]);
   return (
-    <p
-      ref={ref}
-      className="overflow-hidden whitespace-nowrap font-bold tracking-tight"
-      style={{ fontSize: "calc(4.88cqw * var(--fit, 1))" }}
-    >
+    <FitText className="font-bold tracking-tight" style={{ fontSize: "4.88cqw" }}>
       {name}
-    </p>
+    </FitText>
   );
 }

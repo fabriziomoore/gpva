@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useBackHandler } from "@/lib/back-handler";
+import { FitText } from "@/components/ui/fit-text";
 
 type ConfirmOptions = {
   title?: string;
@@ -102,29 +103,12 @@ export function ConfirmDialogHost() {
     </AlertDialog>
   );
 }
-// Título numa linha só: começa no tamanho padrão e, se não couber na largura
-// do diálogo, diminui a fonte só o necessário pra caber inteiro.
+// Título numa linha só, reduzindo a fonte só o necessário pra caber (FitText
+// cuida do cálculo, inclusive com a fonte do sistema aumentada no Android).
 function FitTitle({ text }: { text: string }) {
-  const ref = useRef<HTMLHeadingElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const fit = () => {
-      el.style.fontSize = "";
-      const base = parseFloat(getComputedStyle(el).fontSize);
-      if (el.scrollWidth <= el.clientWidth) return;
-      // Folga pra arredondamento de subpixel não deixar 1px cortado.
-      el.style.fontSize = `${(base * (el.clientWidth - 1)) / el.scrollWidth}px`;
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    if (el.parentElement) ro.observe(el.parentElement);
-    void document.fonts?.ready.then(fit);
-    return () => ro.disconnect();
-  }, [text]);
   return (
-    <AlertDialogTitle ref={ref} className="overflow-hidden whitespace-nowrap">
-      {text}
+    <AlertDialogTitle>
+      <FitText>{text}</FitText>
     </AlertDialogTitle>
   );
 }
