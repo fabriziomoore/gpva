@@ -6,7 +6,6 @@ import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
 import { AppShell } from "@/components/layout/AppShell";
 import { ExitConfirmDialog } from "@/components/layout/ExitConfirmDialog";
-import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { FitText } from "@/components/ui/fit-text";
 import { Loader2, FileText } from "lucide-react";
@@ -362,7 +361,7 @@ function HomePage() {
   }
 
   return (
-    <AppShell showBack={false} right={<ThemeToggle />}>
+    <AppShell showBack={false}>
       <ExitConfirmDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={confirmExit} />
       <StartShiftDialog
         open={startDialogOpen}

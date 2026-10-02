@@ -53,7 +53,7 @@ export function AppShell({
           {headerOverride ?? (
             <div className={cn("flex items-center gap-2 px-4 py-3", container)}>
               <SideMenu />
-              <h1 className="min-w-0 flex-1 overflow-hidden text-sm font-semibold tracking-tight sm:text-base">{title ?? "ACP"}</h1>
+              <h1 className="min-w-0 flex-1 overflow-hidden text-sm font-semibold tracking-tight sm:text-base">{title ?? "ACP - ÁGUAS DO RIO"}</h1>
               {right}
             </div>
           )}
