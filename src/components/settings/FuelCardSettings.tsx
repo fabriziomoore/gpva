@@ -25,10 +25,8 @@ export function FuelCardSettings({
     <div className="space-y-3 border-t border-border pt-6">
       <p className="text-sm font-semibold text-canvas-foreground">Cartões de abastecimento</p>
       <p className="text-xs text-canvas-foreground/60">
-        Aparecem na tela inicial. A senha é individual: cada colaborador cria um código pessoal de{" "}
-        {FUEL_CODE_LEN} números, e ela só aparece com esse código — o colega não consegue ver. Fica salvo
-        neste aparelho e, criptografado, na conta da equipe, pra aparecer em outro celular se precisar.
-        Ninguém vê a senha sem o código pessoal.
+        A senha é individual: cada colaborador cria um código pessoal de {FUEL_CODE_LEN} números, e ela só
+        aparece com esse código.
       </p>
       {collaborators.map((name, idx) =>
         name ? (
