@@ -370,7 +370,8 @@ function HomePage() {
         collaborators={collaborators}
         onConfirm={confirmStartShift}
       />
-      <div className="space-y-6">
+      {/* Espaço vertical entre os blocos = o mesmo da grade de quadrados (gap-3). */}
+      <div className="space-y-3">
         {/* Card da equipe todo em unidades do container (cqw = 1% da
             largura do card): em qualquer tela ele é a mesma "foto", só maior
             ou menor. Referência: 1cqw ≈ 3,28px num celular de 360px. */}
