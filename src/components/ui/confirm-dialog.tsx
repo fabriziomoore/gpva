@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useBackHandler } from "@/lib/back-handler";
 
 type ConfirmOptions = {
   title?: string;
@@ -66,6 +67,10 @@ export function ConfirmDialogHost() {
     if (pending) pending.resolve(result);
     setPending(null);
   };
+
+  // Voltar do Android com o diálogo aberto = Cancelar (em vez de acionar o
+  // handler da tela que está por trás).
+  useBackHandler(pending !== null, () => close(false));
 
   return (
     <AlertDialog

@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { startSync } from "@/lib/sync/init";
 import { startSessionGuard } from "@/lib/session-guard";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { requestBootPermissions } from "@/lib/boot-permissions";
 import { notifyOtaReady } from "@/lib/ota/check-update";
 import { SyncBadge } from "@/components/sync-badge";
@@ -59,6 +60,9 @@ function RootComponent(): ReactNode {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      {/* Sem ele, confirmAction cai no confirm() nativo do WebView, que só
+          mostra a descrição (sem título) e botões em inglês. */}
+      <ConfirmDialogHost />
       <Toaster />
       <SyncBadge />
       <NetworkDiagPanel />
