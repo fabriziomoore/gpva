@@ -1,18 +1,29 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, EyeOff, Fuel, Loader2, Lock, Nfc } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Fuel, Loader2, Lock, Nfc } from "lucide-react";
 import { FitText } from "@/components/ui/fit-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FUEL_CODE_LEN, syncFuelCards, unlockFuelPin, useFuelCards, type FuelCardData } from "@/lib/fuel-cards";
+import {
+  FUEL_CODE_LEN,
+  clearFuelUnlocked,
+  getFuelUnlocked,
+  setFuelUnlocked,
+  syncFuelCards,
+  unlockFuelPin,
+  useFuelCards,
+  type FuelCardData,
+} from "@/lib/fuel-cards";
 
 export type FuelCardOwner = { fullName: string };
 
 /**
  * Acesso aos cartões de abastecimento na Home: um quadrado ao lado do
- * "Último relatório" (o estilo vem de quem usa, via className). Com mais de um colaborador, pergunta de quem é o cartão; o
- * cartão abre na tela própria /fuel-card/$slot, em pé.
+ * "Último relatório" (o estilo vem de quem usa, via className). Com mais de um
+ * colaborador, pergunta de quem é o cartão. Se o colaborador tem senha
+ * cadastrada, pede o código pessoal já aqui; o cartão abre desbloqueado na
+ * tela própria /fuel-card/$slot, em pé.
  */
 export function FuelCardsAccess({
   userId,
@@ -24,7 +35,10 @@ export function FuelCardsAccess({
   className?: string;
 }) {
   const navigate = useNavigate();
+  const cards = useFuelCards(userId);
   const [choose, setChoose] = useState(false);
+  // Colaborador escolhido aguardando o código pessoal.
+  const [askFor, setAskFor] = useState<0 | 1 | null>(null);
   // Já baixa os cartões do sistema ao abrir a Home, pra estarem no aparelho
   // mesmo se depois faltar internet no posto.
   useEffect(() => {
@@ -32,9 +46,12 @@ export function FuelCardsAccess({
   }, [userId]);
   if (owners.length === 0) return null;
 
+  const go = (i: number) => void navigate({ to: "/fuel-card/$slot", params: { slot: String(i + 1) } });
   const open = (i: number) => {
     setChoose(false);
-    void navigate({ to: "/fuel-card/$slot", params: { slot: String(i + 1) } });
+    // Com senha cadastrada, só o dono abre: pede o código antes.
+    if (cards[i]?.vault) setAskFor(i as 0 | 1);
+    else go(i);
   };
 
   return (
@@ -74,8 +91,39 @@ export function FuelCardsAccess({
           </div>
         </DialogContent>
       </Dialog>
+
+      <PinCodeDialog
+        open={askFor !== null}
+        onOpenChange={(o) => !o && setAskFor(null)}
+        name={owners[askFor ?? 0]?.fullName ?? ""}
+        lockUntil={cards[askFor ?? 0]?.lockUntil ?? 0}
+        onSubmit={async (code) => {
+          if (askFor === null) return null;
+          const i = askFor;
+          const r = await submitCode(userId, i, code);
+          if ("error" in r) return r;
+          setAskFor(null);
+          go(i);
+          return null;
+        }}
+      />
     </>
   );
+}
+
+/** Confere o código pessoal; certo → guarda a senha desbloqueada (em memória). */
+async function submitCode(userId: string | null, i: 0 | 1, code: string): Promise<{ error: string } | { pin: string }> {
+  if (!userId) return { error: "Sessão indisponível." };
+  const r = await unlockFuelPin(userId, i, code);
+  if (r.ok) {
+    setFuelUnlocked(userId, i, r.pin);
+    return { pin: r.pin };
+  }
+  if (r.reason === "wrong") {
+    return { error: `Código incorreto. ${r.left} ${r.left === 1 ? "tentativa restante" : "tentativas restantes"}.` };
+  }
+  if (r.reason === "locked") return { error: lockedMessage(r.until) };
+  return { error: "Senha não cadastrada." };
 }
 
 // Arte do cartão: fixa nos dois temas (é a "estampa" do cartão, não um
@@ -83,14 +131,13 @@ export function FuelCardsAccess({
 const CARD_BG =
   "radial-gradient(110% 70% at 100% 0%, rgba(247,148,29,0.38) 0%, rgba(247,148,29,0) 55%), linear-gradient(160deg, #0d2238 0%, #12405e 55%, #0b6b62 100%)";
 
-// Quanto tempo a senha fica visível depois do código pessoal certo.
-const REVEAL_MS = 30_000;
-
 /**
  * Cartão de abastecimento em pé (vertical). Toque: vira em 3D e mostra o
  * verso com matrícula e senha. A senha é individual (o celular é da equipe):
- * fica num cofre criptografado e só aparece com o código pessoal do dono,
- * por alguns segundos (src/lib/fuel-cards.ts).
+ * fica num cofre criptografado e só aparece depois do código pessoal do dono
+ * (pedido na escolha do colaborador, ou aqui se a tela abrir travada).
+ * Desbloqueada, fica visível enquanto a tela estiver aberta, por até
+ * FUEL_UNLOCK_MS; o olho oculta/mostra matrícula e senha sem pedir o código.
  */
 export function FuelCardView({
   userId,
@@ -103,22 +150,36 @@ export function FuelCardView({
 }) {
   const data: FuelCardData = useFuelCards(userId)[index];
   const [flipped, setFlipped] = useState(false);
-  const [pin, setPin] = useState<string | null>(null);
+  const [unlock, setUnlock] = useState(() => getFuelUnlocked(userId, index));
   const [askCode, setAskCode] = useState(false);
+  // Olho: oculta/mostra matrícula e senha no verso (não pede o código).
+  const [hidden, setHidden] = useState(false);
   const hasData = !!(data.matricula || data.vault);
+  const pin = unlock?.pin ?? null;
 
-  // Senha revelada some sozinha depois de REVEAL_MS.
+  // Abriu a tela já travada (ex.: voltou pra ela depois do tempo) — pede o código.
+  const asked = useRef(false);
   useEffect(() => {
-    if (!pin) return;
-    const t = window.setTimeout(() => setPin(null), REVEAL_MS);
-    return () => window.clearTimeout(t);
-  }, [pin]);
+    if (!asked.current && data.vault && !unlock) {
+      asked.current = true;
+      setAskCode(true);
+    }
+  }, [data.vault, unlock]);
 
-  const toggle = () => {
-    setFlipped((f) => !f);
-    // Ao virar, a senha volta a ficar escondida.
-    setPin(null);
-  };
+  // Trava de novo quando o desbloqueio vence.
+  useEffect(() => {
+    if (!unlock) return;
+    const t = window.setTimeout(() => {
+      clearFuelUnlocked(userId, index);
+      setUnlock(null);
+    }, Math.max(0, unlock.until - Date.now()));
+    return () => window.clearTimeout(t);
+  }, [unlock, userId, index]);
+
+  // Saiu da tela do cartão: trava.
+  useEffect(() => () => clearFuelUnlocked(userId, index), [userId, index]);
+
+  const toggle = () => setFlipped((f) => !f);
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -175,33 +236,43 @@ export function FuelCardView({
               <div className="flex flex-1 flex-col justify-center gap-6">
                 {hasData ? (
                   <>
-                    <BackField label="Matrícula" value={data.matricula || "—"} />
+                    <div className="flex items-start justify-between gap-2">
+                      <BackField
+                        label="Matrícula"
+                        // Travado (tem senha e ainda não digitou o código) ou ocultado pelo olho.
+                        value={hidden || (data.vault && !pin) ? "••••••" : data.matricula || "—"}
+                      />
+                      <button
+                        type="button"
+                        aria-label={hidden ? "Mostrar matrícula e senha" : "Ocultar matrícula e senha"}
+                        onClick={(e) => {
+                          // Só oculta/mostra — não vira o cartão.
+                          e.stopPropagation();
+                          setHidden((h) => !h);
+                        }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white transition-colors hover:bg-white/25 active:bg-white/30"
+                      >
+                        {hidden ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
+                      </button>
+                    </div>
                     <div className="space-y-3">
-                      <BackField label="Senha" value={data.vault ? (pin ?? "••••") : "—"} />
-                      {data.vault ? (
+                      <BackField label="Senha" value={!data.vault ? "—" : pin && !hidden ? pin : "••••"} />
+                      {data.vault && !pin && (
                         <button
                           type="button"
-                          aria-label={pin ? "Esconder senha" : "Ver senha (pede o código pessoal)"}
+                          aria-label="Desbloquear senha (pede o código pessoal)"
                           onClick={(e) => {
-                            // Só revela/esconde — não vira o cartão.
                             e.stopPropagation();
-                            if (pin) setPin(null);
-                            else setAskCode(true);
+                            setAskCode(true);
                           }}
                           onKeyDown={(e) => e.stopPropagation()}
                           className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white/15 px-3 text-sm font-semibold text-white transition-colors hover:bg-white/25 active:bg-white/30"
                         >
-                          {pin ? (
-                            <>
-                              <EyeOff className="size-4" /> Esconder
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="size-4" /> Ver senha
-                            </>
-                          )}
+                          <Lock className="size-4" /> Desbloquear
                         </button>
-                      ) : (
+                      )}
+                      {!data.vault && (
                         <p className="text-xs text-white/70">Senha não cadastrada — cadastre em Configurações.</p>
                       )}
                     </div>
@@ -233,18 +304,11 @@ export function FuelCardView({
         name={name}
         lockUntil={data.lockUntil}
         onSubmit={async (code) => {
-          if (!userId) return { error: "Sessão indisponível." };
-          const r = await unlockFuelPin(userId, index, code);
-          if (r.ok) {
-            setPin(r.pin);
-            setAskCode(false);
-            return null;
-          }
-          if (r.reason === "wrong") {
-            return { error: `Código incorreto. ${r.left} ${r.left === 1 ? "tentativa restante" : "tentativas restantes"}.` };
-          }
-          if (r.reason === "locked") return { error: lockedMessage(r.until) };
-          return { error: "Senha não cadastrada." };
+          const r = await submitCode(userId, index, code);
+          if ("error" in r) return r;
+          setUnlock(getFuelUnlocked(userId, index));
+          setAskCode(false);
+          return null;
         }}
       />
     </>

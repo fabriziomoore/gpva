@@ -274,6 +274,36 @@ export async function unlockFuelPin(userId: string, i: 0 | 1, code: string): Pro
   }
 }
 
+// ---------- desbloqueio em memória ----------
+
+/** Por quanto tempo a senha fica desbloqueada depois do código certo. */
+export const FUEL_UNLOCK_MS = 2 * 60 * 1000;
+
+// Senha já desbloqueada (código certo na escolha do colaborador) — SÓ em
+// memória, nunca gravada: some ao recarregar o app, ao sair da tela do
+// cartão ou depois de FUEL_UNLOCK_MS.
+const unlocked = new Map<string, { pin: string; until: number }>();
+const ukey = (userId: string, i: 0 | 1) => `${userId}:${i}`;
+
+export function setFuelUnlocked(userId: string, i: 0 | 1, pin: string) {
+  unlocked.set(ukey(userId, i), { pin, until: Date.now() + FUEL_UNLOCK_MS });
+}
+
+export function getFuelUnlocked(userId: string | null, i: 0 | 1): { pin: string; until: number } | null {
+  if (!userId) return null;
+  const u = unlocked.get(ukey(userId, i));
+  if (!u) return null;
+  if (u.until <= Date.now()) {
+    unlocked.delete(ukey(userId, i));
+    return null;
+  }
+  return u;
+}
+
+export function clearFuelUnlocked(userId: string | null, i: 0 | 1) {
+  if (userId) unlocked.delete(ukey(userId, i));
+}
+
 /**
  * Lê os cartões, acompanha mudanças (Configurações, tentativas, bloqueio) e
  * sincroniza com o sistema ao montar e quando a internet volta.
