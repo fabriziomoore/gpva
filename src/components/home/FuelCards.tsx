@@ -290,7 +290,6 @@ export function FuelCardView({
                   </div>
                 )}
               </div>
-              <p className="text-[11px] text-white/55">Toque para voltar</p>
             </div>
           </div>
         </div>
