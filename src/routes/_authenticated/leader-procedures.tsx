@@ -30,6 +30,7 @@ import {
 import { ProcedureForm } from "@/components/procedures/ProcedureForm";
 import { toast } from "sonner";
 import { newId } from "@/lib/db/local-db";
+import { useLastDefined } from "@/hooks/use-last-defined";
 
 export const Route = createFileRoute("/_authenticated/leader-procedures")({
   component: LeaderProceduresPage,
@@ -48,6 +49,8 @@ function LeaderProceduresPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingProcedure, setEditingProcedure] = useState<any>(null);
   const [confirmPublish, setConfirmPublish] = useState<any>(null);
+  // Conteúdo do diálogo lido do último valor (não some durante a animação de fechar).
+  const editingShown = useLastDefined(editingProcedure);
   
   const queryClient = useQueryClient();
 
@@ -459,18 +462,18 @@ function LeaderProceduresPage() {
           <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
             <DialogHeader>
               <DialogTitle>
-                {editingProcedure?.status === 'draft' ? 'Editar Rascunho' : 'Visualizar Procedimento'}
+                {editingShown?.status === 'draft' ? 'Editar Rascunho' : 'Visualizar Procedimento'}
               </DialogTitle>
               <DialogDescription>
-                {editingProcedure?.status === 'draft' 
+                {editingShown?.status === 'draft' 
                   ? 'Altere o conteúdo do rascunho antes de publicar.' 
                   : 'Versões publicadas são imutáveis. Crie uma nova versão para fazer alterações.'}
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <ProcedureForm 
-                initialData={editingProcedure}
-                isReadOnly={editingProcedure?.status !== 'draft'}
+                initialData={editingShown}
+                isReadOnly={editingShown?.status !== 'draft'}
                 onSubmit={async (metadata, versionData, isPublishing) => {
                   if (!metadata) {
                     setEditingProcedure(null);

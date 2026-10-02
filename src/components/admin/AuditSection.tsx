@@ -17,6 +17,7 @@ import { runClientChecks } from "@/lib/audit/client-checks";
 import { scoreFromResults, CATEGORY_LABELS, OUT_OF_SCOPE } from "@/lib/audit/types";
 import type { AuditReport, Category, CheckResult, JsonValue } from "@/lib/audit/types";
 import { buildFixPrompt } from "@/lib/audit/prompt";
+import { useLastDefined } from "@/hooks/use-last-defined";
 
 type Step = { key: string; label: string; run: () => Promise<CheckResult[]> };
 
@@ -55,6 +56,8 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
   const [progress, setProgress] = useState({ done: 0, total: 0, current: "" });
   const [report, setReport] = useState<AuditReport | null>(null);
   const [viewing, setViewing] = useState<AuditReport | null>(null);
+  // Conteúdo do diálogo lido do último valor (não some durante a animação de fechar).
+  const viewingShown = useLastDefined(viewing);
   const [loadingView, setLoadingView] = useState<string | null>(null);
 
   const history = useQuery({
@@ -298,21 +301,21 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
         <DialogContent className="max-h-screen h-screen sm:h-screen sm:max-h-screen max-w-2xl overflow-y-auto rounded-none sm:rounded-none [&>button]:bg-destructive [&>button]:text-white [&>button]:opacity-100 [&>button]:rounded-md [&>button]:p-1.5 [&>button]:hover:bg-destructive/90">
           <DialogHeader>
             <DialogTitle>Relatório de Auditoria</DialogTitle>
-            {viewing && (
+            {viewingShown && (
               <DialogDescription>
-                {new Date(viewing.started_at).toLocaleString("pt-BR")} — {viewing.overall_score}% ·
-                {" "}Erros {viewing.counts.errors} · Avisos {viewing.counts.warnings} · Melhorias {viewing.counts.improvements}
+                {new Date(viewingShown.started_at).toLocaleString("pt-BR")} — {viewingShown.overall_score}% ·
+                {" "}Erros {viewingShown.counts.errors} · Avisos {viewingShown.counts.warnings} · Melhorias {viewingShown.counts.improvements}
               </DialogDescription>
             )}
           </DialogHeader>
-          {viewing && (
+          {viewingShown && (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={async () => {
-                    const prompt = buildFixPrompt(viewing);
+                    const prompt = buildFixPrompt(viewingShown);
                     try { await navigator.clipboard.writeText(prompt); toast.success("Prompt copiado"); }
                     catch { toast.error("Falha ao copiar"); }
                   }}
@@ -323,7 +326,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const blob = new Blob([JSON.stringify(viewing, null, 2)], { type: "application/json" });
+                    const blob = new Blob([JSON.stringify(viewingShown, null, 2)], { type: "application/json" });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url; a.download = `audit-${Date.now()}.json`; a.click();
@@ -334,7 +337,7 @@ export function AuditSection({ adminPw }: { adminPw: string }) {
                 </Button>
               </div>
               <ul className="space-y-2">
-                {viewing.results.map((r) => (
+                {viewingShown.results.map((r) => (
                   <li key={r.id} className="rounded-card border p-3">
                     <div className="flex items-center gap-2">
                       <SevBadge sev={r.severity} />

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, useRef } from "react";
 import { useAuthSession } from "@/hooks/use-auth";
 import { useTeam } from "@/hooks/use-team";
+import { useLastDefined } from "@/hooks/use-last-defined";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Plus, Flag, CheckCircle2, XCircle, Banknote, Loader2, MapPin, Pencil, Trash2, X, FileText, ChevronDown } from "lucide-react";
@@ -53,6 +54,11 @@ function ShiftPage() {
   const [selectedService, setSelectedService] = useState<LocalService | null>(null);
   const [editTarget, setEditTarget] = useState<LocalService | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LocalService | null>(null);
+  // Conteúdo dos diálogos/sheet lido do último valor, pra não sumir/trocar de
+  // texto durante a animação de fechar (o estado vira null no ato).
+  const pendingFormsShown = useLastDefined(pendingForms);
+  const editShown = useLastDefined(editTarget);
+  const deleteShown = useLastDefined(deleteTarget);
   const [deleting, setDeleting] = useState(false);
   const [discarding, setDiscarding] = useState(false);
 
@@ -411,8 +417,8 @@ function ShiftPage() {
             }}
             teamId={userId}
             shiftId={openShift.id}
-            editService={editTarget}
-            editComplements={editTarget ? (complementRowsByService.get(editTarget.id) ?? []) : []}
+            editService={editShown}
+            editComplements={editShown ? (complementRowsByService.get(editShown.id) ?? []) : []}
           />
           <FinishShiftSheet
             open={finishOpen}
@@ -434,8 +440,8 @@ function ShiftPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Forms pendente de envio</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingForms && pendingForms.length > 1
-                ? `Existem ${pendingForms.length} negociações com o Forms ainda não enviado. Deseja enviar a primeira agora ou finalizar assim mesmo?`
+              {pendingFormsShown && pendingFormsShown.length > 1
+                ? `Existem ${pendingFormsShown.length} negociações com o Forms ainda não enviado. Deseja enviar a primeira agora ou finalizar assim mesmo?`
                 : "Há uma negociação com o Forms ainda não enviado. Deseja enviar agora ou finalizar assim mesmo?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -470,8 +476,8 @@ function ShiftPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget
-                ? `"${deleteTarget.service_type_name}" será excluído permanentemente do dispositivo e do banco de dados.`
+              {deleteShown
+                ? `"${deleteShown.service_type_name}" será excluído permanentemente do dispositivo e do banco de dados.`
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>

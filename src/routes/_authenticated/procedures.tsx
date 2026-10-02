@@ -6,6 +6,7 @@ import { ShiftMeta } from "@/components/layout/ShiftMeta";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePublishedProcedures, type PublishedProcedure } from "@/hooks/use-procedures";
+import { useLastDefined } from "@/hooks/use-last-defined";
 import { ProcedurePlayer, type ProcedurePlayerHandle } from "@/components/procedures/ProcedurePlayer";
 
 export const Route = createFileRoute("/_authenticated/procedures")({
@@ -17,6 +18,8 @@ function ProceduresPage() {
   const { data: procedures, isLoading } = usePublishedProcedures();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<PublishedProcedure | null>(null);
+  // Conteúdo do diálogo lido do último valor (não some durante a animação de fechar).
+  const selectedShown = useLastDefined(selected);
   const [canGoBack, setCanGoBack] = useState(false);
   const playerRef = useRef<ProcedurePlayerHandle>(null);
 
@@ -117,7 +120,7 @@ function ProceduresPage() {
                     <ArrowLeft className="size-5" />
                   </button>
                 )}
-                <DialogTitle className="truncate uppercase text-primary-foreground">{selected?.titulo}</DialogTitle>
+                <DialogTitle className="truncate uppercase text-primary-foreground">{selectedShown?.titulo}</DialogTitle>
               </div>
               <DialogClose
                 aria-label="Fechar"
@@ -127,11 +130,11 @@ function ProceduresPage() {
               </DialogClose>
             </div>
           </DialogHeader>
-          {selected && (
+          {selectedShown && (
             <ProcedurePlayer
               ref={playerRef}
-              key={selected.id}
-              tree={selected.arvore_decisao}
+              key={selectedShown.id}
+              tree={selectedShown.arvore_decisao}
               onPathChange={setCanGoBack}
             />
           )}

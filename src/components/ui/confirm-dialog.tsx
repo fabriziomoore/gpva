@@ -56,9 +56,17 @@ export function confirmDelete(
 
 export function ConfirmDialogHost() {
   const [pending, setPending] = useState<Pending | null>(null);
+  // Conteúdo exibido: continua com o último pedido enquanto a animação de
+  // fechar roda. Se fosse lido de `pending` (que vira null no ato de
+  // fechar), o diálogo trocava pra "Confirmar ação / Cancelar / Confirmar"
+  // por ~150ms — um card fantasma piscando a cada Cancelar/Confirmar.
+  const [shown, setShown] = useState<ConfirmOptions>({});
 
   useEffect(() => {
-    emit = (p) => setPending(p);
+    emit = (p) => {
+      setShown(p);
+      setPending(p);
+    };
     return () => {
       emit = null;
     };
@@ -82,27 +90,28 @@ export function ConfirmDialogHost() {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          {pending?.singleLineTitle ? (
-            <FitTitle text={pending.title ?? "Confirmar ação"} />
+          {shown.singleLineTitle ? (
+            <FitTitle text={shown.title ?? "Confirmar ação"} />
           ) : (
             <AlertDialogTitle>
-              {pending?.title ?? "Confirmar ação"}
+              {shown.title ?? "Confirmar ação"}
             </AlertDialogTitle>
           )}
-          {pending?.description && (
-            <AlertDialogDescription>{pending.description}</AlertDialogDescription>
+          {shown.description && (
+            <AlertDialogDescription>{shown.description}</AlertDialogDescription>
           )}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{pending?.cancelText ?? "Cancelar"}</AlertDialogCancel>
+          <AlertDialogCancel>{shown.cancelText ?? "Cancelar"}</AlertDialogCancel>
           <AlertDialogAction onClick={() => close(true)}>
-            {pending?.confirmText ?? "Confirmar"}
+            {shown.confirmText ?? "Confirmar"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
+
 // Título numa linha só, reduzindo a fonte só o necessário pra caber (FitText
 // cuida do cálculo, inclusive com a fonte do sistema aumentada no Android).
 function FitTitle({ text }: { text: string }) {
