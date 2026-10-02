@@ -8,7 +8,7 @@ import { confirmAction } from "@/components/ui/confirm-dialog";
 import { FUEL_CODE_LEN, clearFuelPin, saveFuelCard, useFuelCards } from "@/lib/fuel-cards";
 
 /**
- * Configurações → Cartões de abastecimento. A senha nunca é mostrada aqui
+ * Configurações → Cartão de abastecimento. A senha nunca é mostrada aqui
  * (fica criptografada com o código pessoal do dono — ver lib/fuel-cards).
  */
 export function FuelCardSettings({
@@ -23,7 +23,7 @@ export function FuelCardSettings({
 
   return (
     <div className="space-y-3 border-t border-border pt-6">
-      <p className="text-sm font-semibold text-canvas-foreground">Cartões de abastecimento</p>
+      <p className="text-sm font-semibold text-canvas-foreground">Cartão de abastecimento</p>
       <p className="text-xs text-canvas-foreground/60">
         A senha é individual: cada colaborador cria um código pessoal de {FUEL_CODE_LEN} números, e ela só
         aparece com esse código.

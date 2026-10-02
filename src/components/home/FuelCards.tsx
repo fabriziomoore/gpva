@@ -45,7 +45,7 @@ export function FuelCardsAccess({
         className={className}
       >
         <Fuel className="size-10 text-primary" strokeWidth={1.6} />
-        <p className="text-xs font-semibold leading-tight">Cartões de abastecimento</p>
+        <p className="text-xs font-semibold leading-tight">Cartão de abastecimento</p>
       </button>
 
       <Dialog open={choose} onOpenChange={setChoose}>

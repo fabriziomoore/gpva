@@ -475,7 +475,7 @@ function HomePage() {
   );
 }
 
-// Quadrado de acesso da Home (Último relatório, Cartões de abastecimento…):
+// Quadrado de acesso da Home (Último relatório, Cartão de abastecimento…):
 // ícone grande no centro, nome embaixo, tudo centralizado.
 const ACCESS_TILE =
   "flex aspect-square flex-col items-center justify-center gap-2 rounded-card bg-card p-2 text-center shadow-md transition-shadow hover:shadow-lg";
