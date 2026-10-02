@@ -15,6 +15,7 @@ import { Route as VariableRoute } from "@/routes/_authenticated/variable";
 import { Route as EquipesRoute } from "@/routes/_authenticated/equipes";
 import { Route as ProceduresRoute } from "@/routes/_authenticated/procedures";
 import { Route as ShiftReportRoute } from "@/routes/_authenticated/shift_.$id.report";
+import { Route as FuelCardRoute } from "@/routes/_authenticated/fuel-card.$slot";
 import { Route as LeaderRoute } from "@/routes/_authenticated/leader";
 import { Route as LeaderConfigRoute } from "@/routes/_authenticated/leader-config";
 import { Route as LeaderMapRoute } from "@/routes/_authenticated/leader-map";
@@ -96,6 +97,12 @@ const shiftReport = (ShiftReportRoute as any).update({
   getParentRoute: () => authenticated,
 });
 
+const fuelCard = (FuelCardRoute as any).update({
+  id: "/fuel-card/$slot",
+  path: "/fuel-card/$slot",
+  getParentRoute: () => authenticated,
+});
+
 const leader = (LeaderRoute as any).update({
   id: "/leader",
   path: "/leader",
@@ -142,6 +149,7 @@ const authenticatedWithChildren = (authenticated as any)._addFileChildren({
   EquipesRoute: equipes,
   ProceduresRoute: procedures,
   ShiftReportRoute: shiftReport,
+  FuelCardRoute: fuelCard,
   LeaderRoute: leader,
   LeaderConfigRoute: leaderConfig,
   LeaderMapRoute: leaderMap,

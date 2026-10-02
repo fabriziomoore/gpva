@@ -19,6 +19,7 @@ import { repoCreateShift, repoReopenShift } from "@/lib/db/repos";
 import { confirmAction } from "@/components/ui/confirm-dialog";
 import { openShiftStartForm } from "@/lib/shift-start-form";
 import { StartShiftDialog, type Condutor } from "@/components/home/StartShiftDialog";
+import { FuelCardsAccess } from "@/components/home/FuelCards";
 import { useTeamPhoto } from "@/lib/team-photo";
 import { UserRound } from "lucide-react";
 import { generateFakeServiceRows } from "@/lib/demo-fake-data";
@@ -450,27 +451,34 @@ function HomePage() {
           )}
         </Button>
 
-        {lastClosed && (
-          <Link
-            to="/shift/$id/report"
-            params={{ id: lastClosed.id }}
-            className="group flex items-center justify-between rounded-card bg-card shadow-md p-4 transition-shadow hover:shadow-lg"
-          >
-            <div className="flex items-center gap-3">
-              <FileText className="size-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Último relatório</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDateBR(lastClosed.started_at)}
-                </p>
-              </div>
-            </div>
-          </Link>
-        )}
+        {/* Acessos em quadrados lado a lado (3 por linha). */}
+        <div className="grid grid-cols-3 gap-3">
+          {lastClosed && (
+            <Link
+              to="/shift/$id/report"
+              params={{ id: lastClosed.id }}
+              className={ACCESS_TILE}
+            >
+              <FileText className="size-10 text-primary" strokeWidth={1.6} />
+              {/* Mesmo padrão de texto dos outros quadrados (2 linhas iguais). */}
+              <p className="text-xs font-semibold leading-tight">
+                Último relatório
+                <br />
+                {formatDateBR(lastClosed.started_at)}
+              </p>
+            </Link>
+          )}
+          <FuelCardsAccess userId={userId} owners={collaborators.map((c) => ({ fullName: c.fullName }))} className={ACCESS_TILE} />
+        </div>
       </div>
     </AppShell>
   );
 }
+
+// Quadrado de acesso da Home (Último relatório, Cartões de abastecimento…):
+// ícone grande no centro, nome embaixo, tudo centralizado.
+const ACCESS_TILE =
+  "flex aspect-square flex-col items-center justify-center gap-2 rounded-card bg-card p-2 text-center shadow-md transition-shadow hover:shadow-lg";
 
 // Nome da equipe no card da Home: nunca corta. Tamanho padrão proporcional à
 // largura do card (4.88cqw ≈ 16px num celular de 360px); se um nome mais

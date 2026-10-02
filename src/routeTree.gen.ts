@@ -26,6 +26,7 @@ import { Route as AuthenticatedProductivityRouteImport } from './routes/_authent
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedVariableRouteImport } from './routes/_authenticated/variable'
+import { Route as AuthenticatedFuelCardSlotRouteImport } from './routes/_authenticated/fuel-card.$slot'
 import { Route as AuthenticatedShiftIdReportRouteImport } from './routes/_authenticated/shift_.$id.report'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -117,6 +118,12 @@ const AuthenticatedVariableRoute = AuthenticatedVariableRouteImport.update({
   path: '/variable',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFuelCardSlotRoute =
+  AuthenticatedFuelCardSlotRouteImport.update({
+    id: '/fuel-card/$slot',
+    path: '/fuel-card/$slot',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedShiftIdReportRoute =
   AuthenticatedShiftIdReportRouteImport.update({
     id: '/shift_/$id/report',
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
+  '/fuel-card/$slot': typeof AuthenticatedFuelCardSlotRoute
   '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRoutesByTo {
@@ -160,6 +168,7 @@ export interface FileRoutesByTo {
   '/shift': typeof AuthenticatedShiftRoute
   '/variable': typeof AuthenticatedVariableRoute
   '/': typeof AuthenticatedIndexRoute
+  '/fuel-card/$slot': typeof AuthenticatedFuelCardSlotRoute
   '/shift/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRoutesById {
@@ -181,6 +190,7 @@ export interface FileRoutesById {
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/variable': typeof AuthenticatedVariableRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/fuel-card/$slot': typeof AuthenticatedFuelCardSlotRoute
   '/_authenticated/shift_/$id/report': typeof AuthenticatedShiftIdReportRoute
 }
 export interface FileRouteTypes {
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shift'
     | '/variable'
+    | '/fuel-card/$slot'
     | '/shift/$id/report'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/shift'
     | '/variable'
     | '/'
+    | '/fuel-card/$slot'
     | '/shift/$id/report'
   id:
     | '__root__'
@@ -241,6 +253,7 @@ export interface FileRouteTypes {
     | '/_authenticated/shift'
     | '/_authenticated/variable'
     | '/_authenticated/'
+    | '/_authenticated/fuel-card/$slot'
     | '/_authenticated/shift_/$id/report'
   fileRoutesById: FileRoutesById
 }
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVariableRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/fuel-card/$slot': {
+      id: '/_authenticated/fuel-card/$slot'
+      path: '/fuel-card/$slot'
+      fullPath: '/fuel-card/$slot'
+      preLoaderRoute: typeof AuthenticatedFuelCardSlotRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/shift_/$id/report': {
       id: '/_authenticated/shift_/$id/report'
       path: '/shift/$id/report'
@@ -396,6 +416,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedVariableRoute: typeof AuthenticatedVariableRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedFuelCardSlotRoute: typeof AuthenticatedFuelCardSlotRoute
   AuthenticatedShiftIdReportRoute: typeof AuthenticatedShiftIdReportRoute
 }
 
@@ -414,6 +435,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedVariableRoute: AuthenticatedVariableRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedFuelCardSlotRoute: AuthenticatedFuelCardSlotRoute,
   AuthenticatedShiftIdReportRoute: AuthenticatedShiftIdReportRoute,
 }
 

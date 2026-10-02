@@ -18,6 +18,7 @@ import { translateAuthError } from "@/lib/auth-errors";
 import { getLocalDB } from "@/lib/db/local-db";
 import { useTeamPhoto, saveTeamPhoto, fileToCompressedDataUrl } from "@/lib/team-photo";
 import { repoUpdateTeam } from "@/lib/db/repos";
+import { FuelCardSettings } from "@/components/settings/FuelCardSettings";
 import type { Team } from "@/hooks/use-team";
 
 const TEST_TEAM_NAME = "TESTANDO";
@@ -342,6 +343,8 @@ function SettingsPage() {
               Alterar senha
             </Button>
           </div>
+
+          <FuelCardSettings userId={userId} collaborators={[team.collaborator1, team.collaborator2]} />
 
           {isTestAccount && (
             <div className="space-y-2 border-t border-border pt-6">

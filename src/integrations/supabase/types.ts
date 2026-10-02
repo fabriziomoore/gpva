@@ -104,6 +104,30 @@ export type Database = {
         }
         Relationships: []
       }
+      cartoes_abastecimento: {
+        Row: {
+          matricula: string
+          slot: number
+          team_id: string
+          updated_at: string
+          vault: Json | null
+        }
+        Insert: {
+          matricula?: string
+          slot: number
+          team_id: string
+          updated_at?: string
+          vault?: Json | null
+        }
+        Update: {
+          matricula?: string
+          slot?: number
+          team_id?: string
+          updated_at?: string
+          vault?: Json | null
+        }
+        Relationships: []
+      }
       catalog_order: {
         Row: {
           catalog: string
