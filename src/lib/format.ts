@@ -31,3 +31,11 @@ export function firstName(name: string | null | undefined): string {
 export function collaboratorsLabel(c1: string | null | undefined, c2: string | null | undefined): string {
   return [firstName(c1), firstName(c2)].filter(Boolean).join(" e ");
 }
+
+/** true se a data (ISO) cai no dia de hoje, no fuso do aparelho. */
+export function isToday(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}

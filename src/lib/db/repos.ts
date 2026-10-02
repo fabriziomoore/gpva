@@ -3,6 +3,7 @@ import { scheduleSync, refreshPendingCount } from "@/lib/sync/engine";
 import { cacheTeam, getCachedTeam, type CatTeam } from "@/lib/db/catalogs";
 import type { CatalogKind } from "@/lib/db/catalogs";
 import { assertActiveSession } from "@/lib/session-guard";
+import { isToday } from "@/lib/format";
 
 const nowIso = () => new Date().toISOString();
 
@@ -105,6 +106,9 @@ export async function repoReopenShift(shiftId: string): Promise<void> {
   const db = getLocalDB();
   const shift = await db.shifts.get(shiftId);
   if (!shift) throw new Error("Shift not found locally");
+  // Só o expediente do dia atual pode ser reaberto — dias anteriores ficam
+  // fechados (vale pra qualquer tela que chame esta função).
+  if (!isToday(shift.started_at)) throw new Error("Só é possível reabrir o expediente de hoje.");
   const updated: LocalShift = {
     ...shift,
     status: "open",

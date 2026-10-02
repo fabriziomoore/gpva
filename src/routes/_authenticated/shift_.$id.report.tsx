@@ -9,6 +9,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { confirmAction } from "@/components/ui/confirm-dialog";
 import { Copy, Share2, Loader2, RotateCcw } from "lucide-react";
+import { isToday } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/shift_/$id/report")({
@@ -58,7 +59,9 @@ function ReportPage() {
     return row && row.id !== id ? row : null;
   }, [teamId, id]);
 
-  const canReopen = q.data?.status === "closed" && !otherOpenShift;
+  // Só o expediente de hoje pode ser reaberto; relatórios de dias anteriores
+  // ficam só pra consulta (repoReopenShift também recusa).
+  const canReopen = q.data?.status === "closed" && !otherOpenShift && isToday(q.data?.started_at);
 
   async function reopenShift() {
     if (!canReopen) return;
