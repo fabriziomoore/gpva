@@ -172,10 +172,7 @@ export function UpdateBanner() {
 
   const webCard = (
     <div className="space-y-2 p-4 text-center">
-      <div>
-        <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
-        <p className="text-xs text-muted-foreground">{webUpdate?.releaseType ?? "Atualização"}</p>
-      </div>
+      <p className="text-sm font-bold uppercase tracking-wide">Atualização disponível</p>
       {webProgress === null ? (
         <Button onClick={applyWeb} className="h-11 w-full">
           Baixar atualização
